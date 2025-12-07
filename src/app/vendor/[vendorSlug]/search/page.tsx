@@ -46,7 +46,8 @@ export default function VendorSearchPage() {
   const searchQuery = searchParams.get('q') || '';
 
   useEffect(() => {
-    // Check for authToken in URL (from login redirect)\n    const urlParams = new URLSearchParams(window.location.search);
+    // Check for authToken in URL (from login redirect)
+    const urlParams = new URLSearchParams(window.location.search);
     const authToken = urlParams.get('authToken');
     
     if (authToken) {
