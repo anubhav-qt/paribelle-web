@@ -5,7 +5,18 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
     const error = searchParams.get('error');
-    const state = searchParams.get('state'); // Check if this is vendor registration
+    const stateParam = searchParams.get('state');
+    
+    // Parse state parameter
+    let state = { type: 'login', returnUrl: '' };
+    try {
+      if (stateParam) {
+        state = JSON.parse(stateParam);
+      }
+    } catch (e) {
+      // Fallback for old state format (just a string)
+      state = { type: stateParam || 'login', returnUrl: '' };
+    }
 
     if (error || !code) {
       return NextResponse.redirect(new URL('/login?error=oauth_failed', request.url));
@@ -42,7 +53,7 @@ export async function GET(request: NextRequest) {
     const googleUser = await userInfoResponse.json();
 
     // Check if this is vendor registration (from state parameter or session)
-    const isVendorRegistration = state === 'vendor-register';
+    const isVendorRegistration = state.type === 'vendor-register';
 
     if (isVendorRegistration) {
       // Redirect to vendor registration form with Google user data
@@ -75,15 +86,28 @@ export async function GET(request: NextRequest) {
 
     const authData = await authResponse.json();
     const token = authData.token || authData.access_token;
+    const user = authData.user;
 
     if (!token) {
       console.error('No token in auth response:', authData);
       return NextResponse.redirect(new URL('/login?error=no_token', request.url));
     }
 
+    // Determine redirect URL based on returnUrl, user role, or default
+    let redirectUrl = '/';
+    if (state.returnUrl) {
+      redirectUrl = state.returnUrl;
+    } else if (user) {
+      if (user.role === 'vendor_admin') {
+        redirectUrl = '/vendor/dashboard';
+      } else if (user.role === 'super_admin') {
+        redirectUrl = '/admin';
+      }
+    }
+
     // Redirect with token as query param so frontend can store it
     const redirectResponse = NextResponse.redirect(
-      new URL(`/?token=${encodeURIComponent(token)}&googleAuth=success`, request.url)
+      new URL(`${redirectUrl}${redirectUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}&googleAuth=success`, request.url)
     );
     
     // Also set in cookie as backup

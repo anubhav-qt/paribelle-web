@@ -52,8 +52,16 @@ export default function SignUpPage() {
     }
   };
 
-  const handleGoogleSignUp = () => {
-    window.location.href = '/api/auth/google';
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    try {
+      // Redirect to Google OAuth endpoint
+      window.location.href = '/api/auth/google';
+    } catch (error) {
+      console.error('Google signup error:', error);
+      setError('Failed to initiate Google signup');
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

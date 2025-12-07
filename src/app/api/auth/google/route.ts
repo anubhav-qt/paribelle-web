@@ -4,6 +4,13 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const state = searchParams.get('state') || ''; // Get state parameter for vendor registration
+    const returnUrl = searchParams.get('returnUrl') || ''; // Get returnUrl for post-login redirect
+    
+    // Combine state and returnUrl into state parameter
+    const stateData = JSON.stringify({ 
+      type: state || 'login',
+      returnUrl: returnUrl 
+    });
     
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID!,
@@ -12,7 +19,7 @@ export async function GET(request: NextRequest) {
       scope: 'email profile',
       access_type: 'offline',
       prompt: 'consent',
-      ...(state && { state }), // Include state if provided
+      state: stateData,
     })}`;
 
     return NextResponse.redirect(googleAuthUrl);

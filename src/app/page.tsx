@@ -2,6 +2,8 @@ import Header from '@/components/Header';
 import HeroCarousel from '@/components/HeroCarousel';
 import Footer from '@/components/Footer';
 import HomepageContent from '@/components/HomepageContent';
+import { Suspense } from 'react';
+import GoogleAuthHandler from '@/components/GoogleAuthHandler';
 
 // Disable static generation for homepage due to client components
 export const dynamic = 'force-dynamic';
@@ -69,6 +71,9 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Suspense fallback={null}>
+        <GoogleAuthHandler />
+      </Suspense>
       <Header showLocationFilter={settings.locationFilterEnabled} />
 
       <HeroCarousel />

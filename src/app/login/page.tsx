@@ -161,9 +161,20 @@ function LoginContent() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    // Redirect to Google OAuth endpoint
-    window.location.href = '/api/auth/google';
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    try {
+      // Redirect to Google OAuth endpoint with returnUrl if present
+      const params = new URLSearchParams();
+      if (returnUrl) {
+        params.set('returnUrl', returnUrl);
+      }
+      window.location.href = `/api/auth/google${params.toString() ? '?' + params.toString() : ''}`;
+    } catch (error) {
+      console.error('Google login error:', error);
+      setError('Failed to initiate Google login');
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
