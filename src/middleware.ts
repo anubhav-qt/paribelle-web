@@ -70,7 +70,7 @@ export function middleware(request: NextRequest) {
     // Store vendor slug in header for components to use
     const response = NextResponse.rewrite(url);
     response.headers.set('x-vendor-slug', subdomain);
-    return response;
+    return response ;
   }
 
   // Protect admin routes (except login page)
