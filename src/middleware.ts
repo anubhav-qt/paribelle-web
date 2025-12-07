@@ -29,7 +29,12 @@ export function middleware(request: NextRequest) {
   }
   
   // Handle subdomain routing FIRST (before auth checks)
-  if (subdomain && subdomain !== 'www' && subdomain !== 'marketplace' && subdomain !== 'localhost') {
+  if (subdomain && 
+      subdomain !== 'www' && 
+      subdomain !== 'marketplace' && 
+      subdomain !== 'localhost' &&
+      !hostname.includes('vercel.app') &&
+      !hostname.includes('netlify.app')) {
     // Rewrite to vendor-specific routes
     const pathSegments = pathname.split('/').filter(Boolean);
     
