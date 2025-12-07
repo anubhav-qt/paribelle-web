@@ -89,14 +89,10 @@ export default function VendorSearchPage() {
   }, []); // Empty dependency array - run only once on mount
 
   useEffect(() => {
-    // Update search query from URL
-    const query = searchParams.get('q');
-    setSearchQuery(query || '');
-    
     // Fetch products when vendor is loaded and search params change
     if (vendor) {
-      if (query) {
-        searchProducts(query);
+      if (searchQuery) {
+        searchProducts(searchQuery);
       } else {
         fetchAllProducts();
       }

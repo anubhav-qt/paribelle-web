@@ -193,6 +193,7 @@ export default function VendorProductsPage() {
       stockQuantity: 0,
       sku: '',
       featuredImage: '',
+      images: [],
       productType: 'physical',
       categoryIds: [],
       attributes: {

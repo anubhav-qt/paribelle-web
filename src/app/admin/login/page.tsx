@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminLoginPage() {
@@ -14,14 +14,16 @@ export default function AdminLoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
 
   // Load saved credentials on mount
-  useState(() => {
-    const savedEmail = localStorage.getItem('adminSavedEmail');
-    const savedPassword = localStorage.getItem('adminSavedPassword');
-    if (savedEmail && savedPassword) {
-      setFormData({ email: savedEmail, password: savedPassword });
-      setRememberMe(true);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEmail = localStorage.getItem('adminSavedEmail');
+      const savedPassword = localStorage.getItem('adminSavedPassword');
+      if (savedEmail && savedPassword) {
+        setFormData({ email: savedEmail, password: savedPassword });
+        setRememberMe(true);
+      }
     }
-  });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

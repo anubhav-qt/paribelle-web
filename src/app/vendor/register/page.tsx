@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function VendorRegisterPage() {
+function VendorRegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -427,5 +427,13 @@ export default function VendorRegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VendorRegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+      <VendorRegisterContent />
+    </Suspense>
   );
 }

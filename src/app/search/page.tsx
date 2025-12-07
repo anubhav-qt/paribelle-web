@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Star, Package, Calendar, ChevronDown } from 'lucide-react';
@@ -27,7 +27,7 @@ interface Product {
   };
 }
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
@@ -450,5 +450,13 @@ export default function SearchPage() {
       {/* Footer */}
       <Footer categories={categories} marketplaceName={marketplaceName} />
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }

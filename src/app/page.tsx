@@ -3,8 +3,8 @@ import HeroCarousel from '@/components/HeroCarousel';
 import Footer from '@/components/Footer';
 import HomepageContent from '@/components/HomepageContent';
 
-// Enable ISR - Revalidate every 5 minutes (300 seconds)
-export const revalidate = 300;
+// Disable static generation for homepage due to client components
+export const dynamic = 'force-dynamic';
 
 interface Category {
   id: string;
