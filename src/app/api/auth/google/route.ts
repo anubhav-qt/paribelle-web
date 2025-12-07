@@ -12,9 +12,14 @@ export async function GET(request: NextRequest) {
       returnUrl: returnUrl 
     });
     
+    // Dynamically construct redirect_uri based on current host
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('host') || 'localhost:3000';
+    const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+    
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID!,
-      redirect_uri: process.env.GOOGLE_REDIRECT_URI!,
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'email profile',
       access_type: 'offline',
