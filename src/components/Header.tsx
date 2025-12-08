@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Search } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import { useTranslations } from 'next-intl';
 import LocationFilter from '@/components/LocationFilter';
 import ThemeToggle from '@/components/ThemeToggle';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 interface HeaderProps {
   showLocationFilter?: boolean;
@@ -20,11 +22,13 @@ export default function Header({
   showLocationFilter = false,
   showBookingsLink = true,
   onSearch,
-  searchPlaceholder = "Search for products, brands and more",
+  searchPlaceholder,
   initialSearchQuery = ''
 }: HeaderProps) {
   const router = useRouter();
   const { totalItems } = useCart();
+  const t = useTranslations('header');
+  const tCommon = useTranslations('common');
   const [user, setUser] = useState<any>(null);
   const [marketplaceLogo, setMarketplaceLogo] = useState<string>('');
   const [marketplaceName, setMarketplaceName] = useState<string>('Marketplace');
@@ -32,6 +36,8 @@ export default function Header({
   const [cityId, setCityId] = useState<string>('');
   const [subLocationId, setSubLocationId] = useState<string>('');
   const [locationFilterEnabled, setLocationFilterEnabled] = useState(false);
+  
+  const placeholder = searchPlaceholder || t('searchPlaceholder');
 
   useEffect(() => {
     // Fetch marketplace branding
@@ -115,7 +121,7 @@ export default function Header({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={searchPlaceholder}
+                placeholder={placeholder}
                 className="w-full px-4 py-2 pl-10 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -140,13 +146,15 @@ export default function Header({
                 href="/search?type=booking" 
                 className="text-sm hover:text-primary transition-colors font-normal whitespace-nowrap text-foreground"
               >
-                Bookings & Services
+                {t('bookings', { default: 'Bookings & Services' })}
               </Link>
             )}
+            <LanguageSwitcher />
             <ThemeToggle />
             <Link 
               href="/cart" 
               className="relative hover:text-primary transition-colors text-foreground"
+              aria-label={tCommon('cart')}
             >
               <ShoppingCart className="w-6 h-6" />
               {totalItems > 0 && (
@@ -167,7 +175,7 @@ export default function Header({
                   onClick={handleLogout}
                   className="px-2 py-1 text-sm font-normal hover:text-primary rounded transition-colors text-foreground"
                 >
-                  Logout
+                  {t('logout')}
                 </button>
               </>
             ) : (
@@ -176,13 +184,13 @@ export default function Header({
                   href="/login"
                   className="px-2 py-1 text-sm border border-border hover:border-primary hover:text-primary rounded transition-all font-normal text-foreground"
                 >
-                  Login
+                  {t('login')}
                 </Link>
                 <Link
                   href="/signup"
                   className="px-3 py-1 text-sm bg-primary text-primary-foreground font-normal hover:opacity-90 rounded transition-colors"
                 >
-                  Sign Up
+                  {t('signup')}
                 </Link>
               </>
             )}

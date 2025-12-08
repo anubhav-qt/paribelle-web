@@ -1,112 +1,106 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import createIntlMiddleware from 'next-intl/middleware';
+import { routing } from './i18n/routing';
 
-export function middleware(request: NextRequest) {
-  const url = request.nextUrl;
-  const { pathname } = url;
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   const hostname = request.headers.get('host') || '';
   
   // Extract subdomain
   const parts = hostname.split('.');
-  
-  // For localhost development: vendor.localhost:3000
-  // For production: vendor.marketplace.com
   let subdomain = '';
   
   if (hostname.includes('localhost')) {
-    // Development: vendor.localhost:3000
     subdomain = parts[0];
-    // Remove port if present
     if (subdomain.includes(':')) {
       subdomain = subdomain.split(':')[0];
     }
   } else {
-    // Production: vendor.marketplace.com
-    // We need at least 3 parts: [subdomain, marketplace, com]
     if (parts.length >= 3) {
       subdomain = parts[0];
     }
   }
   
-  // Handle subdomain routing FIRST (before auth checks)
+  // Create i18n middleware
+  const handleI18nRouting = createIntlMiddleware(routing);
+  
+  // For subdomain routes, we need to preserve the locale in the rewrite
   if (subdomain && 
       subdomain !== 'www' && 
       subdomain !== 'marketplace' && 
       subdomain !== 'localhost' &&
       !hostname.includes('vercel.app') &&
       !hostname.includes('netlify.app')) {
-    // Rewrite to vendor-specific routes
+    
+    // First apply i18n to get the locale
+    const response = handleI18nRouting(request);
+    
+    // If it's a redirect (locale detection), return it
+    if (response.status === 307 || response.status === 308) {
+      return response;
+    }
+    
+    // Now handle subdomain rewriting with locale preserved
+    const url = request.nextUrl.clone();
     const pathSegments = pathname.split('/').filter(Boolean);
     
-    // If accessing root of subdomain
-    if (pathSegments.length === 0) {
-      url.pathname = `/vendor/${subdomain}`;
-    }
-    // If accessing products
-    else if (pathSegments[0] === 'products' && pathSegments[1]) {
-      url.pathname = `/vendor/${subdomain}/products/${pathSegments[1]}`;
-    }
-    // If accessing search
-    else if (pathSegments[0] === 'search') {
-      url.pathname = `/vendor/${subdomain}/search`;
-    }
-    // If accessing cart
-    else if (pathSegments[0] === 'cart') {
-      url.pathname = `/vendor/${subdomain}/cart`;
-    }
-    // If accessing checkout
-    else if (pathSegments[0] === 'checkout') {
-      url.pathname = `/vendor/${subdomain}/checkout`;
-    }
-    // If accessing orders
-    else if (pathSegments[0] === 'orders') {
-      url.pathname = `/vendor/${subdomain}/orders`;
-    }
-    // Otherwise, prepend vendor path
-    else if (!pathSegments[0]?.startsWith('vendor')) {
-      url.pathname = `/vendor/${subdomain}${pathname}`;
+    const maybeLocale = pathSegments[0];
+    const isLocale = routing.locales.includes(maybeLocale as any);
+    const localePrefix = isLocale ? `/${maybeLocale}` : '';
+    const remainingPath = isLocale ? pathSegments.slice(1) : pathSegments;
+    
+    if (remainingPath.length === 0) {
+      url.pathname = `${localePrefix}/vendor/${subdomain}`;
+    } else if (remainingPath[0] === 'products' && remainingPath[1]) {
+      url.pathname = `${localePrefix}/vendor/${subdomain}/products/${remainingPath[1]}`;
+    } else if (remainingPath[0] === 'search') {
+      url.pathname = `${localePrefix}/vendor/${subdomain}/search`;
+    } else if (remainingPath[0] === 'cart') {
+      url.pathname = `${localePrefix}/vendor/${subdomain}/cart`;
+    } else if (remainingPath[0] === 'checkout') {
+      url.pathname = `${localePrefix}/vendor/${subdomain}/checkout`;
+    } else if (remainingPath[0] === 'orders') {
+      url.pathname = `${localePrefix}/vendor/${subdomain}/orders`;
+    } else if (!remainingPath[0]?.startsWith('vendor')) {
+      const restOfPath = remainingPath.join('/');
+      url.pathname = `${localePrefix}/vendor/${subdomain}/${restOfPath}`;
     }
     
-    // Store vendor slug in header for components to use
-    const response = NextResponse.rewrite(url);
-    response.headers.set('x-vendor-slug', subdomain);
-    return response ;
+    const rewriteResponse = NextResponse.rewrite(url);
+    rewriteResponse.headers.set('x-vendor-slug', subdomain);
+    return rewriteResponse;
   }
 
-  // Protect admin routes (except login page)
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+  // For non-subdomain routes, apply i18n middleware first
+  const response = handleI18nRouting(request);
+  
+  // Then check auth on the (potentially redirected) path
+  const finalPathname = response.headers.get('x-middleware-rewrite') || pathname;
+  
+  // Protect admin routes
+  if (finalPathname.includes('/admin') && !finalPathname.includes('/admin/login')) {
     const token = request.cookies.get('token')?.value;
-    
-    // If no token, redirect to admin login
     if (!token) {
-      const loginUrl = new URL('/admin/login', request.url);
-      return NextResponse.redirect(loginUrl);
+      const url = request.nextUrl.clone();
+      url.pathname = finalPathname.match(/^\/[a-z]{2}\//) ? `/${finalPathname.split('/')[1]}/admin/login` : '/admin/login';
+      return NextResponse.redirect(url);
     }
   }
 
   // Protect vendor dashboard routes
-  if (pathname.startsWith('/vendor/dashboard')) {
+  if (finalPathname.includes('/vendor/dashboard')) {
     const token = request.cookies.get('token')?.value;
-    
-    // If no token, redirect to vendor login
     if (!token) {
-      const loginUrl = new URL('/login', request.url);
-      return NextResponse.redirect(loginUrl);
+      const url = request.nextUrl.clone();
+      url.pathname = finalPathname.match(/^\/[a-z]{2}\//) ? `/${finalPathname.split('/')[1]}/login` : '/login';
+      return NextResponse.redirect(url);
     }
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };

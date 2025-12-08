@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface FooterProps {
   categories?: Array<{ id: string; name: string; slug: string }>;
@@ -11,6 +12,8 @@ interface FooterProps {
 
 export default function Footer({ categories = [], marketplaceName = 'Marketplace' }: FooterProps) {
   const currentYear = new Date().getFullYear();
+  const t = useTranslations('footer');
+  const tCommon = useTranslations('common');
 
   return (
     <footer 
@@ -69,31 +72,31 @@ export default function Footer({ categories = [], marketplaceName = 'Marketplace
 
           {/* Customer Support */}
           <div>
-            <h4 className="font-semibold mb-4 text-lg text-foreground">Customer Support</h4>
+            <h4 className="font-semibold mb-4 text-lg text-foreground">{t('helpCenter')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link href="/help" className="hover:text-primary transition-colors">
-                  Help Center
+                  {t('helpCenter')}
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="hover:text-primary transition-colors">
-                  Contact Us
+                  {t('contactUs')}
                 </Link>
               </li>
               <li>
                 <Link href="/shipping" className="hover:text-primary transition-colors">
-                  Shipping Information
+                  {t('shipping')}
                 </Link>
               </li>
               <li>
                 <Link href="/returns" className="hover:text-primary transition-colors">
-                  Returns & Refunds
+                  {t('returns')}
                 </Link>
               </li>
               <li>
                 <Link href="/faq" className="hover:text-primary transition-colors">
-                  FAQ
+                  {t('faq')}
                 </Link>
               </li>
               <li>
@@ -152,16 +155,16 @@ export default function Footer({ categories = [], marketplaceName = 'Marketplace
         {/* Bottom Bar */}
         <div className="mt-8 pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-center md:text-left text-muted-foreground">
-              © {currentYear} {marketplaceName}. All rights reserved.
+            <p className="text-center text-sm text-muted-foreground">
+              {t('copyright', { year: currentYear })}
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
               <Link href="/privacy-policy" className="hover:text-primary transition-colors">
-                Privacy Policy
+                {t('privacyPolicy')}
               </Link>
               <span>•</span>
               <Link href="/terms-of-service" className="hover:text-primary transition-colors">
-                Terms of Service
+                {t('termsOfService')}
               </Link>
               <span>•</span>
               <Link href="/cookie-policy" className="hover:text-primary transition-colors">

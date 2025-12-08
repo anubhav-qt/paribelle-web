@@ -10,22 +10,24 @@ interface Category {
   children?: Category[];
 }
 
-async function getHomepageData() {
+async function getHomepageData(locale?: string) {
   try {
     // Use server-side API URL or fallback to localhost:3001 for development
     const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     
-    console.log('[Server] Fetching homepage data from:', `${apiUrl}/api/v1/homepage/data`);
+    const url = new URL(`${apiUrl}/api/v1/homepage/data`);
+    if (locale) {
+      url.searchParams.append('lang', locale);
+    }
     
-    const response = await fetch(
-      `${apiUrl}/api/v1/homepage/data`,
-      {
-        cache: 'no-store', // Always fetch fresh data for now
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    console.log('[Server] Fetching homepage data from:', url.toString());
+    
+    const response = await fetch(url.toString(), {
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       console.error('[Server] Homepage API returned error:', response.status, response.statusText);
@@ -34,9 +36,6 @@ async function getHomepageData() {
 
     const data = await response.json();
     console.log('[Server] Homepage data fetched successfully');
-    console.log('[Server] Categories count:', data.categories?.length || 0);
-    console.log('[Server] Products by category keys:', Object.keys(data.productsByCategory || {}));
-    console.log('[Server] Uncategorized products count:', data.uncategorizedProducts?.length || 0);
     
     return data;
   } catch (error) {
@@ -52,24 +51,20 @@ async function getHomepageData() {
       categories: [],
       productsByCategory: {},
       uncategorizedProducts: [],
+      heroCarouselSlides: [],
     };
   }
 }
 
-export default async function Home() {
-  const homepageData = await getHomepageData();
-  const { settings, categories, productsByCategory, uncategorizedProducts } = homepageData;
-
-  console.log('[Server] Rendering homepage with:');
-  console.log('[Server] Categories:', categories?.length || 0);
-  console.log('[Server] Product categories:', Object.keys(productsByCategory || {}).length);
+export default async function HomePage({ params }: { params: { locale: string } }) {
+  const data = await getHomepageData(params.locale);
 
   return (
     <MainPageClient
-      settings={settings}
-      categories={categories}
-      productsByCategory={productsByCategory}
-      uncategorizedProducts={uncategorizedProducts}
+      settings={data.settings}
+      categories={data.categories}
+      productsByCategory={data.productsByCategory}
+      uncategorizedProducts={data.uncategorizedProducts}
     />
   );
 }

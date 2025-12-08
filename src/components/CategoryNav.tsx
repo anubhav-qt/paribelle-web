@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Home } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface Category {
   id: string;
@@ -39,6 +40,9 @@ export default function CategoryNav({
 }: CategoryNavProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const locale = useLocale();
+  const t = useTranslations('common');
+  const tCategory = useTranslations('category');
   const [categories, setCategories] = useState<Category[]>([]);
   const [vendorPages, setVendorPages] = useState<VendorPage[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -145,6 +149,9 @@ export default function CategoryNav({
         }
       }
       
+      // Add language parameter
+      url += (url.includes('?') ? '&' : '?') + `lang=${locale}`;
+      
       console.log('Fetching categories from:', url);
       
       const response = await fetch(url);
@@ -250,7 +257,7 @@ export default function CategoryNav({
               className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted border-r border-border"
             >
               <Home className="w-3.5 h-3.5" />
-              Home
+              {t('home')}
             </Link>
           )}
 
@@ -264,7 +271,7 @@ export default function CategoryNav({
                   : 'border-transparent text-foreground hover:text-primary hover:bg-muted'
                 }`}
             >
-              All Products
+              {t('allProducts')}
             </button>
           )}
           
@@ -352,7 +359,7 @@ export default function CategoryNav({
                         onClick={(e) => handleNavigateToCategory(category.slug, e)}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
-                        All {category.name}
+                        {tCategory('all', { category: category.name })}
                       </button>
                       {category.children.map((subcat) => (
                         <button
@@ -381,7 +388,7 @@ export default function CategoryNav({
                         }}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
-                        All {category.name}
+                        {tCategory('all', { category: category.name })}
                       </button>
                       {category.children.map((subcat) => (
                         <button
@@ -410,7 +417,7 @@ export default function CategoryNav({
                         onClick={() => handleCategoryClick(category.id)}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
-                        All {category.name}
+                        {tCategory('all', { category: category.name })}
                       </button>
                       {category.children.map((subcat) => (
                         <button
