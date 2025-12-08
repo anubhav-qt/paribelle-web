@@ -99,7 +99,7 @@ export default function VendorOrdersPage() {
     switch (status.toLowerCase()) {
       case 'confirmed':
       case 'processing':
-        return <Clock className="w-5 h-5 text-blue-600" />;
+        return <Clock className="w-5 h-5 text-primary" />;
       case 'shipped':
         return <Truck className="w-5 h-5 text-purple-600" />;
       case 'delivered':
@@ -107,7 +107,7 @@ export default function VendorOrdersPage() {
       case 'cancelled':
         return <XCircle className="w-5 h-5 text-red-600" />;
       default:
-        return <Package className="w-5 h-5 text-gray-600" />;
+        return <Package className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
@@ -115,21 +115,21 @@ export default function VendorOrdersPage() {
     switch (status.toLowerCase()) {
       case 'confirmed':
       case 'processing':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary/10 text-primary';
       case 'shipped':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
       case 'delivered':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
       case 'cancelled':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <VendorHeader 
           vendorSlug={vendorSlug}
           vendorId={vendor?.id}
@@ -137,14 +137,14 @@ export default function VendorOrdersPage() {
         />
         <CategoryNav vendorId={vendor?.id} vendorSlug={vendorSlug} mode="scroll" />
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <VendorHeader 
         vendorSlug={vendorSlug}
         vendorId={vendor?.id}
@@ -153,18 +153,18 @@ export default function VendorOrdersPage() {
       <CategoryNav vendorId={vendor?.id} vendorSlug={vendorSlug} mode="scroll" />
 
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">My Orders</h1>
+        <h1 className="text-3xl font-bold mb-8 text-foreground">My Orders</h1>
 
         {orders.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
-            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders yet</h2>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
+            <Package className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">No orders yet</h2>
+            <p className="text-muted-foreground mb-6">
               You haven't placed any orders. Start shopping now!
             </p>
             <Link
               href={`/vendor/${vendorSlug}`}
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
             >
               Start Shopping
             </Link>
@@ -174,7 +174,7 @@ export default function VendorOrdersPage() {
             {orders.map((order) => (
               <div
                 key={order.id}
-                className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow"
+                className="bg-card rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow"
               >
                 <div className="p-6">
                   {/* Order Header */}
@@ -193,7 +193,7 @@ export default function VendorOrdersPage() {
                           {order.status}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', {
                           day: 'numeric',
                           month: 'long',
@@ -202,8 +202,8 @@ export default function VendorOrdersPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-                      <p className="text-2xl font-bold text-gray-900">
+                      <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                      <p className="text-2xl font-bold text-foreground">
                         {formatPrice(order.total, 'INR')}
                       </p>
                     </div>
@@ -232,17 +232,17 @@ export default function VendorOrdersPage() {
                             <div className="flex-1 min-w-0">
                               <Link 
                                 href={`/products/${productSlug}`}
-                                className="font-medium text-gray-900 hover:text-blue-600 line-clamp-1 block"
+                                className="font-medium text-foreground hover:text-primary line-clamp-1 block"
                               >
                                 {item.productName}
                               </Link>
-                              <p className="text-sm text-gray-500">
+                              <p className="text-sm text-muted-foreground">
                                 Qty: {item.quantity} × {formatPrice(item.price, 'INR')}
                               </p>
                               {vendorName && (
                                 <Link 
                                   href={`/vendors/${vendorSlug}`}
-                                  className="text-xs text-blue-600 hover:underline"
+                                  className="text-xs text-primary hover:underline"
                                 >
                                   by {vendorName}
                                 </Link>
@@ -255,7 +255,7 @@ export default function VendorOrdersPage() {
                         );
                       })}
                       {order.items && order.items.length > 2 && (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           +{order.items.length - 2} more items
                         </p>
                       )}
@@ -263,16 +263,16 @@ export default function VendorOrdersPage() {
                   </div>
 
                   {/* Order Actions */}
-                  <div className="border-t mt-4 pt-4 flex flex-wrap gap-3">
+                  <div className="border-t border-border mt-4 pt-4 flex flex-wrap gap-3">
                     <button
                       onClick={() => setSelectedOrder(order)}
-                      className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center gap-2"
+                      className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/10 transition-colors font-medium flex items-center gap-2"
                     >
                       <Eye className="w-4 h-4" />
                       View Details
                     </button>
                     {order.status.toLowerCase() === 'delivered' && (
-                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                      <button className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium">
                         Review Products
                       </button>
                     )}

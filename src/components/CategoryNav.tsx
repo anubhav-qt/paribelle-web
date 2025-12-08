@@ -166,17 +166,20 @@ export default function CategoryNav({
   if (loading || categories.length === 0) return null;
 
   return (
-    <div className="bg-[#232f3e] border-b border-[#3a4553] sticky top-[61px] z-50" ref={dropdownRef}>
+    <div 
+      className="border-b border-border sticky top-[61px] z-50 bg-secondary" 
+      ref={dropdownRef}
+    >
       <div className="container mx-auto">
-          <div className="flex items-center gap-0 flex-wrap">
+        <div className="flex items-center gap-0 flex-wrap">
           {mode === 'filter' && (
             <button
               onClick={() => handleCategoryClick('')}
-              className={`flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 ${
-                selectedCategory === ''
-                  ? 'text-white border-[#f90] bg-[#37475a] font-semibold'
-                  : 'text-white border-transparent hover:text-[#f90] hover:bg-[#37475a]'
-              }`}
+              className={`flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 
+                ${selectedCategory === '' 
+                  ? 'border-primary text-primary font-semibold bg-muted' 
+                  : 'border-transparent text-foreground hover:text-primary hover:bg-muted'
+                }`}
             >
               All Products
             </button>
@@ -192,7 +195,7 @@ export default function CategoryNav({
               {mode === 'navigation' ? (
                 <Link
                   href={`/#category-${category.slug}`}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal text-white hover:text-[#f90] hover:bg-[#37475a] transition-all whitespace-nowrap"
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
                 >
                   {category.name}
                   {category.children && category.children.length > 0 && (
@@ -208,7 +211,7 @@ export default function CategoryNav({
                       handleScrollToCategory(category.slug);
                     }
                   }}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal text-white hover:text-[#f90] hover:bg-[#37475a] transition-all whitespace-nowrap"
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
                 >
                   {category.name}
                   {category.children && category.children.length > 0 && (
@@ -226,11 +229,11 @@ export default function CategoryNav({
                       handleCategoryClick(category.id);
                     }
                   }}
-                  className={`flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 ${
-                    selectedCategory === category.id
-                      ? 'text-white border-[#f90] bg-[#37475a] font-semibold'
-                      : 'text-white border-transparent hover:text-[#f90] hover:bg-[#37475a]'
-                  }`}
+                  className={`flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2
+                    ${selectedCategory === category.id 
+                      ? 'border-primary text-primary font-semibold bg-muted' 
+                      : 'border-transparent text-foreground hover:text-primary hover:bg-muted'
+                    }`}
                 >
                   {category.name}
                   {category.children && category.children.length > 0 && (
@@ -243,12 +246,12 @@ export default function CategoryNav({
               
               {/* Subcategories Dropdown */}
               {category.children && category.children.length > 0 && activeDropdown === category.id && (
-                <div className="absolute top-full left-0 mt-0 bg-white shadow-xl rounded-b-lg min-w-[200px] z-[9999] border border-gray-200 border-t-0 py-2">
+                <div className="absolute top-full left-0 mt-0 bg-card shadow-xl rounded-b-lg min-w-[200px] z-[9999] border border-border py-2">
                   {mode === 'navigation' ? (
                     <>
                       <Link
                         href={`/#category-${category.slug}`}
-                        className="block px-4 py-2 text-sm font-semibold text-gray-800 hover:text-blue-600 hover:bg-blue-50 transition-colors border-b"
+                        className="block px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
                         All {category.name}
                       </Link>
@@ -256,7 +259,7 @@ export default function CategoryNav({
                         <Link
                           key={subcat.id}
                           href={`/#category-${category.slug}`}
-                          className="block px-4 py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          className="block px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                         >
                           {subcat.name}
                         </Link>
@@ -266,7 +269,7 @@ export default function CategoryNav({
                     <>
                       <button
                         onClick={() => handleScrollToCategory(category.slug)}
-                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-gray-800 hover:text-blue-600 hover:bg-blue-50 transition-colors border-b"
+                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
                         All {category.name}
                       </button>
@@ -274,7 +277,7 @@ export default function CategoryNav({
                         <button
                           key={subcat.id}
                           onClick={() => handleScrollToCategory(subcat.slug)}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          className="block w-full text-left px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                         >
                           {subcat.name}
                         </button>
@@ -284,7 +287,7 @@ export default function CategoryNav({
                     <>
                       <button
                         onClick={() => handleCategoryClick(category.id)}
-                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-gray-800 hover:text-blue-600 hover:bg-blue-50 transition-colors border-b"
+                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
                         All {category.name}
                       </button>
@@ -292,7 +295,7 @@ export default function CategoryNav({
                         <button
                           key={subcat.id}
                           onClick={() => handleCategoryClick(subcat.id)}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          className="block w-full text-left px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                         >
                           {subcat.name}
                         </button>

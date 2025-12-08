@@ -1,9 +1,4 @@
-import Header from '@/components/Header';
-import HeroCarousel from '@/components/HeroCarousel';
-import Footer from '@/components/Footer';
-import HomepageContent from '@/components/HomepageContent';
-import { Suspense } from 'react';
-import GoogleAuthHandler from '@/components/GoogleAuthHandler';
+import MainPageClient from '@/components/MainPageClient';
 
 // Disable static generation for homepage due to client components
 export const dynamic = 'force-dynamic';
@@ -70,24 +65,11 @@ export default async function Home() {
   console.log('[Server] Product categories:', Object.keys(productsByCategory || {}).length);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Suspense fallback={null}>
-        <GoogleAuthHandler />
-      </Suspense>
-      <Header showLocationFilter={settings.locationFilterEnabled} />
-
-      <HeroCarousel />
-
-      <HomepageContent
-        initialCategories={categories}
-        initialProductsByCategory={productsByCategory}
-        initialUncategorizedProducts={uncategorizedProducts}
-        categoryDisplayMode={settings.categoryDisplayMode}
-        currency={settings.currency}
-        locationFilterEnabled={settings.locationFilterEnabled}
-      />
-
-      <Footer categories={categories} marketplaceName={settings.marketplaceName} />
-    </div>
+    <MainPageClient
+      settings={settings}
+      categories={categories}
+      productsByCategory={productsByCategory}
+      uncategorizedProducts={uncategorizedProducts}
+    />
   );
 }

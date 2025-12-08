@@ -321,6 +321,16 @@ export default function VendorDashboardPage() {
           </Link>
 
           <Link
+            href="/vendor/theme"
+            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
+              vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
+            }`}
+          >
+            <h3 className="text-lg font-medium text-gray-900 mb-2">🎨 Theme Builder</h3>
+            <p className="text-sm text-gray-600">Customize your store's appearance</p>
+          </Link>
+
+          <Link
             href="/vendor/orders"
             className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
               vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''

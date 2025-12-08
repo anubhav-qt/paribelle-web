@@ -17,6 +17,7 @@ interface Vendor {
   slug: string;
   logo?: string;
   description?: string;
+  themeConfig?: any;
 }
 
 interface Category {
@@ -212,20 +213,20 @@ export default function VendorStorePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   if (!vendor) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Vendor Not Found</h1>
-          <p className="text-gray-600 mb-4">The vendor &quot;{vendorSlug}&quot; does not exist.</p>
-          <Link href="http://localhost:3000" className="text-blue-600 hover:underline">
+          <Store className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2 text-foreground">Vendor Not Found</h1>
+          <p className="text-muted-foreground mb-4">The vendor &quot;{vendorSlug}&quot; does not exist.</p>
+          <Link href="http://localhost:3000" className="text-primary hover:underline">
             Go to Main Marketplace
           </Link>
         </div>
@@ -234,7 +235,7 @@ export default function VendorStorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <VendorHeader 
         vendorSlug={vendorSlug}
         vendorId={vendor.id}
@@ -271,7 +272,7 @@ export default function VendorStorePage() {
 
           return (
             <section key={category.id} id={`category-${category.slug}`} className="mb-12 scroll-mt-36">
-              <h2 className="text-2xl font-bold mb-6">
+              <h2 className="text-2xl font-bold mb-6 text-foreground">
                 {category.name} ({categoryProducts.length})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -279,9 +280,9 @@ export default function VendorStorePage() {
                   <Link
                     key={product.id}
                     href={`/products/${product.slug}`}
-                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
+                    className="bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden group border border-border"
                   >
-                    <div className="relative aspect-square overflow-hidden bg-gray-100">
+                    <div className="relative aspect-square overflow-hidden bg-muted">
                       <img
                         src={getProductImageUrl(product)}
                         alt={product.name}
@@ -289,25 +290,25 @@ export default function VendorStorePage() {
                       />
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-blue-600">
+                      <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-primary text-foreground">
                         {product.name}
                       </h3>
-                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
                         {product.shortDescription}
                       </p>
                       <div className="flex items-center justify-between">
-                        <span className="text-xl font-bold text-gray-900">
+                        <span className="text-xl font-bold text-foreground">
                           {getCurrencySymbol(currency)}{product.price.toLocaleString()}
                           {product.productType === 'booking' && product.attributes?.booking?.durationUnit && (
-                            <span className="text-sm font-normal text-gray-600">
+                            <span className="text-sm font-normal text-muted-foreground">
                               /{product.attributes.booking.durationUnit === 'hours' ? 'hr' : product.attributes.booking.durationUnit === 'days' ? 'day' : 'session'}
                             </span>
                           )}
                         </span>
                         <div className="flex items-center gap-1 text-sm">
                           <span className="text-yellow-500">★</span>
-                          <span className="font-medium">{Number(product.averageRating || 0).toFixed(1)}</span>
-                          <span className="text-gray-500">({product.reviewCount || 0})</span>
+                          <span className="font-medium text-foreground">{Number(product.averageRating || 0).toFixed(1)}</span>
+                          <span className="text-muted-foreground">({product.reviewCount || 0})</span>
                         </div>
                       </div>
                     </div>
@@ -320,8 +321,8 @@ export default function VendorStorePage() {
 
         {productsByCategory.size === 0 && (
           <div className="text-center py-12">
-            <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No products available yet</p>
+            <Store className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No products available yet</p>
           </div>
         )}
       </div>

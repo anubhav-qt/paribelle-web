@@ -141,7 +141,7 @@ export default function VendorHeroCarousel({ vendorId, vendorName, vendorDescrip
                 {banner.ctaText && banner.ctaLink && (
                   <a
                     href={banner.ctaLink}
-                    className="inline-block bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg animate-fadeIn animation-delay-400"
+                    className="inline-block bg-card text-primary px-8 py-3 rounded-lg font-semibold hover:bg-muted transition-colors shadow-lg animate-fadeIn animation-delay-400"
                   >
                     {banner.ctaText}
                   </a>
@@ -157,17 +157,17 @@ export default function VendorHeroCarousel({ vendorId, vendorName, vendorDescrip
         <>
           <button
             onClick={prevSlide}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/80 hover:bg-white p-3 rounded-full shadow-lg transition-all hover:scale-110"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-card/80 hover:bg-card p-3 rounded-full shadow-lg transition-all hover:scale-110"
             aria-label="Previous slide"
           >
-            <ChevronLeft className="w-6 h-6 text-gray-800" />
+            <ChevronLeft className="w-6 h-6 text-foreground" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/80 hover:bg-white p-3 rounded-full shadow-lg transition-all hover:scale-110"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-card/80 hover:bg-card p-3 rounded-full shadow-lg transition-all hover:scale-110"
             aria-label="Next slide"
           >
-            <ChevronRight className="w-6 h-6 text-gray-800" />
+            <ChevronRight className="w-6 h-6 text-foreground" />
           </button>
         </>
       )}

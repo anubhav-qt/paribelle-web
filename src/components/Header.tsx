@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ShoppingCart, Search } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import LocationFilter from '@/components/LocationFilter';
+import ThemeToggle from '@/components/ThemeToggle';
 
 interface HeaderProps {
   showLocationFilter?: boolean;
@@ -84,7 +85,7 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#131921] shadow-md">
+    <header className="sticky top-0 z-40 shadow-md bg-card">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           <Link href="/" className="flex items-center">
@@ -98,12 +99,12 @@ export default function Header({
                   target.style.display = 'none';
                   const parent = target.parentElement;
                   if (parent) {
-                    parent.innerHTML = `<span class="text-2xl font-bold text-blue-600">${marketplaceName}</span>`;
+                    parent.innerHTML = `<span class="text-2xl font-bold text-primary">${marketplaceName}</span>`;
                   }
                 }}
               />
             ) : (
-              <span className="text-xl font-bold text-white">{marketplaceName}</span>
+              <span className="text-xl font-bold text-foreground">{marketplaceName}</span>
             )}
           </Link>
           
@@ -115,9 +116,9 @@ export default function Header({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 pl-10 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-600" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             </div>
             
             {/* Location Filter */}
@@ -135,11 +136,18 @@ export default function Header({
 
           <div className="flex gap-4 items-center">
             {showBookingsLink && (
-              <Link href="/search?type=booking" className="text-sm text-white hover:text-[#f90] transition-colors font-normal whitespace-nowrap">
+              <Link 
+                href="/search?type=booking" 
+                className="text-sm hover:text-primary transition-colors font-normal whitespace-nowrap text-foreground"
+              >
                 Bookings & Services
               </Link>
             )}
-            <Link href="/cart" className="relative text-white hover:text-[#f90] transition-colors">
+            <ThemeToggle />
+            <Link 
+              href="/cart" 
+              className="relative hover:text-primary transition-colors text-foreground"
+            >
               <ShoppingCart className="w-6 h-6" />
               {totalItems > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
@@ -151,13 +159,13 @@ export default function Header({
               <>
                 <Link
                   href="/dashboard"
-                  className="px-2 py-1 text-sm text-white hover:text-[#f90] transition-colors font-normal"
+                  className="px-2 py-1 text-sm hover:text-primary transition-colors font-normal text-foreground"
                 >
                   {user.firstName || user.email}
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="px-2 py-1 text-sm text-white font-normal hover:text-[#f90] rounded transition-colors"
+                  className="px-2 py-1 text-sm font-normal hover:text-primary rounded transition-colors text-foreground"
                 >
                   Logout
                 </button>
@@ -166,13 +174,13 @@ export default function Header({
               <>
                 <Link
                   href="/login"
-                  className="px-2 py-1 text-sm text-white hover:text-[#f90] border border-gray-600 hover:border-[#f90] rounded transition-colors font-normal"
+                  className="px-2 py-1 text-sm border border-border hover:border-primary hover:text-primary rounded transition-all font-normal text-foreground"
                 >
                   Login
                 </Link>
                 <Link
                   href="/signup"
-                  className="px-3 py-1 text-sm bg-[#f90] text-[#0F1111] font-normal hover:bg-[#ff9f3d] rounded transition-colors"
+                  className="px-3 py-1 text-sm bg-primary text-primary-foreground font-normal hover:opacity-90 rounded transition-colors"
                 >
                   Sign Up
                 </Link>

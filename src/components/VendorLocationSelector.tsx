@@ -187,27 +187,27 @@ export default function VendorLocationSelector({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 text-blue-600 mb-4">
+      <div className="flex items-center gap-2 text-primary mb-4">
         <MapPin className="w-5 h-5" />
         <h3 className="font-semibold text-lg">Business Location</h3>
       </div>
 
       {/* City Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           City *
         </label>
         
         {!showAddCity ? (
           <div className="space-y-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search city..."
                 value={citySearch}
                 onChange={(e) => handleCitySearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
             
@@ -217,7 +217,7 @@ export default function VendorLocationSelector({
                 setSelectedCity(e.target.value);
                 setSelectedSubLocation('');
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               required
             >
               <option value="">Select a city</option>
@@ -231,34 +231,34 @@ export default function VendorLocationSelector({
             <button
               type="button"
               onClick={() => setShowAddCity(true)}
-              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
+              className="flex items-center gap-2 text-sm text-primary hover:text-primary/80"
             >
               <Plus className="w-4 h-4" />
               Can&apos;t find your city? Add it manually
             </button>
           </div>
         ) : (
-          <div className="space-y-3 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm font-medium text-gray-700">Add New City</p>
+          <div className="space-y-3 p-4 bg-primary/5 rounded-lg">
+            <p className="text-sm font-medium text-foreground">Add New City</p>
             <input
               type="text"
               placeholder="City Name *"
               value={newCityName}
               onChange={(e) => setNewCityName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
             />
             <input
               type="text"
               placeholder="State (Optional)"
               value={newCityState}
               onChange={(e) => setNewCityState(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleAddCity}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Add City
               </button>
@@ -269,7 +269,7 @@ export default function VendorLocationSelector({
                   setNewCityName('');
                   setNewCityState('');
                 }}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                className="flex-1 bg-muted text-foreground py-2 rounded-lg hover:bg-muted/80 transition-colors"
               >
                 Cancel
               </button>
@@ -280,21 +280,21 @@ export default function VendorLocationSelector({
 
       {/* Sub-Location Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           Area / Locality *
         </label>
         
         {!showAddSubLocation ? (
           <div className="space-y-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search area..."
                 value={subLocationSearch}
                 onChange={(e) => handleSubLocationSearch(e.target.value)}
                 disabled={!selectedCity}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-muted"
               />
             </div>
 
@@ -302,7 +302,7 @@ export default function VendorLocationSelector({
               value={selectedSubLocation}
               onChange={(e) => setSelectedSubLocation(e.target.value)}
               disabled={!selectedCity}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-muted"
               required
             >
               <option value="">Select an area</option>
@@ -318,7 +318,7 @@ export default function VendorLocationSelector({
               <button
                 type="button"
                 onClick={() => setShowAddSubLocation(true)}
-                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
+                className="flex items-center gap-2 text-sm text-primary hover:text-primary/80"
               >
                 <Plus className="w-4 h-4" />
                 Can&apos;t find your area? Add it manually
@@ -326,20 +326,20 @@ export default function VendorLocationSelector({
             )}
           </div>
         ) : (
-          <div className="space-y-3 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm font-medium text-gray-700">Add New Area</p>
+          <div className="space-y-3 p-4 bg-primary/5 rounded-lg">
+            <p className="text-sm font-medium text-foreground">Add New Area</p>
             <input
               type="text"
               placeholder="Area / Locality Name *"
               value={newSubLocationName}
               onChange={(e) => setNewSubLocationName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleAddSubLocation}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Add Area
               </button>
@@ -349,7 +349,7 @@ export default function VendorLocationSelector({
                   setShowAddSubLocation(false);
                   setNewSubLocationName('');
                 }}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                className="flex-1 bg-muted text-foreground py-2 rounded-lg hover:bg-muted/80 transition-colors"
               >
                 Cancel
               </button>
@@ -360,7 +360,7 @@ export default function VendorLocationSelector({
 
       {/* Pincode */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           Pincode *
         </label>
         <input
@@ -369,13 +369,13 @@ export default function VendorLocationSelector({
           value={pincode}
           onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
           maxLength={6}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           required
         />
       </div>
 
-      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <p className="text-sm text-yellow-800">
+      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-800">
+        <p className="text-sm text-yellow-800 dark:text-yellow-200">
           <strong>Note:</strong> If you can&apos;t find your city or area in the dropdown, 
           you can add it manually. Your location will be saved to our database and 
           will be available for other vendors in the same area.
