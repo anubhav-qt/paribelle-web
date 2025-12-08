@@ -118,6 +118,31 @@ export default function VendorStorePage() {
     }
   }, [vendor]);
 
+  // Handle hash scrolling when page loads or hash changes
+  useEffect(() => {
+    const handleHashScroll = () => {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#category-')) {
+        const categorySlug = hash.replace('#category-', '');
+        const elementId = `category-${categorySlug}`;
+        
+        // Wait for products to load, then scroll
+        setTimeout(() => {
+          scrollToElement(elementId);
+        }, 500);
+      }
+    };
+
+    // Check hash on initial load
+    if (!loading && productsByCategory.size > 0) {
+      handleHashScroll();
+    }
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashScroll);
+    return () => window.removeEventListener('hashchange', handleHashScroll);
+  }, [loading, productsByCategory]);
+
   const fetchCategories = async () => {
     try {
       const response = await fetch(

@@ -33,23 +33,32 @@ export default function EditPagePage() {
   const fetchPage = async () => {
     try {
       const user = localStorage.getItem('user');
-      if (!user) return;
+      console.log('🔵 Edit Page - User from localStorage:', user);
+      if (!user) {
+        console.log('❌ No user found');
+        return;
+      }
 
       const userData = JSON.parse(user);
-      const vendorId = userData.vendor?.id;
+      console.log('🔵 Edit Page - Parsed user data:', userData);
+      const vendorId = userData.vendorId || userData.vendor?.id;
+      console.log('🔵 Edit Page - Vendor ID:', vendorId);
       const token = localStorage.getItem('token');
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/pages/${pageId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/pages/${pageId}`;
+      console.log('🔵 Edit Page - Fetching from:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log('🔵 Edit Page - Response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔵 Edit Page - Page data received:', data);
         setFormData({
           title: data.title,
           slug: data.slug,
@@ -62,9 +71,11 @@ export default function EditPagePage() {
           status: data.status,
           showInNavigation: data.showInNavigation,
         });
+      } else {
+        console.log('❌ Failed to fetch page:', await response.text());
       }
     } catch (error) {
-      console.error('Error fetching page:', error);
+      console.error('❌ Error fetching page:', error);
     } finally {
       setLoading(false);
     }
@@ -79,8 +90,11 @@ export default function EditPagePage() {
       if (!user) return;
 
       const userData = JSON.parse(user);
-      const vendorId = userData.vendor?.id;
+      const vendorId = userData.vendorId || userData.vendor?.id;
       const token = localStorage.getItem('token');
+
+      console.log('🔵 Updating page:', pageId);
+      console.log('🔵 Vendor ID:', vendorId);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/pages/${pageId}`,
@@ -98,13 +112,15 @@ export default function EditPagePage() {
       );
 
       if (response.ok) {
+        console.log('✅ Page updated successfully');
         router.push('/vendor/pages');
       } else {
         const error = await response.json();
+        console.log('❌ Update failed:', error);
         alert(error.message || 'Failed to update page');
       }
     } catch (error) {
-      console.error('Error updating page:', error);
+      console.error('❌ Error updating page:', error);
       alert('Failed to update page');
     } finally {
       setSaving(false);

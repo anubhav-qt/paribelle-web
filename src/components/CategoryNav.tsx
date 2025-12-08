@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Home } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface Category {
   id: string;
@@ -36,6 +37,8 @@ export default function CategoryNav({
   vendorSlug,
   hideEmptyCategories = true
 }: CategoryNavProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [categories, setCategories] = useState<Category[]>([]);
   const [vendorPages, setVendorPages] = useState<VendorPage[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -48,6 +51,49 @@ export default function CategoryNav({
       fetchVendorPages();
     }
   }, [vendorId]);
+
+  // Handle hash scrolling when page loads or pathname changes
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#category-')) {
+      const categorySlug = hash.replace('#category-', '');
+      // Wait for page to render, then scroll
+      setTimeout(() => {
+        handleScrollToCategory(categorySlug);
+      }, 300);
+    }
+  }, [pathname]);
+
+  const handleNavigateToCategory = (categorySlug: string, e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    
+    console.log('🔵 handleNavigateToCategory called');
+    console.log('🔵 Category slug:', categorySlug);
+    console.log('🔵 Current pathname:', pathname);
+    console.log('🔵 Vendor slug:', vendorSlug);
+    
+    // If no vendorSlug, we're on main homepage - just scroll
+    if (!vendorSlug) {
+      console.log('🔵 No vendor slug - scrolling on main homepage');
+      handleScrollToCategory(categorySlug);
+      return;
+    }
+    
+    // Check if we're on the vendor home page
+    const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
+    console.log('🔵 Is on vendor home:', isOnVendorHome);
+    
+    if (isOnVendorHome) {
+      // Just scroll to category
+      console.log('🔵 Scrolling to category on same page');
+      handleScrollToCategory(categorySlug);
+    } else {
+      // Navigate to home page with hash
+      const targetUrl = `/vendor/${vendorSlug}#category-${categorySlug}`;
+      console.log('🔵 Navigating to:', targetUrl);
+      window.location.href = targetUrl;
+    }
+  };
 
   const fetchVendorPages = async () => {
     try {
@@ -230,19 +276,35 @@ export default function CategoryNav({
               onMouseLeave={() => mode === 'navigation' && setActiveDropdown(null)}
             >
               {mode === 'navigation' ? (
-                <Link
-                  href={`/#category-${category.slug}`}
+                <button
+                  onClick={(e) => handleNavigateToCategory(category.slug, e)}
                   className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
                 >
                   {category.name}
                   {category.children && category.children.length > 0 && (
                     <ChevronDown className="w-3 h-3" />
                   )}
-                </Link>
+                </button>
               ) : mode === 'scroll' ? (
                 <button
                   onClick={() => {
-                    if (category.children && category.children.length > 0) {
+                    // If no vendorSlug, just scroll on main homepage
+                    if (!vendorSlug) {
+                      if (category.children && category.children.length > 0) {
+                        setActiveDropdown(activeDropdown === category.id ? null : category.id);
+                      } else {
+                        handleScrollToCategory(category.slug);
+                      }
+                      return;
+                    }
+                    
+                    // Check if we're on vendor home page
+                    const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
+                    
+                    if (!isOnVendorHome) {
+                      // Navigate to home page with hash
+                      window.location.href = `/vendor/${vendorSlug}#category-${category.slug}`;
+                    } else if (category.children && category.children.length > 0) {
                       setActiveDropdown(activeDropdown === category.id ? null : category.id);
                     } else {
                       handleScrollToCategory(category.slug);
@@ -286,26 +348,8 @@ export default function CategoryNav({
                 <div className="absolute top-full left-0 mt-0 bg-card shadow-xl rounded-b-lg min-w-[200px] z-[9999] border border-border py-2">
                   {mode === 'navigation' ? (
                     <>
-                      <Link
-                        href={`/#category-${category.slug}`}
-                        className="block px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
-                      >
-                        All {category.name}
-                      </Link>
-                      {category.children.map((subcat) => (
-                        <Link
-                          key={subcat.id}
-                          href={`/#category-${category.slug}`}
-                          className="block px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
-                        >
-                          {subcat.name}
-                        </Link>
-                      ))}
-                    </>
-                  ) : mode === 'scroll' ? (
-                    <>
                       <button
-                        onClick={() => handleScrollToCategory(category.slug)}
+                        onClick={(e) => handleNavigateToCategory(category.slug, e)}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
                         All {category.name}
@@ -313,7 +357,47 @@ export default function CategoryNav({
                       {category.children.map((subcat) => (
                         <button
                           key={subcat.id}
-                          onClick={() => handleScrollToCategory(subcat.slug)}
+                          onClick={(e) => handleNavigateToCategory(subcat.slug, e)}
+                          className="block w-full text-left px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                        >
+                          {subcat.name}
+                        </button>
+                      ))}
+                    </>
+                  ) : mode === 'scroll' ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          if (!vendorSlug) {
+                            handleScrollToCategory(category.slug);
+                            return;
+                          }
+                          const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
+                          if (!isOnVendorHome) {
+                            window.location.href = `/vendor/${vendorSlug}#category-${category.slug}`;
+                          } else {
+                            handleScrollToCategory(category.slug);
+                          }
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
+                      >
+                        All {category.name}
+                      </button>
+                      {category.children.map((subcat) => (
+                        <button
+                          key={subcat.id}
+                          onClick={() => {
+                            if (!vendorSlug) {
+                              handleScrollToCategory(subcat.slug);
+                              return;
+                            }
+                            const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
+                            if (!isOnVendorHome) {
+                              window.location.href = `/vendor/${vendorSlug}#category-${subcat.slug}`;
+                            } else {
+                              handleScrollToCategory(subcat.slug);
+                            }
+                          }}
                           className="block w-full text-left px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                         >
                           {subcat.name}

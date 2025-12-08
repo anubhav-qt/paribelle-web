@@ -1,6 +1,7 @@
 'use client';
 
 import { useEditor, EditorContent } from '@tiptap/react';
+import { useState, useRef } from 'react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
@@ -20,6 +21,7 @@ import {
   LinkIcon,
   Undo,
   Redo,
+  Upload,
 } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -33,11 +35,17 @@ export default function RichTextEditor({
   onChange,
   placeholder = 'Start writing...',
 }: RichTextEditorProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit,
-      Image,
+      Image.configure({
+        inline: true,
+        allowBase64: true,
+      }),
       Link.configure({
         openOnClick: false,
       }),
@@ -54,6 +62,33 @@ export default function RichTextEditor({
         class:
           'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[400px] p-4',
       },
+      handleDrop: (view, event, slice, moved) => {
+        if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
+          const file = event.dataTransfer.files[0];
+          if (file.type.startsWith('image/')) {
+            event.preventDefault();
+            handleImageUpload(file);
+            return true;
+          }
+        }
+        return false;
+      },
+      handlePaste: (view, event) => {
+        const items = event.clipboardData?.items;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+              const file = items[i].getAsFile();
+              if (file) {
+                event.preventDefault();
+                handleImageUpload(file);
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      },
     },
   });
 
@@ -61,7 +96,44 @@ export default function RichTextEditor({
     return null;
   }
 
-  const addImage = () => {
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        if (base64) {
+          editor?.chain().focus().setImage({ src: base64 }).run();
+        }
+        setUploading(false);
+      };
+      reader.onerror = () => {
+        alert('Failed to read image file');
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image');
+      setUploading(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      handleImageUpload(file);
+    } else if (file) {
+      alert('Please select an image file');
+    }
+  };
+
+  const openImagePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  const addImageFromUrl = () => {
     const url = window.prompt('Enter image URL:');
     if (url) {
       editor.chain().focus().setImage({ src: url }).run();
@@ -191,11 +263,31 @@ export default function RichTextEditor({
 
         <div className="w-px h-6 bg-border mx-1" />
 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
         <button
           type="button"
-          onClick={addImage}
+          onClick={openImagePicker}
+          disabled={uploading}
+          className="p-2 rounded hover:bg-muted disabled:opacity-50"
+          title="Upload Image"
+        >
+          {uploading ? (
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Upload className="w-4 h-4" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={addImageFromUrl}
           className="p-2 rounded hover:bg-muted"
-          title="Add Image"
+          title="Add Image from URL"
         >
           <ImageIcon className="w-4 h-4" />
         </button>
