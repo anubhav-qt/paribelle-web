@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingCart, Search } from 'lucide-react';
+import { ShoppingCart, Search, Menu, X } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -27,12 +27,15 @@ export default function VendorHeader({
   const [user, setUser] = useState<any>(null);
   const [vendor, setVendor] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Fetch vendor data
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/vendors/slug/${vendorSlug}`)
       .then(res => res.json())
-      .then(data => setVendor(data))
+      .then(data => {
+        setVendor(data);
+      })
       .catch(err => console.error('Error fetching vendor:', err));
 
     // Check for user
@@ -68,6 +71,15 @@ export default function VendorHeader({
     <header className="sticky top-0 z-40 bg-card shadow-md">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden text-foreground hover:text-primary transition-colors p-2"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+
           <Link href={`/vendor/${vendorSlug}`} className="flex items-center gap-4">
             {vendor?.logo && (
               <img 
@@ -108,20 +120,20 @@ export default function VendorHeader({
                 </span>
               )}
             </Link>
-            <Link href="http://localhost:3000" className="text-sm text-foreground px-4 py-2 bg-muted rounded-lg hover:bg-accent transition-colors">
+            <Link href="http://localhost:3000" className="hidden md:inline-flex text-sm text-foreground px-4 py-2 bg-muted rounded-lg hover:bg-accent transition-colors">
               All Vendors
             </Link>
             {user && (
               <>
                 <Link
                   href="/dashboard"
-                  className="px-4 py-2 text-foreground hover:text-primary transition-colors font-medium"
+                  className="hidden md:block px-4 py-2 text-foreground hover:text-primary transition-colors font-medium"
                 >
                   {user.firstName || user.email}
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 text-foreground font-medium hover:text-primary rounded transition-colors"
+                  className="hidden md:block px-4 py-2 text-foreground font-medium hover:text-primary rounded transition-colors"
                 >
                   Logout
                 </button>
@@ -129,7 +141,65 @@ export default function VendorHeader({
             )}
           </div>
         </div>
+
+        {/* Mobile Search Bar */}
+        <div className="md:hidden mt-3">
+          <form onSubmit={handleSearch} className="relative w-full">
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 pl-10 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+          </form>
+        </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden bg-card border-t border-border">
+          <nav className="container mx-auto px-4 py-4 space-y-2">
+            <Link
+              href="http://localhost:3000"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 px-4 text-foreground hover:bg-accent rounded-md transition-colors"
+            >
+              All Vendors
+            </Link>
+
+            {user ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block py-2 px-4 text-foreground hover:bg-accent rounded-md transition-colors"
+                >
+                  {user.firstName || user.email}
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block w-full text-left py-2 px-4 text-foreground hover:bg-accent rounded-md transition-colors"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 px-4 text-foreground hover:bg-accent rounded-md transition-colors"
+              >
+                Login
+              </Link>
+            )}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

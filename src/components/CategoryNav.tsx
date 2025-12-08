@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Home } from 'lucide-react';
 import Link from 'next/link';
 
 interface Category {
@@ -10,6 +10,13 @@ interface Category {
   slug: string;
   children?: Category[];
   productCount?: number;
+}
+
+interface VendorPage {
+  id: string;
+  title: string;
+  slug: string;
+  showInNavigation: boolean;
 }
 
 interface CategoryNavProps {
@@ -30,13 +37,31 @@ export default function CategoryNav({
   hideEmptyCategories = true
 }: CategoryNavProps) {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [vendorPages, setVendorPages] = useState<VendorPage[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchCategories();
+    if (vendorId && vendorSlug) {
+      fetchVendorPages();
+    }
   }, [vendorId]);
+
+  const fetchVendorPages = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/vendors/${vendorId}/pages`
+      );
+      if (response.ok) {
+        const pages = await response.json();
+        setVendorPages(pages.filter((p: VendorPage) => p.showInNavigation));
+      }
+    } catch (error) {
+      console.error('Error fetching vendor pages:', error);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -163,7 +188,7 @@ export default function CategoryNav({
     }
   };
 
-  if (loading || categories.length === 0) return null;
+  if (loading) return null;
 
   return (
     <div 
@@ -172,6 +197,18 @@ export default function CategoryNav({
     >
       <div className="container mx-auto">
         <div className="flex items-center gap-0 flex-wrap">
+          {/* Home Link - Left Side */}
+          {vendorSlug && (
+            <Link
+              href={`/vendor/${vendorSlug}`}
+              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted border-r border-border"
+            >
+              <Home className="w-3.5 h-3.5" />
+              Home
+            </Link>
+          )}
+
+          {/* Categories - Middle */}
           {mode === 'filter' && (
             <button
               onClick={() => handleCategoryClick('')}
@@ -306,6 +343,22 @@ export default function CategoryNav({
               )}
             </div>
           ))}
+
+          {/* Vendor Pages - Right Side */}
+          {vendorPages.length > 0 && vendorSlug && (
+            <>
+              <div className="border-l border-border h-6 mx-2"></div>
+              {vendorPages.map((page) => (
+                <Link
+                  key={page.id}
+                  href={`/vendor/${vendorSlug}/${page.slug}`}
+                  className="flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
+                >
+                  {page.title}
+                </Link>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>
