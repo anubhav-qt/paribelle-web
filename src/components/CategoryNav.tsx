@@ -76,10 +76,21 @@ export default function CategoryNav({
     console.log('🔵 Current pathname:', pathname);
     console.log('🔵 Vendor slug:', vendorSlug);
     
-    // If no vendorSlug, we're on main homepage - just scroll
+    // If no vendorSlug, we're on main homepage
     if (!vendorSlug) {
-      console.log('🔵 No vendor slug - scrolling on main homepage');
-      handleScrollToCategory(categorySlug);
+      // Check if we're on the homepage
+      const isOnHomepage = pathname === `/${locale}` || pathname === '/';
+      console.log('🔵 No vendor slug - is on homepage:', isOnHomepage);
+      
+      if (isOnHomepage) {
+        // Just scroll to category
+        handleScrollToCategory(categorySlug);
+      } else {
+        // Navigate to homepage with hash
+        const targetUrl = `/${locale}#category-${categorySlug}`;
+        console.log('🔵 Navigating to:', targetUrl);
+        window.location.href = targetUrl;
+      }
       return;
     }
     
@@ -295,9 +306,15 @@ export default function CategoryNav({
               ) : mode === 'scroll' ? (
                 <button
                   onClick={() => {
-                    // If no vendorSlug, just scroll on main homepage
+                    // If no vendorSlug, we're on main marketplace
                     if (!vendorSlug) {
-                      if (category.children && category.children.length > 0) {
+                      // Check if we're on the homepage
+                      const isOnHomepage = pathname === `/${locale}` || pathname === '/';
+                      
+                      if (!isOnHomepage) {
+                        // Navigate to homepage with hash
+                        window.location.href = `/${locale}#category-${category.slug}`;
+                      } else if (category.children && category.children.length > 0) {
                         setActiveDropdown(activeDropdown === category.id ? null : category.id);
                       } else {
                         handleScrollToCategory(category.slug);
@@ -376,7 +393,12 @@ export default function CategoryNav({
                       <button
                         onClick={() => {
                           if (!vendorSlug) {
-                            handleScrollToCategory(category.slug);
+                            const isOnHomepage = pathname === `/${locale}` || pathname === '/';
+                            if (!isOnHomepage) {
+                              window.location.href = `/${locale}#category-${category.slug}`;
+                            } else {
+                              handleScrollToCategory(category.slug);
+                            }
                             return;
                           }
                           const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
@@ -395,7 +417,12 @@ export default function CategoryNav({
                           key={subcat.id}
                           onClick={() => {
                             if (!vendorSlug) {
-                              handleScrollToCategory(subcat.slug);
+                              const isOnHomepage = pathname === `/${locale}` || pathname === '/';
+                              if (!isOnHomepage) {
+                                window.location.href = `/${locale}#category-${subcat.slug}`;
+                              } else {
+                                handleScrollToCategory(subcat.slug);
+                              }
                               return;
                             }
                             const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;

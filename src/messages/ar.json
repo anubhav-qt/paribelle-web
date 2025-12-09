@@ -30,7 +30,8 @@
     "myAccount": "حسابي",
     "orders": "الطلبات",
     "wishlist": "قائمة الأمنيات",
-    "searchPlaceholder": "ابحث عن المنتجات..."
+    "searchPlaceholder": "ابحث عن المنتجات...",
+    "bookings": "الحجوزات والخدمات"
   },
   "footer": {
     "copyright": "© {year} Marketplace. جميع الحقوق محفوظة.",

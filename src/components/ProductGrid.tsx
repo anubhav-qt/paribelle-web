@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Star, Calendar, ExternalLink } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getProductImageUrl } from '@/lib/image-url';
+import { useLocale } from 'next-intl';
 
 interface Category {
   id: string;
@@ -56,6 +57,7 @@ export default function ProductGrid({
   isLocationFilterActive = false,
   showLocationInfo = true 
 }: ProductGridProps) {
+  const locale = useLocale();
   const getDiscount = (price: string | number, compareAtPrice?: string | number) => {
     if (!compareAtPrice || Number(compareAtPrice) <= Number(price)) return null;
     return Math.round(((Number(compareAtPrice) - Number(price)) / Number(compareAtPrice)) * 100);
@@ -79,9 +81,9 @@ export default function ProductGrid({
     }
 
     return (
-      <div key={product.id} className="group/card border rounded-lg overflow-hidden hover:shadow-xl transition-all">
-        <Link href={`/products/${product.slug}`} className="block">
-          <div className="relative aspect-square overflow-hidden bg-gray-100">
+      <div key={product.id} className="group/card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-all bg-card">
+        <Link href={`/${locale}/products/${product.slug}`} className="block">
+          <div className="relative aspect-square overflow-hidden bg-muted">
             <img
               src={getProductImageUrl(product)}
               alt={product.name}
@@ -100,7 +102,7 @@ export default function ProductGrid({
             )}
           </div>
           <div className="p-4">
-            <h3 className="font-medium mb-1 line-clamp-2 text-sm min-h-[40px] group-hover/card:text-blue-600 transition-colors">
+            <h3 className="font-medium mb-1 line-clamp-2 text-sm min-h-[40px] text-foreground group-hover/card:text-primary transition-colors">
               {product.name}
             </h3>
             <div className="flex items-center gap-1 mb-2">
@@ -110,22 +112,22 @@ export default function ProductGrid({
                 </span>
                 <Star className="w-3 h-3 fill-white" />
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 ({product.reviewCount})
               </span>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-lg font-bold">
+              <span className="text-lg font-bold text-foreground">
                 {getCurrencySymbol(currency)}{Number(product.price).toFixed(2)}
               </span>
               {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
-                <span className="text-xs text-gray-400 line-through">
+                <span className="text-xs text-muted-foreground line-through">
                   {getCurrencySymbol(currency)}{Number(product.compareAtPrice).toFixed(2)}
                 </span>
               )}
             </div>
             {showLocationInfo && isLocationFilterActive && product.vendor?.locationCity && (
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 📍 {product.vendor.locationCity.name}
                 {product.vendor.locationSubLocation && ` - ${product.vendor.locationSubLocation.name}`}
               </div>
@@ -139,7 +141,7 @@ export default function ProductGrid({
                 e.preventDefault();
                 window.open(`http://${product.vendor?.subdomain}.localhost:3000`, '_blank', 'noopener,noreferrer');
               }}
-              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 cursor-pointer"
             >
               <span>{product.vendor.businessName || product.vendor.name}</span>
               <ExternalLink className="w-3 h-3" />
@@ -156,7 +158,7 @@ export default function ProductGrid({
       {productsWithLocation.length > 0 && (
         <div className={productsWithoutLocation.length > 0 && isLocationFilterActive ? "mb-6" : ""}>
           {isLocationFilterActive && productsWithoutLocation.length > 0 && (
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+            <h3 className="text-sm font-semibold text-foreground mb-3">
               Available in Selected Location ({productsWithLocation.length})
             </h3>
           )}
@@ -170,7 +172,7 @@ export default function ProductGrid({
       {productsWithoutLocation.length > 0 && (
         <div>
           {isLocationFilterActive && (
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+            <h3 className="text-sm font-semibold text-foreground mb-3">
               Other Locations ({productsWithoutLocation.length})
             </h3>
           )}
@@ -181,7 +183,7 @@ export default function ProductGrid({
       )}
 
       {products.length === 0 && (
-        <p className="text-gray-500 text-center py-8">No products found</p>
+        <p className="text-muted-foreground text-center py-8">No products found</p>
       )}
     </div>
   );

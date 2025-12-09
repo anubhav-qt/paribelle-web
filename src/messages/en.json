@@ -30,7 +30,8 @@
     "myAccount": "My Account",
     "orders": "Orders",
     "wishlist": "Wishlist",
-    "searchPlaceholder": "Search products..."
+    "searchPlaceholder": "Search products...",
+    "bookings": "Bookings & Services"
   },
   "footer": {
     "copyright": "© {year} Marketplace. All rights reserved.",

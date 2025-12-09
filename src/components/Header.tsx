@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Search } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import LocationFilter from '@/components/LocationFilter';
 import ThemeToggle from '@/components/ThemeToggle';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 interface HeaderProps {
   showLocationFilter?: boolean;
@@ -29,6 +28,7 @@ export default function Header({
   const { totalItems } = useCart();
   const t = useTranslations('header');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
   const [user, setUser] = useState<any>(null);
   const [marketplaceLogo, setMarketplaceLogo] = useState<string>('');
   const [marketplaceName, setMarketplaceName] = useState<string>('Marketplace');
@@ -76,9 +76,9 @@ export default function Header({
       onSearch(searchQuery);
     } else {
       if (searchQuery.trim()) {
-        router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        router.push(`/${locale}/search?q=${encodeURIComponent(searchQuery.trim())}`);
       } else {
-        router.push('/search');
+        router.push(`/${locale}/search`);
       }
     }
   };
@@ -87,14 +87,14 @@ export default function Header({
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    router.push('/');
+    router.push(`/${locale}`);
   };
 
   return (
     <header className="sticky top-0 z-40 shadow-md bg-card">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
-          <Link href="/" className="flex items-center">
+          <Link href={`/${locale}`} className="flex items-center">
             {marketplaceLogo ? (
               <img 
                 src={marketplaceLogo} 
@@ -143,16 +143,15 @@ export default function Header({
           <div className="flex gap-4 items-center">
             {showBookingsLink && (
               <Link 
-                href="/search?type=booking" 
+                href={`/${locale}/search?type=booking`}
                 className="text-sm hover:text-primary transition-colors font-normal whitespace-nowrap text-foreground"
               >
                 {t('bookings', { default: 'Bookings & Services' })}
               </Link>
             )}
-            <LanguageSwitcher />
             <ThemeToggle />
             <Link 
-              href="/cart" 
+              href={`/${locale}/cart`}
               className="relative hover:text-primary transition-colors text-foreground"
               aria-label={tCommon('cart')}
             >
@@ -166,7 +165,7 @@ export default function Header({
             {user ? (
               <>
                 <Link
-                  href="/dashboard"
+                  href={`/${locale}/dashboard`}
                   className="px-2 py-1 text-sm hover:text-primary transition-colors font-normal text-foreground"
                 >
                   {user.firstName || user.email}
@@ -181,13 +180,13 @@ export default function Header({
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href={`/${locale}/login`}
                   className="px-2 py-1 text-sm border border-border hover:border-primary hover:text-primary rounded transition-all font-normal text-foreground"
                 >
                   {t('login')}
                 </Link>
                 <Link
-                  href="/signup"
+                  href={`/${locale}/signup`}
                   className="px-3 py-1 text-sm bg-primary text-primary-foreground font-normal hover:opacity-90 rounded transition-colors"
                 >
                   {t('signup')}

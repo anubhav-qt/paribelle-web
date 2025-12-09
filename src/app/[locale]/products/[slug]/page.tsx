@@ -350,11 +350,11 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
-          <Link href="/" className="text-blue-600 hover:underline">
+          <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2 text-foreground">Product Not Found</h1>
+          <Link href="/" className="text-primary hover:underline">
             Go to Home
           </Link>
         </div>
@@ -365,31 +365,31 @@ export default function ProductDetailPage() {
   const discount = getDiscount(product.price, product.compareAtPrice);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header showLocationFilter={false} showBookingsLink={true} />
 
       <CategoryNav mode="navigation" />
 
       {/* Breadcrumb */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b border-border">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center gap-2 text-sm">
-            <Link href="/" className="text-gray-600 hover:text-blue-600">
+            <Link href="/" className="text-muted-foreground hover:text-primary">
               Home
             </Link>
             {product.categories && product.categories.length > 0 && (
               <>
-                <span className="text-gray-400">/</span>
+                <span className="text-muted-foreground">/</span>
                 <Link 
                   href={`/category/${product.categories[0].slug}`}
-                  className="text-gray-600 hover:text-blue-600"
+                  className="text-muted-foreground hover:text-primary"
                 >
                   {product.categories[0].name}
                 </Link>
               </>
             )}
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium truncate">{product.name}</span>
+            <span className="text-muted-foreground">/</span>
+            <span className="text-foreground font-medium truncate">{product.name}</span>
           </div>
         </div>
       </div>
@@ -398,13 +398,13 @@ export default function ProductDetailPage() {
       <div className="container mx-auto px-4 py-8">
         <Link 
           href="/"
-          className="inline-flex items-center gap-2 text-blue-600 hover:underline mb-6"
+          className="inline-flex items-center gap-2 text-primary hover:underline mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Products
         </Link>
 
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-card rounded-lg shadow-sm overflow-hidden border border-border">
           <div className="grid md:grid-cols-2 gap-8 p-8">
             {/* Product Image Gallery */}
             <ProductImageGallery
@@ -416,9 +416,9 @@ export default function ProductDetailPage() {
 
             {/* Product Info */}
             <div className="flex flex-col">
-              <h1 className="text-3xl font-bold mb-3">{product.name}</h1>
+              <h1 className="text-3xl font-bold mb-3 text-foreground">{product.name}</h1>
               
-              <p className="text-gray-600 mb-4">{product.shortDescription}</p>
+              <p className="text-muted-foreground mb-4">{product.shortDescription}</p>
 
               {/* Rating */}
               <div className="flex items-center gap-3 mb-6">
@@ -426,7 +426,7 @@ export default function ProductDetailPage() {
                   <span className="font-semibold">{Number(product.averageRating).toFixed(1)}</span>
                   <Star className="w-4 h-4 fill-white" />
                 </div>
-                <span className="text-gray-600">
+                <span className="text-muted-foreground">
                   {product.reviewCount} {product.reviewCount === 1 ? 'review' : 'reviews'}
                 </span>
               </div>
@@ -434,17 +434,17 @@ export default function ProductDetailPage() {
               {/* Price */}
               <div className="mb-6">
                 <div className="flex items-baseline gap-3 mb-2">
-                  <span className="text-4xl font-bold text-gray-900">
+                  <span className="text-4xl font-bold text-foreground">
                     {getCurrencySymbol(currency)}{Number(product.price).toLocaleString()}
                     {product.productType === 'booking' && product.attributes?.booking?.durationUnit && (
-                      <span className="text-lg font-normal text-gray-600">
+                      <span className="text-lg font-normal text-muted-foreground">
                         /{product.attributes.booking.durationUnit === 'hours' ? 'hr' : product.attributes.booking.durationUnit === 'days' ? 'day' : 'session'}
                       </span>
                     )}
                   </span>
                   {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
                     <>
-                      <span className="text-xl text-gray-400 line-through">
+                      <span className="text-xl text-muted-foreground line-through">
                         {getCurrencySymbol(currency)}{Number(product.compareAtPrice).toLocaleString()}
                       </span>
                       <span className="text-green-600 font-semibold">
@@ -453,32 +453,32 @@ export default function ProductDetailPage() {
                     </>
                   )}
                 </div>
-                <p className="text-sm text-gray-600">Inclusive of all taxes</p>
+                <p className="text-sm text-muted-foreground">Inclusive of all taxes</p>
               </div>
 
               {/* Quantity or Booking Info */}
               {product.productType === 'physical' ? (
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Quantity
                   </label>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                      className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-foreground"
                     >
                       -
                     </button>
-                    <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
+                    <span className="text-lg font-semibold w-12 text-center text-foreground">{quantity}</span>
                     <button
                       onClick={() => setQuantity(quantity + 1)}
-                      className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                      className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-foreground"
                     >
                       +
                     </button>
                   </div>
                   {product.stockQuantity !== undefined && (
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-sm text-muted-foreground mt-2">
                       {product.stockQuantity > 0 
                         ? `${product.stockQuantity} in stock` 
                         : 'Out of stock'}
@@ -489,8 +489,8 @@ export default function ProductDetailPage() {
                 <div className="mb-6">
                   {product.attributes?.booking ? (
                     <>
-                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-foreground">
+                        <Calendar className="w-5 h-5 text-primary" />
                         Select Your Booking
                       </h3>
                       <BookingCalendar
@@ -502,8 +502,8 @@ export default function ProductDetailPage() {
                       />
                     </>
                   ) : (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded">
-                      <p className="text-red-700">Booking configuration not found for this product.</p>
+                    <div className="p-4 bg-destructive/10 border border-destructive/20 rounded">
+                      <p className="text-destructive">Booking configuration not found for this product.</p>
                     </div>
                   )}
                 </div>
@@ -561,11 +561,11 @@ export default function ProductDetailPage() {
 
               {/* Additional Actions */}
               <div className="flex gap-4">
-                <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50">
+                <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted text-foreground">
                   <Heart className="w-5 h-5" />
                   Wishlist
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50">
+                <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted text-foreground">
                   <Share2 className="w-5 h-5" />
                   Share
                 </button>
@@ -573,14 +573,14 @@ export default function ProductDetailPage() {
 
               {/* Categories */}
               {product.categories && product.categories.length > 0 && (
-                <div className="mt-6 pt-6 border-t">
-                  <h3 className="font-semibold mb-2">Categories:</h3>
+                <div className="mt-6 pt-6 border-t border-border">
+                  <h3 className="font-semibold mb-2 text-foreground">Categories:</h3>
                   <div className="flex flex-wrap gap-2">
                     {product.categories.map((category) => (
                       <Link
                         key={category.id}
                         href={`/category/${category.slug}`}
-                        className="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200"
+                        className="px-3 py-1 bg-muted rounded-full text-sm hover:bg-muted/80 text-foreground"
                       >
                         {category.name}
                       </Link>
@@ -591,27 +591,27 @@ export default function ProductDetailPage() {
 
               {/* Vendor Website Link */}
               {product.vendor && product.vendor.subdomain && (
-                <div className="mt-4 pt-4 border-t">
-                  <h3 className="font-semibold mb-2">Sold by:</h3>
+                <div className="mt-4 pt-4 border-t border-border">
+                  <h3 className="font-semibold mb-2 text-foreground">Sold by:</h3>
                   <a
                     href={`http://${product.vendor.subdomain}.localhost:3000`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
                   >
                     <span className="font-medium">{product.vendor.businessName}</span>
                     <ExternalLink className="w-4 h-4" />
                   </a>
-                  <p className="text-xs text-gray-500 mt-1">Visit vendor's store</p>
+                  <p className="text-xs text-muted-foreground mt-1">Visit vendor's store</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Product Description */}
-          <div className="border-t p-8">
-            <h2 className="text-2xl font-bold mb-4">Product Description</h2>
-            <div className="prose max-w-none text-gray-600">
+          <div className="border-t border-border p-8">
+            <h2 className="text-2xl font-bold mb-4 text-foreground">Product Description</h2>
+            <div className="prose max-w-none text-muted-foreground">
               {product.description || product.shortDescription}
             </div>
           </div>

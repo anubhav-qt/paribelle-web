@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface FooterProps {
   categories?: Array<{ id: string; name: string; slug: string }>;
@@ -14,6 +14,7 @@ export default function Footer({ categories = [], marketplaceName = 'Marketplace
   const currentYear = new Date().getFullYear();
   const t = useTranslations('footer');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
 
   return (
     <footer 
@@ -50,7 +51,7 @@ export default function Footer({ categories = [], marketplaceName = 'Marketplace
               {categories.slice(0, 6).map(cat => (
                 <li key={cat.id}>
                   <Link 
-                    href={`/category/${cat.slug}`} 
+                    href={`/${locale}#category-${cat.slug}`}
                     className="hover:text-primary transition-colors"
                   >
                     {cat.name}
@@ -60,7 +61,7 @@ export default function Footer({ categories = [], marketplaceName = 'Marketplace
               {categories.length > 6 && (
                 <li>
                   <Link 
-                    href="/#categories" 
+                    href={`/${locale}/#categories`}
                     className="text-primary hover:underline transition-colors"
                   >
                     View All Categories →
@@ -75,32 +76,32 @@ export default function Footer({ categories = [], marketplaceName = 'Marketplace
             <h4 className="font-semibold mb-4 text-lg text-foreground">{t('helpCenter')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/help" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/help`} className="hover:text-primary transition-colors">
                   {t('helpCenter')}
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/contact`} className="hover:text-primary transition-colors">
                   {t('contactUs')}
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/shipping`} className="hover:text-primary transition-colors">
                   {t('shipping')}
                 </Link>
               </li>
               <li>
-                <Link href="/returns" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/returns`} className="hover:text-primary transition-colors">
                   {t('returns')}
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/faq`} className="hover:text-primary transition-colors">
                   {t('faq')}
                 </Link>
               </li>
               <li>
-                <Link href="/track-order" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/track-order`} className="hover:text-primary transition-colors">
                   Track Your Order
                 </Link>
               </li>
@@ -112,22 +113,22 @@ export default function Footer({ categories = [], marketplaceName = 'Marketplace
             <h4 className="font-semibold mb-4 text-lg text-foreground">My Account</h4>
             <ul className="space-y-2 text-sm mb-6 text-muted-foreground">
               <li>
-                <Link href="/login" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/login`} className="hover:text-primary transition-colors">
                   Login / Register
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/dashboard`} className="hover:text-primary transition-colors">
                   My Dashboard
                 </Link>
               </li>
               <li>
-                <Link href="/orders" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/orders`} className="hover:text-primary transition-colors">
                   Order History
                 </Link>
               </li>
               <li>
-                <Link href="/wishlist" className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/wishlist`} className="hover:text-primary transition-colors">
                   My Wishlist
                 </Link>
               </li>
@@ -159,19 +160,19 @@ export default function Footer({ categories = [], marketplaceName = 'Marketplace
               {t('copyright', { year: currentYear })}
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
-              <Link href="/privacy-policy" className="hover:text-primary transition-colors">
+              <Link href={`/${locale}/privacy-policy`} className="hover:text-primary transition-colors">
                 {t('privacyPolicy')}
               </Link>
               <span>•</span>
-              <Link href="/terms-of-service" className="hover:text-primary transition-colors">
+              <Link href={`/${locale}/terms-of-service`} className="hover:text-primary transition-colors">
                 {t('termsOfService')}
               </Link>
               <span>•</span>
-              <Link href="/cookie-policy" className="hover:text-primary transition-colors">
+              <Link href={`/${locale}/cookie-policy`} className="hover:text-primary transition-colors">
                 Cookie Policy
               </Link>
               <span>•</span>
-              <Link href="/vendor-registration" className="hover:text-primary transition-colors">
+              <Link href={`/${locale}/vendor-registration`} className="hover:text-primary transition-colors">
                 Become a Vendor
               </Link>
             </div>

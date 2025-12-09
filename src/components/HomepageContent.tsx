@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import ProductGrid from './ProductGrid';
 import CategoryNav from './CategoryNav';
+import { useLocale } from 'next-intl';
 
 interface Category {
   id: string;
@@ -63,6 +64,7 @@ export default function HomepageContent({
   locationFilterEnabled
 }: HomepageContentProps) {
   const searchParams = useSearchParams();
+  const locale = useLocale();
   const [categories] = useState<Category[]>(initialCategories);
   const [productsByCategory, setProductsByCategory] = useState<Record<string, Product[]>>(initialProductsByCategory);
   const [uncategorizedProducts, setUncategorizedProducts] = useState<Product[]>(initialUncategorizedProducts);
@@ -213,7 +215,7 @@ export default function HomepageContent({
                       )}
                     </div>
                     <Link
-                      href={`/category/${category.slug}`}
+                      href={`/${locale}/category/${category.slug}`}
                       className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
                     >
                       View All
