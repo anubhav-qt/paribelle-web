@@ -6,10 +6,21 @@ import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
 import { useEffect } from 'react';
 import { useLocale } from 'next-intl';
+import { usePathname } from 'next/navigation';
 
 export default function CartDrawer() {
   const { items, totalPrice, totalItems, isOpen, closeCart, updateQuantity, removeFromCart } = useCart();
-  const locale = useLocale();
+  const pathname = usePathname();
+  
+  // Try to get locale from next-intl, fallback to pathname extraction for vendor routes
+  let locale = 'en';
+  try {
+    locale = useLocale();
+  } catch {
+    // Extract locale from pathname for vendor routes
+    const localeMatch = pathname?.match(/^\/(en|hi|mr)/);
+    locale = localeMatch ? localeMatch[1] : 'en';
+  }
 
   // Prevent body scroll when cart is open
   useEffect(() => {

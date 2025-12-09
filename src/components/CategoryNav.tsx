@@ -40,9 +40,24 @@ export default function CategoryNav({
 }: CategoryNavProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const locale = useLocale();
-  const t = useTranslations('common');
-  const tCategory = useTranslations('category');
+  
+  // Try to get locale and translations, fallback for vendor routes
+  let locale = 'en';
+  let t: any;
+  let tCategory: any;
+  
+  try {
+    locale = useLocale();
+    t = useTranslations('common');
+    tCategory = useTranslations('category');
+  } catch {
+    // Fallback for vendor routes without intl context
+    const localeMatch = pathname?.match(/^\/(en|hi|mr)/);
+    locale = localeMatch ? localeMatch[1] : 'en';
+    t = (key: string) => key;
+    tCategory = (key: string) => key;
+  }
+  
   const [categories, setCategories] = useState<Category[]>([]);
   const [vendorPages, setVendorPages] = useState<VendorPage[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);

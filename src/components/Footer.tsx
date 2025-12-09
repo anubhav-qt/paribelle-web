@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
+import { usePathname } from 'next/navigation';
 
 interface FooterProps {
   categories?: Array<{ id: string; name: string; slug: string }>;
@@ -12,9 +13,24 @@ interface FooterProps {
 
 export default function Footer({ categories = [], marketplaceName = 'Marketplace' }: FooterProps) {
   const currentYear = new Date().getFullYear();
-  const t = useTranslations('footer');
-  const tCommon = useTranslations('common');
-  const locale = useLocale();
+  const pathname = usePathname();
+  
+  // Try to get locale and translations, fallback for vendor routes
+  let locale = 'en';
+  let t: any;
+  let tCommon: any;
+  
+  try {
+    t = useTranslations('footer');
+    tCommon = useTranslations('common');
+    locale = useLocale();
+  } catch {
+    // Fallback for vendor routes without intl context
+    const localeMatch = pathname?.match(/^\/(en|hi|mr)/);
+    locale = localeMatch ? localeMatch[1] : 'en';
+    t = (key: string) => key;
+    tCommon = (key: string) => key;
+  }
 
   return (
     <footer 
