@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Star, Package, Calendar, ChevronDown } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
+import { getProductImageUrl } from '@/lib/image-url';
+import { useLocale } from 'next-intl';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -30,6 +32,7 @@ interface Product {
 function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const locale = useLocale();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +50,12 @@ function SearchContent() {
   const [marketplaceLogo, setMarketplaceLogo] = useState<string>('');
   const [marketplaceName, setMarketplaceName] = useState<string>('Marketplace');
   const limit = 50;
+
+  // Navigate to homepage with category hash
+  const handleCategoryNavigation = (categorySlug: string) => {
+    console.log('🟢 Navigating to homepage with category:', categorySlug);
+    window.location.href = `/${locale}#category-${categorySlug}`;
+  };
 
   useEffect(() => {
     // Fetch marketplace branding
@@ -247,7 +256,7 @@ function SearchContent() {
                       if (category.children && category.children.length > 0) {
                         setActiveDropdown(activeDropdown === category.id ? null : category.id);
                       } else {
-                        handleCategoryFilter(category.id);
+                        handleCategoryNavigation(category.slug);
                       }
                     }}
                     className={`flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2 ${
@@ -268,7 +277,7 @@ function SearchContent() {
                       <button
                         onClick={() => {
                           setActiveDropdown(null);
-                          handleCategoryFilter(category.id);
+                          handleCategoryNavigation(category.slug);
                         }}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold text-gray-800 hover:text-blue-600 hover:bg-blue-50 transition-colors border-b"
                       >
@@ -279,7 +288,7 @@ function SearchContent() {
                           key={subcat.id}
                           onClick={() => {
                             setActiveDropdown(null);
-                            handleCategoryFilter(subcat.id);
+                            handleCategoryNavigation(subcat.slug);
                           }}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                         >
@@ -318,22 +327,16 @@ function SearchContent() {
                       <span className="text-sm">All Categories</span>
                     </label>
                     {flatCategories.map((category) => (
-                      <label
+                      <div
                         key={category.id}
+                        onClick={() => handleCategoryNavigation(category.slug)}
                         className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded"
                         style={{ marginLeft: `${category.level * 16}px` }}
                       >
-                        <input
-                          type="radio"
-                          name="category"
-                          checked={selectedCategory === category.id}
-                          onChange={() => handleCategoryFilter(category.id)}
-                          className="mr-2"
-                        />
                         <span className={`text-sm ${category.level === 0 ? 'font-semibold' : ''}`}>
                           {category.name}
                         </span>
-                      </label>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -373,12 +376,15 @@ function SearchContent() {
                   >
                     <div className="aspect-square bg-gray-100 overflow-hidden relative">
                       <img
-                        src={product.featuredImage || '/placeholder-product.jpg'}
+                        src={getProductImageUrl(product)}
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder-product.jpg';
+                          if (!target.dataset.fallback) {
+                            target.dataset.fallback = 'true';
+                            target.src = '/placeholder-image.svg';
+                          }
                         }}
                       />
                       {product.productType === 'booking' && (

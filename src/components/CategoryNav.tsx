@@ -109,8 +109,8 @@ export default function CategoryNav({
       return;
     }
     
-    // Check if we're on the vendor home page
-    const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
+    // Check if we're on the vendor home page (exact match, no query params or other paths)
+    const isOnVendorHome = pathname === `/vendor/${vendorSlug}` && !window.location.search;
     console.log('🔵 Is on vendor home:', isOnVendorHome);
     
     if (isOnVendorHome) {
@@ -118,7 +118,7 @@ export default function CategoryNav({
       console.log('🔵 Scrolling to category on same page');
       handleScrollToCategory(categorySlug);
     } else {
-      // Navigate to home page with hash
+      // Navigate to home page with hash (clears any query params)
       const targetUrl = `/vendor/${vendorSlug}#category-${categorySlug}`;
       console.log('🔵 Navigating to:', targetUrl);
       window.location.href = targetUrl;
@@ -321,31 +321,50 @@ export default function CategoryNav({
               ) : mode === 'scroll' ? (
                 <button
                   onClick={() => {
+                    console.log('🔴 CATEGORY CLICKED:', category.slug);
+                    console.log('🔴 VendorSlug:', vendorSlug);
+                    console.log('🔴 Pathname:', pathname);
+                    console.log('🔴 Locale:', locale);
+                    console.log('🔴 Window search:', window.location.search);
+                    
                     // If no vendorSlug, we're on main marketplace
                     if (!vendorSlug) {
-                      // Check if we're on the homepage
-                      const isOnHomepage = pathname === `/${locale}` || pathname === '/';
+                      console.log('🔴 NO VENDOR SLUG BRANCH');
+                      // Check if we're on the homepage (no query params)
+                      const isOnHomepage = (pathname === `/${locale}` || pathname === '/') && !window.location.search;
+                      console.log('🔴 isOnHomepage:', isOnHomepage);
+                      console.log('🔴 pathname === `/${locale}`:', pathname === `/${locale}`);
+                      console.log('🔴 pathname === \'/\':', pathname === '/');
+                      console.log('🔴 !window.location.search:', !window.location.search);
                       
                       if (!isOnHomepage) {
-                        // Navigate to homepage with hash
+                        console.log('🔴 NAVIGATING TO HOME WITH HASH:', `/${locale}#category-${category.slug}`);
+                        // Navigate to homepage with hash (clears query params)
                         window.location.href = `/${locale}#category-${category.slug}`;
                       } else if (category.children && category.children.length > 0) {
+                        console.log('🔴 TOGGLING DROPDOWN');
                         setActiveDropdown(activeDropdown === category.id ? null : category.id);
                       } else {
+                        console.log('🔴 SCROLLING TO CATEGORY');
                         handleScrollToCategory(category.slug);
                       }
                       return;
                     }
                     
-                    // Check if we're on vendor home page
-                    const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
+                    console.log('🔴 VENDOR SLUG BRANCH');
+                    // Check if we're on vendor home page (no query params)
+                    const isOnVendorHome = pathname === `/vendor/${vendorSlug}` && !window.location.search;
+                    console.log('🔴 isOnVendorHome:', isOnVendorHome);
                     
                     if (!isOnVendorHome) {
-                      // Navigate to home page with hash
+                      console.log('🔴 NAVIGATING TO VENDOR HOME WITH HASH:', `/vendor/${vendorSlug}#category-${category.slug}`);
+                      // Navigate to home page with hash (clears query params)
                       window.location.href = `/vendor/${vendorSlug}#category-${category.slug}`;
                     } else if (category.children && category.children.length > 0) {
+                      console.log('🔴 TOGGLING VENDOR DROPDOWN');
                       setActiveDropdown(activeDropdown === category.id ? null : category.id);
                     } else {
+                      console.log('🔴 SCROLLING TO VENDOR CATEGORY');
                       handleScrollToCategory(category.slug);
                     }
                   }}
