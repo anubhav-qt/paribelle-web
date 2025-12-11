@@ -72,37 +72,41 @@ export default function HomepageContent({
   const [cityId, setCityId] = useState<string | null>(null);
   const [subLocationId, setSubLocationId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
 
   // Handle mounting
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Handle location changes from URL params
+  // Handle location and search changes from URL params
   useEffect(() => {
     if (!mounted) return;
     
     const city = searchParams.get('cityId');
     const subLocation = searchParams.get('subLocationId');
+    const search = searchParams.get('search');
     
     setCityId(city);
     setSubLocationId(subLocation);
+    setSearchQuery(search);
   }, [searchParams, mounted]);
 
-  // Refetch products when location changes
+  // Refetch products when location or search changes
   useEffect(() => {
     if (!mounted) return;
     
-    if (cityId || subLocationId) {
+    if (cityId || subLocationId || searchQuery) {
       refetchProducts();
     }
-  }, [cityId, subLocationId, mounted]);
+  }, [cityId, subLocationId, searchQuery, mounted]);
 
   const refetchProducts = async () => {
     try {
       const params = new URLSearchParams();
       if (cityId) params.append('cityId', cityId);
       if (subLocationId) params.append('subLocationId', subLocationId);
+      if (searchQuery) params.append('search', searchQuery);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/homepage/data?${params.toString()}`

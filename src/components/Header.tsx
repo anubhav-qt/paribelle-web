@@ -75,10 +75,11 @@ export default function Header({
     if (onSearch) {
       onSearch(searchQuery);
     } else {
+      // Always redirect to home page with search query
       if (searchQuery.trim()) {
-        router.push(`/${locale}/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        router.push(`/${locale}?search=${encodeURIComponent(searchQuery.trim())}`);
       } else {
-        router.push(`/${locale}/search`);
+        router.push(`/${locale}`);
       }
     }
   };

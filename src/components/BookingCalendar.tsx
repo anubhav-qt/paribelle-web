@@ -302,10 +302,10 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
           disabled={!isAvailable}
           className={`
             h-12 rounded-lg text-sm font-medium transition-colors
-            ${!isAvailable ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50'}
+            ${!isAvailable ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover:bg-blue-50 dark:hover:bg-blue-950'}
             ${isSelected || isEndSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
-            ${inRange && !isSelected && !isEndSelected ? 'bg-blue-100 text-blue-900' : ''}
-            ${isAvailable && !isSelected && !isEndSelected && !inRange ? 'text-gray-900' : ''}
+            ${inRange && !isSelected && !isEndSelected ? 'bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-300' : ''}
+            ${isAvailable && !isSelected && !isEndSelected && !inRange ? 'text-foreground' : ''}
           `}
         >
           {day}
@@ -337,15 +337,15 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-card rounded-lg border border-border p-6">
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-2">Select {bookingData.durationUnit === 'days' ? 'Dates' : 'Date & Time'}</h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           {bookingData.durationUnit === 'days' 
             ? 'Select start and end dates for your booking'
             : 'Select a date and available time slot'}
         </p>
-        <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
           <Clock className="w-4 h-4" />
           <span>Duration: {getDurationText()}</span>
         </div>
@@ -356,7 +356,7 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
         <button
           type="button"
           onClick={previousMonth}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="p-2 hover:bg-muted rounded-lg"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -366,7 +366,7 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
         <button
           type="button"
           onClick={nextMonth}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="p-2 hover:bg-muted rounded-lg"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -375,7 +375,7 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
       {/* Day Headers */}
       <div className="grid grid-cols-7 gap-2 mb-2">
         {daysOfWeek.map((day) => (
-          <div key={day} className="text-center text-sm font-medium text-gray-600">
+          <div key={day} className="text-center text-sm font-medium text-muted-foreground">
             {day}
           </div>
         ))}
@@ -395,10 +395,10 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : availableTimeSlots.length === 0 ? (
-            <p className="text-sm text-gray-500">No time slots available for this date</p>
+            <p className="text-sm text-muted-foreground">No time slots available for this date</p>
           ) : (
             <>
-              <p className="text-sm text-gray-600 mb-2">Click slots to select multiple time slots</p>
+              <p className="text-sm text-muted-foreground mb-2">Click slots to select multiple time slots</p>
               <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
                 {availableTimeSlots.map((slot) => {
                   const slotKey = `${slot.startTime} - ${slot.endTime}`;
@@ -419,10 +419,10 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
                       className={`
                         px-4 py-2 rounded-lg text-sm font-medium border transition-colors
                         ${!slot.available
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed line-through'
+                          ? 'bg-muted text-muted-foreground border-border cursor-not-allowed line-through'
                           : isSelected
                           ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-600 hover:bg-blue-50'
+                          : 'bg-card text-foreground border-border hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950'
                         }
                       `}
                     >
@@ -448,7 +448,7 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
       {/* Selected Booking Summary */}
       {((bookingData.durationUnit === 'days' && selectedDate && selectedEndDate) ||
         (bookingData.durationUnit !== 'days' && selectedDate && selectedTimeSlots.length > 0)) && (
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
           <h4 className="font-semibold mb-2">Selected Booking</h4>
           <div className="text-sm space-y-1">
             {bookingData.durationUnit === 'days' ? (
@@ -466,14 +466,14 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
                   <p className="font-medium mb-1">Selected Slots ({selectedTimeSlots.length}):</p>
                   <div className="space-y-1 max-h-24 overflow-y-auto">
                     {selectedTimeSlots.map((slot, idx) => (
-                      <p key={idx} className="text-xs bg-white px-2 py-1 rounded">{slot}</p>
+                      <p key={idx} className="text-xs bg-background px-2 py-1 rounded">{slot}</p>
                     ))}
                   </div>
                 </div>
                 <p className="font-semibold mt-2">
                   Total: {getCurrencySymbol(currency)}{(price * selectedTimeSlots.length).toLocaleString()}
                   {selectedTimeSlots.length > 1 && (
-                    <span className="text-xs font-normal text-gray-600 ml-2">
+                    <span className="text-xs font-normal text-muted-foreground ml-2">
                       ({getCurrencySymbol(currency)}{price} × {selectedTimeSlots.length} slots)
                     </span>
                   )}

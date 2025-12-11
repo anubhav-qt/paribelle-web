@@ -215,7 +215,7 @@ function SearchContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <Header 
         showLocationFilter={false}
@@ -273,13 +273,13 @@ function SearchContent() {
                   
                   {/* Subcategories Dropdown */}
                   {category.children && category.children.length > 0 && activeDropdown === category.id && (
-                    <div className="absolute top-full left-0 mt-0 bg-white shadow-xl rounded-b-lg min-w-[200px] z-[9999] border border-t-0 py-2">
+                    <div className="absolute top-full left-0 mt-0 bg-card shadow-xl rounded-b-lg min-w-[200px] z-[9999] border border-t-0 py-2">
                       <button
                         onClick={() => {
                           setActiveDropdown(null);
                           handleCategoryNavigation(category.slug);
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-gray-800 hover:text-blue-600 hover:bg-blue-50 transition-colors border-b"
+                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors border-b border-border"
                       >
                         All {category.name}
                       </button>
@@ -290,7 +290,7 @@ function SearchContent() {
                             setActiveDropdown(null);
                             handleCategoryNavigation(subcat.slug);
                           }}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          className="block w-full text-left px-4 py-2 text-sm text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
                         >
                           {subcat.name}
                         </button>
@@ -310,13 +310,13 @@ function SearchContent() {
           {/* Filters Sidebar */}
           {categoryDisplayMode === 'sidebar' && (
             <div className="w-64 flex-shrink-0">
-              <div className="bg-white rounded-lg shadow p-6 sticky top-24">
+              <div className="bg-card rounded-lg shadow p-6 sticky top-24">
                 <h2 className="text-lg font-semibold mb-4">Filters</h2>
                 
                 <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Categories</h3>
+                  <h3 className="text-sm font-medium text-foreground mb-3">Categories</h3>
                   <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                    <label className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
+                    <label className="flex items-center cursor-pointer hover:bg-muted p-1 rounded">
                       <input
                         type="radio"
                         name="category"
@@ -330,7 +330,7 @@ function SearchContent() {
                       <div
                         key={category.id}
                         onClick={() => handleCategoryNavigation(category.slug)}
-                        className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded"
+                        className="flex items-center cursor-pointer hover:bg-muted p-1 rounded"
                         style={{ marginLeft: `${category.level * 16}px` }}
                       >
                         <span className={`text-sm ${category.level === 0 ? 'font-semibold' : ''}`}>
@@ -347,10 +347,10 @@ function SearchContent() {
           {/* Results */}
           <div className="flex-1">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-foreground">
                 {productType === 'booking' ? 'Bookings & Services' : (searchQuery ? `Search Results for "${searchQuery}"` : 'All Products')}
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-muted-foreground mt-1">
                 {loading ? 'Loading...' : `${totalCount} product${totalCount !== 1 ? 's' : ''} found`}
               </p>
             </div>
@@ -358,13 +358,13 @@ function SearchContent() {
             {loading ? (
               <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-gray-600">Loading products...</p>
+                <p className="mt-4 text-muted-foreground">Loading products...</p>
               </div>
             ) : products.length === 0 ? (
               <div className="text-center py-12">
-                <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-gray-700 mb-2">No Products Found</h2>
-                <p className="text-gray-600">Try adjusting your search terms or filters</p>
+                <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-foreground mb-2">No Products Found</h2>
+                <p className="text-muted-foreground">Try adjusting your search terms or filters</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -372,9 +372,9 @@ function SearchContent() {
                   <Link
                     key={product.id}
                     href={`/products/${product.slug}`}
-                    className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                    className="group bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
                   >
-                    <div className="aspect-square bg-gray-100 overflow-hidden relative">
+                    <div className="aspect-square bg-muted overflow-hidden relative">
                       <img
                         src={getProductImageUrl(product)}
                         alt={product.name}
@@ -395,11 +395,11 @@ function SearchContent() {
                       )}
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                      <h3 className="font-semibold text-foreground mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">
                         {product.name}
                       </h3>
                       {product.shortDescription && (
-                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
                           {product.shortDescription}
                         </p>
                       )}
@@ -415,10 +415,10 @@ function SearchContent() {
                         </span>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-xl font-bold text-gray-900">
+                        <span className="text-xl font-bold text-foreground">
                           {getCurrencySymbol(currency)}{Number(product.price).toFixed(2)}
                           {product.productType === 'booking' && product.attributes?.booking?.durationUnit && (
-                            <span className="text-sm font-normal text-gray-600">
+                            <span className="text-sm font-normal text-muted-foreground">
                               /{product.attributes.booking.durationUnit === 'hours' ? 'hr' : product.attributes.booking.durationUnit === 'days' ? 'day' : 'session'}
                             </span>
                           )}
@@ -439,14 +439,14 @@ function SearchContent() {
             {loadingMore && (
               <div className="mt-8 text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-gray-600">Loading more products...</p>
+                <p className="mt-4 text-muted-foreground">Loading more products...</p>
               </div>
             )}
 
             {/* End of Results Message */}
             {!loading && !hasMore && products.length > 0 && (
               <div className="mt-8 text-center py-8">
-                <p className="text-gray-600">You've reached the end of the results</p>
+                <p className="text-muted-foreground">You've reached the end of the results</p>
               </div>
             )}
           </div>

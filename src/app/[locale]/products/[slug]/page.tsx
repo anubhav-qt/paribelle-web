@@ -62,6 +62,8 @@ interface Product {
 export default function ProductDetailPage() {
   const params = useParams();
   const productSlug = params.slug as string;
+  const locale = params.locale as string || 'en';
+  const router = useRouter();
   const { addToCart } = useCart();
   
   const [product, setProduct] = useState<Product | null>(null);
@@ -139,17 +141,18 @@ export default function ProductDetailPage() {
         const endDate = new Date(selectedBooking.endDate);
         const bookings = [];
 
-        // Create a booking for each day in the range
+        // Create a booking for each day in the range with PENDING status
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          const dateString = new Date(d).toISOString().split('T')[0]; // Create snapshot of current date
           const bookingData = {
             productId: product.id,
             vendorId: product.vendorId || '',
             userId: user.id,
-            bookingDate: d.toISOString().split('T')[0],
+            bookingDate: dateString,
             startTime: null,
             endTime: null,
             totalPrice: Number(product.price),
-            status: 'confirmed',
+            status: 'pending',
           };
           bookings.push(bookingData);
         }
@@ -170,15 +173,22 @@ export default function ProductDetailPage() {
         const allSuccessful = responses.every(r => r.ok);
 
         if (allSuccessful) {
-          console.log('All bookings created successfully');
-          alert(
-            `Booking Confirmed!\n\n` +
-            `Date: ${selectedBooking.startDate.toLocaleDateString()} - ${selectedBooking.endDate.toLocaleDateString()}\n` +
-            `Total: ${getCurrencySymbol(currency)}${selectedBooking.totalPrice.toLocaleString()}\n\n` +
-            `Your booking has been confirmed!`
-          );
-          setSelectedBooking(null);
-          setCalendarKey(prev => prev + 1);
+          // Get the first booking ID for checkout redirect
+          const firstBookingData = await responses[0].json();
+          console.log('First booking response:', firstBookingData);
+          const bookingIds = [firstBookingData.id];
+          
+          // Get other booking IDs
+          for (let i = 1; i < responses.length; i++) {
+            const data = await responses[i].json();
+            console.log(`Booking ${i} response:`, data);
+            bookingIds.push(data.id);
+          }
+          
+          console.log('All bookings created successfully, redirecting to checkout');
+          console.log('Booking IDs:', bookingIds);
+          // Redirect to checkout with booking IDs
+          router.push(`/${locale}/checkout/booking?bookingIds=${bookingIds.join(',')}`);
         } else {
           alert('Some bookings failed. Please try again.');
         }
@@ -187,7 +197,7 @@ export default function ProductDetailPage() {
         const selectedSlots = selectedBooking.selectedSlots || [];
         
         if (selectedSlots.length > 1) {
-          // Multiple slots - create a booking for each slot
+          // Multiple slots - create a booking for each slot with PENDING status
           const bookings = selectedSlots.map((slot: string) => {
             const [startTime, endTime] = slot.split(' - ').map((t: string) => t.trim());
             return {
@@ -198,7 +208,7 @@ export default function ProductDetailPage() {
               startTime,
               endTime,
               totalPrice: Number(product.price),
-              status: 'confirmed',
+              status: 'pending',
             };
           });
 
@@ -217,20 +227,21 @@ export default function ProductDetailPage() {
           const allSuccessful = responses.every((r: Response) => r.ok);
 
           if (allSuccessful) {
-            alert(
-              `Booking Confirmed!\n\n` +
-              `Date: ${selectedBooking.startDate.toLocaleDateString()}\n` +
-              `Slots: ${selectedSlots.length}\n` +
-              `Total: ${getCurrencySymbol(currency)}${selectedBooking.totalPrice.toLocaleString()}\n\n` +
-              `Your bookings have been confirmed!`
-            );
-            setSelectedBooking(null);
-            setCalendarKey(prev => prev + 1);
+            // Get all booking IDs
+            const bookingIds = [];
+            for (const response of responses) {
+              const data = await response.json();
+              bookingIds.push(data.id);
+            }
+            
+            console.log('All bookings created successfully, redirecting to checkout');
+            // Redirect to checkout with booking IDs
+            router.push(`/${locale}/checkout/booking?bookingIds=${bookingIds.join(',')}`);
           } else {
             alert('Some bookings failed. Please try again.');
           }
         } else {
-          // Single slot booking
+          // Single slot booking with PENDING status
           const bookingData = {
             productId: product.id,
             vendorId: product.vendorId || '',
@@ -239,7 +250,7 @@ export default function ProductDetailPage() {
             startTime: selectedBooking.startTime || null,
             endTime: selectedBooking.endTime || null,
             totalPrice: selectedBooking.totalPrice,
-            status: 'confirmed',
+            status: 'pending',
           };
 
           console.log('Creating booking with data:', bookingData);
@@ -256,15 +267,8 @@ export default function ProductDetailPage() {
           if (response.ok) {
             const result = await response.json();
             console.log('Booking created successfully:', result);
-            alert(
-              `Booking Confirmed!\n\n` +
-              `Date: ${selectedBooking.startDate.toLocaleDateString()}\n` +
-              `Time: ${selectedBooking.startTime} - ${selectedBooking.endTime}\n` +
-              `Total: ${getCurrencySymbol(currency)}${selectedBooking.totalPrice.toLocaleString()}\n\n` +
-              `Your booking has been confirmed!`
-            );
-            setSelectedBooking(null);
-            setCalendarKey(prev => prev + 1);
+            // Redirect to checkout with booking ID
+            router.push(`/${locale}/checkout/booking?bookingIds=${result.id}`);
           } else {
             const error = await response.json();
             alert(`Failed to create booking: ${JSON.stringify(error)}`);
