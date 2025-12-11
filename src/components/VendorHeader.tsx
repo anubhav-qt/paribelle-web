@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { ShoppingCart, Search, Menu, X } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -23,6 +23,7 @@ export default function VendorHeader({
   initialSearchQuery = ''
 }: VendorHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { totalItems } = useCart();
   const [user, setUser] = useState<any>(null);
   const [vendor, setVendor] = useState<any>(null);
@@ -66,6 +67,19 @@ export default function VendorHeader({
     setUser(null);
     router.push('/');
   };
+
+  // Memoize dashboard URL to prevent infinite re-renders
+  const dashboardUrl = useMemo(() => {
+    if (!user) return '/login';
+    
+    // If user is a vendor, go to vendor dashboard
+    if (user.role === 'vendor_admin') {
+      return '/vendor/dashboard';
+    }
+    
+    // For buyers, use locale-based dashboard (middleware will handle rewrite on vendor subdomains)
+    return '/en/dashboard';
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-40 bg-card shadow-md">
@@ -126,7 +140,7 @@ export default function VendorHeader({
             {user && (
               <>
                 <Link
-                  href="/dashboard"
+                  href={dashboardUrl}
                   className="hidden md:block px-4 py-2 text-foreground hover:text-primary transition-colors font-medium"
                 >
                   {user.firstName || user.email}
@@ -172,7 +186,7 @@ export default function VendorHeader({
             {user ? (
               <>
                 <Link
-                  href="/dashboard"
+                  href={dashboardUrl}
                   onClick={() => setMobileMenuOpen(false)}
                   className="block py-2 px-4 text-foreground hover:bg-accent rounded-md transition-colors"
                 >

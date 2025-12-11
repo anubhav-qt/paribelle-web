@@ -50,6 +50,14 @@ export async function middleware(request: NextRequest) {
     const localePrefix = isLocale ? `/${maybeLocale}` : '';
     const remainingPath = isLocale ? pathSegments.slice(1) : pathSegments;
     
+    // Handle /dashboard route - rewrite to locale-based dashboard
+    if (pathname === '/dashboard') {
+      url.pathname = `/${routing.defaultLocale}/dashboard`;
+      const rewriteResponse = NextResponse.rewrite(url);
+      rewriteResponse.headers.set('x-vendor-slug', subdomain);
+      return rewriteResponse;
+    }
+    
     if (remainingPath.length === 0) {
       url.pathname = `${localePrefix}/vendor/${subdomain}`;
     } else if (remainingPath[0] === 'products' && remainingPath[1]) {
