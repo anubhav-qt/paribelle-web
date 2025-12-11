@@ -330,12 +330,11 @@ export default function CategoryNav({
                     // If no vendorSlug, we're on main marketplace
                     if (!vendorSlug) {
                       console.log('🔴 NO VENDOR SLUG BRANCH');
-                      // Check if we're on the homepage (no query params)
-                      const isOnHomepage = (pathname === `/${locale}` || pathname === '/') && !window.location.search;
+                      // Check if we're on the homepage (ignore query params for filters/search)
+                      const isOnHomepage = pathname === `/${locale}` || pathname === '/';
                       console.log('🔴 isOnHomepage:', isOnHomepage);
                       console.log('🔴 pathname === `/${locale}`:', pathname === `/${locale}`);
                       console.log('🔴 pathname === \'/\':', pathname === '/');
-                      console.log('🔴 !window.location.search:', !window.location.search);
                       
                       if (!isOnHomepage) {
                         console.log('🔴 NAVIGATING TO HOME WITH HASH:', `/${locale}#category-${category.slug}`);
@@ -352,8 +351,8 @@ export default function CategoryNav({
                     }
                     
                     console.log('🔴 VENDOR SLUG BRANCH');
-                    // Check if we're on vendor home page (no query params)
-                    const isOnVendorHome = pathname === `/vendor/${vendorSlug}` && !window.location.search;
+                    // Check if we're on vendor home page (ignore query params for filters/search)
+                    const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
                     console.log('🔴 isOnVendorHome:', isOnVendorHome);
                     
                     if (!isOnVendorHome) {
