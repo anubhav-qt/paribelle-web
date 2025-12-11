@@ -135,6 +135,22 @@ export default function Header({
                   onFilterChange={(newCityId, newSubLocationId) => {
                     setCityId(newCityId || '');
                     setSubLocationId(newSubLocationId || '');
+                    
+                    // Update URL with location parameters
+                    const params = new URLSearchParams(window.location.search);
+                    if (newCityId) {
+                      params.set('cityId', newCityId);
+                    } else {
+                      params.delete('cityId');
+                    }
+                    if (newSubLocationId) {
+                      params.set('subLocationId', newSubLocationId);
+                    } else {
+                      params.delete('subLocationId');
+                    }
+                    
+                    const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+                    router.push(newUrl);
                   }}
                 />
               </div>

@@ -73,6 +73,7 @@ export default function HomepageContent({
   const [subLocationId, setSubLocationId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // Handle mounting
   useEffect(() => {
@@ -90,35 +91,107 @@ export default function HomepageContent({
     setCityId(city);
     setSubLocationId(subLocation);
     setSearchQuery(search);
+    
+    // Trigger refetch whenever params change
+    refetchProducts(city, subLocation, search);
   }, [searchParams, mounted]);
 
-  // Refetch products when location or search changes
-  useEffect(() => {
-    if (!mounted) return;
-    
-    if (cityId || subLocationId || searchQuery) {
-      refetchProducts();
-    }
-  }, [cityId, subLocationId, searchQuery, mounted]);
-
-  const refetchProducts = async () => {
+  const refetchProducts = async (city?: string | null, subLocation?: string | null, search?: string | null) => {
     try {
+      setLoading(true);
       const params = new URLSearchParams();
-      if (cityId) params.append('cityId', cityId);
-      if (subLocationId) params.append('subLocationId', subLocationId);
-      if (searchQuery) params.append('search', searchQuery);
+      const finalCity = city !== undefined ? city : cityId;
+      const finalSubLocation = subLocation !== undefined ? subLocation : subLocationId;
+      const finalSearch = search !== undefined ? search : searchQuery;
+      
+      // Always fetch all products, then filter client-side
+      console.log('Fetching homepage data for filtering - city:', finalCity, 'subLocation:', finalSubLocation, 'search:', finalSearch);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/homepage/data?${params.toString()}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/homepage/data`
       );
       
       if (response.ok) {
         const data = await response.json();
-        setProductsByCategory(data.productsByCategory);
-        setUncategorizedProducts(data.uncategorizedProducts);
+        let productsToFilter = data.productsByCategory as Record<string, Product[]>;
+        let uncategorizedToFilter = data.uncategorizedProducts as Product[];
+        
+        // Filter by location if city or sublocation is selected
+        if (finalCity || finalSubLocation) {
+          const filteredByCategory: Record<string, Product[]> = {};
+          
+          Object.entries(productsToFilter).forEach(([slug, products]) => {
+            const filtered = products.filter((p: Product) => {
+              // Check if product vendor matches location criteria
+              if (finalSubLocation && p.vendor?.subLocationId) {
+                return p.vendor.subLocationId === finalSubLocation;
+              }
+              if (finalCity && p.vendor?.cityId) {
+                return p.vendor.cityId === finalCity;
+              }
+              return false;
+            });
+            if (filtered.length > 0) {
+              filteredByCategory[slug] = filtered;
+            }
+          });
+          
+          uncategorizedToFilter = uncategorizedToFilter.filter((p: Product) => {
+            if (finalSubLocation && p.vendor?.subLocationId) {
+              return p.vendor.subLocationId === finalSubLocation;
+            }
+            if (finalCity && p.vendor?.cityId) {
+              return p.vendor.cityId === finalCity;
+            }
+            return false;
+          });
+          
+          productsToFilter = filteredByCategory;
+          
+          console.log('Location filter results:', {
+            categories: Object.keys(filteredByCategory).length,
+            uncategorized: uncategorizedToFilter.length
+          });
+        }
+        
+        // If searching, filter further by search term
+        if (finalSearch) {
+          const searchLower = finalSearch.toLowerCase();
+          const filteredByCategory: Record<string, Product[]> = {};
+          
+          // Filter products in each category
+          Object.entries(productsToFilter).forEach(([slug, products]) => {
+            const filtered = products.filter((p: Product) => 
+              p.name.toLowerCase().includes(searchLower) ||
+              p.shortDescription?.toLowerCase().includes(searchLower)
+            );
+            if (filtered.length > 0) {
+              filteredByCategory[slug] = filtered;
+            }
+          });
+          
+          // Filter uncategorized products
+          uncategorizedToFilter = uncategorizedToFilter.filter((p: Product) =>
+            p.name.toLowerCase().includes(searchLower) ||
+            p.shortDescription?.toLowerCase().includes(searchLower)
+          );
+          
+          console.log('Search results:', {
+            categories: Object.keys(filteredByCategory).length,
+            uncategorized: uncategorizedToFilter.length
+          });
+          
+          setProductsByCategory(filteredByCategory);
+          setUncategorizedProducts(uncategorizedToFilter);
+        } else {
+          setProductsByCategory(productsToFilter);
+          setUncategorizedProducts(uncategorizedToFilter);
+        }
       }
     } catch (error) {
       console.error('Error refetching products:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -169,7 +242,28 @@ export default function HomepageContent({
 
       {/* Main Content with Sidebar */}
       <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-6">
+        {/* Search Results Header */}
+        {searchQuery && (
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-foreground">
+              Search Results for "{searchQuery}"
+            </h2>
+            <p className="text-muted-foreground mt-1">
+              {loading ? 'Searching...' : 'Showing all matching products'}
+            </p>
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-muted-foreground">Loading products...</p>
+          </div>
+        )}
+
+        {!loading && (
+          <div className="flex gap-6">
           {/* Left Sidebar - Categories Tree */}
           {categoryDisplayMode === 'sidebar' && (
             <aside className="hidden lg:block w-64 flex-shrink-0">
@@ -198,10 +292,66 @@ export default function HomepageContent({
 
           {/* Main Content Area */}
           <div className="flex-1 space-y-8">
-            {/* Categories with Products */}
+            {/* Booking Products Section - Show first when searching */}
+            {searchQuery && (() => {
+              // Collect all booking products from all categories and uncategorized
+              const allBookingProducts: Product[] = [];
+              
+              // Get booking products from categorized products
+              Object.values(productsByCategory).forEach(products => {
+                products.forEach(product => {
+                  if (product.productType === 'booking') {
+                    allBookingProducts.push(product);
+                  }
+                });
+              });
+              
+              // Get booking products from uncategorized
+              uncategorizedProducts.forEach(product => {
+                if (product.productType === 'booking') {
+                  allBookingProducts.push(product);
+                }
+              });
+              
+              if (allBookingProducts.length === 0) return null;
+              
+              return (
+                <section
+                  id="bookings-services-section"
+                  className="bg-white rounded-lg shadow-sm p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Bookings & Services</h2>
+                      <p className="text-gray-600 text-sm">Book appointments and services</p>
+                    </div>
+                    <Link
+                      href={`/${locale}/search?type=booking&q=${encodeURIComponent(searchQuery)}`}
+                      className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
+                    >
+                      View All
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+
+                  <ProductGrid
+                    products={allBookingProducts}
+                    currency={currency}
+                    isLocationFilterActive={isLocationFilterActive}
+                  />
+                </section>
+              );
+            })()}
+
+            {/* Categories with Products - Filter out booking products when searching */}
             {categories.map((category) => {
               const categoryProducts = productsByCategory[category.slug] || [];
-              if (categoryProducts.length === 0) return null;
+              // When searching, filter out booking products from regular categories
+              const filteredProducts = searchQuery 
+                ? categoryProducts.filter(p => p.productType !== 'booking')
+                : categoryProducts;
+              
+              if (filteredProducts.length === 0) return null;
 
               return (
                 <section
@@ -228,7 +378,7 @@ export default function HomepageContent({
                   </div>
 
                   <ProductGrid
-                    products={categoryProducts}
+                    products={filteredProducts}
                     currency={currency}
                     isLocationFilterActive={isLocationFilterActive}
                   />
@@ -236,25 +386,34 @@ export default function HomepageContent({
               );
             })}
 
-            {/* Uncategorized Products Section */}
-            {uncategorizedProducts.length > 0 && (
-              <section id="more-products-section" className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">More Products</h2>
-                    <p className="text-gray-600 text-sm">Discover other amazing products</p>
+            {/* Uncategorized Products Section - Filter out booking products when searching */}
+            {(() => {
+              const filteredUncategorized = searchQuery
+                ? uncategorizedProducts.filter(p => p.productType !== 'booking')
+                : uncategorizedProducts;
+              
+              if (filteredUncategorized.length === 0) return null;
+              
+              return (
+                <section id="more-products-section" className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">More Products</h2>
+                      <p className="text-gray-600 text-sm">Discover other amazing products</p>
+                    </div>
                   </div>
-                </div>
 
-                <ProductGrid
-                  products={uncategorizedProducts}
-                  currency={currency}
-                  isLocationFilterActive={isLocationFilterActive}
-                />
-              </section>
-            )}
+                  <ProductGrid
+                    products={filteredUncategorized}
+                    currency={currency}
+                    isLocationFilterActive={isLocationFilterActive}
+                  />
+                </section>
+              );
+            })()}
           </div>
         </div>
+        )}
       </div>
     </>
   );
