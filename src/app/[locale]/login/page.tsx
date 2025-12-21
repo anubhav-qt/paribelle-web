@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { setAuthCookie } from '@/lib/cross-domain-auth';
 
 function LoginContent() {
   const router = useRouter();
@@ -26,29 +27,9 @@ function LoginContent() {
       console.log('User already logged in, handling redirect...');
       // User is already logged in, redirect immediately
       if (returnUrl) {
-        console.log('Return URL exists:', returnUrl);
-        // If returnUrl is a vendor subdomain, append token as URL param
-        try {
-          const returnUrlObj = new URL(returnUrl);
-          const currentHostname = window.location.hostname;
-          console.log('Return URL hostname:', returnUrlObj.hostname);
-          console.log('Current hostname:', currentHostname);
-          
-          if (returnUrlObj.hostname !== currentHostname && returnUrlObj.hostname.includes('localhost')) {
-            // It's a subdomain, add token to URL
-            console.log('Different subdomain detected (already logged in), adding authToken to URL');
-            returnUrlObj.searchParams.set('authToken', token);
-            const redirectUrl = returnUrlObj.toString();
-            console.log('Redirecting to:', redirectUrl);
-            window.location.href = redirectUrl;
-          } else {
-            console.log('Same domain (already logged in), redirecting without token in URL');
-            window.location.href = returnUrl;
-          }
-        } catch (error) {
-          console.error('URL parsing failed:', error);
-          window.location.href = returnUrl;
-        }
+        // Cookie is already set with .localhost domain, so it will be available on all subdomains
+        console.log('Redirecting to returnUrl (cookie will be automatically available):', returnUrl);
+        window.location.href = returnUrl;
       } else {
         try {
           const user = JSON.parse(userStr);
@@ -112,41 +93,16 @@ function LoginContent() {
         localStorage.removeItem('savedPassword');
       }
       
-      // Set cookie for middleware and cross-subdomain auth
-      // Use .localhost domain to share cookie across subdomains in development
-      const domain = window.location.hostname.includes('localhost') ? '.localhost' : window.location.hostname;
-      document.cookie = `token=${data.access_token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; domain=${domain}`;
+      // Set cookie for middleware and cross-subdomain auth using secure utility
+      setAuthCookie('token', data.access_token);
       
-      console.log('Login successful, token stored in cookie with domain:', domain);
+      console.log('Login successful, token stored in secure cross-domain cookie');
       
       // Redirect based on returnUrl or role
       if (returnUrl) {
-        // If there's a return URL, redirect to it (for vendor subdomain returns)
-        console.log('Redirecting to returnUrl:', returnUrl);
-        
-        // If returnUrl is a vendor subdomain, append token as URL param so the subdomain can set its own cookie
-        try {
-          const returnUrlObj = new URL(returnUrl);
-          const currentHostname = window.location.hostname;
-          console.log('Return URL hostname:', returnUrlObj.hostname);
-          console.log('Current hostname:', currentHostname);
-          
-          if (returnUrlObj.hostname !== currentHostname && returnUrlObj.hostname.includes('localhost')) {
-            // It's a subdomain, add token to URL
-            console.log('Different subdomain detected, adding authToken to URL');
-            returnUrlObj.searchParams.set('authToken', data.access_token);
-            const redirectUrl = returnUrlObj.toString();
-            console.log('Redirecting to:', redirectUrl);
-            window.location.href = redirectUrl;
-          } else {
-            console.log('Same domain, redirecting without token in URL');
-            window.location.href = returnUrl;
-          }
-        } catch (error) {
-          // If URL parsing fails, just redirect normally
-          console.error('URL parsing failed:', error);
-          window.location.href = returnUrl;
-        }
+        // Cookie is already set with .localhost domain, so it will be available on all subdomains
+        console.log('Redirecting to returnUrl (cookie will be automatically available):', returnUrl);
+        window.location.href = returnUrl;
       } else if (data.user.role === 'vendor_admin') {
         router.push('/vendor/dashboard');
       } else if (data.user.role === 'super_admin') {

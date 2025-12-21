@@ -13,12 +13,28 @@ import {
   ChevronRight,
   Lock,
   ArrowLeft,
-  Clock
+  Clock,
+  Plus,
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 
-type CheckoutStep = 'review' | 'payment' | 'confirmation';
+type CheckoutStep = 'review' | 'address' | 'payment' | 'confirmation';
+
+interface Address {
+  id?: string;
+  fullName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault?: boolean;
+}
 
 interface Booking {
   id: string;
@@ -49,6 +65,20 @@ function BookingCheckoutContent() {
   const [currency, setCurrency] = useState('INR');
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [orderId, setOrderId] = useState<string>('');
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [addressForm, setAddressForm] = useState<Address>({
+    fullName: '',
+    phone: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'India',
+  });
 
   useEffect(() => {
     // Fetch marketplace branding
@@ -353,7 +383,7 @@ function BookingCheckoutContent() {
   };
 
   const getStepNumber = (step: CheckoutStep): number => {
-    const steps: CheckoutStep[] = ['review', 'payment', 'confirmation'];
+    const steps: CheckoutStep[] = ['review', 'address', 'payment', 'confirmation'];
     return steps.indexOf(step) + 1;
   };
 
@@ -442,7 +472,7 @@ function BookingCheckoutContent() {
         {/* Progress Steps */}
         <div className="max-w-4xl mx-auto mb-8">
           <div className="flex items-center justify-between">
-            {(['review', 'payment'] as CheckoutStep[]).map((step, index) => (
+            {(['review', 'address', 'payment'] as CheckoutStep[]).map((step, index) => (
               <div key={step} className="flex items-center flex-1">
                 <div className="flex items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -460,9 +490,9 @@ function BookingCheckoutContent() {
                     {step}
                   </span>
                 </div>
-                {index < 1 && (
+                {index < 2 && (
                   <div className={`flex-1 h-1 mx-4 ${
-                    isStepCompleted((['review', 'payment'] as CheckoutStep[])[index + 1])
+                    isStepCompleted((['review', 'address', 'payment'] as CheckoutStep[])[index + 1])
                       ? 'bg-blue-600'
                       : 'bg-muted'
                   }`} />
@@ -511,12 +541,221 @@ function BookingCheckoutContent() {
                 </div>
 
                 <button
-                  onClick={() => setCurrentStep('payment')}
+                  onClick={() => setCurrentStep('address')}
                   className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
                 >
-                  Proceed to Payment
+                  Proceed to Address
                   <ChevronRight className="w-5 h-5" />
                 </button>
+              </div>
+            )}
+
+            {currentStep === 'address' && (
+              <div className="bg-card rounded-lg shadow-sm p-6">
+                <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+                  <MapPin className="w-6 h-6" />
+                  Service Address
+                </h2>
+
+                {!showAddressForm ? (
+                  <div className="space-y-4">
+                    {/* Saved Addresses */}
+                    {addresses.length > 0 ? (
+                      addresses.map((addr, index) => (
+                        <label
+                          key={index}
+                          className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition ${
+                            selectedAddress === addr
+                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                              : 'border-border hover:border-blue-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="address"
+                            checked={selectedAddress === addr}
+                            onChange={() => setSelectedAddress(addr)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-semibold text-foreground">{addr.fullName}</p>
+                              {addr.isDefault && (
+                                <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">Default</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{addr.addressLine1}</p>
+                            {addr.addressLine2 && (
+                              <p className="text-sm text-muted-foreground">{addr.addressLine2}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                              {addr.city}, {addr.state} - {addr.postalCode}
+                            </p>
+                            <p className="text-sm text-muted-foreground">Phone: {addr.phone}</p>
+                          </div>
+                        </label>
+                      ))
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">
+                        No saved addresses. Add a new address to continue.
+                      </p>
+                    )}
+
+                    {/* Add New Address Button */}
+                    <button
+                      onClick={() => {
+                        setShowAddressForm(true);
+                        setEditingAddress(null);
+                        setAddressForm({
+                          fullName: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : '',
+                          phone: user?.phone || '',
+                          addressLine1: '',
+                          addressLine2: '',
+                          city: '',
+                          state: '',
+                          postalCode: '',
+                          country: 'India',
+                        });
+                      }}
+                      className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-lg hover:border-blue-500 hover:bg-muted transition text-muted-foreground"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Add New Address
+                    </button>
+
+                    {/* Navigation Buttons */}
+                    <div className="flex gap-4 mt-6">
+                      <button
+                        onClick={() => setCurrentStep('review')}
+                        className="flex-1 border border-border text-foreground py-3 rounded-lg hover:bg-muted transition flex items-center justify-center gap-2"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                        Back
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!selectedAddress) {
+                            alert('Please select or add an address');
+                            return;
+                          }
+                          setCurrentStep('payment');
+                        }}
+                        className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                      >
+                        Continue to Payment
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Address Form */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Full Name *</label>
+                        <input
+                          type="text"
+                          value={addressForm.fullName}
+                          onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+                          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Phone Number *</label>
+                        <input
+                          type="tel"
+                          value={addressForm.phone}
+                          onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Address Line 1 *</label>
+                      <input
+                        type="text"
+                        value={addressForm.addressLine1}
+                        onChange={(e) => setAddressForm({ ...addressForm, addressLine1: e.target.value })}
+                        placeholder="House No., Building Name"
+                        className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Address Line 2</label>
+                      <input
+                        type="text"
+                        value={addressForm.addressLine2}
+                        onChange={(e) => setAddressForm({ ...addressForm, addressLine2: e.target.value })}
+                        placeholder="Street, Area, Landmark"
+                        className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">City *</label>
+                        <input
+                          type="text"
+                          value={addressForm.city}
+                          onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">State *</label>
+                        <input
+                          type="text"
+                          value={addressForm.state}
+                          onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Postal Code *</label>
+                        <input
+                          type="text"
+                          value={addressForm.postalCode}
+                          onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
+                          maxLength={6}
+                          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Form Actions */}
+                    <div className="flex gap-4 mt-6">
+                      <button
+                        onClick={() => setShowAddressForm(false)}
+                        className="flex-1 border border-border text-foreground py-3 rounded-lg hover:bg-muted transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Validate address
+                          if (!addressForm.fullName || !addressForm.phone || !addressForm.addressLine1 || 
+                              !addressForm.city || !addressForm.state || !addressForm.postalCode) {
+                            alert('Please fill in all required fields');
+                            return;
+                          }
+                          
+                          // Add address to list
+                          setAddresses([...addresses, { ...addressForm, isDefault: addresses.length === 0 }]);
+                          setSelectedAddress(addressForm);
+                          setShowAddressForm(false);
+                        }}
+                        className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Save Address
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -561,7 +800,7 @@ function BookingCheckoutContent() {
 
                 <div className="flex gap-4 mt-6">
                   <button
-                    onClick={() => setCurrentStep('review')}
+                    onClick={() => setCurrentStep('address')}
                     className="flex-1 border border-border text-foreground py-3 rounded-lg hover:bg-muted transition flex items-center justify-center gap-2"
                   >
                     <ArrowLeft className="w-5 h-5" />

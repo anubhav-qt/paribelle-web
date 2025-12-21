@@ -40,14 +40,46 @@ export default function VendorHeader({
       .catch(err => console.error('Error fetching vendor:', err));
 
     // Check for user
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (err) {
-        console.error('Error parsing user data:', err);
+    const checkUser = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (err) {
+          console.error('Error parsing user data:', err);
+        }
       }
-    }
+    };
+    
+    checkUser();
+    
+    // Listen for custom auth-synced event
+    const handleAuthSynced = () => {
+      console.log('VendorHeader: Auth synced, reloading user');
+      checkUser();
+    };
+    
+    window.addEventListener('auth-synced', handleAuthSynced);
+    
+    // Listen for storage changes (when auth is synced from cookie)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user' && e.newValue) {
+        try {
+          setUser(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error('Error parsing user data from storage event:', err);
+        }
+      } else if (e.key === 'user' && !e.newValue) {
+        setUser(null);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('auth-synced', handleAuthSynced);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [vendorSlug]);
 
   const handleSearch = (e: React.FormEvent) => {

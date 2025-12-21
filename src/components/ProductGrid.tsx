@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Star, Calendar, ExternalLink } from 'lucide-react';
+import { Star, Calendar, ExternalLink, Heart } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getProductImageUrl } from '@/lib/image-url';
 import { useLocale } from 'next-intl';
+import { useWishlist } from '@/contexts/WishlistContext';
 
 interface Category {
   id: string;
@@ -58,6 +59,7 @@ export default function ProductGrid({
   showLocationInfo = true 
 }: ProductGridProps) {
   const locale = useLocale();
+  const { isInWishlist, toggleWishlist } = useWishlist();
   const getDiscount = (price: string | number, compareAtPrice?: string | number) => {
     if (!compareAtPrice || Number(compareAtPrice) <= Number(price)) return null;
     return Math.round(((Number(compareAtPrice) - Number(price)) / Number(compareAtPrice)) * 100);
@@ -81,7 +83,33 @@ export default function ProductGrid({
     }
 
     return (
-      <div key={product.id} className="group/card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-all bg-card">
+      <div key={product.id} className="group/card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-all bg-card relative">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            toggleWishlist({
+              productId: product.id,
+              name: product.name,
+              slug: product.slug,
+              price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+              image: getProductImageUrl(product),
+              vendorId: product.vendor?.id || '',
+              vendorName: product.vendor?.businessName || product.vendor?.name || '',
+              vendorSlug: product.vendor?.subdomain,
+              addedAt: Date.now(),
+            });
+          }}
+          className="absolute top-3 right-3 z-10 p-2 bg-white/90 dark:bg-gray-800/90 rounded-full hover:bg-white dark:hover:bg-gray-800 transition-all shadow-md"
+          aria-label="Add to wishlist"
+        >
+          <Heart 
+            className={`w-5 h-5 ${
+              isInWishlist(product.id) 
+                ? 'fill-red-600 text-red-600' 
+                : 'text-gray-600 dark:text-gray-300'
+            }`} 
+          />
+        </button>
         <Link href={`/${locale}/products/${product.slug}`} className="block">
           <div className="relative aspect-square overflow-hidden bg-muted">
             <img
@@ -136,16 +164,15 @@ export default function ProductGrid({
         </Link>
         {product.vendor?.subdomain && (
           <div className="px-4 pb-3">
-            <span
-              onClick={(e) => {
-                e.preventDefault();
-                window.open(`http://${product.vendor?.subdomain}.localhost:3000`, '_blank', 'noopener,noreferrer');
-              }}
-              className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 cursor-pointer"
+            <a
+              href={`http://${product.vendor?.subdomain}.localhost:3000`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80"
             >
               <span>{product.vendor.businessName || product.vendor.name}</span>
               <ExternalLink className="w-3 h-3" />
-            </span>
+            </a>
           </div>
         )}
       </div>

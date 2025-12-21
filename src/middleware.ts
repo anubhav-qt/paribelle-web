@@ -47,19 +47,20 @@ export async function middleware(request: NextRequest) {
     
     const maybeLocale = pathSegments[0];
     const isLocale = routing.locales.includes(maybeLocale as any);
-    const localePrefix = isLocale ? `/${maybeLocale}` : '';
+    const localePrefix = isLocale ? `/${maybeLocale}` : `/${routing.defaultLocale}`;
     const remainingPath = isLocale ? pathSegments.slice(1) : pathSegments;
     
-    // Handle /dashboard route - rewrite to locale-based dashboard
-    if (pathname === '/dashboard') {
-      url.pathname = `/${routing.defaultLocale}/dashboard`;
-      const rewriteResponse = NextResponse.rewrite(url);
-      rewriteResponse.headers.set('x-vendor-slug', subdomain);
-      return rewriteResponse;
+    // Don't rewrite auth/account routes - use main site's pages
+    const authRoutes = ['login', 'signup', 'register', 'verify-email', 'resend-verification', 'forgot-password', 'reset-password'];
+    if (authRoutes.includes(remainingPath[0])) {
+      const response = handleI18nRouting(request);
+      return response;
     }
     
     if (remainingPath.length === 0) {
       url.pathname = `${localePrefix}/vendor/${subdomain}`;
+    } else if (remainingPath[0] === 'dashboard') {
+      url.pathname = `${localePrefix}/vendor/${subdomain}/dashboard`;
     } else if (remainingPath[0] === 'products' && remainingPath[1]) {
       url.pathname = `${localePrefix}/vendor/${subdomain}/products/${remainingPath[1]}`;
     } else if (remainingPath[0] === 'search') {

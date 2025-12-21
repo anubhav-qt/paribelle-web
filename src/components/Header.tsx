@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingCart, Search } from 'lucide-react';
+import { ShoppingCart, Search, Heart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import { useWishlist } from '@/contexts/WishlistContext';
 import { useTranslations, useLocale } from 'next-intl';
 import LocationFilter from '@/components/LocationFilter';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -26,6 +27,7 @@ export default function Header({
 }: HeaderProps) {
   const router = useRouter();
   const { totalItems } = useCart();
+  const { totalItems: wishlistCount } = useWishlist();
   const t = useTranslations('header');
   const tCommon = useTranslations('common');
   const locale = useLocale();
@@ -167,6 +169,20 @@ export default function Header({
               </Link>
             )}
             <ThemeToggle />
+            <Link 
+              href={`/${locale}/wishlist`}
+              className="relative hover:text-primary transition-colors text-foreground"
+              aria-label="Wishlist"
+            >
+              <Heart className={`w-6 h-6 ${
+                wishlistCount > 0 ? 'fill-red-600 text-red-600' : ''
+              }`} />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                  {wishlistCount}
+                </span>
+              )}
+            </Link>
             <Link 
               href={`/${locale}/cart`}
               className="relative hover:text-primary transition-colors text-foreground"

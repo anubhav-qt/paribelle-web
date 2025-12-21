@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/currency';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import Header from '@/components/Header';
 import CategoryNav from '@/components/CategoryNav';
+import AddressManager, { Address } from '@/components/AddressManager';
 import { 
   ShoppingBag, 
   MapPin, 
@@ -21,17 +22,6 @@ import {
 import Link from 'next/link';
 
 type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
-
-interface Address {
-  fullName: string;
-  phone: string;
-  addressLine1: string;
-  addressLine2: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -55,6 +45,7 @@ export default function CheckoutPage() {
     postalCode: '',
     country: 'India',
   });
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   
   // Payment details
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
@@ -86,11 +77,12 @@ export default function CheckoutPage() {
       const parsedUser = JSON.parse(userStr);
       setUser(parsedUser);
       
-      // Pre-fill address if available
+      // Pre-fill address name if available
       if (parsedUser.firstName && parsedUser.lastName) {
         setAddress(prev => ({
           ...prev,
           fullName: `${parsedUser.firstName} ${parsedUser.lastName}`,
+          phone: parsedUser.phone || '',
         }));
       }
     } catch (error) {
@@ -109,33 +101,15 @@ export default function CheckoutPage() {
   const tax = totalPrice * 0.18; // 18% GST
   const finalTotal = totalPrice + shippingCost + tax;
 
-  const handleAddressChange = useCallback((field: keyof Address, value: string) => {
-    setAddress(prev => ({ ...prev, [field]: value }));
-  }, []);
-
   const handleContinueToAddress = () => {
     setCurrentStep('address');
   };
 
   const handleContinueToPayment = useCallback(() => {
-    // Validate address
+    // Basic address validation (AddressManager handles detailed validation)
     if (!address.fullName || !address.phone || !address.addressLine1 || 
         !address.city || !address.state || !address.postalCode) {
       alert('Please fill in all required address fields');
-      return;
-    }
-    
-    // Validate phone
-    const phoneRegex = /^[6-9]\d{9}$/;
-    if (!phoneRegex.test(address.phone)) {
-      alert('Please enter a valid 10-digit phone number');
-      return;
-    }
-    
-    // Validate postal code
-    const postalRegex = /^[1-9][0-9]{5}$/;
-    if (!postalRegex.test(address.postalCode)) {
-      alert('Please enter a valid 6-digit postal code');
       return;
     }
     
@@ -147,9 +121,25 @@ export default function CheckoutPage() {
     
     try {
       const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
       
-      if (!token) {
+      if (!token || !userStr) {
         alert('Please login to place order');
+        router.push('/login');
+        return;
+      }
+
+      // Verify user is still valid
+      try {
+        const user = JSON.parse(userStr);
+        console.log('User from localStorage:', user);
+        console.log('Token exists:', !!token);
+        console.log('Token preview:', token.substring(0, 20) + '...');
+      } catch (e) {
+        console.error('Invalid user data in localStorage');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        alert('Session expired. Please login again.');
         router.push('/login');
         return;
       }
@@ -181,9 +171,29 @@ export default function CheckoutPage() {
         body: JSON.stringify(orderData),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create order');
+        let errorMessage = 'Failed to create order';
+        try {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+          console.error('Error response:', error);
+        } catch (e) {
+          console.error('Could not parse error response');
+        }
+        
+        // If unauthorized, clear session and redirect to login
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          alert('Session expired. Please login again.');
+          router.push('/login');
+          return;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const order = await response.json();
@@ -362,121 +372,18 @@ export default function CheckoutPage() {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Address Form */}
+        {/* Address Selection/Form */}
         <div className="lg:col-span-2">
           <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-            <form className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={address.fullName}
-                    onChange={(e) => handleAddressChange('fullName', e.target.value)}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
-                    placeholder="John Doe"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    value={address.phone}
-                    onChange={(e) => handleAddressChange('phone', e.target.value)}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
-                    placeholder="9876543210"
-                    maxLength={10}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Address Line 1 *
-                </label>
-                <input
-                  type="text"
-                  value={address.addressLine1}
-                  onChange={(e) => handleAddressChange('addressLine1', e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
-                  placeholder="House No, Building Name"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Address Line 2
-                </label>
-                <input
-                  type="text"
-                  value={address.addressLine2}
-                  onChange={(e) => handleAddressChange('addressLine2', e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
-                  placeholder="Road Name, Area"
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    value={address.city}
-                    onChange={(e) => handleAddressChange('city', e.target.value)}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
-                    placeholder="Mumbai"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    State *
-                  </label>
-                  <input
-                    type="text"
-                    value={address.state}
-                    onChange={(e) => handleAddressChange('state', e.target.value)}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
-                    placeholder="Maharashtra"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Postal Code *
-                  </label>
-                  <input
-                    type="text"
-                    value={address.postalCode}
-                    onChange={(e) => handleAddressChange('postalCode', e.target.value)}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
-                    placeholder="400001"
-                    maxLength={6}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Country *
-                </label>
-                <input
-                  type="text"
-                  value={address.country}
-                  onChange={(e) => handleAddressChange('country', e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-muted text-muted-foreground"
-                  placeholder="India"
-                  readOnly
-                />
-              </div>
-            </form>
+            <AddressManager
+              onAddressSelect={(addr) => {
+                setAddress(addr);
+                setSelectedAddressId(addr.id || null);
+              }}
+              selectedAddressId={selectedAddressId}
+              showSelection={true}
+              compact={true}
+            />
           </div>
         </div>
       
@@ -514,7 +421,7 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
-  ), [address, totalPrice, shippingCost, tax, finalTotal, handleAddressChange, handleContinueToPayment]);
+  ), [address, selectedAddressId, totalPrice, shippingCost, tax, finalTotal, handleContinueToPayment]);
 
   const CartStep = () => (
     <div className="max-w-6xl mx-auto">

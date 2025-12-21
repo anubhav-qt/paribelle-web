@@ -10,6 +10,7 @@ import CategoryNav from '@/components/CategoryNav';
 import VendorHeader from '@/components/VendorHeader';
 import Footer from '@/components/Footer';
 import { getProductImageUrl } from '@/lib/image-url';
+import { initAuthFromCookie } from '@/lib/cross-domain-auth';
 
 interface Vendor {
   id: string;
@@ -46,14 +47,19 @@ interface Product {
 }
 
 export default function VendorStorePage() {
+  console.log('🔵 VendorStorePage: Component rendering/re-rendering');
+  
   const params = useParams();
   const vendorSlug = params.vendorSlug as string;
+  
+  console.log('🔵 VendorStorePage: vendorSlug from params:', vendorSlug);
   
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [productsByCategory, setProductsByCategory] = useState<Map<string, Product[]>>(new Map());
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState('INR');
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   // Scroll helper function
   const scrollToElement = (elementId: string) => {
@@ -71,35 +77,18 @@ export default function VendorStorePage() {
   };
 
   useEffect(() => {
-    // Check for authToken in URL (from login redirect)
-    const urlParams = new URLSearchParams(window.location.search);
-    const authToken = urlParams.get('authToken');
+    console.log('Vendor page: useEffect starting, vendorSlug:', vendorSlug);
     
-    if (authToken) {
-      console.log('Auth token found in URL, storing in localStorage and cookie');
-      localStorage.setItem('token', authToken);
-      
-      // Fetch user data
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
+    // Initialize auth from cookie (secure cross-domain approach)
+    initAuthFromCookie()
+      .then((token) => {
+        console.log('Vendor page: Auth initialization complete, token:', token ? 'Found' : 'Not found');
+        setAuthInitialized(true);
       })
-        .then(res => res.json())
-        .then(userData => {
-          localStorage.setItem('user', JSON.stringify(userData));
-          console.log('User data stored:', userData.email);
-        })
-        .catch(err => console.error('Error fetching user data:', err));
-      
-      // Set cookie for this subdomain
-      document.cookie = `token=${authToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
-      
-      // Remove token from URL for security
-      urlParams.delete('authToken');
-      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
-      window.history.replaceState({}, '', newUrl);
-    }
+      .catch((error) => {
+        console.error('Vendor page: Error initializing auth:', error);
+        setAuthInitialized(true); // Still set to true to unblock rendering
+      });
     
     // Fetch currency setting
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/currency`)
@@ -236,7 +225,7 @@ export default function VendorStorePage() {
     }
   };
 
-  if (loading) {
+  if (loading || !authInitialized) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
