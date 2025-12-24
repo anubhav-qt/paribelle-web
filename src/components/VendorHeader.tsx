@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { ShoppingCart, Search, Menu, X } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import ThemeToggle from '@/components/ThemeToggle';
+import { useVendor } from '@/hooks/useVendor';
 
 interface VendorHeaderProps {
   vendorSlug: string;
@@ -26,19 +27,11 @@ export default function VendorHeader({
   const pathname = usePathname();
   const { totalItems } = useCart();
   const [user, setUser] = useState<any>(null);
-  const [vendor, setVendor] = useState<any>(null);
+  const { data: vendor } = useVendor(vendorSlug);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Fetch vendor data
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/vendors/slug/${vendorSlug}`)
-      .then(res => res.json())
-      .then(data => {
-        setVendor(data);
-      })
-      .catch(err => console.error('Error fetching vendor:', err));
-
     // Check for user
     const checkUser = () => {
       const storedUser = localStorage.getItem('user');

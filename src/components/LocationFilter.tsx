@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
+import { useCities, useSubLocations } from '@/hooks/useLocations';
 
 interface City {
   id: string;
@@ -26,55 +27,20 @@ export default function LocationFilter({
   showLabel = true,
   className = '' 
 }: LocationFilterProps) {
-  const [cities, setCities] = useState<City[]>([]);
-  const [subLocations, setSubLocations] = useState<SubLocation[]>([]);
   const [selectedCity, setSelectedCity] = useState<string>('');
   const [selectedSubLocation, setSelectedSubLocation] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  
+  const { data: cities = [], isLoading: loadingCities } = useCities();
+  const { data: subLocations = [], isLoading: loadingSubLocations } = useSubLocations(selectedCity);
+  
+  const loading = loadingCities || loadingSubLocations;
 
   useEffect(() => {
-    fetchCities();
-  }, []);
-
-  useEffect(() => {
+    // Reset sublocation when city changes
     if (selectedCity) {
-      fetchSubLocations(selectedCity);
-    } else {
-      setSubLocations([]);
       setSelectedSubLocation('');
     }
   }, [selectedCity]);
-
-  const fetchCities = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations/cities`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setCities(data);
-      }
-    } catch (error) {
-      console.error('Error fetching cities:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSubLocations = async (cityId: string) => {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations/cities/${cityId}/sub-locations`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setSubLocations(data);
-      }
-    } catch (error) {
-      console.error('Error fetching sub-locations:', error);
-    }
-  };
 
   const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const cityId = e.target.value;

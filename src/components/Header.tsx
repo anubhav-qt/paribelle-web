@@ -9,6 +9,7 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import { useTranslations, useLocale } from 'next-intl';
 import LocationFilter from '@/components/LocationFilter';
 import ThemeToggle from '@/components/ThemeToggle';
+import { useSettings } from '@/hooks/useSettings';
 
 interface HeaderProps {
   showLocationFilter?: boolean;
@@ -32,35 +33,18 @@ export default function Header({
   const tCommon = useTranslations('common');
   const locale = useLocale();
   const [user, setUser] = useState<any>(null);
-  const [marketplaceLogo, setMarketplaceLogo] = useState<string>('');
-  const [marketplaceName, setMarketplaceName] = useState<string>('Marketplace');
+  const { data: settings } = useSettings();
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [cityId, setCityId] = useState<string>('');
   const [subLocationId, setSubLocationId] = useState<string>('');
-  const [locationFilterEnabled, setLocationFilterEnabled] = useState(false);
+  
+  const marketplaceLogo = settings?.logo || '';
+  const marketplaceName = settings?.name || 'Marketplace';
+  const locationFilterEnabled = showLocationFilter && (settings?.locationEnabled || false);
   
   const placeholder = searchPlaceholder || t('searchPlaceholder');
 
   useEffect(() => {
-    // Fetch marketplace branding
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/settings/marketplace_logo`)
-      .then(res => res.json())
-      .then(data => setMarketplaceLogo(data.value || ''))
-      .catch(err => console.error('Error fetching marketplace logo:', err));
-    
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/settings/marketplace_name`)
-      .then(res => res.json())
-      .then(data => setMarketplaceName(data.value || 'Marketplace'))
-      .catch(err => console.error('Error fetching marketplace name:', err));
-
-    // Check location filter setting
-    if (showLocationFilter) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/settings/location_filter_enabled`)
-        .then(res => res.json())
-        .then(data => setLocationFilterEnabled(data.value === true || data.value === 'true'))
-        .catch(err => console.error('Error fetching location filter setting:', err));
-    }
-
     // Check for user
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -70,7 +54,7 @@ export default function Header({
         console.error('Error parsing user data:', err);
       }
     }
-  }, [showLocationFilter]);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

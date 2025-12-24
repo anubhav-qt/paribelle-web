@@ -5,6 +5,7 @@ import { ChevronDown, Home } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
+import { useCategories } from '@/hooks/useCategories';
 
 interface Category {
   id: string;
@@ -58,14 +59,18 @@ export default function CategoryNav({
     tCategory = (key: string) => key;
   }
   
-  const [categories, setCategories] = useState<Category[]>([]);
+  // Use React Query for cached categories
+  const { data: categories = [], isLoading } = useCategories({
+    vendorId,
+    locale,
+    hideEmptyCategories,
+  });
+  
   const [vendorPages, setVendorPages] = useState<VendorPage[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchCategories();
     if (vendorId && vendorSlug) {
       fetchVendorPages();
     }
@@ -153,93 +158,6 @@ export default function CategoryNav({
     }
   }, [activeDropdown, mode]);
 
-  const fetchCategories = async () => {
-    try {
-      let url: string;
-      
-      if (vendorId) {
-        // For vendor pages, get vendor-specific categories
-        url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/categories/vendor/${vendorId}`;
-        
-        // Add withProductCounts query parameter if hiding empty categories
-        if (hideEmptyCategories) {
-          url += '?withProductCounts=true';
-        }
-      } else {
-        // For main pages, get global categories
-        url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/categories/tree`;
-        
-        // Add withProductCounts query parameter if hiding empty categories
-        if (hideEmptyCategories) {
-          url += '?withProductCounts=true';
-        }
-      }
-      
-      // Add language parameter
-      url += (url.includes('?') ? '&' : '?') + `lang=${locale}`;
-      
-      console.log('Fetching categories from:', url);
-      
-      const response = await fetch(url);
-      if (response.ok) {
-        let data = await response.json();
-        console.log('Categories received:', data);
-        
-        // If hideEmptyCategories is true, filter out categories without products
-        if (hideEmptyCategories) {
-          console.log('Filtering empty categories...');
-          data = filterCategoriesWithProducts(data);
-          console.log('Filtered categories:', data);
-        }
-        
-        setCategories(data);
-      } else {
-        console.error('Failed to fetch categories:', response.status);
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Filter out categories with no products (including checking children)
-  const filterCategoriesWithProducts = (categories: Category[]): Category[] => {
-    const hasProducts = (category: Category): boolean => {
-      // Check if category itself has products
-      if (category.productCount && category.productCount > 0) {
-        return true;
-      }
-
-      // Check if any children have products
-      if (category.children && category.children.length > 0) {
-        return category.children.some(child => hasProducts(child));
-      }
-
-      return false;
-    };
-
-    const filterCategory = (category: Category): Category | null => {
-      // Filter children first
-      if (category.children && category.children.length > 0) {
-        category.children = category.children
-          .map(child => filterCategory(child))
-          .filter((child): child is Category => child !== null);
-      }
-
-      // Include category if it has products or has children with products
-      if (hasProducts(category)) {
-        return category;
-      }
-
-      return null;
-    };
-
-    return categories
-      .map(cat => filterCategory(cat))
-      .filter((cat): cat is Category => cat !== null);
-  };
-
   const handleCategoryClick = (categoryId: string) => {
     if (mode === 'filter' && onCategorySelect) {
       onCategorySelect(categoryId);
@@ -267,7 +185,7 @@ export default function CategoryNav({
     }
   };
 
-  if (loading) return null;
+  if (isLoading) return null;
 
   return (
     <div 

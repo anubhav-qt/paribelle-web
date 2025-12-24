@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
+import { useOrders } from '@/hooks/useOrders';
 import { 
   Package, 
   ShoppingBag, 
@@ -30,22 +31,35 @@ interface DashboardContentProps {
 export default function DashboardContent({ vendorSlug }: DashboardContentProps) {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-  const [stats, setStats] = useState({
-    totalOrders: 0,
-    pendingOrders: 0,
-    completedOrders: 0,
-    totalSpent: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
+  
+  const { data: orders = [], isLoading } = useOrders(token || undefined);
+  
+  const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
+  const stats = useMemo(() => {
+    const totalOrders = orders.length;
+    const pendingOrders = orders.filter((o) => 
+      ['pending', 'confirmed', 'processing'].includes(o.status.toLowerCase())
+    ).length;
+    const completedOrders = orders.filter((o) => 
+      o.status.toLowerCase() === 'delivered'
+    ).length;
+    const totalSpent = orders.reduce((sum, o) => 
+      sum + (Number(o.total) || 0), 0
+    );
+    
+    return { totalOrders, pendingOrders, completedOrders, totalSpent };
+  }, [orders]);
+  
+  const loading = isLoading;
 
   const getRoutePrefix = () => vendorSlug ? `/vendor/${vendorSlug}` : '';
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const authToken = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     
-    if (!token || !userStr) {
+    if (!authToken || !userStr) {
       router.push(`${getRoutePrefix()}/login`);
       return;
     }
@@ -53,51 +67,16 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
     try {
       const parsedUser = JSON.parse(userStr);
       setUser(parsedUser);
-      fetchDashboardData(token);
+      setToken(authToken);
     } catch (error) {
       console.error('Error parsing user data:', error);
       router.push(`${getRoutePrefix()}/login`);
     }
   }, [router, vendorSlug]);
 
-  const fetchDashboardData = async (token: string) => {
+  const oldFetchDashboardData = async (token: string) => {
     try {
-      setLoading(true);
-      
-      // Fetch ALL orders for the logged-in user (not filtered by vendor)
-      // This ensures the same user sees the same dashboard content regardless of domain
-      const ordersResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (ordersResponse.ok) {
-        const orders = await ordersResponse.json();
-        const orderList = Array.isArray(orders) ? orders : orders.orders || [];
-        
-        // Get recent orders (last 5)
-        setRecentOrders(orderList.slice(0, 5));
-        
-        // Calculate stats
-        const totalOrders = orderList.length;
-        const pendingOrders = orderList.filter((o: Order) => 
-          ['pending', 'confirmed', 'processing'].includes(o.status.toLowerCase())
-        ).length;
-        const completedOrders = orderList.filter((o: Order) => 
-          o.status.toLowerCase() === 'delivered'
-        ).length;
-        const totalSpent = orderList.reduce((sum: number, o: Order) => 
-          sum + (Number(o.total) || 0), 0
-        );
-        
-        setStats({
-          totalOrders,
-          pendingOrders,
-          completedOrders,
-          totalSpent,
-        });
-      }
+      // This function is no longer needed - useOrders hook handles this
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {

@@ -9,6 +9,7 @@ import { getProductImageUrl } from '@/lib/image-url';
 import { useLocale } from 'next-intl';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useSettings } from '@/hooks/useSettings';
 
 interface Product {
   id: string;
@@ -33,6 +34,7 @@ function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const locale = useLocale();
+  const { data: settings } = useSettings();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,15 +42,16 @@ function SearchContent() {
   const [categories, setCategories] = useState<any[]>([]);
   const [flatCategories, setFlatCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [currency, setCurrency] = useState('INR');
-  const [categoryDisplayMode, setCategoryDisplayMode] = useState<'top' | 'sidebar'>('sidebar');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [productType, setProductType] = useState<string>('');
-  const [marketplaceLogo, setMarketplaceLogo] = useState<string>('');
-  const [marketplaceName, setMarketplaceName] = useState<string>('Marketplace');
+  
+  const currency = settings?.currency || 'INR';
+  const categoryDisplayMode = (settings?.categoryMode === 'top' ? 'top' : 'sidebar') as 'top' | 'sidebar';
+  const marketplaceLogo = settings?.logo || '';
+  const marketplaceName = settings?.name || 'Marketplace';
   const limit = 50;
 
   // Navigate to homepage with category hash
@@ -58,33 +61,7 @@ function SearchContent() {
   };
 
   useEffect(() => {
-    // Fetch marketplace branding
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/settings/marketplace_logo`)
-      .then(res => res.json())
-      .then(data => setMarketplaceLogo(data.value || ''))
-      .catch(err => console.error('Error fetching marketplace logo:', err));
-    
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/settings/marketplace_name`)
-      .then(res => res.json())
-      .then(data => setMarketplaceName(data.value || 'Marketplace'))
-      .catch(err => console.error('Error fetching marketplace name:', err));
-    
-    // Fetch currency setting
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/currency`)
-      .then(res => res.json())
-      .then(data => {
-        setCurrency(data.value || 'INR');
-      })
-      .catch(err => console.error('Error fetching currency setting:', err));
-    
-    // Fetch category display mode setting
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/category_display_mode`)
-      .then(res => res.json())
-      .then(data => {
-        setCategoryDisplayMode(data.value === 'top' ? 'top' : 'sidebar');
-      })
-      .catch(err => console.error('Error fetching category display mode:', err));
-    
+    // Remove old settings fetches - now using useSettings hook
     const query = searchParams.get('q');
     const type = searchParams.get('type');
     
