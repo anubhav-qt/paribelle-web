@@ -156,17 +156,49 @@ export default function AddressManager({
     fetchAddresses();
   }, []);
 
-  const fetchAddresses = () => {
-    const savedAddresses = localStorage.getItem('user_addresses');
-    if (savedAddresses) {
-      const parsed = JSON.parse(savedAddresses);
-      setAddresses(parsed);
-      
-      // Auto-select default address if in selection mode
-      if (showSelection && onAddressSelect && !selectedAddressId) {
-        const defaultAddr = parsed.find((a: Address) => a.isDefault);
-        if (defaultAddr) {
-          onAddressSelect(defaultAddr);
+  const fetchAddresses = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      // Not logged in, no addresses to fetch
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:3001/api/v1/user/addresses', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch addresses');
+      }
+
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setAddresses(data);
+        
+        // Auto-select default address if in selection mode
+        if (showSelection && onAddressSelect && !selectedAddressId) {
+          const defaultAddr = data.find((a: Address) => a.isDefault);
+          if (defaultAddr) {
+            onAddressSelect(defaultAddr);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      // Fallback to localStorage if API fails
+      const savedAddresses = localStorage.getItem('user_addresses');
+      if (savedAddresses) {
+        const parsed = JSON.parse(savedAddresses);
+        setAddresses(parsed);
+        
+        if (showSelection && onAddressSelect && !selectedAddressId) {
+          const defaultAddr = parsed.find((a: Address) => a.isDefault);
+          if (defaultAddr) {
+            onAddressSelect(defaultAddr);
+          }
         }
       }
     }
@@ -186,7 +218,7 @@ export default function AddressManager({
     });
   };
 
-  const handleSaveAddress = () => {
+  const handleSaveAddress = async () => {
     // Validate address
     if (!addressForm.fullName || !addressForm.phone || !addressForm.addressLine1 || 
         !addressForm.city || !addressForm.state || !addressForm.postalCode || !addressForm.country) {
@@ -208,38 +240,70 @@ export default function AddressManager({
       return;
     }
 
-    let updatedAddresses: Address[];
-    if (editingAddressId) {
-      // Update existing address
-      updatedAddresses = addresses.map(addr => 
-        addr.id === editingAddressId ? { ...addressForm, id: editingAddressId } : addr
-      );
-    } else {
-      // Add new address
-      const newAddress: Address = {
-        ...addressForm,
-        id: Date.now().toString(),
-        isDefault: addresses.length === 0 ? true : addressForm.isDefault,
-      };
-      
-      // If this is set as default, unset others
-      if (newAddress.isDefault) {
-        updatedAddresses = [...addresses.map(a => ({ ...a, isDefault: false })), newAddress];
-      } else {
-        updatedAddresses = [...addresses, newAddress];
-      }
-
-      // Auto-select newly added address if in selection mode
-      if (showSelection && onAddressSelect) {
-        onAddressSelect(newAddress);
-      }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login to save address');
+      return;
     }
 
-    setAddresses(updatedAddresses);
-    localStorage.setItem('user_addresses', JSON.stringify(updatedAddresses));
-    setShowAddressForm(false);
-    setEditingAddressId(null);
-    resetAddressForm();
+    try {
+      const url = editingAddressId 
+        ? `http://localhost:3001/api/v1/user/addresses/${editingAddressId}`
+        : 'http://localhost:3001/api/v1/user/addresses';
+      
+      const method = editingAddressId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: addressForm.fullName,
+          phone: addressForm.phone,
+          addressLine1: addressForm.addressLine1,
+          addressLine2: addressForm.addressLine2,
+          city: addressForm.city,
+          state: addressForm.state,
+          postalCode: addressForm.postalCode,
+          country: addressForm.country,
+          isDefault: addresses.length === 0 ? true : addressForm.isDefault,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save address');
+      }
+
+      const savedAddress = await response.json();
+      
+      let updatedAddresses: Address[];
+      if (editingAddressId) {
+        // Update existing address in list
+        updatedAddresses = addresses.map(addr => 
+          addr.id === editingAddressId ? savedAddress : addr
+        );
+      } else {
+        // Add new address to list
+        updatedAddresses = [...addresses, savedAddress];
+        
+        // Auto-select newly added address if in selection mode
+        if (showSelection && onAddressSelect) {
+          onAddressSelect(savedAddress);
+        }
+      }
+
+      setAddresses(updatedAddresses);
+      setShowAddressForm(false);
+      setEditingAddressId(null);
+      resetAddressForm();
+      
+      alert(editingAddressId ? 'Address updated successfully!' : 'Address saved successfully!');
+    } catch (error) {
+      console.error('Error saving address:', error);
+      alert('Failed to save address. Please try again.');
+    }
   };
 
   const handleEditAddress = (address: Address, e?: React.MouseEvent) => {
@@ -259,27 +323,47 @@ export default function AddressManager({
     setShowAddressForm(true);
   };
 
-  const handleDeleteAddress = (addressId: string, e?: React.MouseEvent) => {
+  const handleDeleteAddress = async (addressId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (confirm('Are you sure you want to delete this address?')) {
-      const updatedAddresses = addresses.filter(addr => addr.id !== addressId);
-      
-      // If deleted address was default and there are other addresses, make first one default
-      const deletedAddr = addresses.find(a => a.id === addressId);
-      if (deletedAddr?.isDefault && updatedAddresses.length > 0) {
-        updatedAddresses[0].isDefault = true;
+    if (!confirm('Are you sure you want to delete this address?')) {
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login to delete address');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/v1/user/addresses/${addressId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete address');
       }
-      
+
+      const updatedAddresses = addresses.filter(addr => addr.id !== addressId);
       setAddresses(updatedAddresses);
-      localStorage.setItem('user_addresses', JSON.stringify(updatedAddresses));
       
       // If in selection mode and deleted the selected address, select default
       if (showSelection && onAddressSelect && selectedAddressId === addressId) {
         const defaultAddr = updatedAddresses.find(a => a.isDefault);
         if (defaultAddr) {
           onAddressSelect(defaultAddr);
+        } else if (updatedAddresses.length > 0) {
+          onAddressSelect(updatedAddresses[0]);
         }
       }
+      
+      alert('Address deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting address:', error);
+      alert('Failed to delete address. Please try again.');
     }
   };
 
