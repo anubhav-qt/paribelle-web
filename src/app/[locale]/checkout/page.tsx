@@ -32,7 +32,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [marketplaceLogo, setMarketplaceLogo] = useState('');
-  const [marketplaceName, setMarketplaceName] = useState('Marketplace');
+  const [marketplaceName, setMarketplaceName] = useState('GaliCart');
   
   // Address form
   const [address, setAddress] = useState<Address>({
@@ -60,7 +60,7 @@ export default function CheckoutPage() {
     
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/settings/marketplace_name`)
       .then(res => res.json())
-      .then(data => setMarketplaceName(data.value || 'Marketplace'))
+      .then(data => setMarketplaceName(data.value || 'GaliCart'))
       .catch(err => console.error('Error fetching marketplace name:', err));
 
     // Check if user is logged in

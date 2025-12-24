@@ -51,7 +51,7 @@ function SearchContent() {
   const currency = settings?.currency || 'INR';
   const categoryDisplayMode = (settings?.categoryMode === 'top' ? 'top' : 'sidebar') as 'top' | 'sidebar';
   const marketplaceLogo = settings?.logo || '';
-  const marketplaceName = settings?.name || 'Marketplace';
+  const marketplaceName = settings?.name || 'GaliCart';
   const limit = 50;
 
   // Navigate to homepage with category hash

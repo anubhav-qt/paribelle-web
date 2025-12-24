@@ -81,6 +81,9 @@ function LoginContent() {
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
+      // Dispatch custom event to notify Header component
+      window.dispatchEvent(new CustomEvent('userChanged'));
+      
       // Clear any redirect flags
       sessionStorage.removeItem('loginRedirect');
       

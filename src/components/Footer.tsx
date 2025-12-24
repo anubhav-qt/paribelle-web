@@ -11,7 +11,7 @@ interface FooterProps {
   marketplaceName?: string;
 }
 
-export default function Footer({ categories = [], marketplaceName = 'Marketplace' }: FooterProps) {
+export default function Footer({ categories = [], marketplaceName = 'GaliCart' }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
   

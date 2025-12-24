@@ -28,7 +28,7 @@ export function useSettings() {
       
       return {
         logo: logo?.value,
-        name: name?.value || 'Marketplace',
+        name: name?.value || 'GaliCart',
         currency: currency?.value || 'INR',
         locationEnabled: locationEnabled?.value === 'true',
         categoryMode: categoryMode?.value || 'scroll',

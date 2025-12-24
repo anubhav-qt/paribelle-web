@@ -39,21 +39,47 @@ export default function Header({
   const [subLocationId, setSubLocationId] = useState<string>('');
   
   const marketplaceLogo = settings?.logo || '';
-  const marketplaceName = settings?.name || 'Marketplace';
+  const marketplaceName = settings?.name || 'GaliCart';
   const locationFilterEnabled = showLocationFilter && (settings?.locationEnabled || false);
   
   const placeholder = searchPlaceholder || t('searchPlaceholder');
 
   useEffect(() => {
-    // Check for user
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (err) {
-        console.error('Error parsing user data:', err);
+    // Check for user on mount and when localStorage changes
+    const checkUser = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (err) {
+          console.error('Error parsing user data:', err);
+        }
+      } else {
+        setUser(null);
       }
-    }
+    };
+
+    checkUser();
+
+    // Listen for storage changes (including custom events)
+    const handleStorageChange = (e: StorageEvent | CustomEvent) => {
+      if (e instanceof StorageEvent) {
+        if (e.key === 'user' || e.key === null) {
+          checkUser();
+        }
+      } else {
+        // Custom event from same window
+        checkUser();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange as EventListener);
+    window.addEventListener('userChanged', handleStorageChange as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange as EventListener);
+      window.removeEventListener('userChanged', handleStorageChange as EventListener);
+    };
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {

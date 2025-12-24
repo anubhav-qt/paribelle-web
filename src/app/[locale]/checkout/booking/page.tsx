@@ -61,7 +61,7 @@ function BookingCheckoutContent() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [user, setUser] = useState<any>(null);
   const [marketplaceLogo, setMarketplaceLogo] = useState('');
-  const [marketplaceName, setMarketplaceName] = useState('Marketplace');
+  const [marketplaceName, setMarketplaceName] = useState('GaliCart');
   const [currency, setCurrency] = useState('INR');
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [orderId, setOrderId] = useState<string>('');
@@ -89,7 +89,7 @@ function BookingCheckoutContent() {
     
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/settings/marketplace_name`)
       .then(res => res.json())
-      .then(data => setMarketplaceName(data.value || 'Marketplace'))
+      .then(data => setMarketplaceName(data.value || 'GaliCart'))
       .catch(err => console.error('Error fetching marketplace name:', err));
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/settings/currency`)

@@ -14,12 +14,12 @@ export function generateStaticParams() {
 }
 
 export const metadata: Metadata = {
-  title: 'Multi-Vendor Marketplace',
+  title: 'GaliCart',
   description: 'Shop from multiple vendors in one place',
   keywords: ['marketplace', 'e-commerce', 'multi-vendor', 'online shopping'],
   authors: [{ name: 'Marketplace Team' }],
   openGraph: {
-    title: 'Multi-Vendor Marketplace',
+    title: 'GaliCart',
     description: 'Shop from multiple vendors in one place',
     type: 'website',
   },

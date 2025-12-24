@@ -46,7 +46,7 @@ async function getHomepageData(locale?: string) {
         currency: 'INR',
         categoryDisplayMode: 'sidebar',
         marketplaceLogo: '',
-        marketplaceName: 'Marketplace',
+        marketplaceName: 'GaliCart',
       },
       categories: [],
       productsByCategory: {},

@@ -24,7 +24,7 @@ export default function AdminSettingsPage() {
   const [categoryDisplayMode, setCategoryDisplayMode] = useState<'top' | 'sidebar'>('sidebar');
   const [thumbnailLayout, setThumbnailLayout] = useState<'vertical' | 'horizontal'>('vertical');
   const [marketplaceLogo, setMarketplaceLogo] = useState('');
-  const [marketplaceName, setMarketplaceName] = useState('Marketplace');
+  const [marketplaceName, setMarketplaceName] = useState('GaliCart');
   const [heroBanners, setHeroBanners] = useState<Array<{
     id: string;
     imageUrl: string;
@@ -84,7 +84,7 @@ export default function AdminSettingsPage() {
         
         const nameSetting = data.find((s: Setting) => s.key === 'marketplace_name');
         if (nameSetting) {
-          setMarketplaceName(nameSetting.value || 'Marketplace');
+          setMarketplaceName(nameSetting.value || 'GaliCart');
         }
       }
     } catch (error) {
