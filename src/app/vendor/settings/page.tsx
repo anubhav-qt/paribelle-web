@@ -105,11 +105,17 @@ export default function VendorSettingsPage() {
         body: JSON.stringify(formData),
       });
 
+      const responseData = await response.json();
+      console.log('Update response:', responseData);
+
       if (response.ok) {
+        if (responseData.statusCode && responseData.statusCode !== 200) {
+          throw new Error(responseData.message || 'Failed to update settings');
+        }
         alert('Settings updated successfully!');
         fetchVendorData();
       } else {
-        throw new Error('Failed to update settings');
+        throw new Error(responseData.message || 'Failed to update settings');
       }
     } catch (error) {
       console.error('Error updating settings:', error);
