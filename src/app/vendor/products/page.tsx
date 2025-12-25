@@ -39,6 +39,15 @@ export default function VendorProductsPage() {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Filtering and sorting states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
   const [editFormData, setEditFormData] = useState({
     name: '',
     price: 0,
@@ -334,6 +343,60 @@ export default function VendorProductsPage() {
     }
   };
 
+  // Filter and sort products
+  const filteredAndSortedProducts = products
+    .filter((product) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (
+          !product.name.toLowerCase().includes(query) &&
+          !product.sku.toLowerCase().includes(query)
+        ) {
+          return false;
+        }
+      }
+      // Status filter
+      if (statusFilter !== 'all' && product.status !== statusFilter) {
+        return false;
+      }
+      // Type filter
+      if (typeFilter !== 'all' && product.productType !== typeFilter) {
+        return false;
+      }
+      // Category filter
+      if (categoryFilter !== 'all') {
+        if (!product.categories?.some(c => c.id === categoryFilter)) {
+          return false;
+        }
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'price':
+          comparison = a.price - b.price;
+          break;
+        case 'stock':
+          comparison = a.stockQuantity - b.stockQuantity;
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+  const handleSort = (field: 'name' | 'price' | 'stock') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -377,6 +440,98 @@ export default function VendorProductsPage() {
           </div>
         </div>
 
+        {/* Filters and Search */}
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <input
+                type="text"
+                placeholder="Product name or SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+
+            {/* Type Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All</option>
+                <option value="physical">Physical</option>
+                <option value="booking">Booking</option>
+              </select>
+            </div>
+
+            {/* Category Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {'  '.repeat(cat.level)}
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+              <div className="flex gap-2">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'name' | 'price' | 'stock')}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="name">Name</option>
+                  <option value="price">Price</option>
+                  <option value="stock">Stock</option>
+                </select>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                >
+                  {sortOrder === 'asc' ? '↑' : '↓'}
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Results count */}
+          <div className="mt-3 text-sm text-gray-600">
+            Showing {filteredAndSortedProducts.length} of {products.length} products
+          </div>
+        </div>
+
         {importMessage && (
           <div
             className={`mb-4 p-4 rounded-lg ${
@@ -399,15 +554,21 @@ export default function VendorProductsPage() {
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
           </div>
-        ) : products.length === 0 ? (
+        ) : filteredAndSortedProducts.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-500 mb-4">No products yet</p>
-            <Link
-              href="/vendor/products/add"
-              className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-            >
-              Add Your First Product
-            </Link>
+            <p className="text-gray-500 mb-4">
+              {products.length === 0 ? 'No products yet' : 'No products match your filters'}
+            </p>
+            {products.length === 0 ? (
+              <Link
+                href="/vendor/products/add"
+                className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Add Your First Product
+              </Link>
+            ) : (
+              <p className="text-gray-400 text-sm">Try adjusting your search or filter criteria</p>
+            )}
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -415,8 +576,11 @@ export default function VendorProductsPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Product
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('name')}
+                    >
+                      Product {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Type
@@ -427,11 +591,17 @@ export default function VendorProductsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Price
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('price')}
+                    >
+                      Price {sortBy === 'price' && (sortOrder === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stock
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('stock')}
+                    >
+                      Stock {sortBy === 'stock' && (sortOrder === 'asc' ? '↑' : '↓')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -442,7 +612,7 @@ export default function VendorProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white">
-                  {products.map((product: any) => (
+                  {filteredAndSortedProducts.map((product: any) => (
                     <tr key={product.id} className="hover:bg-gray-50 border-b border-gray-200">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">

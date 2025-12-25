@@ -205,7 +205,7 @@ function SearchContent() {
 
       {/* Categories Toolbar - Flipkart Style */}
       {categoryDisplayMode === 'top' && (
-        <div className="border-t bg-[#232f3e] border-[#3a4553] shadow-sm mb-6">
+        <div className="border-t bg-card border-border shadow-sm mb-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-0 overflow-visible">
               {/* All Categories - First Item */}
@@ -213,8 +213,8 @@ function SearchContent() {
                 onClick={() => handleCategoryFilter('')}
                 className={`flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2 ${
                   selectedCategory === ''
-                    ? 'text-white border-[#f90] bg-[#37475a] font-semibold'
-                    : 'text-white border-transparent hover:text-[#f90] hover:bg-[#37475a]'
+                    ? 'text-primary border-primary bg-accent font-semibold'
+                    : 'text-foreground border-transparent hover:text-primary hover:bg-accent'
                 }`}
               >
                 All Categories
@@ -236,8 +236,8 @@ function SearchContent() {
                     }}
                     className={`flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2 ${
                       selectedCategory === category.id
-                        ? 'text-white border-[#f90] bg-[#37475a] font-semibold'
-                        : 'text-white border-transparent hover:text-[#f90] hover:bg-[#37475a]'
+                        ? 'text-primary border-primary bg-accent font-semibold'
+                        : 'text-foreground border-transparent hover:text-primary hover:bg-accent'
                     }`}
                   >
                     {category.name}

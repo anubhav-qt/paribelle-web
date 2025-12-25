@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/lib/currency';
 import { useRazorpay } from '@/hooks/useRazorpay';
-import Header from '@/components/Header';
-import CategoryNav from '@/components/CategoryNav';
 import AddressManager, { Address } from '@/components/AddressManager';
 import { initAuthFromCookie } from '@/lib/cross-domain-auth';
 import { 
@@ -835,9 +833,22 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header showBookingsLink={false} />
-
-      <CategoryNav mode="navigation" />
+      {/* Simple Checkout Header */}
+      <div className="bg-card shadow-sm border-b border-border">
+        <div className="container mx-auto px-4 py-4">
+          <Link href="/" className="flex items-center gap-2">
+            {marketplaceLogo ? (
+              <img 
+                src={marketplaceLogo} 
+                alt={marketplaceName} 
+                className="h-8 object-contain"
+              />
+            ) : (
+              <span className="text-xl font-bold text-foreground">{marketplaceName}</span>
+            )}
+          </Link>
+        </div>
+      </div>
 
       <div className="container mx-auto px-4 pt-8 pb-8">
         <StepIndicator />

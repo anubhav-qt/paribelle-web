@@ -22,6 +22,7 @@ export default function VendorDashboardPage() {
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [adminUser, setAdminUser] = useState<any>(null);
 
   useEffect(() => {
     fetchVendorData();
@@ -38,6 +39,7 @@ export default function VendorDashboardPage() {
       }
 
       const user = JSON.parse(userStr);
+      setAdminUser(user);
       
       // Extract vendorId from JWT token if not in user object or localStorage
       let vendorId = user.vendorId || localStorage.getItem('vendorId');
@@ -297,6 +299,11 @@ export default function VendorDashboardPage() {
                   ? `${vendor.city}, ${vendor.state}`
                   : 'Location not set'}
               </p>
+              {adminUser && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Admin: {adminUser.firstName} {adminUser.lastName} ({adminUser.email})
+                </p>
+              )}
             </div>
             {getStatusBadge(vendor?.status || 'pending')}
           </div>

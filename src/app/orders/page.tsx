@@ -56,6 +56,14 @@ export default function OrdersPage() {
   const [returnReason, setReturnReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [orderToAction, setOrderToAction] = useState<Order | null>(null);
+  
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -201,6 +209,64 @@ export default function OrdersPage() {
     }
   };
 
+  // Filter and sort orders
+  const filteredAndSortedOrders = orders
+    .filter((order) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (
+          !order.id.toLowerCase().includes(query) &&
+          !order.orderNumber?.toLowerCase().includes(query)
+        ) {
+          return false;
+        }
+      }
+      // Status filter
+      if (statusFilter !== 'all' && order.status.toLowerCase() !== statusFilter) {
+        return false;
+      }
+      // Date range filter
+      if (startDate) {
+        const orderDate = new Date(order.createdAt);
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (orderDate < start) {
+          return false;
+        }
+      }
+      if (endDate) {
+        const orderDate = new Date(order.createdAt);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (orderDate > end) {
+          return false;
+        }
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'date':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'amount':
+          comparison = a.total - b.total;
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+  const handleSort = (field: 'date' | 'amount') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -219,25 +285,116 @@ export default function OrdersPage() {
       <CategoryNav mode="navigation" />
 
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8 text-foreground">My Orders</h1>
+        <h1 className="text-3xl font-bold mb-6 text-foreground">My Orders</h1>
 
-        {orders.length === 0 ? (
+        {/* Filters and Search */}
+        <div className="bg-card rounded-lg shadow-sm border border-border p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Search</label>
+              <input
+                type="text"
+                placeholder="Order ID or number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            {/* Start Date */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">From Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            {/* End Date */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">To Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            {/* Sort */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Sort By</label>
+              <div className="flex gap-2">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'date' | 'amount')}
+                  className="flex-1 px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="date">Date</option>
+                  <option value="amount">Amount</option>
+                </select>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="px-3 py-2 border border-input bg-background text-foreground rounded-md hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
+                  title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                >
+                  {sortOrder === 'asc' ? '↑' : '↓'}
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Results count */}
+          <div className="mt-3 text-sm text-muted-foreground">
+            Showing {filteredAndSortedOrders.length} of {orders.length} orders
+          </div>
+        </div>
+
+        {filteredAndSortedOrders.length === 0 ? (
           <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
             <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">No orders yet</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              {orders.length === 0 ? 'No orders yet' : 'No orders match your filters'}
+            </h2>
             <p className="text-muted-foreground mb-6">
-              You haven't placed any orders. Start shopping now!
+              {orders.length === 0 
+                ? "You haven't placed any orders. Start shopping now!"
+                : 'Try adjusting your search or filter criteria'
+              }
             </p>
-            <Link
-              href="/"
-              className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
-            >
-              Start Shopping
-            </Link>
+            {orders.length === 0 && (
+              <Link
+                href="/"
+                className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+              >
+                Start Shopping
+              </Link>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
-            {orders.map((order) => (
+            {filteredAndSortedOrders.map((order) => (
               <div
                 key={order.id}
                 className="bg-card rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow"
