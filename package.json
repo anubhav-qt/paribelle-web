@@ -19,6 +19,7 @@
     "@tiptap/starter-kit": "^3.13.0",
     "axios": "^1.6.5",
     "clsx": "^2.1.0",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.303.0",
     "next": "^14.1.0",
     "next-intl": "^4.5.8",

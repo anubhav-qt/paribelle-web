@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Store } from 'lucide-react';
+import { Store, Star } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import VendorHeroCarousel from '@/components/VendorHeroCarousel';
 import CategoryNav from '@/components/CategoryNav';
@@ -11,6 +11,8 @@ import VendorHeader from '@/components/VendorHeader';
 import Footer from '@/components/Footer';
 import { getProductImageUrl } from '@/lib/image-url';
 import { initAuthFromCookie } from '@/lib/cross-domain-auth';
+import RatingDisplay from '@/components/RatingDisplay';
+import ReviewCard from '@/components/ReviewCard';
 
 interface Vendor {
   id: string;
@@ -60,6 +62,10 @@ export default function VendorStorePage() {
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState('INR');
   const [authInitialized, setAuthInitialized] = useState(false);
+  const [vendorReviews, setVendorReviews] = useState<any[]>([]);
+  const [vendorStats, setVendorStats] = useState<any>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
 
   // Scroll helper function
   const scrollToElement = (elementId: string) => {
@@ -104,6 +110,7 @@ export default function VendorStorePage() {
   useEffect(() => {
     if (vendor) {
       fetchCategories();
+      fetchVendorStats();
     }
   }, [vendor]);
 
@@ -225,6 +232,48 @@ export default function VendorStorePage() {
     }
   };
 
+  const fetchVendorReviews = async () => {
+    if (!vendor) return;
+    
+    try {
+      setReviewsLoading(true);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/vendors/${vendor.id}?page=1&limit=10`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setVendorReviews(data.reviews || []);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor reviews:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const handleShowReviews = () => {
+    setShowReviews(!showReviews);
+    if (!showReviews && vendorReviews.length === 0) {
+      fetchVendorReviews();
+    }
+  };
+
+  const fetchVendorStats = async () => {
+    if (!vendor) return;
+    
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/vendors/${vendor.id}/stats`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setVendorStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor stats:', error);
+    }
+  };
+
   if (loading || !authInitialized) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -339,6 +388,69 @@ export default function VendorStorePage() {
             <p className="text-muted-foreground">No products available yet</p>
           </div>
         )}
+
+        {/* Vendor Reviews Section */}
+        <section className="mt-16 pt-8 border-t border-border">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-foreground mb-2">Store Reviews</h2>
+            {vendorStats && (
+              <div className="flex items-center gap-4 mt-3">
+                <RatingDisplay 
+                  rating={vendorStats.averageRating} 
+                  reviewCount={vendorStats.totalReviews}
+                  size="lg"
+                />
+                {vendorStats.averageProductQuality > 0 && (
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <div>
+                      Quality: <span className="font-semibold text-foreground">{vendorStats.averageProductQuality.toFixed(1)}/5</span>
+                    </div>
+                    <div>
+                      Shipping: <span className="font-semibold text-foreground">{vendorStats.averageShippingSpeed.toFixed(1)}/5</span>
+                    </div>
+                    <div>
+                      Service: <span className="font-semibold text-foreground">{vendorStats.averageCustomerService.toFixed(1)}/5</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* View Comments Button */}
+            {vendorStats && vendorStats.totalReviews > 0 && (
+              <button
+                onClick={handleShowReviews}
+                className="mt-4 text-primary hover:underline font-medium flex items-center gap-2"
+              >
+                {showReviews ? '▼ Hide Comments' : `▶ View All ${vendorStats.totalReviews} Comments`}
+              </button>
+            )}
+          </div>
+
+          {showReviews && (
+            reviewsLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading reviews...</div>
+            ) : vendorReviews.length > 0 ? (
+              <div className="space-y-6">
+                {vendorReviews.map((review) => (
+                  <ReviewCard 
+                    key={review.id} 
+                    review={review}
+                    type="vendor"
+                    productQualityRating={review.productQualityRating}
+                    shippingSpeedRating={review.shippingSpeedRating}
+                    customerServiceRating={review.customerServiceRating}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-muted/50 rounded-lg">
+                <Star className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">No reviews yet for this store.</p>
+              </div>
+            )
+          )}
+        </section>
       </div>
 
       {/* Footer */}

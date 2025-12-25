@@ -505,9 +505,12 @@ export default function OrdersPage() {
                         >
                           Return Order
                         </button>
-                        <button className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium">
-                          Review Products
-                        </button>
+                        <Link
+                          href={`/orders/${order.id}/review`}
+                          className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium text-center"
+                        >
+                          Review Order
+                        </Link>
                       </>
                     )}
                     {['pending', 'confirmed', 'processing'].includes(order.status.toLowerCase()) && (

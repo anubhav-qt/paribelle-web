@@ -17,6 +17,8 @@ import CartButton from '@/components/CartButton';
 import CategoryNav from '@/components/CategoryNav';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import RatingDisplay from '@/components/RatingDisplay';
+import ReviewCard from '@/components/ReviewCard';
 
 interface Category {
   id: string;
@@ -84,6 +86,10 @@ export default function ProductDetailPage() {
   const [copied, setCopied] = useState(false);
   const [vendorReturnPolicy, setVendorReturnPolicy] = useState<any>(null);
   const [vendorCancellationPolicy, setVendorCancellationPolicy] = useState<any>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [vendorStats, setVendorStats] = useState<any>(null);
+  const [showReviews, setShowReviews] = useState(false);
 
   useEffect(() => {
     // Reset product state when slug changes to prevent showing stale data
@@ -111,6 +117,39 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [productSlug]);
 
+  const fetchReviews = async (productId: string) => {
+    try {
+      setReviewsLoading(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/products/${productId}?page=1&limit=10`);
+      if (response.ok) {
+        const data = await response.json();
+        setReviews(data.reviews || []);
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+  const fetchVendorStats = async (vendorId: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/vendors/${vendorId}/stats`);
+      if (response.ok) {
+        const data = await response.json();
+        setVendorStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor stats:', error);
+    }
+  };
+
+  const handleShowReviews = () => {
+    setShowReviews(!showReviews);
+    if (!showReviews && reviews.length === 0 && product?.id) {
+      fetchReviews(product.id);
+    }
+  };
+
   const fetchProduct = async () => {
     try {
       setLoading(true);
@@ -124,6 +163,9 @@ export default function ProductDetailPage() {
           const policies = await fetchVendorPolicies(productData.vendorId);
           setVendorReturnPolicy(policies.returnPolicy);
           setVendorCancellationPolicy(policies.cancellationPolicy);
+          
+          // Fetch vendor stats/rating
+          fetchVendorStats(productData.vendorId);
         }
       } else {
         setProduct(null);
@@ -778,9 +820,27 @@ export default function ProductDetailPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
                   >
-                    <span className="font-medium">{product.vendor.businessName}</span>
+                    <span className="font-medium">{product.vendor.storeName || product.vendor.businessName}</span>
                     <ExternalLink className="w-4 h-4" />
                   </a>
+                  {vendorStats && (
+                    <div className="mt-3 flex items-center gap-4 text-sm">
+                      <div className="flex items-center gap-1">
+                        <RatingDisplay rating={vendorStats.averageRating} size="sm" />
+                        <span className="text-muted-foreground">({vendorStats.totalReviews} reviews)</span>
+                      </div>
+                      {vendorStats.averageProductQuality && (
+                        <div className="text-muted-foreground">
+                          Quality: {vendorStats.averageProductQuality.toFixed(1)}/5
+                        </div>
+                      )}
+                      {vendorStats.averageShippingSpeed && (
+                        <div className="text-muted-foreground">
+                          Shipping: {vendorStats.averageShippingSpeed.toFixed(1)}/5
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">Visit vendor's store</p>
                 </div>
               )}
@@ -793,6 +853,50 @@ export default function ProductDetailPage() {
             <div className="prose max-w-none text-muted-foreground">
               {product.description || product.shortDescription}
             </div>
+          </div>
+
+          {/* Reviews Section */}
+          <div className="border-t border-border p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Customer Reviews</h2>
+                {product.reviewCount > 0 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <RatingDisplay 
+                      rating={Number(product.averageRating)} 
+                      reviewCount={product.reviewCount}
+                      size="lg"
+                    />
+                  </div>
+                )}
+                {/* View Comments Button */}
+                {product.reviewCount > 0 && (
+                  <button
+                    onClick={handleShowReviews}
+                    className="mt-3 text-primary hover:underline font-medium flex items-center gap-2"
+                  >
+                    {showReviews ? '▼ Hide Comments' : `▶ View All ${product.reviewCount} Comments`}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {showReviews && (
+              reviewsLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading reviews...</div>
+              ) : reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {reviews.map((review) => (
+                    <ReviewCard key={review.id} review={review} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-muted/50 rounded-lg">
+                  <Star className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No reviews yet. Be the first to review this product!</p>
+                </div>
+              )
+            )}
           </div>
         </div>
       </div>
