@@ -50,6 +50,12 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [returnReason, setReturnReason] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [orderToAction, setOrderToAction] = useState<Order | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -82,6 +88,84 @@ export default function OrdersPage() {
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!orderToAction || !cancelReason.trim()) {
+      alert('Please provide a cancellation reason');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderToAction.id}/cancel`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: cancelReason }),
+        }
+      );
+
+      if (response.ok) {
+        alert('Order cancelled successfully');
+        setShowCancelModal(false);
+        setCancelReason('');
+        setOrderToAction(null);
+        fetchOrders();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to cancel order');
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      alert('Failed to cancel order. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReturnOrder = async () => {
+    if (!orderToAction || !returnReason.trim()) {
+      alert('Please provide a return reason');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderToAction.id}/return`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: returnReason }),
+        }
+      );
+
+      if (response.ok) {
+        alert('Return request submitted successfully');
+        setShowReturnModal(false);
+        setReturnReason('');
+        setOrderToAction(null);
+        fetchOrders();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to submit return request');
+      }
+    } catch (error) {
+      console.error('Error requesting return:', error);
+      alert('Failed to submit return request. Please try again.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -254,12 +338,29 @@ export default function OrdersPage() {
                       View Details
                     </button>
                     {order.status.toLowerCase() === 'delivered' && (
-                      <button className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium">
-                        Review Products
-                      </button>
+                      <>
+                        <button 
+                          onClick={() => {
+                            setOrderToAction(order);
+                            setShowReturnModal(true);
+                          }}
+                          className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium"
+                        >
+                          Return Order
+                        </button>
+                        <button className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium">
+                          Review Products
+                        </button>
+                      </>
                     )}
-                    {['confirmed', 'processing'].includes(order.status.toLowerCase()) && (
-                      <button className="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium">
+                    {['pending', 'confirmed', 'processing'].includes(order.status.toLowerCase()) && (
+                      <button 
+                        onClick={() => {
+                          setOrderToAction(order);
+                          setShowCancelModal(true);
+                        }}
+                        className="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium"
+                      >
                         Cancel Order
                       </button>
                     )}
@@ -398,6 +499,103 @@ export default function OrdersPage() {
                 className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order Modal */}
+      {showCancelModal && orderToAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-lg shadow-xl max-w-md w-full border border-border">
+            <div className="p-6 border-b border-border">
+              <h2 className="text-xl font-bold text-foreground">Cancel Order</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-muted-foreground mb-4">
+                Are you sure you want to cancel order #{orderToAction.orderNumber}?
+              </p>
+              <label className="block mb-2 text-sm font-medium text-foreground">
+                Cancellation Reason <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Please provide a reason for cancellation..."
+                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground"
+                rows={4}
+                required
+              />
+            </div>
+            <div className="p-6 border-t border-border flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancelReason('');
+                  setOrderToAction(null);
+                }}
+                disabled={actionLoading}
+                className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
+              >
+                Keep Order
+              </button>
+              <button
+                onClick={handleCancelOrder}
+                disabled={actionLoading || !cancelReason.trim()}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading ? 'Cancelling...' : 'Cancel Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return Order Modal */}
+      {showReturnModal && orderToAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-lg shadow-xl max-w-md w-full border border-border">
+            <div className="p-6 border-b border-border">
+              <h2 className="text-xl font-bold text-foreground">Return Order</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-muted-foreground mb-2">
+                Request return for order #{orderToAction.orderNumber}
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Returns are accepted within 7 days of delivery.
+              </p>
+              <label className="block mb-2 text-sm font-medium text-foreground">
+                Return Reason <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={returnReason}
+                onChange={(e) => setReturnReason(e.target.value)}
+                placeholder="Please describe the reason for return..."
+                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground"
+                rows={4}
+                required
+              />
+            </div>
+            <div className="p-6 border-t border-border flex gap-3">
+              <button
+                onClick={() => {
+                  setShowReturnModal(false);
+                  setReturnReason('');
+                  setOrderToAction(null);
+                }}
+                disabled={actionLoading}
+                className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReturnOrder}
+                disabled={actionLoading || !returnReason.trim()}
+                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading ? 'Submitting...' : 'Submit Return'}
               </button>
             </div>
           </div>

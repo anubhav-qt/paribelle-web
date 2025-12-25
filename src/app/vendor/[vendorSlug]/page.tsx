@@ -211,7 +211,7 @@ export default function VendorStorePage() {
       setLoading(true);
       
       const vendorResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/slug/${vendorSlug}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorSlug}`
       );
       
       if (vendorResponse.ok) {
@@ -260,13 +260,6 @@ export default function VendorStorePage() {
         searchPlaceholder="Search in this store..."
       />
 
-      {/* Category Navigation */}
-      <CategoryNav 
-        vendorId={vendor.id}
-        vendorSlug={vendorSlug}
-        mode="scroll"
-      />
-
       {/* Hero Banner Carousel - Vendor Specific */}
       {vendor && (
         <VendorHeroCarousel 
@@ -275,6 +268,13 @@ export default function VendorStorePage() {
           vendorDescription={vendor.description}
         />
       )}
+
+      {/* Category Navigation */}
+      <CategoryNav 
+        vendorId={vendor.id}
+        vendorSlug={vendorSlug}
+        mode="scroll"
+      />
 
       {/* Products Grid */}
       <div className="container mx-auto px-4 py-8">

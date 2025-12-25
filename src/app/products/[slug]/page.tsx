@@ -6,12 +6,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Star, Heart, Share2, Package, ArrowLeft, Calendar, Clock, CreditCard, ExternalLink, ShoppingCart, Facebook, Twitter, Linkedin, Link as LinkIcon, Check } from 'lucide-react';
+import { Star, Heart, Share2, Package, ArrowLeft, Calendar, Clock, CreditCard, ExternalLink, ShoppingCart, Facebook, Twitter, Linkedin, Link as LinkIcon, Check, XCircle } from 'lucide-react';
 import BookingCalendar from '@/components/BookingCalendar';
 import ProductImageGallery from '@/components/ProductImageGallery';
 import { getCurrencySymbol } from '@/lib/currency';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
+import { usePolicies } from '@/contexts/PoliciesContext';
 import CartButton from '@/components/CartButton';
 import CategoryNav from '@/components/CategoryNav';
 import Header from '@/components/Header';
@@ -50,6 +51,7 @@ interface Product {
   vendor?: {
     id: string;
     businessName: string;
+    storeName?: string;
     subdomain?: string;
   };
   attributes?: {
@@ -63,10 +65,10 @@ interface Product {
 export default function ProductDetailPage() {
   const params = useParams();
   const productSlug = params.slug as string;
-  const locale = params.locale as string || 'en';
   const router = useRouter();
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { fetchVendorPolicies } = usePolicies();
   
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,6 +82,8 @@ export default function ProductDetailPage() {
   const [thumbnailLayout, setThumbnailLayout] = useState<'vertical' | 'horizontal'>('vertical');
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [vendorReturnPolicy, setVendorReturnPolicy] = useState<any>(null);
+  const [vendorCancellationPolicy, setVendorCancellationPolicy] = useState<any>(null);
 
   useEffect(() => {
     // Reset product state when slug changes to prevent showing stale data
@@ -114,6 +118,13 @@ export default function ProductDetailPage() {
       if (response.ok) {
         const productData = await response.json();
         setProduct(productData);
+        
+        // Fetch vendor-specific policies using cached query
+        if (productData.vendorId) {
+          const policies = await fetchVendorPolicies(productData.vendorId);
+          setVendorReturnPolicy(policies.returnPolicy);
+          setVendorCancellationPolicy(policies.cancellationPolicy);
+        }
       } else {
         setProduct(null);
       }
@@ -192,7 +203,7 @@ export default function ProductDetailPage() {
           console.log('All bookings created successfully, redirecting to checkout');
           console.log('Booking IDs:', bookingIds);
           // Redirect to checkout with booking IDs
-          router.push(`/${locale}/checkout/booking?bookingIds=${bookingIds.join(',')}`);
+          router.push(`/checkout/booking?bookingIds=${bookingIds.join(',')}`);
         } else {
           alert('Some bookings failed. Please try again.');
         }
@@ -240,7 +251,7 @@ export default function ProductDetailPage() {
             
             console.log('All bookings created successfully, redirecting to checkout');
             // Redirect to checkout with booking IDs
-            router.push(`/${locale}/checkout/booking?bookingIds=${bookingIds.join(',')}`);
+            router.push(`/checkout/booking?bookingIds=${bookingIds.join(',')}`);
           } else {
             alert('Some bookings failed. Please try again.');
           }
@@ -272,7 +283,7 @@ export default function ProductDetailPage() {
             const result = await response.json();
             console.log('Booking created successfully:', result);
             // Redirect to checkout with booking ID
-            router.push(`/${locale}/checkout/booking?bookingIds=${result.id}`);
+            router.push(`/checkout/booking?bookingIds=${result.id}`);
           } else {
             const error = await response.json();
             alert(`Failed to create booking: ${JSON.stringify(error)}`);
@@ -619,6 +630,37 @@ export default function ProductDetailPage() {
                   </>
                 )}
               </div>
+
+              {/* Policies */}
+              {(vendorReturnPolicy?.enabled || vendorCancellationPolicy?.enabled) && (
+                <div className="border border-border rounded-lg p-4 bg-card/50">
+                  <h4 className="font-semibold text-sm mb-3 text-foreground">Policies</h4>
+                  <div className="space-y-3">
+                    {vendorReturnPolicy?.enabled && (
+                      <div className="flex gap-3">
+                        <Package className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-medium text-sm text-foreground">Return Policy</div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {vendorReturnPolicy.text}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {vendorCancellationPolicy?.enabled && (
+                      <div className="flex gap-3">
+                        <XCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-medium text-sm text-foreground">Cancellation Policy</div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {vendorCancellationPolicy.text}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Additional Actions */}
               <div className="flex gap-4 relative">

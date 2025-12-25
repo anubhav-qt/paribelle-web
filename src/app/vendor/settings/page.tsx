@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import VendorLocationSelector from '@/components/VendorLocationSelector';
+import { getVendorId } from '@/lib/auth';
 
 export default function VendorSettingsPage() {
   const [vendor, setVendor] = useState<any>(null);
@@ -33,15 +34,18 @@ export default function VendorSettingsPage() {
   const fetchVendorData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
       
-      if (!token || !userStr) {
+      if (!token) {
         return;
       }
 
-      const user = JSON.parse(userStr);
+      const vendorId = getVendorId();
+      if (!vendorId) {
+        console.error('No vendorId found');
+        return;
+      }
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${user.vendorId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -81,15 +85,18 @@ export default function VendorSettingsPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
       
-      if (!token || !userStr) {
+      if (!token) {
         return;
       }
 
-      const user = JSON.parse(userStr);
+      const vendorId = getVendorId();
+      if (!vendorId) {
+        console.error('No vendorId found');
+        return;
+      }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${user.vendorId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

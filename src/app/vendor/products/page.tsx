@@ -5,6 +5,7 @@ import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
 import { getCurrencySymbol } from '@/lib/currency';
+import { getVendorId } from '@/lib/auth';
 
 interface Product {
   id: string;
@@ -106,16 +107,19 @@ export default function VendorProductsPage() {
   const fetchProducts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
       
-      if (!token || !userStr) {
+      if (!token) {
         return;
       }
 
-      const user = JSON.parse(userStr);
+      const vendorId = getVendorId();
+      if (!vendorId) {
+        console.error('No vendorId found');
+        return;
+      }
       
       // Fetch products for this vendor
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?vendorId=${user.vendorId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?vendorId=${vendorId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -237,16 +241,8 @@ export default function VendorProductsPage() {
     try {
       setExporting(true);
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
       
-      if (!userStr) {
-        alert('User information not found');
-        return;
-      }
-
-      const user = JSON.parse(userStr);
-      const vendorId = user.vendorId;
-
+      const vendorId = getVendorId();
       if (!vendorId) {
         alert('Vendor ID not found');
         return;
@@ -291,16 +287,8 @@ export default function VendorProductsPage() {
       setImportMessage(null);
       
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
       
-      if (!userStr) {
-        setImportMessage({ type: 'error', text: 'User information not found' });
-        return;
-      }
-
-      const user = JSON.parse(userStr);
-      const vendorId = user.vendorId;
-      
+      const vendorId = getVendorId();
       if (!vendorId) {
         setImportMessage({ type: 'error', text: 'Vendor ID not found' });
         return;

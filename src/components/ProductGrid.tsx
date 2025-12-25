@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Star, Calendar, ExternalLink, Heart } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getProductImageUrl } from '@/lib/image-url';
-import { useLocale } from 'next-intl';
 import { useWishlist } from '@/contexts/WishlistContext';
 
 interface Category {
@@ -58,7 +57,6 @@ export default function ProductGrid({
   isLocationFilterActive = false,
   showLocationInfo = true 
 }: ProductGridProps) {
-  const locale = useLocale();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const getDiscount = (price: string | number, compareAtPrice?: string | number) => {
     if (!compareAtPrice || Number(compareAtPrice) <= Number(price)) return null;
@@ -110,7 +108,7 @@ export default function ProductGrid({
             }`} 
           />
         </button>
-        <Link href={`/${locale}/products/${product.slug}`} className="block">
+        <Link href={`/products/${product.slug}`} className="block">
           <div className="relative aspect-square overflow-hidden bg-muted">
             <img
               src={getProductImageUrl(product)}

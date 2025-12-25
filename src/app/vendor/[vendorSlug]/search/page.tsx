@@ -102,7 +102,7 @@ export default function VendorSearchPage() {
   const fetchVendor = async () => {
     try {
       const vendorResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/slug/${vendorSlug}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorSlug}`
       );
       
       if (vendorResponse.ok) {

@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { Star, Package, Calendar, ChevronDown } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getProductImageUrl } from '@/lib/image-url';
-import { useLocale } from 'next-intl';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useSettings } from '@/hooks/useSettings';
@@ -33,7 +32,6 @@ interface Product {
 function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const locale = useLocale();
   const { data: settings } = useSettings();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [products, setProducts] = useState<Product[]>([]);
@@ -57,7 +55,7 @@ function SearchContent() {
   // Navigate to homepage with category hash
   const handleCategoryNavigation = (categorySlug: string) => {
     console.log('🟢 Navigating to homepage with category:', categorySlug);
-    window.location.href = `/${locale}#category-${categorySlug}`;
+    window.location.href = `/#category-${categorySlug}`;
   };
 
   useEffect(() => {

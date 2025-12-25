@@ -8,6 +8,7 @@ import { useRazorpay } from '@/hooks/useRazorpay';
 import Header from '@/components/Header';
 import CategoryNav from '@/components/CategoryNav';
 import AddressManager, { Address } from '@/components/AddressManager';
+import { initAuthFromCookie } from '@/lib/cross-domain-auth';
 import { 
   ShoppingBag, 
   MapPin, 
@@ -50,8 +51,27 @@ export default function CheckoutPage() {
   // Payment details
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [orderId, setOrderId] = useState<string>('');
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const token = await initAuthFromCookie();
+        console.log('Checkout: Auth initialized, token:', token ? 'Found' : 'Not found');
+        setAuthInitialized(true);
+      } catch (error) {
+        console.error('Checkout: Error initializing auth:', error);
+        setAuthInitialized(true);
+      }
+    };
+    initAuth();
+  }, []);
+
+  useEffect((): void => {
+    if (!authInitialized) {
+      return;
+    }
+
     // Fetch marketplace branding
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/settings/marketplace_logo`)
       .then(res => res.json())
@@ -88,14 +108,14 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error('Error parsing user data:', error);
     }
-  }, [router]);
+  }, [authInitialized]);
 
   useEffect(() => {
     // Redirect if cart is empty
     if (items.length === 0 && currentStep !== 'confirmation') {
       router.push('/');
     }
-  }, [items.length, currentStep, router]);
+  }, [items.length, currentStep]);
 
   const shippingCost = totalPrice > 500 ? 0 : 50;
   const tax = totalPrice * 0.18; // 18% GST

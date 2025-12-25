@@ -126,7 +126,7 @@ export default function VendorCheckoutPage() {
     }
 
     // Fetch vendor settings
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/slug/${vendorSlug}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorSlug}`)
       .then(res => res.json())
       .then(data => {
         setVendorSettings(data);

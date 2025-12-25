@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 interface Vendor {
   id: string;
@@ -187,7 +188,17 @@ export default function VendorDashboardPage() {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Vendor Dashboard</h1>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Home
+              </Link>
+              <div className="h-6 w-px bg-gray-300"></div>
+              <h1 className="text-2xl font-bold text-gray-900">Vendor Dashboard</h1>
+            </div>
             <button
               onClick={handleLogout}
               className="text-sm text-gray-600 hover:text-gray-900"
@@ -376,8 +387,18 @@ export default function VendorDashboardPage() {
               vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Orders</h3>
-            <p className="text-sm text-gray-600">View and manage orders</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Orders Received</h3>
+            <p className="text-sm text-gray-600">View and manage customer orders</p>
+          </Link>
+
+          <Link
+            href="/vendor/policies"
+            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
+              vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
+            }`}
+          >
+            <h3 className="text-lg font-medium text-gray-900 mb-2">📋 Policies</h3>
+            <p className="text-sm text-gray-600">Configure return & cancellation policies</p>
           </Link>
 
           <Link

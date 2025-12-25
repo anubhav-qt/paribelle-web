@@ -24,7 +24,7 @@ export function useVendor(slug: string) {
     queryKey: ['vendor', slug],
     queryFn: async () => {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/vendors/slug/${slug}`
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/vendors/${slug}`
       );
       if (!response.ok) throw new Error('Vendor not found');
       return response.json() as Promise<Vendor>;

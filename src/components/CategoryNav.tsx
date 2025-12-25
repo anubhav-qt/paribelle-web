@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Home } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { useTranslations, useLocale } from 'next-intl';
 import { useCategories } from '@/hooks/useCategories';
 
 interface Category {
@@ -42,27 +41,9 @@ export default function CategoryNav({
   const router = useRouter();
   const pathname = usePathname();
   
-  // Try to get locale and translations, fallback for vendor routes
-  let locale = 'en';
-  let t: any;
-  let tCategory: any;
-  
-  try {
-    locale = useLocale();
-    t = useTranslations('common');
-    tCategory = useTranslations('category');
-  } catch {
-    // Fallback for vendor routes without intl context
-    const localeMatch = pathname?.match(/^\/(en|hi|mr)/);
-    locale = localeMatch ? localeMatch[1] : 'en';
-    t = (key: string) => key;
-    tCategory = (key: string) => key;
-  }
-  
   // Use React Query for cached categories
   const { data: categories = [], isLoading } = useCategories({
     vendorId,
-    locale,
     hideEmptyCategories,
   });
   
@@ -99,7 +80,7 @@ export default function CategoryNav({
     // If no vendorSlug, we're on main homepage
     if (!vendorSlug) {
       // Check if we're on the homepage
-      const isOnHomepage = pathname === `/${locale}` || pathname === '/';
+      const isOnHomepage = pathname === '/' || pathname === '/';
       console.log('🔵 No vendor slug - is on homepage:', isOnHomepage);
       
       if (isOnHomepage) {
@@ -107,7 +88,7 @@ export default function CategoryNav({
         handleScrollToCategory(categorySlug);
       } else {
         // Navigate to homepage with hash
-        const targetUrl = `/${locale}#category-${categorySlug}`;
+        const targetUrl = `/#category-${categorySlug}`;
         console.log('🔵 Navigating to:', targetUrl);
         window.location.href = targetUrl;
       }
@@ -201,7 +182,7 @@ export default function CategoryNav({
               className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted border-r border-border"
             >
               <Home className="w-3.5 h-3.5" />
-              {t('home')}
+              Home
             </Link>
           )}
 
@@ -215,7 +196,7 @@ export default function CategoryNav({
                   : 'border-transparent text-foreground hover:text-primary hover:bg-muted'
                 }`}
             >
-              {t('allProducts')}
+              All Products
             </button>
           )}
           
@@ -249,15 +230,15 @@ export default function CategoryNav({
                     if (!vendorSlug) {
                       console.log('🔴 NO VENDOR SLUG BRANCH');
                       // Check if we're on the homepage (ignore query params for filters/search)
-                      const isOnHomepage = pathname === `/${locale}` || pathname === '/';
+                      const isOnHomepage = pathname === '/' || pathname === '/';
                       console.log('🔴 isOnHomepage:', isOnHomepage);
-                      console.log('🔴 pathname === `/${locale}`:', pathname === `/${locale}`);
+                      console.log('🔴 pathname === \'/\':', pathname === '/');
                       console.log('🔴 pathname === \'/\':', pathname === '/');
                       
                       if (!isOnHomepage) {
-                        console.log('🔴 NAVIGATING TO HOME WITH HASH:', `/${locale}#category-${category.slug}`);
+                        console.log('🔴 NAVIGATING TO HOME WITH HASH:', `/#category-${category.slug}`);
                         // Navigate to homepage with hash (clears query params)
-                        window.location.href = `/${locale}#category-${category.slug}`;
+                        window.location.href = `/#category-${category.slug}`;
                       } else if (category.children && category.children.length > 0) {
                         console.log('🔴 TOGGLING DROPDOWN');
                         setActiveDropdown(activeDropdown === category.id ? null : category.id);
@@ -327,7 +308,7 @@ export default function CategoryNav({
                         onClick={(e) => handleNavigateToCategory(category.slug, e)}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
-                        {tCategory('all', { category: category.name })}
+                        All {category.name}
                       </button>
                       {category.children.map((subcat) => (
                         <button
@@ -344,9 +325,9 @@ export default function CategoryNav({
                       <button
                         onClick={() => {
                           if (!vendorSlug) {
-                            const isOnHomepage = pathname === `/${locale}` || pathname === '/';
+                            const isOnHomepage = pathname === '/' || pathname === '/';
                             if (!isOnHomepage) {
-                              window.location.href = `/${locale}#category-${category.slug}`;
+                              window.location.href = `/#category-${category.slug}`;
                             } else {
                               handleScrollToCategory(category.slug);
                             }
@@ -361,16 +342,16 @@ export default function CategoryNav({
                         }}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
-                        {tCategory('all', { category: category.name })}
+                        All {category.name}
                       </button>
                       {category.children.map((subcat) => (
                         <button
                           key={subcat.id}
                           onClick={() => {
                             if (!vendorSlug) {
-                              const isOnHomepage = pathname === `/${locale}` || pathname === '/';
+                              const isOnHomepage = pathname === '/' || pathname === '/';
                               if (!isOnHomepage) {
-                                window.location.href = `/${locale}#category-${subcat.slug}`;
+                                window.location.href = `/#category-${subcat.slug}`;
                               } else {
                                 handleScrollToCategory(subcat.slug);
                               }
@@ -395,7 +376,7 @@ export default function CategoryNav({
                         onClick={() => handleCategoryClick(category.id)}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
                       >
-                        {tCategory('all', { category: category.name })}
+                        All {category.name}
                       </button>
                       {category.children.map((subcat) => (
                         <button

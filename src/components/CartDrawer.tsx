@@ -5,22 +5,11 @@ import { X, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
 import { useEffect } from 'react';
-import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
 
 export default function CartDrawer() {
   const { items, totalPrice, totalItems, isOpen, closeCart, updateQuantity, removeFromCart } = useCart();
   const pathname = usePathname();
-  
-  // Try to get locale from next-intl, fallback to pathname extraction for vendor routes
-  let locale = 'en';
-  try {
-    locale = useLocale();
-  } catch {
-    // Extract locale from pathname for vendor routes
-    const localeMatch = pathname?.match(/^\/(en|hi|mr)/);
-    locale = localeMatch ? localeMatch[1] : 'en';
-  }
 
   // Prevent body scroll when cart is open
   useEffect(() => {
@@ -89,7 +78,7 @@ export default function CartDrawer() {
                 >
                   {/* Product Image */}
                   <Link
-                    href={`/${locale}/products/${item.slug}`}
+                    href={`/products/${item.slug}`}
                     onClick={closeCart}
                     className="flex-shrink-0"
                   >
@@ -103,7 +92,7 @@ export default function CartDrawer() {
                   {/* Product Details */}
                   <div className="flex-1 min-w-0">
                     <Link
-                      href={`/${locale}/products/${item.slug}`}
+                      href={`/products/${item.slug}`}
                       onClick={closeCart}
                       className="font-semibold text-foreground hover:text-primary line-clamp-2 mb-1"
                     >
@@ -193,7 +182,7 @@ export default function CartDrawer() {
             {/* Action Buttons */}
             <div className="space-y-2">
               <Link
-                href={`/${locale}/checkout`}
+                href="/checkout"
                 onClick={closeCart}
                 className="block w-full bg-primary text-primary-foreground text-center py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
               >

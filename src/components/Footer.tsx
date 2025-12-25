@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
-import { useTranslations, useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
 
 interface FooterProps {
@@ -14,23 +13,6 @@ interface FooterProps {
 export default function Footer({ categories = [], marketplaceName = 'GaliCart' }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
-  
-  // Try to get locale and translations, fallback for vendor routes
-  let locale = 'en';
-  let t: any;
-  let tCommon: any;
-  
-  try {
-    t = useTranslations('footer');
-    tCommon = useTranslations('common');
-    locale = useLocale();
-  } catch {
-    // Fallback for vendor routes without intl context
-    const localeMatch = pathname?.match(/^\/(en|hi|mr)/);
-    locale = localeMatch ? localeMatch[1] : 'en';
-    t = (key: string) => key;
-    tCommon = (key: string) => key;
-  }
 
   return (
     <footer 
@@ -67,7 +49,7 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
               {categories.slice(0, 6).map(cat => (
                 <li key={cat.id}>
                   <Link 
-                    href={`/${locale}#category-${cat.slug}`}
+                    href={`/#category-${cat.slug}`}
                     className="hover:text-primary transition-colors"
                   >
                     {cat.name}
@@ -77,7 +59,7 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
               {categories.length > 6 && (
                 <li>
                   <Link 
-                    href={`/${locale}/#categories`}
+                    href="/#categories"
                     className="text-primary hover:underline transition-colors"
                   >
                     View All Categories →
@@ -89,35 +71,35 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
 
           {/* Customer Support */}
           <div>
-            <h4 className="font-semibold mb-4 text-lg text-foreground">{t('helpCenter')}</h4>
+            <h4 className="font-semibold mb-4 text-lg text-foreground">Help Center</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href={`/${locale}/help`} className="hover:text-primary transition-colors">
-                  {t('helpCenter')}
+                <Link href="/help" className="hover:text-primary transition-colors">
+                  Help Center
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/contact`} className="hover:text-primary transition-colors">
-                  {t('contactUs')}
+                <Link href="/contact" className="hover:text-primary transition-colors">
+                  Contact Us
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/shipping`} className="hover:text-primary transition-colors">
-                  {t('shipping')}
+                <Link href="/shipping" className="hover:text-primary transition-colors">
+                  Shipping Info
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/returns`} className="hover:text-primary transition-colors">
-                  {t('returns')}
+                <Link href="/returns" className="hover:text-primary transition-colors">
+                  Returns
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/faq`} className="hover:text-primary transition-colors">
-                  {t('faq')}
+                <Link href="/faq" className="hover:text-primary transition-colors">
+                  FAQ
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/track-order`} className="hover:text-primary transition-colors">
+                <Link href="/track-order" className="hover:text-primary transition-colors">
                   Track Your Order
                 </Link>
               </li>
@@ -129,22 +111,22 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
             <h4 className="font-semibold mb-4 text-lg text-foreground">My Account</h4>
             <ul className="space-y-2 text-sm mb-6 text-muted-foreground">
               <li>
-                <Link href={`/${locale}/login`} className="hover:text-primary transition-colors">
+                <Link href="/login" className="hover:text-primary transition-colors">
                   Login / Register
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/dashboard`} className="hover:text-primary transition-colors">
+                <Link href="/dashboard" className="hover:text-primary transition-colors">
                   My Dashboard
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/orders`} className="hover:text-primary transition-colors">
+                <Link href="/orders" className="hover:text-primary transition-colors">
                   Order History
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/wishlist`} className="hover:text-primary transition-colors">
+                <Link href="/wishlist" className="hover:text-primary transition-colors">
                   My Wishlist
                 </Link>
               </li>
@@ -173,22 +155,22 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
         <div className="mt-8 pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-center text-sm text-muted-foreground">
-              {t('copyright', { year: currentYear })}
+              © {currentYear} {marketplaceName}. All rights reserved.
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
-              <Link href={`/${locale}/privacy-policy`} className="hover:text-primary transition-colors">
-                {t('privacyPolicy')}
+              <Link href="/privacy-policy" className="hover:text-primary transition-colors">
+                Privacy Policy
               </Link>
               <span>•</span>
-              <Link href={`/${locale}/terms-of-service`} className="hover:text-primary transition-colors">
-                {t('termsOfService')}
+              <Link href="/terms-of-service" className="hover:text-primary transition-colors">
+                Terms of Service
               </Link>
               <span>•</span>
-              <Link href={`/${locale}/cookie-policy`} className="hover:text-primary transition-colors">
+              <Link href="/cookie-policy" className="hover:text-primary transition-colors">
                 Cookie Policy
               </Link>
               <span>•</span>
-              <Link href={`/${locale}/vendor-registration`} className="hover:text-primary transition-colors">
+              <Link href="/vendor-registration" className="hover:text-primary transition-colors">
                 Become a Vendor
               </Link>
             </div>
@@ -198,3 +180,4 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
     </footer>
   );
 }
+

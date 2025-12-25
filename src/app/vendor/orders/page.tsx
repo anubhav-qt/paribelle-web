@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getVendorId } from '@/lib/auth';
 
 export default function VendorOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -20,10 +21,19 @@ export default function VendorOrdersPage() {
         return;
       }
 
-      const user = JSON.parse(userStr);
+      const currentUser = JSON.parse(userStr);
+      const vendorId = getVendorId();
       
-      // Fetch orders for this vendor
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders?vendorId=${user.vendorId}`, {
+      if (!vendorId) {
+        console.error('No vendorId found');
+        return;
+      }
+      
+      console.log('Fetching orders for vendor:', vendorId);
+      console.log('Current user ID:', currentUser.id);
+      
+      // Fetch orders for this vendor (orders containing vendor's products)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders?vendorId=${vendorId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -31,7 +41,36 @@ export default function VendorOrdersPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setOrders(Array.isArray(data) ? data : data.orders || []);
+        const allOrders = Array.isArray(data) ? data : data.orders || [];
+        
+        if (allOrders.length > 0) {
+          console.log('Sample order structure:', allOrders[0]);
+          console.log('Sample order items:', allOrders[0]?.items);
+        }
+        console.log('Current user:', currentUser);
+        
+        // Filter out orders placed by the vendor themselves (those are their purchases, not orders received)
+        // Check multiple possible field names for userId
+        const ordersReceived = allOrders.filter((order: any) => {
+          const orderUserId = order.userId || order.user_id || order.customerId || order.customer_id;
+          const isOwnOrder = orderUserId === currentUser.id;
+          
+          if (allOrders.length <= 5) {
+            console.log(`Order ${order.orderNumber || order.id}: orderUserId=${orderUserId}, currentUserId=${currentUser.id}, isOwn=${isOwnOrder}`);
+          }
+          
+          return !isOwnOrder;
+        });
+        
+        console.log('Total orders with vendor products:', allOrders.length);
+        console.log('Orders received from customers (other people):', ordersReceived.length);
+        console.log('Orders filtered out (your own purchases):', allOrders.length - ordersReceived.length);
+        
+        if (ordersReceived.length === 0 && allOrders.length > 0) {
+          console.log('ℹ All orders containing your products were placed by you (they are your purchases from your own or other stores)');
+        }
+        
+        setOrders(ordersReceived);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -50,8 +89,8 @@ export default function VendorOrdersPage() {
           >
             ← Back to Dashboard
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
-          <p className="text-gray-600 mt-2">View and manage your orders</p>
+          <h1 className="text-3xl font-bold text-gray-900">Orders Received</h1>
+          <p className="text-gray-600 mt-2">Orders from your customers (excluding your own purchases)</p>
         </div>
 
         {loading ? (
@@ -60,7 +99,10 @@ export default function VendorOrdersPage() {
           </div>
         ) : orders.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-500">No orders yet</p>
+            <p className="text-gray-500 text-lg mb-2">No orders received yet</p>
+            <p className="text-gray-400 text-sm">
+              Orders placed by other customers will appear here. Orders you place yourself appear in "My Purchases".
+            </p>
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">

@@ -14,7 +14,7 @@ interface PageProps {
 
 async function getVendor(slug: string) {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/slug/${slug}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${slug}`,
     { cache: 'no-store' }
   );
   

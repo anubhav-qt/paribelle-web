@@ -53,7 +53,6 @@ interface Booking {
 function BookingCheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const locale = useLocale();
   const { createOrder: createRazorpayOrder, verifyPayment, openCheckout } = useRazorpay();
   
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('review');
@@ -103,7 +102,7 @@ function BookingCheckoutContent() {
     
     if (!token || !userStr) {
       alert('Please login to continue');
-      router.push(`/${locale}/login`);
+      router.push('/login');
       return;
     }
     
@@ -115,7 +114,7 @@ function BookingCheckoutContent() {
       const bookingIds = searchParams.get('bookingIds')?.split(',') || [];
       if (bookingIds.length === 0) {
         alert('No bookings found');
-        router.push(`/${locale}`);
+        router.push('/');
         return;
       }
       
@@ -446,13 +445,13 @@ function BookingCheckoutContent() {
 
             <div className="flex gap-4 justify-center">
               <Link
-                href={`/${locale}`}
+                href="/"
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
                 Continue Shopping
               </Link>
               <Link
-                href={`/${locale}/orders`}
+                href="/orders"
                 className="px-6 py-3 border border-border text-foreground rounded-lg hover:bg-muted transition"
               >
                 View My Bookings

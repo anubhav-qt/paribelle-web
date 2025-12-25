@@ -33,11 +33,10 @@ function LoginContent() {
       } else {
         try {
           const user = JSON.parse(userStr);
-          if (user.role === 'vendor_admin') {
-            router.push('/vendor/dashboard');
-          } else if (user.role === 'super_admin') {
+          if (user.role === 'super_admin') {
             router.push('/admin');
           } else {
+            // Both regular users and vendors go to home page
             router.push('/');
           }
         } catch (error) {
@@ -96,21 +95,24 @@ function LoginContent() {
         localStorage.removeItem('savedPassword');
       }
       
-      // Set cookie for middleware and cross-subdomain auth using secure utility
+      // Set cookies for middleware and cross-subdomain auth using secure utility
       setAuthCookie('token', data.access_token);
+      // Encode user data for cookie storage
+      const encodedUser = encodeURIComponent(JSON.stringify(data.user));
+      setAuthCookie('user', encodedUser, 7 * 24 * 60 * 60);
       
-      console.log('Login successful, token stored in secure cross-domain cookie');
+      console.log('Login successful, token and user stored in secure cross-domain cookies');
+      console.log('User data encoded length:', encodedUser.length);
       
       // Redirect based on returnUrl or role
       if (returnUrl) {
         // Cookie is already set with .localhost domain, so it will be available on all subdomains
         console.log('Redirecting to returnUrl (cookie will be automatically available):', returnUrl);
         window.location.href = returnUrl;
-      } else if (data.user.role === 'vendor_admin') {
-        router.push('/vendor/dashboard');
       } else if (data.user.role === 'super_admin') {
         router.push('/admin');
       } else {
+        // Both regular users and vendors go to home page
         router.push('/');
       }
     } catch (err) {

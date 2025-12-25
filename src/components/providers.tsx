@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { useState } from 'react';
 import { CartProvider } from '@/contexts/CartContext';
 import { WishlistProvider } from '@/contexts/WishlistContext';
+import { PoliciesProvider } from '@/contexts/PoliciesContext';
 import CartDrawer from './CartDrawer';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -23,12 +24,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-        <CartProvider>
-          <WishlistProvider>
-            {children}
-            <CartDrawer />
-          </WishlistProvider>
-        </CartProvider>
+        <PoliciesProvider>
+          <CartProvider>
+            <WishlistProvider>
+              {children}
+              <CartDrawer />
+            </WishlistProvider>
+          </CartProvider>
+        </PoliciesProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

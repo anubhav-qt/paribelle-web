@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { ShoppingCart, Search, Menu, X } from 'lucide-react';
+import { ShoppingCart, Search, Menu, X, ChevronDown, ShoppingBag, Store } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useVendor } from '@/hooks/useVendor';
+import { initAuthFromCookie, removeAuthCookie } from '@/lib/cross-domain-auth';
 
 interface VendorHeaderProps {
   vendorSlug: string;
@@ -30,32 +31,69 @@ export default function VendorHeader({
   const { data: vendor } = useVendor(vendorSlug);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Check for user
     const checkUser = () => {
       const storedUser = localStorage.getItem('user');
+      console.log('VendorHeader: checkUser called, storedUser:', storedUser ? 'Found' : 'Not found');
       if (storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          console.log('VendorHeader: User set:', parsedUser.email);
         } catch (err) {
           console.error('Error parsing user data:', err);
         }
+      } else {
+        setUser(null);
       }
     };
     
-    checkUser();
+    // Initialize auth from cookie if not already in localStorage
+    const initAuth = async () => {
+      console.log('VendorHeader: Initializing auth...');
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      
+      // Only check cookie if we're on a vendor subdomain (not main domain)
+      const hostname = window.location.hostname;
+      const isVendorSubdomain = hostname !== 'localhost' && hostname.includes('.localhost');
+      
+      console.log('VendorHeader: hostname:', hostname, 'isVendorSubdomain:', isVendorSubdomain);
+      
+      if ((!storedToken || !storedUser) && isVendorSubdomain) {
+        console.log('VendorHeader: No token/user in localStorage, checking cookie...');
+        try {
+          await initAuthFromCookie();
+        } catch (error) {
+          console.error('VendorHeader: Error initializing auth from cookie:', error);
+        }
+      } else if (!storedToken || !storedUser) {
+        console.log('VendorHeader: On main domain, auth should already be in localStorage from login');
+      }
+      
+      // Check user after potential auth initialization
+      checkUser();
+      setAuthChecked(true);
+    };
     
-    // Listen for custom auth-synced event
-    const handleAuthSynced = () => {
-      console.log('VendorHeader: Auth synced, reloading user');
+    initAuth();
+    
+    // Listen for custom userChanged event
+    const handleUserChanged = () => {
+      console.log('VendorHeader: User changed event received, reloading user');
       checkUser();
     };
     
-    window.addEventListener('auth-synced', handleAuthSynced);
+    window.addEventListener('userChanged', handleUserChanged);
     
     // Listen for storage changes (when auth is synced from cookie)
     const handleStorageChange = (e: StorageEvent) => {
+      console.log('VendorHeader: Storage event received, key:', e.key);
       if (e.key === 'user' && e.newValue) {
         try {
           setUser(JSON.parse(e.newValue));
@@ -70,10 +108,27 @@ export default function VendorHeader({
     window.addEventListener('storage', handleStorageChange);
     
     return () => {
-      window.removeEventListener('auth-synced', handleAuthSynced);
+      window.removeEventListener('userChanged', handleUserChanged);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [vendorSlug]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,8 +144,12 @@ export default function VendorHeader({
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    removeAuthCookie('token');
+    removeAuthCookie('user');
     setUser(null);
-    router.push('/');
+    setShowDropdown(false);
+    // Redirect to main domain login page
+    window.location.href = 'http://localhost:3000/login';
   };
 
   // Memoize dashboard URL to prevent infinite re-renders
@@ -102,14 +161,14 @@ export default function VendorHeader({
       return '/vendor/dashboard';
     }
     
-    // For buyers, use locale-based dashboard (middleware will handle rewrite on vendor subdomains)
-    return '/en/dashboard';
+    // For buyers, use dashboard (middleware will handle rewrite on vendor subdomains)
+    return '/dashboard';
   }, [user]);
 
   return (
-    <header className="sticky top-0 z-40 bg-card shadow-md">
+    <header className="sticky top-0 z-40 bg-card shadow-md overflow-visible">
       <div className="container mx-auto px-4 py-3">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center overflow-visible">
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -162,21 +221,62 @@ export default function VendorHeader({
             <Link href="http://localhost:3000" className="hidden md:inline-flex text-sm text-foreground px-4 py-2 bg-muted rounded-lg hover:bg-accent transition-colors">
               All Vendors
             </Link>
-            {user && (
-              <>
-                <Link
-                  href={dashboardUrl}
-                  className="hidden md:block px-4 py-2 text-foreground hover:text-primary transition-colors font-medium"
-                >
-                  {user.firstName || user.email}
-                </Link>
+            {user ? (
+              <div className="relative z-[9999]" ref={dropdownRef}>
                 <button
-                  onClick={handleLogout}
-                  className="hidden md:block px-4 py-2 text-foreground font-medium hover:text-primary rounded transition-colors"
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="hidden md:flex items-center gap-1 px-2 py-1 text-sm hover:text-primary transition-colors font-normal text-foreground"
                 >
-                  Logout
+                  <span>{user.firstName || user.email}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
                 </button>
-              </>
+
+                {/* Dropdown Menu */}
+                {showDropdown && (
+                  <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-xl py-2 z-[9999]">
+                    <Link
+                      href="/dashboard"
+                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      My Purchases
+                    </Link>
+                    
+                    {user.role === 'vendor_admin' && (
+                      <>
+                        <div className="border-t border-border my-1"></div>
+                        <Link
+                          href="/vendor/dashboard"
+                          className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          <Store className="w-4 h-4" />
+                          <div className="flex flex-col">
+                            <span>My Vendor Dashboard</span>
+                            <span className="text-xs text-muted-foreground">Orders & Products</span>
+                          </div>
+                        </Link>
+                      </>
+                    )}
+                    
+                    <div className="border-t border-border my-1"></div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                href={`/login?returnUrl=${encodeURIComponent(window.location.href)}`}
+                className="hidden md:block px-4 py-2 text-foreground hover:text-primary transition-colors font-medium"
+              >
+                Login
+              </Link>
             )}
           </div>
         </div>
@@ -211,12 +311,21 @@ export default function VendorHeader({
             {user ? (
               <>
                 <Link
-                  href={dashboardUrl}
+                  href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block py-2 px-4 text-foreground hover:bg-accent rounded-md transition-colors"
                 >
-                  {user.firstName || user.email}
+                  My Purchases
                 </Link>
+                {user.role === 'vendor_admin' && (
+                  <Link
+                    href="/vendor/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block py-2 px-4 text-foreground hover:bg-accent rounded-md transition-colors"
+                  >
+                    My Vendor Dashboard
+                  </Link>
+                )}
                 <button
                   onClick={() => {
                     handleLogout();
@@ -229,7 +338,7 @@ export default function VendorHeader({
               </>
             ) : (
               <Link
-                href="/login"
+                href={`/login?returnUrl=${encodeURIComponent(window.location.href)}`}
                 onClick={() => setMobileMenuOpen(false)}
                 className="block py-2 px-4 text-foreground hover:bg-accent rounded-md transition-colors"
               >

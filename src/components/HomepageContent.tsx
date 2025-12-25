@@ -64,7 +64,6 @@ export default function HomepageContent({
   locationFilterEnabled
 }: HomepageContentProps) {
   const searchParams = useSearchParams();
-  const locale = useLocale();
   const [categories] = useState<Category[]>(initialCategories);
   const [productsByCategory, setProductsByCategory] = useState<Record<string, Product[]>>(initialProductsByCategory);
   const [uncategorizedProducts, setUncategorizedProducts] = useState<Product[]>(initialUncategorizedProducts);
@@ -326,7 +325,7 @@ export default function HomepageContent({
                       <p className="text-gray-600 text-sm">Book appointments and services</p>
                     </div>
                     <Link
-                      href={`/${locale}/search?type=booking&q=${encodeURIComponent(searchQuery)}`}
+                      href={`/search?type=booking&q=${encodeURIComponent(searchQuery)}`}
                       className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
                     >
                       View All
@@ -369,7 +368,7 @@ export default function HomepageContent({
                       )}
                     </div>
                     <Link
-                      href={`/${locale}/category/${category.slug}`}
+                      href={`/category/${category.slug}`}
                       className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
                     >
                       View All

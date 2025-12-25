@@ -22,7 +22,7 @@ export default function VendorCartPage() {
 
   useEffect(() => {
     // Fetch vendor data for logo
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/vendors/slug/${vendorSlug}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/vendors/${vendorSlug}`)
       .then(res => res.json())
       .then(data => setVendor(data))
       .catch(err => console.error('Error fetching vendor:', err));

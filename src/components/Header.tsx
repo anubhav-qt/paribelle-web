@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingCart, Search, Heart } from 'lucide-react';
+import { ShoppingCart, Search, Heart, ChevronDown, ShoppingBag, Store } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
-import { useTranslations, useLocale } from 'next-intl';
 import LocationFilter from '@/components/LocationFilter';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useSettings } from '@/hooks/useSettings';
@@ -29,10 +28,10 @@ export default function Header({
   const router = useRouter();
   const { totalItems } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
-  const t = useTranslations('header');
-  const tCommon = useTranslations('common');
-  const locale = useLocale();
   const [user, setUser] = useState<any>(null);
+  const [vendorSlug, setVendorSlug] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: settings } = useSettings();
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [cityId, setCityId] = useState<string>('');
@@ -42,7 +41,7 @@ export default function Header({
   const marketplaceName = settings?.name || 'GaliCart';
   const locationFilterEnabled = showLocationFilter && (settings?.locationEnabled || false);
   
-  const placeholder = searchPlaceholder || t('searchPlaceholder');
+  const placeholder = searchPlaceholder || 'Search products...';
 
   useEffect(() => {
     // Check for user on mount and when localStorage changes
@@ -50,12 +49,21 @@ export default function Header({
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          
+          // Fetch vendor info if user has vendorId
+          if (parsedUser.vendorId) {
+            fetchVendorSlug(parsedUser.vendorId);
+          } else {
+            setVendorSlug(null);
+          }
         } catch (err) {
           console.error('Error parsing user data:', err);
         }
       } else {
         setUser(null);
+        setVendorSlug(null);
       }
     };
 
@@ -82,6 +90,37 @@ export default function Header({
     };
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
+  const fetchVendorSlug = async (vendorId: string) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`
+      );
+      if (response.ok) {
+        const vendor = await response.json();
+        setVendorSlug(vendor.slug);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor slug:', error);
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (onSearch) {
@@ -89,9 +128,9 @@ export default function Header({
     } else {
       // Always redirect to home page with search query
       if (searchQuery.trim()) {
-        router.push(`/${locale}?search=${encodeURIComponent(searchQuery.trim())}`);
+        router.push(`/?search=${encodeURIComponent(searchQuery.trim())}`);
       } else {
-        router.push(`/${locale}`);
+        router.push(`/`);
       }
     }
   };
@@ -100,14 +139,21 @@ export default function Header({
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    router.push(`/${locale}`);
+    setVendorSlug(null);
+    setShowDropdown(false);
+    router.push('/login');
+  };
+
+  const getVendorDashboardUrl = () => {
+    if (!vendorSlug) return '#';
+    return 'http://localhost:3000/vendor/dashboard';
   };
 
   return (
     <header className="sticky top-0 z-40 shadow-md bg-card">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
-          <Link href={`/${locale}`} className="flex items-center">
+          <Link href="/" className="flex items-center">
             {marketplaceLogo ? (
               <img 
                 src={marketplaceLogo} 
@@ -172,15 +218,15 @@ export default function Header({
           <div className="flex gap-4 items-center">
             {showBookingsLink && (
               <Link 
-                href={`/${locale}/search?type=booking`}
+                href="/search?type=booking"
                 className="text-sm hover:text-primary transition-colors font-normal whitespace-nowrap text-foreground"
               >
-                {t('bookings', { default: 'Bookings & Services' })}
+                Bookings & Services
               </Link>
             )}
             <ThemeToggle />
             <Link 
-              href={`/${locale}/wishlist`}
+              href="/wishlist"
               className="relative hover:text-primary transition-colors text-foreground"
               aria-label="Wishlist"
             >
@@ -194,9 +240,9 @@ export default function Header({
               )}
             </Link>
             <Link 
-              href={`/${locale}/cart`}
+              href="/cart"
               className="relative hover:text-primary transition-colors text-foreground"
-              aria-label={tCommon('cart')}
+              aria-label="Cart"
             >
               <ShoppingCart className="w-6 h-6" />
               {totalItems > 0 && (
@@ -207,32 +253,69 @@ export default function Header({
             </Link>
             {user ? (
               <>
-                <Link
-                  href={`/${locale}/dashboard`}
-                  className="px-2 py-1 text-sm hover:text-primary transition-colors font-normal text-foreground"
-                >
-                  {user.firstName || user.email}
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="px-2 py-1 text-sm font-normal hover:text-primary rounded transition-colors text-foreground"
-                >
-                  {t('logout')}
-                </button>
+                {/* Dropdown for user menu */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="flex items-center gap-1 px-2 py-1 text-sm hover:text-primary transition-colors font-normal text-foreground"
+                  >
+                    <span>{user.firstName || user.email}</span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {showDropdown && (
+                    <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg py-2 z-50">
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                        My Purchases
+                      </Link>
+                      
+                      {vendorSlug && (
+                        <>
+                          <div className="border-t border-border my-1"></div>
+                          <a
+                            href={getVendorDashboardUrl()}
+                            className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
+                            onClick={() => setShowDropdown(false)}
+                          >
+                            <Store className="w-4 h-4" />
+                            <div className="flex flex-col">
+                              <span>My Vendor Dashboard</span>
+                              <span className="text-xs text-muted-foreground">Orders & Products</span>
+                            </div>
+                          </a>
+                        </>
+                      )}
+                      
+                      <div className="border-t border-border my-1"></div>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <>
                 <Link
-                  href={`/${locale}/login`}
+                  href="/login"
                   className="px-2 py-1 text-sm border border-border hover:border-primary hover:text-primary rounded transition-all font-normal text-foreground"
                 >
-                  {t('login')}
+                  Login
                 </Link>
                 <Link
-                  href={`/${locale}/signup`}
+                  href="/signup"
                   className="px-3 py-1 text-sm bg-primary text-primary-foreground font-normal hover:opacity-90 rounded transition-colors"
                 >
-                  {t('signup')}
+                  Sign Up
                 </Link>
               </>
             )}

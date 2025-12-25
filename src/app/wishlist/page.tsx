@@ -14,7 +14,6 @@ import { getCurrencySymbol } from '@/lib/currency';
 export default function WishlistPage() {
   const router = useRouter();
   const params = useParams();
-  const locale = params.locale as string || 'en';
   const { items, removeFromWishlist, clearWishlist } = useWishlist();
   const { addToCart } = useCart();
   const [currency, setCurrency] = useState('INR');
@@ -85,7 +84,7 @@ export default function WishlistPage() {
                 Save items you love to your wishlist and check them out anytime!
               </p>
               <Link
-                href={`/${locale}`}
+                href="/"
                 className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Start Shopping
@@ -103,7 +102,7 @@ export default function WishlistPage() {
                     href={
                       item.vendorSlug
                         ? `/vendor/${item.vendorSlug}/products/${item.slug}`
-                        : `/${locale}/products/${item.slug}`
+                        : `/products/${item.slug}`
                     }
                     className="block relative aspect-square overflow-hidden bg-muted"
                   >
@@ -120,7 +119,7 @@ export default function WishlistPage() {
                       href={
                         item.vendorSlug
                           ? `/vendor/${item.vendorSlug}/products/${item.slug}`
-                          : `/${locale}/products/${item.slug}`
+                          : `/products/${item.slug}`
                       }
                       className="block"
                     >
@@ -169,7 +168,7 @@ export default function WishlistPage() {
           {items.length > 0 && (
             <div className="mt-8 text-center">
               <Link
-                href={`/${locale}`}
+                href="/"
                 className="inline-block px-6 py-3 border border-border rounded-lg hover:bg-muted text-foreground transition-colors"
               >
                 Continue Shopping

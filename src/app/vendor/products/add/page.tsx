@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
+import { getVendorId } from '@/lib/auth';
 
 export default function VendorAddProductPage() {
   const router = useRouter();
@@ -63,10 +64,9 @@ export default function VendorAddProductPage() {
   }, [formData.categoryIds, productType]);
 
   const generateSKU = () => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      const vendorPrefix = user.vendorId.substring(0, 8).toUpperCase();
+    const vendorId = getVendorId();
+    if (vendorId) {
+      const vendorPrefix = vendorId.substring(0, 8).toUpperCase();
       const timestamp = Date.now().toString().slice(-6);
       setFormData(prev => ({ ...prev, sku: `${vendorPrefix}-${timestamp}` }));
     }
@@ -212,14 +212,17 @@ export default function VendorAddProductPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
       
-      if (!token || !userStr) {
+      if (!token) {
         alert('Please login first');
         return;
       }
 
-      const user = JSON.parse(userStr);
+      const vendorId = getVendorId();
+      if (!vendorId) {
+        alert('Vendor ID not found');
+        return;
+      }
 
       // Auto-generate slug from name if not provided
       const slug = formData.slug || 
@@ -233,7 +236,7 @@ export default function VendorAddProductPage() {
         price: parseFloat(formData.price) || 0,
         compareAtPrice: parseFloat(formData.compareAtPrice) || 0,
         stockQuantity: parseInt(formData.stockQuantity) || 0,
-        vendorId: user.vendorId,
+        vendorId,
         productType,
       };
 
