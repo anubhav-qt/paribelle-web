@@ -1,11 +1,17 @@
 import './globals.css';
 
-// This is a minimal root layout required by Next.js
+// Root layout with required HTML tags
 // The actual layout with providers is in [locale]/layout.tsx
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <html suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        {children}
+      </body>
+    </html>
+  );
 }

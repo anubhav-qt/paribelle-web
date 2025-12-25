@@ -319,7 +319,7 @@ export default function ProductDetailPage() {
         quantity: quantity,
         image: product.images?.[0] || product.featuredImage || '/placeholder-product.png',
         vendorId: product.vendorId || '',
-        vendorName: product.vendor?.businessName || 'Unknown Vendor',
+        vendorName: product.vendor?.storeName || product.vendor?.businessName || 'Unknown Vendor',
         productType: product.productType,
         stockQuantity: product.stockQuantity,
         maxQuantity: product.stockQuantity,

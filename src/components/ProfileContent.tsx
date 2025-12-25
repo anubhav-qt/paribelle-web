@@ -81,11 +81,13 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
         setEditing(false);
         alert('Profile updated successfully!');
       } else {
-        throw new Error('Failed to update profile');
+        const errorData = await response.json().catch(() => ({ message: 'Failed to update profile' }));
+        console.error('Error response:', response.status, errorData);
+        throw new Error(errorData.message || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile. Please try again.');
+      alert(error instanceof Error ? error.message : 'Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }

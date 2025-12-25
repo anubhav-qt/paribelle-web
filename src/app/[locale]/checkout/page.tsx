@@ -196,9 +196,16 @@ export default function CheckoutPage() {
         throw new Error(errorMessage);
       }
 
-      const order = await response.json();
-      const createdOrderId = order.orderNumber || order.id;
-      setOrderId(createdOrderId);
+      const orders = await response.json();
+      
+      // Handle both single order (backward compatibility) and multiple orders
+      const ordersArray = Array.isArray(orders) ? orders : [orders];
+      
+      console.log(`Created ${ordersArray.length} order(s):`, ordersArray.map(o => o.orderNumber));
+      
+      // Store order numbers for confirmation page
+      const orderNumbers = ordersArray.map(o => o.orderNumber || o.id).join(', ');
+      setOrderId(orderNumbers);
 
       // If Razorpay, check if configured and initiate payment
       if (paymentMethod === 'razorpay') {
@@ -207,10 +214,13 @@ export default function CheckoutPage() {
         
         if (isDevelopment) {
           // In development, simulate successful payment for testing
+          const vendorCount = ordersArray.length;
           const simulatePayment = confirm(
-            '🧪 Development Mode: Razorpay not configured.\n\n' +
-            'Click OK to simulate successful payment\n' +
-            'Click Cancel to cancel order'
+            `🧪 Development Mode: Razorpay not configured.\n\n` +
+            `${vendorCount} order${vendorCount > 1 ? 's' : ''} created (multi-vendor split)\n` +
+            `Order${vendorCount > 1 ? 's' : ''}: ${orderNumbers}\n\n` +
+            `Click OK to simulate successful payment\n` +
+            `Click Cancel to cancel order`
           );
           
           if (simulatePayment) {
@@ -218,16 +228,16 @@ export default function CheckoutPage() {
             await new Promise(resolve => setTimeout(resolve, 1500));
             clearCart();
             setCurrentStep('confirmation');
-            alert('✅ Test payment successful! (No real payment processed)');
+            alert(`✅ Test payment successful for ${vendorCount} order${vendorCount > 1 ? 's' : ''}! (No real payment processed)`);
           } else {
-            alert('Order created but payment cancelled. You can pay later.');
+            alert('Orders created but payment cancelled. You can pay later.');
           }
         } else {
-          // Production - attempt real Razorpay payment
-          await handleRazorpayPayment(createdOrderId, order.id);
+          // Production - attempt real Razorpay payment (use first order for Razorpay)
+          await handleRazorpayPayment(orderNumbers, ordersArray[0].id);
         }
       } else {
-        // Cash on Delivery - order placed
+        // Cash on Delivery - orders placed
         clearCart();
         setCurrentStep('confirmation');
       }
@@ -720,22 +730,39 @@ export default function CheckoutPage() {
     </div>
   );
 
-  const ConfirmationStep = () => (
+  const ConfirmationStep = () => {
+    const orderNumbers = orderId.split(', ');
+    const hasMultipleOrders = orderNumbers.length > 1;
+    
+    return (
     <div className="max-w-2xl mx-auto text-center">
       <div className="bg-card rounded-lg shadow-sm border border-border p-8">
         <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle className="w-12 h-12 text-green-600" />
         </div>
         
-        <h2 className="text-3xl font-bold text-foreground mb-2">Order Placed Successfully!</h2>
+        <h2 className="text-3xl font-bold text-foreground mb-2">
+          {hasMultipleOrders ? 'Orders' : 'Order'} Placed Successfully!
+        </h2>
         <p className="text-muted-foreground mb-6">
           Thank you for your order. We'll send you a confirmation email shortly.
         </p>
         
         {orderId && (
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-6">
-            <p className="text-sm text-muted-foreground mb-1">Order Number</p>
-            <p className="text-2xl font-bold text-primary">{orderId}</p>
+            <p className="text-sm text-muted-foreground mb-1">
+              Order Number{hasMultipleOrders ? 's' : ''}
+              {hasMultipleOrders && <span className="ml-2 text-xs">(Split by vendor)</span>}
+            </p>
+            {hasMultipleOrders ? (
+              <div className="space-y-1">
+                {orderNumbers.map((num, idx) => (
+                  <p key={idx} className="text-lg font-bold text-primary">{num}</p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-2xl font-bold text-primary">{orderId}</p>
+            )}
           </div>
         )}
         
@@ -775,7 +802,8 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
-  );
+  )};
+
 
   if (!user) {
     return (
