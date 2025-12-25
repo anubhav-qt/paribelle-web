@@ -9,6 +9,7 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import LocationFilter from '@/components/LocationFilter';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useSettings } from '@/hooks/useSettings';
+import SearchWithSuggestions from '@/components/SearchWithSuggestions';
 
 interface HeaderProps {
   showLocationFilter?: boolean;
@@ -174,17 +175,21 @@ export default function Header({
           </Link>
           
           {/* Search Bar */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-2xl mx-8 gap-4">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={placeholder}
-                className="w-full px-4 py-2 pl-10 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            </div>
+          <div className="hidden md:flex flex-1 max-w-2xl mx-8 gap-4">
+            <SearchWithSuggestions 
+              placeholder={placeholder}
+              onSearch={(query) => {
+                if (onSearch) {
+                  onSearch(query);
+                } else {
+                  if (query.trim()) {
+                    router.push(`/?search=${encodeURIComponent(query.trim())}`);
+                  } else {
+                    router.push(`/`);
+                  }
+                }
+              }}
+            />
             
             {/* Location Filter */}
             {showLocationFilter && locationFilterEnabled && (
@@ -213,7 +218,7 @@ export default function Header({
                 />
               </div>
             )}
-          </form>
+          </div>
 
           <div className="flex gap-4 items-center">
             {showBookingsLink && (
