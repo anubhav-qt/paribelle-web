@@ -252,10 +252,10 @@ export default function VendorHeader({
                           onClick={() => setShowDropdown(false)}
                         >
                           <Store className="w-4 h-4" />
-                          <div className="flex flex-col">
+                          <span className="flex flex-col">
                             <span>My Vendor Dashboard</span>
                             <span className="text-xs text-muted-foreground">Orders & Products</span>
-                          </div>
+                          </span>
                         </Link>
                       </>
                     )}

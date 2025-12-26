@@ -826,7 +826,7 @@ export default function ProductDetailPage() {
                         className="fixed inset-0 z-10" 
                         onClick={() => setShowShareMenu(false)}
                       />
-                      <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-4 z-20 min-w-[240px]">
+                      <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-4 z-[60] min-w-[240px]">
                         <div className="text-sm font-semibold mb-3 text-foreground">Share this product</div>
                         <div className="space-y-2">
                           <button

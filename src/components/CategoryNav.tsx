@@ -188,7 +188,7 @@ export default function CategoryNav({
 
   return (
     <div 
-      className="border-b border-border sticky top-[61px] z-50 bg-secondary" 
+      className="border-b border-border sticky top-[61px] z-30 bg-secondary" 
       ref={dropdownRef}
     >
       <div className="container mx-auto">
