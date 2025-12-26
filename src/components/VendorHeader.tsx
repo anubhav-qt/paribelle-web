@@ -15,6 +15,7 @@ interface VendorHeaderProps {
   onSearch?: (query: string) => void;
   searchPlaceholder?: string;
   initialSearchQuery?: string;
+  showSearchBar?: boolean;
 }
 
 export default function VendorHeader({ 
@@ -22,7 +23,8 @@ export default function VendorHeader({
   vendorId,
   onSearch,
   searchPlaceholder = "Search in this store...",
-  initialSearchQuery = ''
+  initialSearchQuery = '',
+  showSearchBar = true
 }: VendorHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -195,18 +197,20 @@ export default function VendorHeader({
           </Link>
           
           {/* Search Bar */}
-          <div className="hidden md:flex flex-1 max-w-2xl mx-8">
-            <form onSubmit={handleSearch} className="relative w-full">
-              <input
-                type="text"
-                placeholder={searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 pl-10 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-            </form>
-          </div>
+          {showSearchBar && (
+            <div className="hidden md:flex flex-1 max-w-2xl mx-8">
+              <form onSubmit={handleSearch} className="relative w-full">
+                <input
+                  type="text"
+                  placeholder={searchPlaceholder}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 pl-10 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+              </form>
+            </div>
+          )}
 
           <div className="flex gap-4 items-center">
             <ThemeToggle />

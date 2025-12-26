@@ -163,6 +163,30 @@ export default function ThemeBuilderPage() {
     }));
   };
 
+  const applyAmazonTheme = () => {
+    setThemeConfig({
+      primaryColor: '#FF9900',
+      secondaryColor: '#146EB4',
+      accentColor: '#C45500',
+      backgroundColor: '#FFFFFF',
+      textColor: '#0F1111',
+      fontFamily: 'Inter',
+      headingFont: 'Inter',
+      layout: 'modern',
+      customCss: '',
+      showLogo: true,
+      showSearchBar: true,
+      footerText: 'Your trusted marketplace for quality products',
+      socialLinks: {
+        facebook: '',
+        instagram: '',
+        twitter: '',
+        youtube: '',
+        linkedin: '',
+      },
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -186,6 +210,99 @@ export default function ThemeBuilderPage() {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Theme Builder</h1>
           <p className="text-gray-600 mt-2">Customize your store's appearance</p>
+        </div>
+
+        {/* Help Section */}
+        <div className="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <span>💡</span> Theme Builder Guide
+          </h2>
+          
+          <div className="space-y-4 text-sm text-gray-700">
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-2">🎨 How to Use</h3>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li><strong>Colors Tab:</strong> Set primary brand colors, background, and text colors</li>
+                <li><strong>Typography Tab:</strong> Choose fonts for body text and headings</li>
+                <li><strong>Layout Tab:</strong> Select a layout style (Modern, Classic, Minimal, Bold)</li>
+                <li><strong>Social Tab:</strong> Add your social media links</li>
+                <li><strong>Advanced Tab:</strong> Add custom CSS for advanced styling</li>
+              </ul>
+            </div>
+
+            <div className="border-t border-blue-300 pt-4">
+              <h3 className="font-semibold text-gray-900 mb-2">🛒 Amazon-Style Theme Example</h3>
+              <p className="mb-2 text-gray-600">Want a clean, professional look like Amazon? Use these settings:</p>
+              
+              <div className="bg-white rounded-lg p-4 border border-blue-300">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">🎨 Colors</h4>
+                    <ul className="space-y-1 text-xs">
+                      <li><strong>Primary:</strong> <code className="bg-gray-100 px-2 py-1 rounded">#FF9900</code> (Amazon Orange)</li>
+                      <li><strong>Secondary:</strong> <code className="bg-gray-100 px-2 py-1 rounded">#146EB4</code> (Amazon Blue)</li>
+                      <li><strong>Accent:</strong> <code className="bg-gray-100 px-2 py-1 rounded">#C45500</code> (Dark Orange)</li>
+                      <li><strong>Background:</strong> <code className="bg-gray-100 px-2 py-1 rounded">#FFFFFF</code> (White)</li>
+                      <li><strong>Text:</strong> <code className="bg-gray-100 px-2 py-1 rounded">#0F1111</code> (Near Black)</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">✍️ Typography</h4>
+                    <ul className="space-y-1 text-xs">
+                      <li><strong>Body Font:</strong> Inter or Roboto</li>
+                      <li><strong>Heading Font:</strong> Inter or Roboto</li>
+                      <li><strong>Layout:</strong> Modern</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  <div className="flex items-start justify-between gap-4">
+                    <p className="text-xs text-gray-600 flex-1">
+                      <strong>💡 Pro Tip:</strong> Amazon uses simple, clean colors with high contrast for easy reading. 
+                      The orange accent creates urgency while the blue builds trust.
+                    </p>
+                    <button
+                      onClick={applyAmazonTheme}
+                      className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                    >
+                      🚀 Apply Amazon Theme
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-blue-300 pt-4">
+              <h3 className="font-semibold text-gray-900 mb-2">🎯 Best Practices</h3>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li><strong>Color Contrast:</strong> Ensure text is readable against your background</li>
+                <li><strong>Brand Consistency:</strong> Use your brand colors for primary/secondary</li>
+                <li><strong>Font Readability:</strong> Choose clear, readable fonts (Inter, Roboto, Open Sans work well)</li>
+                <li><strong>Mobile First:</strong> Your theme applies to all devices, so keep it clean</li>
+                <li><strong>Test Changes:</strong> Preview your store after saving to see how it looks</li>
+              </ul>
+            </div>
+
+            <div className="border-t border-blue-300 pt-4">
+              <h3 className="font-semibold text-gray-900 mb-2">📚 More Examples</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="bg-white p-3 rounded border border-gray-300">
+                  <h4 className="font-semibold text-xs mb-1">Minimalist</h4>
+                  <p className="text-xs text-gray-600">Black (#000000), White (#FFFFFF), Gray (#6B7280)</p>
+                </div>
+                <div className="bg-white p-3 rounded border border-gray-300">
+                  <h4 className="font-semibold text-xs mb-1">Elegant</h4>
+                  <p className="text-xs text-gray-600">Navy (#1E3A8A), Gold (#D97706), Cream (#FFF7ED)</p>
+                </div>
+                <div className="bg-white p-3 rounded border border-gray-300">
+                  <h4 className="font-semibold text-xs mb-1">Vibrant</h4>
+                  <p className="text-xs text-gray-600">Purple (#8B5CF6), Pink (#EC4899), White (#FFFFFF)</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

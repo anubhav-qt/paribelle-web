@@ -67,6 +67,71 @@ export default function VendorStorePage() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
 
+  // Apply theme to the page
+  useEffect(() => {
+    if (vendor?.themeConfig) {
+      const theme = vendor.themeConfig;
+      const root = document.documentElement;
+
+      // Apply colors
+      if (theme.primaryColor) root.style.setProperty('--vendor-primary', theme.primaryColor);
+      if (theme.secondaryColor) root.style.setProperty('--vendor-secondary', theme.secondaryColor);
+      if (theme.accentColor) root.style.setProperty('--vendor-accent', theme.accentColor);
+      if (theme.backgroundColor) root.style.setProperty('--vendor-bg', theme.backgroundColor);
+      if (theme.textColor) root.style.setProperty('--vendor-text', theme.textColor);
+
+      // Apply fonts
+      if (theme.fontFamily) {
+        root.style.setProperty('--vendor-font-family', theme.fontFamily);
+        document.body.style.fontFamily = theme.fontFamily;
+      }
+      if (theme.headingFont) {
+        root.style.setProperty('--vendor-heading-font', theme.headingFont);
+      }
+
+      // Apply custom CSS
+      if (theme.customCss) {
+        const styleId = 'vendor-custom-styles';
+        let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+        
+        if (!styleElement) {
+          styleElement = document.createElement('style');
+          styleElement.id = styleId;
+          document.head.appendChild(styleElement);
+        }
+        
+        styleElement.textContent = theme.customCss;
+      }
+
+      // Apply layout class
+      if (theme.layout) {
+        document.body.classList.remove('layout-modern', 'layout-classic', 'layout-minimal', 'layout-bold');
+        document.body.classList.add(`layout-${theme.layout}`);
+      }
+
+      // Cleanup function
+      return () => {
+        // Reset theme variables
+        root.style.removeProperty('--vendor-primary');
+        root.style.removeProperty('--vendor-secondary');
+        root.style.removeProperty('--vendor-accent');
+        root.style.removeProperty('--vendor-bg');
+        root.style.removeProperty('--vendor-text');
+        root.style.removeProperty('--vendor-font-family');
+        root.style.removeProperty('--vendor-heading-font');
+        
+        // Remove custom CSS
+        const styleElement = document.getElementById('vendor-custom-styles');
+        if (styleElement) styleElement.remove();
+        
+        // Remove layout class
+        if (theme.layout) {
+          document.body.classList.remove(`layout-${theme.layout}`);
+        }
+      };
+    }
+  }, [vendor?.themeConfig]);
+
   // Scroll helper function
   const scrollToElement = (elementId: string) => {
     const element = document.getElementById(elementId);
@@ -298,7 +363,37 @@ export default function VendorStorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{
+      backgroundColor: vendor.themeConfig?.backgroundColor || undefined,
+      color: vendor.themeConfig?.textColor || undefined,
+      fontFamily: vendor.themeConfig?.fontFamily || undefined,
+    }}>
+      {/* Theme Styles */}
+      {vendor.themeConfig && (
+        <style jsx>{`
+          .vendor-themed-button {
+            background-color: ${vendor.themeConfig.primaryColor || '#3B82F6'};
+            color: white;
+          }
+          .vendor-themed-button:hover {
+            background-color: ${vendor.themeConfig.secondaryColor || '#2563EB'};
+          }
+          .vendor-themed-link {
+            color: ${vendor.themeConfig.primaryColor || '#3B82F6'};
+          }
+          .vendor-themed-link:hover {
+            color: ${vendor.themeConfig.secondaryColor || '#2563EB'};
+          }
+          .vendor-themed-accent {
+            color: ${vendor.themeConfig.accentColor || '#F59E0B'};
+          }
+          .vendor-themed-heading {
+            font-family: ${vendor.themeConfig.headingFont || vendor.themeConfig.fontFamily || 'inherit'};
+            color: ${vendor.themeConfig.textColor || 'inherit'};
+          }
+        `}</style>
+      )}
+      
       <VendorHeader 
         vendorSlug={vendorSlug}
         vendorId={vendor.id}
@@ -307,6 +402,7 @@ export default function VendorStorePage() {
           console.log('Searching vendor store for:', query);
         }}
         searchPlaceholder="Search in this store..."
+        showSearchBar={vendor.themeConfig?.showSearchBar !== false}
       />
 
       {/* Hero Banner Carousel - Vendor Specific */}
@@ -335,7 +431,7 @@ export default function VendorStorePage() {
 
           return (
             <section key={category.id} id={`category-${category.slug}`} className="mb-12 scroll-mt-36">
-              <h2 className="text-2xl font-bold mb-6 text-foreground">
+              <h2 className="text-2xl font-bold mb-6 vendor-themed-heading">
                 {category.name} ({categoryProducts.length})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -344,6 +440,9 @@ export default function VendorStorePage() {
                     key={product.id}
                     href={`/products/${product.slug}`}
                     className="bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden group border border-border"
+                    style={{
+                      borderColor: vendor.themeConfig?.primaryColor ? `${vendor.themeConfig.primaryColor}20` : undefined,
+                    }}
                   >
                     <div className="relative aspect-square overflow-hidden bg-muted">
                       <img
@@ -353,14 +452,18 @@ export default function VendorStorePage() {
                       />
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-primary text-foreground">
+                      <h3 className="font-semibold text-lg mb-2 line-clamp-2 vendor-themed-heading" style={{
+                        color: vendor.themeConfig?.textColor || undefined,
+                      }}>
                         {product.name}
                       </h3>
                       <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
                         {product.shortDescription}
                       </p>
                       <div className="flex items-center justify-between">
-                        <span className="text-xl font-bold text-foreground">
+                        <span className="text-xl font-bold" style={{
+                          color: vendor.themeConfig?.primaryColor || undefined,
+                        }}>
                           {getCurrencySymbol(currency)}{product.price.toLocaleString()}
                           {product.productType === 'booking' && product.attributes?.booking?.durationUnit && (
                             <span className="text-sm font-normal text-muted-foreground">
@@ -369,7 +472,7 @@ export default function VendorStorePage() {
                           )}
                         </span>
                         <div className="flex items-center gap-1 text-sm">
-                          <span className="text-yellow-500">★</span>
+                          <span className="vendor-themed-accent">★</span>
                           <span className="font-medium text-foreground">{Number(product.averageRating || 0).toFixed(1)}</span>
                           <span className="text-muted-foreground">({product.reviewCount || 0})</span>
                         </div>
@@ -392,7 +495,7 @@ export default function VendorStorePage() {
         {/* Vendor Reviews Section */}
         <section className="mt-16 pt-8 border-t border-border">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-2">Store Reviews</h2>
+            <h2 className="text-2xl font-bold mb-2 vendor-themed-heading">Store Reviews</h2>
             {vendorStats && (
               <div className="flex items-center gap-4 mt-3">
                 <RatingDisplay 
@@ -420,7 +523,10 @@ export default function VendorStorePage() {
             {vendorStats && vendorStats.totalReviews > 0 && (
               <button
                 onClick={handleShowReviews}
-                className="mt-4 text-primary hover:underline font-medium flex items-center gap-2"
+                className="mt-4 vendor-themed-link hover:underline font-medium flex items-center gap-2"
+                style={{
+                  color: vendor.themeConfig?.primaryColor || undefined,
+                }}
               >
                 {showReviews ? '▼ Hide Comments' : `▶ View All ${vendorStats.totalReviews} Comments`}
               </button>
@@ -452,6 +558,82 @@ export default function VendorStorePage() {
           )}
         </section>
       </div>
+
+      {/* Custom Footer Text */}
+      {vendor.themeConfig?.footerText && (
+        <div className="bg-muted border-t border-border py-6">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-sm" style={{ color: vendor.themeConfig?.textColor || undefined }}>
+              {vendor.themeConfig.footerText}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Social Links */}
+      {vendor.themeConfig?.socialLinks && Object.values(vendor.themeConfig.socialLinks).some(link => link) && (
+        <div className="bg-card border-t border-border py-6">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-center gap-6">
+              {vendor.themeConfig.socialLinks.facebook && (
+                <a 
+                  href={vendor.themeConfig.socialLinks.facebook} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="vendor-themed-link hover:opacity-80 transition-opacity"
+                  style={{ color: vendor.themeConfig?.primaryColor || undefined }}
+                >
+                  Facebook
+                </a>
+              )}
+              {vendor.themeConfig.socialLinks.instagram && (
+                <a 
+                  href={vendor.themeConfig.socialLinks.instagram} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="vendor-themed-link hover:opacity-80 transition-opacity"
+                  style={{ color: vendor.themeConfig?.primaryColor || undefined }}
+                >
+                  Instagram
+                </a>
+              )}
+              {vendor.themeConfig.socialLinks.twitter && (
+                <a 
+                  href={vendor.themeConfig.socialLinks.twitter} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="vendor-themed-link hover:opacity-80 transition-opacity"
+                  style={{ color: vendor.themeConfig?.primaryColor || undefined }}
+                >
+                  Twitter
+                </a>
+              )}
+              {vendor.themeConfig.socialLinks.youtube && (
+                <a 
+                  href={vendor.themeConfig.socialLinks.youtube} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="vendor-themed-link hover:opacity-80 transition-opacity"
+                  style={{ color: vendor.themeConfig?.primaryColor || undefined }}
+                >
+                  YouTube
+                </a>
+              )}
+              {vendor.themeConfig.socialLinks.linkedin && (
+                <a 
+                  href={vendor.themeConfig.socialLinks.linkedin} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="vendor-themed-link hover:opacity-80 transition-opacity"
+                  style={{ color: vendor.themeConfig?.primaryColor || undefined }}
+                >
+                  LinkedIn
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <Footer />
