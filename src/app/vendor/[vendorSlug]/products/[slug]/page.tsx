@@ -412,7 +412,7 @@ export default function VendorProductDetailPage() {
                   className="w-full h-full object-cover"
                 />
                 {discount && (
-                  <span className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-md text-sm font-bold">
+                  <span className="absolute top-4 left-4 bg-accent text-primary-foreground px-3 py-1 rounded-md text-sm font-bold">
                     {discount}% OFF
                   </span>
                 )}
@@ -446,7 +446,7 @@ export default function VendorProductDetailPage() {
               <p className="text-gray-600 mb-4">{product.shortDescription}</p>
 
               <div className="flex items-center gap-3 mb-6">
-                <div className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded">
+                <div className="flex items-center gap-1 bg-accent text-primary-foreground px-3 py-1 rounded">
                   <span className="font-semibold">{Number(product.averageRating).toFixed(1)}</span>
                   <Star className="w-4 h-4 fill-white" />
                 </div>

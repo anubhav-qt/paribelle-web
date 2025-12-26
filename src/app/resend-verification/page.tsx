@@ -77,10 +77,10 @@ export default function ResendVerificationPage() {
           </div>
 
           {status === 'success' && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="bg-accent/10 border border-accent/30 rounded-lg p-4">
               <div className="flex items-start">
                 <svg
-                  className="h-5 w-5 text-green-600 mt-0.5 mr-3"
+                  className="h-5 w-5 text-accent mt-0.5 mr-3"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

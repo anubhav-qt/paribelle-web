@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Providers } from '@/components/providers';
+import ThemeProvider from '@/components/ThemeProvider';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -17,16 +18,40 @@ export const metadata: Metadata = {
   },
 };
 
-export default function LocaleLayout({
+// Fetch default theme on server
+async function getDefaultTheme() {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const response = await fetch(`${apiUrl}/api/v1/settings/default-theme`, {
+      cache: 'no-store',
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.value) {
+        return JSON.parse(data.value);
+      }
+    }
+  } catch (error) {
+    console.error('[Layout] Error fetching theme:', error);
+  }
+  return null;
+}
+
+export default async function LocaleLayout({
   children,
 }: {
   children: React.ReactNode;
   params: { locale: string };
 }) {
+  const defaultTheme = await getDefaultTheme();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <ThemeProvider initialTheme={defaultTheme}>
+          <Providers>{children}</Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

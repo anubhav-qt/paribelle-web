@@ -37,23 +37,7 @@ async function getHomepageData(locale?: string) {
     const data = await response.json();
     console.log('[Server] Homepage data fetched successfully');
     
-    // Fetch default theme
-    let defaultTheme = null;
-    try {
-      const themeResponse = await fetch(`${apiUrl}/api/v1/settings/default-theme`, {
-        cache: 'no-store',
-      });
-      if (themeResponse.ok) {
-        const themeData = await themeResponse.json();
-        if (themeData.value) {
-          defaultTheme = JSON.parse(themeData.value);
-        }
-      }
-    } catch (error) {
-      console.error('[Server] Error fetching theme:', error);
-    }
-    
-    return { ...data, defaultTheme };
+    return data;
   } catch (error) {
     console.error('[Server] Error fetching homepage data:', error);
     return {
@@ -68,7 +52,6 @@ async function getHomepageData(locale?: string) {
       productsByCategory: {},
       uncategorizedProducts: [],
       heroCarouselSlides: [],
-      defaultTheme: null,
     };
   }
 }
@@ -82,7 +65,6 @@ export default async function HomePage({ params }: { params: { locale: string } 
       categories={data.categories}
       productsByCategory={data.productsByCategory}
       uncategorizedProducts={data.uncategorizedProducts}
-      initialTheme={data.defaultTheme}
     />
   );
 }

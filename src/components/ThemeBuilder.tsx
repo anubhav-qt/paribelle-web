@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Save } from 'lucide-react';
 
@@ -67,6 +67,11 @@ export default function ThemeBuilder({
 }: ThemeBuilderProps) {
   const [activeTab, setActiveTab] = useState<'colors' | 'typography' | 'layout' | 'social' | 'advanced'>('colors');
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>(initialTheme);
+
+  // Sync internal state when initialTheme changes (e.g., after fetch completes)
+  useEffect(() => {
+    setThemeConfig(initialTheme);
+  }, [initialTheme]);
 
   const updateTheme = (key: keyof ThemeConfig, value: any) => {
     setThemeConfig((prev) => ({ ...prev, [key]: value }));
@@ -365,7 +370,7 @@ export default function ThemeBuilder({
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                    className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
                     {saving ? 'Saving...' : 'Save Theme'}

@@ -67,41 +67,72 @@ export default function VendorStorePage() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
 
+  // Helper functions for theme
+  const hexToHSL = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return '0 0% 0%';
+    
+    let r = parseInt(result[1], 16) / 255;
+    let g = parseInt(result[2], 16) / 255;
+    let b = parseInt(result[3], 16) / 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+    
+    h = Math.round(h * 360);
+    s = Math.round(s * 100);
+    l = Math.round(l * 100);
+    
+    return `${h} ${s}% ${l}%`;
+  };
+
+  const getContrastColor = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return '0 0% 98%';
+    
+    const r = parseInt(result[1], 16);
+    const g = parseInt(result[2], 16);
+    const b = parseInt(result[3], 16);
+    
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '0 0% 10%' : '0 0% 98%';
+  };
+
+  // Generate inline CSS for immediate theme application
+  const themeCSS = vendor?.themeConfig ? `
+    :root {
+      --primary: ${hexToHSL(vendor.themeConfig.primaryColor || '#3B82F6')};
+      --primary-foreground: ${getContrastColor(vendor.themeConfig.primaryColor || '#3B82F6')};
+      --secondary: ${hexToHSL(vendor.themeConfig.secondaryColor || '#F1F5F9')};
+      --secondary-foreground: ${getContrastColor(vendor.themeConfig.secondaryColor || '#F1F5F9')};
+      --accent: ${hexToHSL(vendor.themeConfig.accentColor || '#F1F5F9')};
+      --background: ${hexToHSL(vendor.themeConfig.backgroundColor || '#FFFFFF')};
+      --foreground: ${hexToHSL(vendor.themeConfig.textColor || '#0F172A')};
+      --card: ${hexToHSL(vendor.themeConfig.backgroundColor || '#FFFFFF')};
+      --border: ${hexToHSL('#E2E8F0')};
+    }
+    body {
+      font-family: ${vendor.themeConfig.fontFamily || 'Inter'}, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
+    ${vendor.themeConfig.customCss || ''}
+  ` : '';
+
   // Apply theme to the page
   useEffect(() => {
     if (vendor?.themeConfig) {
       const theme = vendor.themeConfig;
-      const root = document.documentElement;
-
-      // Apply colors
-      if (theme.primaryColor) root.style.setProperty('--vendor-primary', theme.primaryColor);
-      if (theme.secondaryColor) root.style.setProperty('--vendor-secondary', theme.secondaryColor);
-      if (theme.accentColor) root.style.setProperty('--vendor-accent', theme.accentColor);
-      if (theme.backgroundColor) root.style.setProperty('--vendor-bg', theme.backgroundColor);
-      if (theme.textColor) root.style.setProperty('--vendor-text', theme.textColor);
-
-      // Apply fonts
-      if (theme.fontFamily) {
-        root.style.setProperty('--vendor-font-family', theme.fontFamily);
-        document.body.style.fontFamily = theme.fontFamily;
-      }
-      if (theme.headingFont) {
-        root.style.setProperty('--vendor-heading-font', theme.headingFont);
-      }
-
-      // Apply custom CSS
-      if (theme.customCss) {
-        const styleId = 'vendor-custom-styles';
-        let styleElement = document.getElementById(styleId) as HTMLStyleElement;
-        
-        if (!styleElement) {
-          styleElement = document.createElement('style');
-          styleElement.id = styleId;
-          document.head.appendChild(styleElement);
-        }
-        
-        styleElement.textContent = theme.customCss;
-      }
 
       // Apply layout class
       if (theme.layout) {
@@ -111,19 +142,6 @@ export default function VendorStorePage() {
 
       // Cleanup function
       return () => {
-        // Reset theme variables
-        root.style.removeProperty('--vendor-primary');
-        root.style.removeProperty('--vendor-secondary');
-        root.style.removeProperty('--vendor-accent');
-        root.style.removeProperty('--vendor-bg');
-        root.style.removeProperty('--vendor-text');
-        root.style.removeProperty('--vendor-font-family');
-        root.style.removeProperty('--vendor-heading-font');
-        
-        // Remove custom CSS
-        const styleElement = document.getElementById('vendor-custom-styles');
-        if (styleElement) styleElement.remove();
-        
         // Remove layout class
         if (theme.layout) {
           document.body.classList.remove(`layout-${theme.layout}`);
@@ -363,11 +381,11 @@ export default function VendorStorePage() {
   }
 
   return (
-    <div className="min-h-screen" style={{
-      backgroundColor: vendor.themeConfig?.backgroundColor || '#FFFFFF',
-      color: vendor.themeConfig?.textColor || '#1F2937',
-      fontFamily: vendor.themeConfig?.fontFamily || 'Inter',
-    }}>
+    <>
+      {/* Inline CSS to prevent flash */}
+      {vendor.themeConfig && <style dangerouslySetInnerHTML={{ __html: themeCSS }} />}
+      
+      <div className="min-h-screen bg-background text-foreground">
       <VendorHeader 
         vendorSlug={vendorSlug}
         vendorId={vendor.id}
@@ -628,18 +646,7 @@ export default function VendorStorePage() {
 
       {/* Footer */}
       <Footer />
-
-      {/* Theme Styles */}
-      <style dangerouslySetInnerHTML={{__html: `
-        .vendor-product-price {
-          color: ${vendor.themeConfig?.primaryColor || '#3B82F6'};
-          font-weight: 600;
-        }
-        .vendor-product-card:hover {
-          border-color: ${vendor.themeConfig?.primaryColor || '#3B82F6'} !important;
-          box-shadow: 0 4px 6px -1px ${vendor.themeConfig?.primaryColor ? `${vendor.themeConfig.primaryColor}20` : 'rgba(0,0,0,0.1)'};
-        }
-      `}} />
     </div>
+    </>
   );
 }

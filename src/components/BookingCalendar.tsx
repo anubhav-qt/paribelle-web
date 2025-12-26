@@ -302,9 +302,9 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
           disabled={!isAvailable}
           className={`
             h-12 rounded-lg text-sm font-medium transition-colors
-            ${!isAvailable ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover:bg-blue-50 dark:hover:bg-blue-950'}
-            ${isSelected || isEndSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
-            ${inRange && !isSelected && !isEndSelected ? 'bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-300' : ''}
+            ${!isAvailable ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover:bg-primary/10'}
+            ${isSelected || isEndSelected ? 'bg-primary text-primary-foreground hover:opacity-90' : ''}
+            ${inRange && !isSelected && !isEndSelected ? 'bg-primary/20 text-primary' : ''}
             ${isAvailable && !isSelected && !isEndSelected && !inRange ? 'text-foreground' : ''}
           `}
         >
@@ -421,8 +421,8 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
                         ${!slot.available
                           ? 'bg-muted text-muted-foreground border-border cursor-not-allowed line-through'
                           : isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300'
-                          : 'bg-card text-foreground border-border hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950'
+                          ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/30'
+                          : 'bg-card text-foreground border-border hover:border-primary hover:bg-primary/10'
                         }
                       `}
                     >

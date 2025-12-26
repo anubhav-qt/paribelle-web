@@ -141,7 +141,7 @@ export default function AdminThemesPage() {
               </div>
               <Link
                 href="/admin/default-theme"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center gap-2"
               >
                 <Edit className="w-4 h-4" />
                 Edit Default Theme
@@ -229,7 +229,7 @@ export default function AdminThemesPage() {
                     <Link
                       href={`http://${vendor.slug}.localhost:3000`}
                       target="_blank"
-                      className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 px-3 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
                     >
                       <Eye className="w-4 h-4" />
                       Preview

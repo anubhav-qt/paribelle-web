@@ -138,7 +138,7 @@ export default function MultiImageUpload({
                   <button
                     type="button"
                     onClick={() => moveImage(index, index - 1)}
-                    className="opacity-0 group-hover:opacity-100 p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-all"
                     title="Move left"
                   >
                     ←
@@ -148,7 +148,7 @@ export default function MultiImageUpload({
                   <button
                     type="button"
                     onClick={() => moveImage(index, index + 1)}
-                    className="opacity-0 group-hover:opacity-100 p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-all"
                     title="Move right"
                   >
                     →
@@ -156,7 +156,7 @@ export default function MultiImageUpload({
                 )}
               </div>
               {index === 0 && (
-                <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
                   Featured
                 </div>
               )}

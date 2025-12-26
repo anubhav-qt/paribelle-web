@@ -227,10 +227,10 @@ export default function Header({
               aria-label="Wishlist"
             >
               <Heart className={`w-6 h-6 ${
-                wishlistCount > 0 ? 'fill-red-600 text-red-600' : ''
+                wishlistCount > 0 ? 'fill-accent text-accent' : ''
               }`} />
               {wishlistCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                <span className="absolute -top-2 -right-2 bg-accent text-primary-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center">
                   {wishlistCount}
                 </span>
               )}
@@ -242,7 +242,7 @@ export default function Header({
             >
               <ShoppingCart className="w-6 h-6" />
               {totalItems > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                <span className="absolute -top-2 -right-2 bg-accent text-primary-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center">
                   {totalItems}
                 </span>
               )}

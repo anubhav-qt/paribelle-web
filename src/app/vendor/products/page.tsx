@@ -417,7 +417,7 @@ export default function VendorProductsPage() {
               <button
                 onClick={handleExport}
                 disabled={exporting || products.length === 0}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {exporting ? 'Exporting...' : '📥 Export to ZIP'}
               </button>

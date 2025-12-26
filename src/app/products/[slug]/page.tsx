@@ -627,7 +627,7 @@ export default function ProductDetailPage() {
 
               {/* Rating */}
               <div className="flex items-center gap-3 mb-6">
-                <div className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded">
+                <div className="flex items-center gap-1 bg-accent text-primary-foreground px-3 py-1 rounded">
                   <span className="font-semibold">{Number(product.averageRating).toFixed(1)}</span>
                   <Star className="w-4 h-4 fill-white" />
                 </div>
@@ -739,7 +739,7 @@ export default function ProductDetailPage() {
                     <button 
                       onClick={handleAddToCart}
                       disabled={addToCartLoading || (product.stockQuantity !== undefined && product.stockQuantity === 0)}
-                      className="flex-1 bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {addToCartLoading ? (
                         <>
@@ -756,7 +756,7 @@ export default function ProductDetailPage() {
                     <button 
                       onClick={handleBuyNow}
                       disabled={addToCartLoading || (product.stockQuantity !== undefined && product.stockQuantity === 0)}
-                      className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      className="flex-1 bg-accent text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Buy Now
                     </button>

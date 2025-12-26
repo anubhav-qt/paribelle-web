@@ -170,16 +170,13 @@ export default function VendorHeader({
   }, [user]);
 
   return (
-    <header className="sticky top-0 z-40 shadow-md overflow-visible" style={{
-      backgroundColor: themeConfig?.primaryColor || '#ffffff',
-      borderBottom: `3px solid ${themeConfig?.secondaryColor || '#e5e7eb'}`
-    }}>
+    <header className="sticky top-0 z-40 shadow-md overflow-visible bg-primary text-primary-foreground border-b-2 border-secondary">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center overflow-visible">
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden text-foreground hover:text-primary transition-colors p-2"
+            className="lg:hidden text-primary-foreground hover:opacity-80 transition-colors p-2"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -194,15 +191,10 @@ export default function VendorHeader({
               />
             )}
             <div>
-              <h1 className="text-2xl font-bold" style={{
-                color: themeConfig?.backgroundColor || '#ffffff',
-                fontFamily: themeConfig?.headingFont || 'inherit'
-              }}>
+              <h1 className="text-2xl font-bold text-primary-foreground">
                 {vendor?.businessName || 'Store'}
               </h1>
-              <p className="text-xs" style={{
-                color: themeConfig?.backgroundColor ? `${themeConfig.backgroundColor}cc` : '#9ca3af'
-              }}>Official Store</p>
+              <p className="text-xs text-primary-foreground/80">Official Store</p>
             </div>
           </Link>
           
@@ -223,8 +215,7 @@ export default function VendorHeader({
           )}
 
           <div className="flex gap-4 items-center">
-            <ThemeToggle />
-            <Link href={`/vendor/${vendorSlug}/cart`} className="relative text-foreground hover:text-primary transition-colors">
+            <Link href={`/vendor/${vendorSlug}/cart`} className="relative text-primary-foreground hover:opacity-80 transition-colors">
               <ShoppingCart className="w-6 h-6" />
               {totalItems > 0 && (
                 <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center">
@@ -232,14 +223,14 @@ export default function VendorHeader({
                 </span>
               )}
             </Link>
-            <Link href="http://localhost:3000" className="hidden md:inline-flex text-sm text-foreground px-4 py-2 bg-muted rounded-lg hover:bg-accent transition-colors">
+            <Link href="http://localhost:3000" className="hidden md:inline-flex text-sm text-primary-foreground px-4 py-2 bg-primary-foreground/10 rounded-lg hover:bg-primary-foreground/20 transition-colors">
               All Vendors
             </Link>
             {user ? (
               <div className="relative z-[9999]" ref={dropdownRef}>
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="hidden md:flex items-center gap-1 px-2 py-1 text-sm hover:text-primary transition-colors font-normal text-foreground"
+                  className="hidden md:flex items-center gap-1 px-2 py-1 text-sm hover:opacity-80 transition-colors font-normal text-primary-foreground"
                 >
                   <span>{user.firstName || user.email}</span>
                   <ChevronDown className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />

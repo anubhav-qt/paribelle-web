@@ -220,7 +220,7 @@ export default function AdminOrdersPage() {
           </div>
           <button
             onClick={exportToCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
           >
             <Download className="w-4 h-4" />
             Export CSV

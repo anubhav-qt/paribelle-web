@@ -117,12 +117,12 @@ export default function ProductGrid({
             />
           </Link>
           {discount && (
-            <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">
+            <span className="absolute top-2 left-2 bg-accent text-primary-foreground px-2 py-1 rounded text-xs font-bold">
               {discount}% OFF
             </span>
           )}
           {product.productType === 'booking' && (
-            <span className="absolute top-2 right-2 bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+            <span className="absolute top-2 right-2 bg-secondary text-secondary-foreground px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
               <Calendar className="w-3 h-3" />
               Booking
             </span>
@@ -135,11 +135,11 @@ export default function ProductGrid({
             </h3>
           </Link>
           <div className="flex items-center gap-1 mb-2">
-            <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded text-xs">
+            <div className="flex items-center gap-1 bg-accent text-primary-foreground px-2 py-0.5 rounded text-xs">
               <span className="font-semibold">
                 {Number(product.averageRating).toFixed(1)}
               </span>
-              <Star className="w-3 h-3 fill-white" />
+              <Star className="w-3 h-3 fill-current" />
             </div>
             <span className="text-xs text-muted-foreground">
               ({product.reviewCount})

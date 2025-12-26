@@ -277,7 +277,7 @@ export default function HomepageContent({
                           e.preventDefault();
                           scrollToElement(`category-${category.slug}`);
                         }}
-                        className="flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded transition-colors"
+                        className="flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary hover:bg-accent/10 rounded transition-colors"
                       >
                         <span>{category.name}</span>
                         {category.children && category.children.length > 0 && <ChevronRight className="w-4 h-4" />}
@@ -309,7 +309,7 @@ export default function HomepageContent({
                     </div>
                     <Link
                       href="/?productType=booking"
-                      className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
+                      className="text-primary hover:opacity-80 font-medium text-sm flex items-center gap-1"
                     >
                       View All
                       <ChevronRight className="w-4 h-4" />
@@ -348,7 +348,7 @@ export default function HomepageContent({
                     </div>
                     <Link
                       href={`/category/${category.slug}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
+                      className="text-primary hover:opacity-80 font-medium text-sm flex items-center gap-1"
                     >
                       View All
                       <ChevronRight className="w-4 h-4" />

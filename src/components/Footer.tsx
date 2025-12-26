@@ -27,16 +27,16 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
               Your one-stop destination for quality products from trusted vendors across multiple categories.
             </p>
             <div className="flex gap-3">
-              <a href="#" className="p-2 rounded-full transition-colors bg-muted hover:bg-primary hover:text-primary-foreground">
+              <a href="#" className="p-2 rounded-full transition-colors bg-secondary-foreground/10 text-secondary-foreground hover:bg-primary hover:text-primary-foreground">
                 <Facebook className="w-4 h-4" />
               </a>
-              <a href="#" className="p-2 rounded-full transition-colors bg-muted hover:bg-primary hover:text-primary-foreground">
+              <a href="#" className="p-2 rounded-full transition-colors bg-secondary-foreground/10 text-secondary-foreground hover:bg-primary hover:text-primary-foreground">
                 <Twitter className="w-4 h-4" />
               </a>
-              <a href="#" className="p-2 rounded-full transition-colors bg-muted hover:bg-primary hover:text-primary-foreground">
+              <a href="#" className="p-2 rounded-full transition-colors bg-secondary-foreground/10 text-secondary-foreground hover:bg-primary hover:text-primary-foreground">
                 <Instagram className="w-4 h-4" />
               </a>
-              <a href="#" className="p-2 rounded-full transition-colors bg-muted hover:bg-primary hover:text-primary-foreground">
+              <a href="#" className="p-2 rounded-full transition-colors bg-secondary-foreground/10 text-secondary-foreground hover:bg-primary hover:text-primary-foreground">
                 <Linkedin className="w-4 h-4" />
               </a>
             </div>

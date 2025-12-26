@@ -7,6 +7,7 @@ import { Star, SlidersHorizontal, ChevronDown, Package, Calendar } from 'lucide-
 import LocationFilter from '@/components/LocationFilter';
 import { getCurrencySymbol } from '@/lib/currency';
 import Header from '@/components/Header';
+import CategoryNav from '@/components/CategoryNav';
 import Footer from '@/components/Footer';
 
 interface Category {
@@ -65,6 +66,7 @@ export default function CategoryPage() {
   
   const [category, setCategory] = useState<Category | null>(null);
   const [subcategories, setSubcategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +103,14 @@ export default function CategoryPage() {
         setCurrency(data.value || 'INR');
       })
       .catch(err => console.error('Error fetching currency setting:', err));
+    
+    // Fetch all categories for CategoryNav
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories`)
+      .then(res => res.json())
+      .then(data => {
+        setCategories(data);
+      })
+      .catch(err => console.error('Error fetching categories:', err));
 
     fetchCategoryAndProducts();
   }, [categorySlug]);
@@ -295,6 +305,7 @@ export default function CategoryPage() {
         showLocationFilter={locationFilterEnabled}
         showBookingsLink={true}
       />
+      <CategoryNav categories={categories} />
 
       {/* Breadcrumb */}
       <div className="bg-white border-b">
@@ -626,12 +637,12 @@ export default function CategoryPage() {
                                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                     />
                                     {discount && (
-                                      <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-md text-xs font-bold">
+                                      <span className="absolute top-2 left-2 bg-accent text-primary-foreground px-2 py-1 rounded-md text-xs font-bold">
                                         {discount}% OFF
                                       </span>
                                     )}
                                     {product.productType === 'booking' && (
-                                      <span className="absolute top-2 right-2 bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                                      <span className="absolute top-2 right-2 bg-secondary text-secondary-foreground px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
                                         Booking
                                       </span>
@@ -705,31 +716,31 @@ export default function CategoryPage() {
                                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                     />
                                     {discount && (
-                                      <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-md text-xs font-bold">
+                                      <span className="absolute top-2 left-2 bg-accent text-primary-foreground px-2 py-1 rounded-md text-xs font-bold">
                                         {discount}% OFF
                                       </span>
                                     )}
                                     {product.productType === 'booking' ? (
-                                      <span className="absolute top-2 right-2 bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                                      <span className="absolute top-2 right-2 bg-secondary text-secondary-foreground px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
                                         Booking
                                       </span>
                                     ) : (
-                                      <span className="absolute top-2 right-2 bg-gray-600 text-white px-2 py-1 rounded-md text-xs font-semibold">
+                                      <span className="absolute top-2 right-2 bg-muted text-muted-foreground px-2 py-1 rounded-md text-xs font-semibold">
                                         Unknown Location
                                       </span>
                                     )}
                                   </div>
                                   <div className="p-4">
-                                    <h3 className="font-medium mb-1 line-clamp-2 text-sm group-hover:text-blue-600 transition-colors min-h-[40px]">
+                                    <h3 className="font-medium mb-1 line-clamp-2 text-sm group-hover:text-primary transition-colors min-h-[40px]">
                                       {product.name}
                                     </h3>
                                     <div className="flex items-center gap-1 mb-2">
-                                      <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded text-xs">
+                                      <div className="flex items-center gap-1 bg-accent text-primary-foreground px-2 py-0.5 rounded text-xs">
                                         <span className="font-semibold">
                                           {Number(product.averageRating).toFixed(1)}
                                         </span>
-                                        <Star className="w-3 h-3 fill-white" />
+                                        <Star className="w-3 h-3 fill-current" />
                                       </div>
                                       <span className="text-xs text-gray-500">
                                         ({product.reviewCount})
