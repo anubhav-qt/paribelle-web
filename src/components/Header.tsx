@@ -221,14 +221,6 @@ export default function Header({
           </div>
 
           <div className="flex gap-4 items-center">
-            {showBookingsLink && (
-              <Link 
-                href="/search?type=booking"
-                className="text-sm hover:text-primary transition-colors font-normal whitespace-nowrap text-foreground"
-              >
-                Bookings & Services
-              </Link>
-            )}
             <ThemeToggle />
             <Link 
               href="/wishlist"
