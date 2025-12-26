@@ -19,6 +19,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import RatingDisplay from '@/components/RatingDisplay';
 import ReviewCard from '@/components/ReviewCard';
+import ReviewForm from '@/components/ReviewForm';
 
 interface Category {
   id: string;
@@ -90,6 +91,10 @@ export default function ProductDetailPage() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [vendorStats, setVendorStats] = useState<any>(null);
   const [showReviews, setShowReviews] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [userOrderItemId, setUserOrderItemId] = useState<string | undefined>();
 
   useEffect(() => {
     // Reset product state when slug changes to prevent showing stale data
@@ -115,6 +120,10 @@ export default function ProductDetailPage() {
       .catch(err => console.error('Error fetching thumbnail layout setting:', err));
     
     fetchProduct();
+    
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
   }, [productSlug]);
 
   const fetchReviews = async (productId: string) => {
@@ -150,6 +159,83 @@ export default function ProductDetailPage() {
     }
   };
 
+  const checkUserPurchase = async (productId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders?status=delivered`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      if (response.ok) {
+        const orders = await response.json();
+        // Check if any delivered order contains this product
+        for (const order of orders) {
+          const orderItem = order.items?.find(
+            (item: any) => item.productId === productId
+          );
+          if (orderItem) {
+            setHasPurchased(true);
+            setUserOrderItemId(orderItem.id);
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking purchase status:', error);
+    }
+  };
+
+  const handleWriteReview = () => {
+    if (!isLoggedIn) {
+      alert('Please login to write a review');
+      router.push('/login');
+      return;
+    }
+    setShowReviewForm(true);
+    setShowReviews(true);
+  };
+
+  const handleReviewSubmit = async (data: any) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productId: product?.id,
+          rating: data.rating,
+          comment: data.comment,
+          orderItemId: userOrderItemId,
+        }),
+      });
+
+      if (response.ok) {
+        setShowReviewForm(false);
+        // Refresh reviews
+        if (product?.id) {
+          await fetchReviews(product.id);
+          // Refresh product to get updated rating
+          await fetchProduct();
+        }
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to submit review');
+      }
+    } catch (error) {
+      alert('Failed to submit review. Please try again.');
+    }
+  };
+
   const fetchProduct = async () => {
     try {
       setLoading(true);
@@ -157,6 +243,11 @@ export default function ProductDetailPage() {
       if (response.ok) {
         const productData = await response.json();
         setProduct(productData);
+        
+        // Check if user has purchased this product
+        if (productData.id) {
+          checkUserPurchase(productData.id);
+        }
         
         // Fetch vendor-specific policies using cached query
         if (productData.vendorId) {
@@ -860,26 +951,57 @@ export default function ProductDetailPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Customer Reviews</h2>
-                {product.reviewCount > 0 && (
-                  <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2">
+                  {product.reviewCount > 0 ? (
                     <RatingDisplay 
                       rating={Number(product.averageRating)} 
                       reviewCount={product.reviewCount}
                       size="lg"
                     />
-                  </div>
-                )}
-                {/* View Comments Button */}
-                {product.reviewCount > 0 && (
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No reviews yet</p>
+                  )}
+                </div>
+                <div className="flex gap-3 mt-3">
+                  {/* View Comments Button */}
+                  {product.reviewCount > 0 && (
+                    <button
+                      onClick={handleShowReviews}
+                      className="text-primary hover:underline font-medium flex items-center gap-2"
+                    >
+                      {showReviews ? '▼ Hide Comments' : `▶ View All ${product.reviewCount} Comments`}
+                    </button>
+                  )}
+                  {/* Write Review Button */}
                   <button
-                    onClick={handleShowReviews}
-                    className="mt-3 text-primary hover:underline font-medium flex items-center gap-2"
+                    onClick={handleWriteReview}
+                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors"
                   >
-                    {showReviews ? '▼ Hide Comments' : `▶ View All ${product.reviewCount} Comments`}
+                    Write a Review
                   </button>
+                </div>
+                {/* Purchase verification message */}
+                {isLoggedIn && !hasPurchased && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    ⓘ Purchase this product to write a verified review
+                  </p>
                 )}
               </div>
             </div>
+
+            {/* Review Form */}
+            {showReviewForm && (
+              <div className="mb-6">
+                <ReviewForm
+                  type="product"
+                  itemId={product.id}
+                  itemName={product.name}
+                  orderItemId={userOrderItemId}
+                  onSubmit={handleReviewSubmit}
+                  onCancel={() => setShowReviewForm(false)}
+                />
+              </div>
+            )}
 
             {showReviews && (
               reviewsLoading ? (
