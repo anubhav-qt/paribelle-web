@@ -277,6 +277,12 @@ export default function VendorCategoriesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
+            <Link
+              href="/vendor/dashboard"
+              className="text-blue-600 hover:text-blue-800 text-sm inline-block mb-2"
+            >
+              ← Back to Dashboard
+            </Link>
             <h1 className="text-3xl font-bold">My Categories</h1>
             <p className="text-gray-600 mt-1">
               Manage your custom categories and view global categories

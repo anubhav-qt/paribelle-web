@@ -285,7 +285,15 @@ export default function OrdersPage() {
       <CategoryNav mode="navigation" />
 
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6 text-foreground">My Orders</h1>
+        <div className="mb-6">
+          <Link
+            href="/dashboard"
+            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+          >
+            ← Back to Dashboard
+          </Link>
+          <h1 className="text-3xl font-bold text-foreground">My Orders</h1>
+        </div>
 
         {/* Filters and Search */}
         <div className="bg-card rounded-lg shadow-sm border border-border p-4 mb-6">

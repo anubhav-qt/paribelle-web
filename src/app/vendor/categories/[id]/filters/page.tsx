@@ -172,13 +172,22 @@ export default function VendorCategoryFiltersPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
-          <Link
-            href="/vendor/categories"
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Categories
-          </Link>
+          <div className="flex items-center gap-4 mb-4">
+            <Link
+              href="/vendor/categories"
+              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Categories
+            </Link>
+            <span className="text-gray-400">|</span>
+            <Link
+              href="/vendor/dashboard"
+              className="text-blue-600 hover:text-blue-800 text-sm"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Configure Filters</h1>

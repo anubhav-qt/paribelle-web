@@ -108,6 +108,12 @@ export default function AdminCategoriesPage() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
+              <Link
+                href="/admin"
+                className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+              >
+                ← Back to Dashboard
+              </Link>
               <h1 className="text-3xl font-bold text-gray-900">Categories Management</h1>
               <p className="text-gray-600 mt-1">Configure filters for each category</p>
             </div>

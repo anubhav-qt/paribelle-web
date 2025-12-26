@@ -120,6 +120,12 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
       <div className="max-w-4xl mx-auto">
         {/* Page Header */}
         <div className="mb-8">
+          <Link
+            href="/dashboard"
+            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+          >
+            ← Back to Dashboard
+          </Link>
           <h1 className="text-3xl font-bold mb-2 text-foreground">My Profile</h1>
           <p className="text-muted-foreground">Manage your account information</p>
         </div>

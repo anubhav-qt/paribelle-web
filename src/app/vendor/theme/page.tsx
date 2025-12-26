@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -81,33 +82,28 @@ export default function ThemeBuilderPage() {
   const fetchVendorData = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
+      const userStr = localStorage.getItem('user');
+      
+      if (!token || !userStr) {
         router.push('/login');
         return;
       }
 
-      // Get user data to find vendor ID
-      const userResponse = await fetch(`${BACKEND_URL}/api/v1/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!userResponse.ok) {
-        throw new Error('Failed to fetch user data');
-      }
-
-      const userData = await userResponse.json();
+      // Get vendor ID from localStorage user data
+      const userData = JSON.parse(userStr);
+      const vId = userData.vendorId || userData.vendor?.id;
       
-      if (!userData.vendor?.id) {
+      if (!vId) {
         alert('You must be a vendor to access this page');
         router.push('/vendor/register');
         return;
       }
 
-      setVendorId(userData.vendor.id);
+      setVendorId(vId);
 
       // Fetch theme config
       const themeResponse = await fetch(
-        `${BACKEND_URL}/api/v1/vendors/${userData.vendor.id}/theme`,
+        `${BACKEND_URL}/api/v1/vendors/${vId}/theme`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -182,6 +178,12 @@ export default function ThemeBuilderPage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
+          <Link
+            href="/vendor/dashboard"
+            className="text-blue-600 hover:text-blue-800 text-sm inline-block mb-2"
+          >
+            ← Back to Dashboard
+          </Link>
           <h1 className="text-3xl font-bold text-gray-900">Theme Builder</h1>
           <p className="text-gray-600 mt-2">Customize your store's appearance</p>
         </div>

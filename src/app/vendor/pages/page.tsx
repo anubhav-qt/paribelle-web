@@ -147,6 +147,12 @@ export default function VendorPagesPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
+            <Link
+              href="/vendor/dashboard"
+              className="text-blue-600 hover:text-blue-800 text-sm inline-block mb-2"
+            >
+              ← Back to Dashboard
+            </Link>
             <h1 className="text-3xl font-bold text-foreground">Custom Pages</h1>
             <p className="text-muted-foreground mt-2">
               Manage your store's custom pages (About, Contact, etc.)

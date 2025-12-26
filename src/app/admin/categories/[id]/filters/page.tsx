@@ -333,10 +333,17 @@ export default function CategoryFiltersPage() {
                 <Link
                   href="/admin/categories"
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Back to Categories"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Link>
                 <div>
+                  <Link
+                    href="/admin"
+                    className="text-blue-600 hover:text-blue-800 text-sm inline-block mb-1"
+                  >
+                    ← Back to Dashboard
+                  </Link>
                   <h1 className="text-2xl font-bold text-gray-900">Configure Filters</h1>
                   <p className="text-gray-600">Category: {category?.name}</p>
                 </div>

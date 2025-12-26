@@ -191,9 +191,17 @@ export default function AdminSettingsPage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Settings className="w-6 h-6 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900">Site Settings</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Settings className="w-6 h-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">Site Settings</h1>
+            </div>
+            <Link
+              href="/admin"
+              className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              ← Back to Dashboard
+            </Link>
           </div>
         </div>
       </header>

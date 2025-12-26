@@ -139,13 +139,22 @@ export default function EditPagePage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8">
-          <Link
-            href="/vendor/pages"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Pages
-          </Link>
+          <div className="flex items-center gap-4 mb-4">
+            <Link
+              href="/vendor/pages"
+              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Pages
+            </Link>
+            <span className="text-gray-400">|</span>
+            <Link
+              href="/vendor/dashboard"
+              className="text-blue-600 hover:text-blue-800 text-sm"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
           <h1 className="text-3xl font-bold text-foreground">Edit Page</h1>
         </div>
 
