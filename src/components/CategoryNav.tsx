@@ -5,6 +5,8 @@ import { ChevronDown, Home } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useCategories } from '@/hooks/useCategories';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
+import { useVendorContext } from '@/contexts/VendorContext';
 
 interface Category {
   id: string;
@@ -42,10 +44,34 @@ export default function CategoryNav({
 }: CategoryNavProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const theme = useThemeClasses();
+  const { isVendorStore, vendor } = useVendorContext();
+  
+  console.log('🟡 CategoryNav render:', { 
+    isVendorStore, 
+    vendorId: vendor?.id, 
+    vendorSlug: vendor?.slug,
+    themeClasses: {
+      bg: theme.bg,
+      text: theme.text,
+      primary: theme.primary
+    }
+  });
+
+  const navBarClassName = theme.combine(
+    "border-b sticky top-[76px] z-30",
+    isVendorStore ? 'vendor-nav-bg vendor-border-primary vendor-text' : 'bg-secondary border-secondary-foreground/20'
+  );
+  
+  console.log('🟡 CategoryNav className:', navBarClassName);
+  
+  // Use vendorId from props or context
+  const effectiveVendorId = vendorId || (isVendorStore && vendor ? vendor.id : undefined);
+  const effectiveVendorSlug = vendorSlug || (isVendorStore && vendor ? vendor.slug : undefined);
   
   // Use React Query for cached categories
   const { data: categories = [], isLoading } = useCategories({
-    vendorId,
+    vendorId: effectiveVendorId,
     hideEmptyCategories,
   });
   
@@ -55,11 +81,11 @@ export default function CategoryNav({
   const [hasBookingProducts, setHasBookingProducts] = useState(false);
 
   useEffect(() => {
-    if (vendorId && vendorSlug) {
+    if (effectiveVendorId && effectiveVendorSlug) {
       fetchVendorPages();
     }
     checkBookingProducts();
-  }, [vendorId]);
+  }, [effectiveVendorId]);
 
   // Handle hash scrolling when page loads or pathname changes
   useEffect(() => {
@@ -79,10 +105,10 @@ export default function CategoryNav({
     console.log('🔵 handleNavigateToCategory called');
     console.log('🔵 Category slug:', categorySlug);
     console.log('🔵 Current pathname:', pathname);
-    console.log('🔵 Vendor slug:', vendorSlug);
+    console.log('🔵 Vendor slug:', effectiveVendorSlug);
     
-    // If no vendorSlug, we're on main homepage
-    if (!vendorSlug) {
+    // If no effectiveVendorSlug, we're on main homepage
+    if (!effectiveVendorSlug) {
       // Check if we're on the homepage
       const isOnHomepage = pathname === '/' || pathname === '/';
       console.log('🔵 No vendor slug - is on homepage:', isOnHomepage);
@@ -100,7 +126,7 @@ export default function CategoryNav({
     }
     
     // Check if we're on the vendor home page (exact match, no query params or other paths)
-    const isOnVendorHome = pathname === `/vendor/${vendorSlug}` && !window.location.search;
+    const isOnVendorHome = pathname === `/vendor/${effectiveVendorSlug}` && !window.location.search;
     console.log('🔵 Is on vendor home:', isOnVendorHome);
     
     if (isOnVendorHome) {
@@ -109,7 +135,7 @@ export default function CategoryNav({
       handleScrollToCategory(categorySlug);
     } else {
       // Navigate to home page with hash (clears any query params)
-      const targetUrl = `/vendor/${vendorSlug}#category-${categorySlug}`;
+      const targetUrl = `/vendor/${effectiveVendorSlug}#category-${categorySlug}`;
       console.log('🔵 Navigating to:', targetUrl);
       window.location.href = targetUrl;
     }
@@ -118,7 +144,7 @@ export default function CategoryNav({
   const fetchVendorPages = async () => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/vendors/${vendorId}/pages`
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/vendors/${effectiveVendorId}/pages`
       );
       if (response.ok) {
         const pages = await response.json();
@@ -131,8 +157,8 @@ export default function CategoryNav({
 
   const checkBookingProducts = async () => {
     try {
-      const url = vendorId 
-        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?vendorId=${vendorId}&productType=booking&limit=1`
+      const url = effectiveVendorId 
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?vendorId=${effectiveVendorId}&productType=booking&limit=1`
         : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?productType=booking&limit=1`;
       
       const response = await fetch(url);
@@ -168,10 +194,42 @@ export default function CategoryNav({
 
   const handleScrollToCategory = (categorySlug: string) => {
     setActiveDropdown(null);
-    const elementId = `category-${categorySlug}`;
-    const element = document.getElementById(elementId);
+    
+    console.log('🟢 handleScrollToCategory called with slug:', categorySlug);
+    
+    // First, try to find element with the exact category slug
+    let elementId = `category-${categorySlug}`;
+    let element = document.getElementById(elementId);
+    console.log('🟢 Tried to find element:', elementId, 'Found:', !!element);
+    
+    // If not found, try to find the parent category
+    if (!element) {
+      console.log('🟢 Element not found, checking if this is a subcategory');
+      
+      // Find if this slug belongs to a subcategory
+      for (const category of categories) {
+        if (category.children) {
+          const subcategory = category.children.find(sub => sub.slug === categorySlug);
+          if (subcategory) {
+            console.log('🟢 Found subcategory, scrolling to parent:', category.slug);
+            elementId = `category-${category.slug}`;
+            element = document.getElementById(elementId);
+            break;
+          }
+        }
+      }
+    }
+    
+    // Last resort: check if it might be the bookings section
+    if (!element) {
+      console.log('🟢 Still not found, trying bookings-services fallback');
+      elementId = 'category-bookings-services';
+      element = document.getElementById(elementId);
+      console.log('🟢 Fallback element found:', !!element);
+    }
     
     if (element) {
+      console.log('🟢 Scrolling to element:', elementId);
       const headerOffset = 140;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.scrollY - headerOffset;
@@ -180,9 +238,9 @@ export default function CategoryNav({
         top: offsetPosition,
         behavior: 'smooth'
       });
-      
-      // Update URL hash without jumping
-      window.history.pushState(null, '', `#${elementId}`);
+    } else {
+      console.log('🟢 Element not found on page - category may not have products');
+      // Element doesn't exist (no products in that category), just close dropdown
     }
   };
 
@@ -190,16 +248,19 @@ export default function CategoryNav({
 
   return (
     <div 
-      className="border-b sticky top-[61px] z-30 bg-secondary border-secondary-foreground/20" 
+      className={navBarClassName}
       ref={dropdownRef}
     >
       <div className="container mx-auto">
         <div className="flex items-center gap-0 flex-wrap">
           {/* Home Link - Left Side */}
-          {vendorSlug && (
+          {effectiveVendorSlug && (
             <Link
-              href={`/vendor/${vendorSlug}`}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r border-secondary-foreground/20 text-secondary-foreground hover:opacity-80"
+              href={`/vendor/${effectiveVendorSlug}`}
+              className={theme.combine(
+                "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
+                isVendorStore ? 'vendor-border-primary-30 vendor-text' : 'border-secondary-foreground/20 text-secondary-foreground'
+              )}
             >
               <Home className="w-3.5 h-3.5" />
               Home
@@ -210,11 +271,12 @@ export default function CategoryNav({
           {mode === 'filter' && (
             <button
               onClick={() => handleCategoryClick('')}
-              className={`flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 
-                ${selectedCategory === '' 
-                  ? 'border-primary text-primary font-semibold bg-secondary-foreground/10' 
-                  : 'border-transparent text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10'
-                }`}
+              className={theme.combine(
+                "flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2",
+                selectedCategory === '' 
+                  ? isVendorStore ? 'vendor-border-primary vendor-primary font-semibold vendor-secondary-bg' : 'border-primary text-primary font-semibold bg-primary/10'
+                  : isVendorStore ? 'border-transparent vendor-text hover:opacity-80 hover:vendor-secondary-bg' : 'border-transparent text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10'
+              )}
             >
               All Products
             </button>
@@ -224,13 +286,16 @@ export default function CategoryNav({
             <div
               key={category.id}
               className="relative flex-shrink-0"
-              onMouseEnter={() => mode === 'navigation' && setActiveDropdown(category.id)}
-              onMouseLeave={() => mode === 'navigation' && setActiveDropdown(null)}
+              onMouseEnter={() => (mode === 'navigation' || mode === 'scroll') && setActiveDropdown(category.id)}
+              onMouseLeave={() => (mode === 'navigation' || mode === 'scroll') && setActiveDropdown(null)}
             >
               {mode === 'navigation' ? (
                 <button
                   onClick={(e) => handleNavigateToCategory(category.slug, e)}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80"
+                  className={theme.combine(
+                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
+                    isVendorStore ? 'vendor-text' : 'text-secondary-foreground'
+                  )}
                 >
                   {category.name}
                   {category.children && category.children.length > 0 && (
@@ -239,14 +304,16 @@ export default function CategoryNav({
                 </button>
               ) : mode === 'scroll' ? (
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     console.log('🔴 CATEGORY CLICKED:', category.slug);
-                    console.log('🔴 VendorSlug:', vendorSlug);
+                    console.log('🔴 VendorSlug:', effectiveVendorSlug);
                     console.log('🔴 Pathname:', pathname);
                     console.log('🔴 Window search:', window.location.search);
                     
                     // If no vendorSlug, we're on main marketplace
-                    if (!vendorSlug) {
+                    if (!effectiveVendorSlug) {
                       console.log('🔴 NO VENDOR SLUG BRANCH');
                       // Check if we're on the homepage (ignore query params for filters/search)
                       const isOnHomepage = pathname === '/' || pathname === '/';
@@ -258,11 +325,8 @@ export default function CategoryNav({
                         console.log('🔴 NAVIGATING TO HOME WITH HASH:', `/#category-${category.slug}`);
                         // Navigate to homepage with hash (clears query params)
                         window.location.href = `/#category-${category.slug}`;
-                      } else if (category.children && category.children.length > 0) {
-                        console.log('🔴 TOGGLING DROPDOWN');
-                        setActiveDropdown(activeDropdown === category.id ? null : category.id);
                       } else {
-                        console.log('🔴 SCROLLING TO CATEGORY');
+                        console.log('🔴 SCROLLING TO CATEGORY (with or without children)');
                         handleScrollToCategory(category.slug);
                       }
                       return;
@@ -270,22 +334,22 @@ export default function CategoryNav({
                     
                     console.log('🔴 VENDOR SLUG BRANCH');
                     // Check if we're on vendor home page (ignore query params for filters/search)
-                    const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
+                    const isOnVendorHome = pathname === `/vendor/${effectiveVendorSlug}`;
                     console.log('🔴 isOnVendorHome:', isOnVendorHome);
                     
                     if (!isOnVendorHome) {
-                      console.log('🔴 NAVIGATING TO VENDOR HOME WITH HASH:', `/vendor/${vendorSlug}#category-${category.slug}`);
+                      console.log('🔴 NAVIGATING TO VENDOR HOME WITH HASH:', `/vendor/${effectiveVendorSlug}#category-${category.slug}`);
                       // Navigate to home page with hash (clears query params)
-                      window.location.href = `/vendor/${vendorSlug}#category-${category.slug}`;
-                    } else if (category.children && category.children.length > 0) {
-                      console.log('🔴 TOGGLING VENDOR DROPDOWN');
-                      setActiveDropdown(activeDropdown === category.id ? null : category.id);
+                      window.location.href = `/vendor/${effectiveVendorSlug}#category-${category.slug}`;
                     } else {
-                      console.log('🔴 SCROLLING TO VENDOR CATEGORY');
+                      console.log('🔴 SCROLLING TO VENDOR CATEGORY (with or without children)');
                       handleScrollToCategory(category.slug);
                     }
                   }}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
+                  className={theme.combine(
+                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
+                    isVendorStore ? 'vendor-text' : 'text-secondary-foreground'
+                  )}
                 >
                   {category.name}
                   {category.children && category.children.length > 0 && (
@@ -305,8 +369,8 @@ export default function CategoryNav({
                   }}
                   className={`flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2
                     ${selectedCategory === category.id 
-                      ? 'border-primary text-primary font-semibold bg-secondary-foreground/10' 
-                      : 'border-transparent text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10'
+                      ? 'vendor-border-primary vendor-primary font-semibold vendor-secondary-bg' 
+                      : 'border-transparent vendor-text hover:opacity-80 hover:vendor-secondary-bg'
                     }`}
                 >
                   {category.name}
@@ -320,12 +384,12 @@ export default function CategoryNav({
               
               {/* Subcategories Dropdown */}
               {category.children && category.children.length > 0 && activeDropdown === category.id && (
-                <div className="absolute top-full left-0 mt-0 bg-card shadow-xl rounded-b-lg min-w-[200px] z-[9999] border border-border py-2">
+                <div className="absolute top-full left-0 mt-0 vendor-bg shadow-xl rounded-b-lg min-w-[200px] z-[9999] border vendor-border-primary py-2">
                   {mode === 'navigation' ? (
                     <>
                       <button
                         onClick={(e) => handleNavigateToCategory(category.slug, e)}
-                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
+                        className="block w-full text-left px-4 py-2 text-sm font-semibold vendor-text hover:vendor-primary hover:opacity-80 transition-colors border-b vendor-border-primary-30"
                       >
                         All {category.name}
                       </button>
@@ -333,7 +397,7 @@ export default function CategoryNav({
                         <button
                           key={subcat.id}
                           onClick={(e) => handleNavigateToCategory(subcat.slug, e)}
-                          className="block w-full text-left px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                          className="block w-full text-left px-4 py-2 text-sm vendor-text-80 hover:vendor-primary hover:opacity-80 transition-colors"
                         >
                           {subcat.name}
                         </button>
@@ -343,23 +407,10 @@ export default function CategoryNav({
                     <>
                       <button
                         onClick={() => {
-                          if (!vendorSlug) {
-                            const isOnHomepage = pathname === '/' || pathname === '/';
-                            if (!isOnHomepage) {
-                              window.location.href = `/#category-${category.slug}`;
-                            } else {
-                              handleScrollToCategory(category.slug);
-                            }
-                            return;
-                          }
-                          const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
-                          if (!isOnVendorHome) {
-                            window.location.href = `/vendor/${vendorSlug}#category-${category.slug}`;
-                          } else {
-                            handleScrollToCategory(category.slug);
-                          }
+                          setActiveDropdown(null);
+                          handleScrollToCategory(category.slug);
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
+                        className="block w-full text-left px-4 py-2 text-sm font-semibold vendor-text hover:vendor-primary hover:opacity-80 transition-colors border-b vendor-border-primary-30"
                       >
                         All {category.name}
                       </button>
@@ -367,23 +418,10 @@ export default function CategoryNav({
                         <button
                           key={subcat.id}
                           onClick={() => {
-                            if (!vendorSlug) {
-                              const isOnHomepage = pathname === '/' || pathname === '/';
-                              if (!isOnHomepage) {
-                                window.location.href = `/#category-${subcat.slug}`;
-                              } else {
-                                handleScrollToCategory(subcat.slug);
-                              }
-                              return;
-                            }
-                            const isOnVendorHome = pathname === `/vendor/${vendorSlug}`;
-                            if (!isOnVendorHome) {
-                              window.location.href = `/vendor/${vendorSlug}#category-${subcat.slug}`;
-                            } else {
-                              handleScrollToCategory(subcat.slug);
-                            }
+                            setActiveDropdown(null);
+                            handleScrollToCategory(subcat.slug);
                           }}
-                          className="block w-full text-left px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                          className="block w-full text-left px-4 py-2 text-sm vendor-text-80 hover:vendor-primary hover:opacity-80 transition-colors"
                         >
                           {subcat.name}
                         </button>
@@ -393,7 +431,7 @@ export default function CategoryNav({
                     <>
                       <button
                         onClick={() => handleCategoryClick(category.id)}
-                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-primary hover:bg-muted transition-colors border-b border-border"
+                        className="block w-full text-left px-4 py-2 text-sm font-semibold vendor-text hover:vendor-primary hover:opacity-80 transition-colors border-b vendor-border-primary-30"
                       >
                         All {category.name}
                       </button>
@@ -401,7 +439,7 @@ export default function CategoryNav({
                         <button
                           key={subcat.id}
                           onClick={() => handleCategoryClick(subcat.id)}
-                          className="block w-full text-left px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                          className="block w-full text-left px-4 py-2 text-sm vendor-text-80 hover:vendor-primary hover:opacity-80 transition-colors"
                         >
                           {subcat.name}
                         </button>
@@ -418,22 +456,31 @@ export default function CategoryNav({
             <div className="relative flex-shrink-0">
               {mode === 'navigation' ? (
                 <Link
-                  href={vendorSlug ? `/vendor/${vendorSlug}?productType=booking` : '/?productType=booking'}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
+                  href={effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}?productType=booking` : '/?productType=booking'}
+                  className={theme.combine(
+                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
+                    isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
+                  )}
                 >
                   Booking & Services
                 </Link>
               ) : mode === 'scroll' ? (
                 <Link
-                  href={vendorSlug ? `/vendor/${vendorSlug}?productType=booking` : '/?productType=booking'}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
+                  href={effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}?productType=booking` : '/?productType=booking'}
+                  className={theme.combine(
+                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
+                    isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
+                  )}
                 >
                   Booking & Services
                 </Link>
               ) : (
                 <Link
-                  href={vendorSlug ? `/vendor/${vendorSlug}?productType=booking` : '/?productType=booking'}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 border-transparent text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
+                  href={effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}?productType=booking` : '/?productType=booking'}
+                  className={theme.combine(
+                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 border-transparent hover:opacity-80",
+                    isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
+                  )}
                 >
                   Booking & Services
                 </Link>
@@ -442,14 +489,20 @@ export default function CategoryNav({
           )}
 
           {/* Vendor Pages - Right Side */}
-          {vendorPages.length > 0 && vendorSlug && (
+          {vendorPages.length > 0 && effectiveVendorSlug && (
             <>
-              <div className="border-l border-secondary-foreground/20 h-6 mx-2"></div>
+              <div className={theme.combine(
+                "border-l h-6 mx-2",
+                isVendorStore ? 'vendor-border-primary-30' : 'border-secondary-foreground/20'
+              )}></div>
               {vendorPages.map((page) => (
                 <Link
                   key={page.id}
-                  href={`/vendor/${vendorSlug}/${page.slug}`}
-                  className="flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
+                  href={`/vendor/${effectiveVendorSlug}/${page.slug}`}
+                  className={theme.combine(
+                    "flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
+                    isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
+                  )}
                 >
                   {page.title}
                 </Link>

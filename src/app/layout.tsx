@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { headers } from 'next/headers';
 import { Providers } from '@/components/providers';
 import ThemeProvider from '@/components/ThemeProvider';
 import './globals.css';
@@ -45,12 +46,22 @@ export default async function LocaleLayout({
   params: { locale: string };
 }) {
   const defaultTheme = await getDefaultTheme();
+  
+  // Get vendor slug from headers (set by middleware)
+  const headersList = headers();
+  const vendorSlug = headersList.get('x-vendor-slug') || undefined;
+  
+  console.log('🟣 Layout (server-side):', {
+    vendorSlug,
+    hasVendorSlug: !!vendorSlug,
+    allHeaders: Object.fromEntries(headersList.entries())
+  });
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider initialTheme={defaultTheme}>
-          <Providers>{children}</Providers>
+          <Providers initialVendorSlug={vendorSlug}>{children}</Providers>
         </ThemeProvider>
       </body>
     </html>

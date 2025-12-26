@@ -7,6 +7,8 @@ import { ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import ProductGrid from './ProductGrid';
 import CategoryNav from './CategoryNav';
 import { useLocale } from 'next-intl';
+import { useVendorContext } from '@/contexts/VendorContext';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
 
 interface Category {
   id: string;
@@ -64,6 +66,8 @@ export default function HomepageContent({
   locationFilterEnabled
 }: HomepageContentProps) {
   const searchParams = useSearchParams();
+  const { vendor, isVendorStore } = useVendorContext();
+  const theme = useThemeClasses();
   const [categories] = useState<Category[]>(initialCategories);
   const [productsByCategory, setProductsByCategory] = useState<Record<string, Product[]>>(initialProductsByCategory);
   const [uncategorizedProducts, setUncategorizedProducts] = useState<Product[]>(initialUncategorizedProducts);
@@ -79,6 +83,28 @@ export default function HomepageContent({
     setMounted(true);
   }, []);
 
+  // Filter initial data by vendor if on vendor store
+  useEffect(() => {
+    if (isVendorStore && vendor) {
+      console.log('Filtering initial data for vendor:', vendor.businessName);
+      
+      const filteredByCategory: Record<string, Product[]> = {};
+      Object.entries(initialProductsByCategory).forEach(([slug, products]) => {
+        const filtered = products.filter((p: Product) => p.vendor?.id === vendor.id);
+        if (filtered.length > 0) {
+          filteredByCategory[slug] = filtered;
+        }
+      });
+      
+      const filteredUncategorized = initialUncategorizedProducts.filter(
+        (p: Product) => p.vendor?.id === vendor.id
+      );
+      
+      setProductsByCategory(filteredByCategory);
+      setUncategorizedProducts(filteredUncategorized);
+    }
+  }, [vendor, isVendorStore]);
+
   // Handle location and search changes from URL params
   useEffect(() => {
     if (!mounted) return;
@@ -86,6 +112,12 @@ export default function HomepageContent({
     const city = searchParams.get('cityId');
     const subLocation = searchParams.get('subLocationId');
     const search = searchParams.get('search');
+    
+    // Only refetch if params actually changed
+    if (city === cityId && subLocation === subLocationId && search === searchQuery) {
+      console.log('Params unchanged, skipping refetch');
+      return;
+    }
     
     setCityId(city);
     setSubLocationId(subLocation);
@@ -103,17 +135,37 @@ export default function HomepageContent({
       const finalSubLocation = subLocation !== undefined ? subLocation : subLocationId;
       const finalSearch = search !== undefined ? search : searchQuery;
       
+      // If on vendor store, add vendor filter
+      if (isVendorStore && vendor) {
+        params.append('vendorId', vendor.id);
+      }
+      
       // Always fetch all products, then filter client-side
-      console.log('Fetching homepage data for filtering - city:', finalCity, 'subLocation:', finalSubLocation, 'search:', finalSearch);
+      console.log('Fetching homepage data for filtering - city:', finalCity, 'subLocation:', finalSubLocation, 'search:', finalSearch, 'vendor:', vendor?.businessName);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/homepage/data`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/homepage/data?${params.toString()}`
       );
       
       if (response.ok) {
         const data = await response.json();
         let productsToFilter = data.productsByCategory as Record<string, Product[]>;
         let uncategorizedToFilter = data.uncategorizedProducts as Product[];
+        
+        // Filter by vendor if on vendor store
+        if (isVendorStore && vendor) {
+          const filteredByCategory: Record<string, Product[]> = {};
+          
+          Object.entries(productsToFilter).forEach(([slug, products]) => {
+            const filtered = products.filter((p: Product) => p.vendor?.id === vendor.id);
+            if (filtered.length > 0) {
+              filteredByCategory[slug] = filtered;
+            }
+          });
+          
+          productsToFilter = filteredByCategory;
+          uncategorizedToFilter = uncategorizedToFilter.filter((p: Product) => p.vendor?.id === vendor.id);
+        }
         
         // Filter by location if city or sublocation is selected
         if (finalCity || finalSubLocation) {
@@ -235,19 +287,19 @@ export default function HomepageContent({
   }, []);
 
   return (
-    <>
+    <div>
       {/* Category Navigation Bar */}
       <CategoryNav mode="scroll" />
 
       {/* Main Content with Sidebar */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pb-8">
         {/* Search Results Header */}
         {searchQuery && (
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-foreground">
+            <h2 className={theme.combine('text-2xl font-bold', theme.text)}>
               Search Results for "{searchQuery}"
             </h2>
-            <p className="text-muted-foreground mt-1">
+            <p className={theme.combine('mt-1', theme.textMuted)}>
               {loading ? 'Searching...' : 'Showing all matching products'}
             </p>
           </div>
@@ -256,8 +308,8 @@ export default function HomepageContent({
         {/* Loading Indicator */}
         {loading && (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-muted-foreground">Loading products...</p>
+            <div className={theme.combine('inline-block animate-spin rounded-full h-12 w-12 border-b-2', isVendorStore ? 'border-[var(--vendor-primary)]' : 'border-blue-600')}></div>
+            <p className={theme.combine('mt-4', theme.textMuted)}>Loading products...</p>
           </div>
         )}
 
@@ -266,8 +318,8 @@ export default function HomepageContent({
           {/* Left Sidebar - Categories Tree */}
           {categoryDisplayMode === 'sidebar' && (
             <aside className="hidden lg:block w-64 flex-shrink-0">
-              <div className="bg-white rounded-lg shadow-sm p-4 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
-                <h2 className="font-bold text-lg mb-4 sticky top-0 bg-white pb-2 z-10">All Categories</h2>
+              <div className={theme.combine(theme.cardBg, 'rounded-lg shadow-sm p-4 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto')}>
+                <h2 className={theme.combine('font-bold text-lg mb-4 sticky top-0 pb-2 z-10', theme.cardBg, theme.text)}>All Categories</h2>
                 <div className="space-y-1">
                   {categories.map((category) => (
                     <div key={category.id}>
@@ -277,7 +329,7 @@ export default function HomepageContent({
                           e.preventDefault();
                           scrollToElement(`category-${category.slug}`);
                         }}
-                        className="flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary hover:bg-accent/10 rounded transition-colors"
+                        className={theme.combine('flex items-center justify-between px-3 py-2 text-sm font-medium rounded transition-colors', theme.text, isVendorStore ? 'hover:vendor-primary' : 'hover:text-primary hover:bg-accent/10')}
                       >
                         <span>{category.name}</span>
                         {category.children && category.children.length > 0 && <ChevronRight className="w-4 h-4" />}
@@ -300,16 +352,16 @@ export default function HomepageContent({
               return (
                 <section
                   id="category-bookings-services"
-                  className="bg-white rounded-lg shadow-sm p-6"
+                  className={theme.combine(theme.cardBg, 'rounded-lg shadow-sm p-6')}
                 >
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">Bookings & Services</h2>
-                      <p className="text-gray-600 text-sm">Book appointments and services</p>
+                      <h2 className={theme.combine('text-2xl font-bold', isVendorStore ? 'vendor-themed-heading' : 'text-gray-900')}>Bookings & Services</h2>
+                      <p className={theme.combine('text-sm', theme.textMuted)}>Book appointments and services</p>
                     </div>
                     <Link
                       href="/?productType=booking"
-                      className="text-primary hover:opacity-80 font-medium text-sm flex items-center gap-1"
+                      className={theme.combine('hover:opacity-80 font-medium text-sm flex items-center gap-1', isVendorStore ? 'vendor-themed-link' : 'text-primary')}
                     >
                       View All
                       <ChevronRight className="w-4 h-4" />
@@ -335,20 +387,20 @@ export default function HomepageContent({
                 <section
                   key={category.id}
                   id={`category-${category.slug}`}
-                  className="bg-white rounded-lg shadow-sm p-6"
+                  className={theme.combine(theme.cardBg, 'rounded-lg shadow-sm p-6')}
                 >
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">{category.name}</h2>
+                      <h2 className={theme.combine('text-2xl font-bold', isVendorStore ? 'vendor-themed-heading' : 'text-gray-900')}>{category.name}</h2>
                       {category.children && category.children.length > 0 && (
-                        <p className="text-gray-600 text-sm">
+                        <p className={theme.combine('text-sm', theme.textMuted)}>
                           {category.children.map(c => c.name).join(', ')}
                         </p>
                       )}
                     </div>
                     <Link
                       href={`/category/${category.slug}`}
-                      className="text-primary hover:opacity-80 font-medium text-sm flex items-center gap-1"
+                      className={theme.combine('hover:opacity-80 font-medium text-sm flex items-center gap-1', isVendorStore ? 'vendor-themed-link' : 'text-primary')}
                     >
                       View All
                       <ChevronRight className="w-4 h-4" />
@@ -369,11 +421,11 @@ export default function HomepageContent({
               if (uncategorizedProducts.length === 0) return null;
               
               return (
-                <section id="more-products-section" className="bg-white rounded-lg shadow-sm p-6">
+                <section id="more-products-section" className={theme.combine(theme.cardBg, 'rounded-lg shadow-sm p-6')}>
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">More Products</h2>
-                      <p className="text-gray-600 text-sm">Discover other amazing products</p>
+                      <h2 className={theme.combine('text-2xl font-bold', isVendorStore ? 'vendor-themed-heading' : 'text-gray-900')}>More Products</h2>
+                      <p className={theme.combine('text-sm', theme.textMuted)}>Discover other amazing products</p>
                     </div>
                   </div>
 
@@ -389,6 +441,6 @@ export default function HomepageContent({
         </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

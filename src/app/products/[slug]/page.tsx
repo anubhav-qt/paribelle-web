@@ -15,11 +15,12 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import { usePolicies } from '@/contexts/PoliciesContext';
 import CartButton from '@/components/CartButton';
 import CategoryNav from '@/components/CategoryNav';
-import Header from '@/components/Header';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import Footer from '@/components/Footer';
 import RatingDisplay from '@/components/RatingDisplay';
 import ReviewCard from '@/components/ReviewCard';
 import ReviewForm from '@/components/ReviewForm';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
 
 interface Category {
   id: string;
@@ -72,6 +73,7 @@ export default function ProductDetailPage() {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { fetchVendorPolicies } = usePolicies();
+  const theme = useThemeClasses();
   
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -571,7 +573,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header showLocationFilter={false} showBookingsLink={true} />
+      <UnifiedHeader showLocationFilter={false} showBookingsLink={true} />
 
       <CategoryNav mode="navigation" />
 
@@ -955,7 +957,7 @@ export default function ProductDetailPage() {
                   {product.reviewCount > 0 ? (
                     <RatingDisplay 
                       rating={Number(product.averageRating)} 
-                      reviewCount={product.reviewCount}
+                      count={product.reviewCount}
                       size="lg"
                     />
                   ) : (

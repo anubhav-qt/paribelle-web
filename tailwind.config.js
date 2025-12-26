@@ -6,6 +6,30 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  safelist: [
+    // Vendor theme classes - prevent Tailwind from purging these
+    'vendor-bg',
+    'vendor-nav-bg',
+    'vendor-footer-bg',
+    'vendor-text',
+    'vendor-text-80',
+    'vendor-text-99',
+    'vendor-primary',
+    'vendor-primary-bg',
+    'vendor-secondary-bg',
+    'vendor-accent',
+    'vendor-border-primary',
+    'vendor-border-primary-30',
+    'vendor-border-primary-40',
+    'vendor-font',
+    'vendor-heading-font',
+    'vendor-themed-heading',
+    'vendor-themed-link',
+    'vendor-product-card',
+    'vendor-product-price',
+    'hover:vendor-primary',
+    'hover:opacity-80',
+  ],
   theme: {
     extend: {
       colors: {

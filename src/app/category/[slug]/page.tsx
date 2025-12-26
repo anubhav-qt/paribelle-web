@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { Star, SlidersHorizontal, ChevronDown, Package, Calendar } from 'lucide-react';
 import LocationFilter from '@/components/LocationFilter';
 import { getCurrencySymbol } from '@/lib/currency';
-import Header from '@/components/Header';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import CategoryNav from '@/components/CategoryNav';
 import Footer from '@/components/Footer';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
+import { useVendorContext } from '@/contexts/VendorContext';
 
 interface Category {
   id: string;
@@ -63,6 +65,8 @@ type SortOption = 'popularity' | 'price-low' | 'price-high' | 'rating' | 'newest
 export default function CategoryPage() {
   const params = useParams();
   const categorySlug = params.slug as string;
+  const theme = useThemeClasses();
+  const { isVendorStore } = useVendorContext();
   
   const [category, setCategory] = useState<Category | null>(null);
   const [subcategories, setSubcategories] = useState<Category[]>([]);
@@ -279,19 +283,19 @@ export default function CategoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className={theme.combine('min-h-screen flex items-center justify-center', theme.bg)}>
+        <div className={theme.combine('animate-spin rounded-full h-12 w-12 border-b-2', isVendorStore ? 'border-[var(--vendor-primary)]' : 'border-blue-600')}></div>
       </div>
     );
   }
 
   if (!category) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className={theme.combine('min-h-screen flex items-center justify-center', theme.bg)}>
         <div className="text-center">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Category Not Found</h1>
-          <Link href="/" className="text-blue-600 hover:underline">
+          <Package className={theme.combine('w-16 h-16 mx-auto mb-4', theme.textMuted)} />
+          <h1 className={theme.combine('text-2xl font-bold mb-2', theme.text)}>Category Not Found</h1>
+          <Link href="/" className={theme.combine('hover:underline', isVendorStore ? 'vendor-themed-link' : 'text-blue-600')}>
             Go to Home
           </Link>
         </div>
@@ -300,36 +304,36 @@ export default function CategoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header 
+    <div className={theme.combine('min-h-screen', theme.bg)}>
+      <UnifiedHeader 
         showLocationFilter={locationFilterEnabled}
         showBookingsLink={true}
       />
       <CategoryNav categories={categories} />
 
       {/* Breadcrumb */}
-      <div className="bg-white border-b">
+      <div className={theme.combine(theme.cardBg, 'border-b', isVendorStore ? 'vendor-border-primary' : 'border-border')}>
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
-              <Link href="/" className="text-gray-600 hover:text-blue-600">
+              <Link href="/" className={theme.combine(theme.textMuted, isVendorStore ? 'hover:vendor-primary' : 'hover:text-blue-600')}>
                 Home
               </Link>
-              <span className="text-gray-400">/</span>
+              <span className={theme.textMuted}>/</span>
               {category.parent && (
                 <>
                   <Link 
                     href={`/category/${category.parent.slug}`} 
-                    className="text-gray-600 hover:text-blue-600"
+                    className={theme.combine(theme.textMuted, isVendorStore ? 'hover:vendor-primary' : 'hover:text-blue-600')}
                   >
                     {category.parent.name}
                   </Link>
-                  <span className="text-gray-400">/</span>
+                  <span className={theme.textMuted}>/</span>
                 </>
               )}
-              <span className="text-gray-900 font-medium">{category.name}</span>
+              <span className={theme.combine('font-medium', theme.text)}>{category.name}</span>
             </div>
-            <span className="text-sm text-gray-500">
+            <span className={theme.combine('text-sm', theme.textMuted)}>
               ({filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'})
             </span>
           </div>
@@ -343,12 +347,14 @@ export default function CategoryPage() {
           <aside className="hidden lg:block w-64 flex-shrink-0">
             {/* Subcategories Tree Panel */}
             {subcategories.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-4 mb-4 sticky top-20">
-                <h2 className="font-bold text-lg mb-4">Categories</h2>
+              <div className={theme.combine(theme.cardBg, 'rounded-lg shadow-sm p-4 mb-4 sticky top-20')}>
+                <h2 className={theme.combine('font-bold text-lg mb-4', theme.text)}>Categories</h2>
                 <div className="space-y-1">
                   <Link
                     href={`/category/${category.slug}`}
-                    className="block px-3 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                    className={theme.combine('block px-3 py-2 text-sm font-semibold rounded transition-colors', 
+                      isVendorStore ? 'vendor-primary vendor-secondary-bg hover:opacity-80' : 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                    )}
                   >
                     All {category.name}
                   </Link>
@@ -356,7 +362,10 @@ export default function CategoryPage() {
                     <Link
                       key={subcat.id}
                       href={`/category/${subcat.slug}`}
-                      className="block px-3 py-2 text-sm text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded transition-colors"
+                      className={theme.combine('block px-3 py-2 text-sm rounded transition-colors',
+                        theme.text,
+                        isVendorStore ? 'hover:vendor-primary hover:vendor-secondary-bg' : 'hover:text-blue-600 hover:bg-gray-50'
+                      )}
                     >
                       {subcat.name}
                     </Link>
@@ -366,12 +375,12 @@ export default function CategoryPage() {
             )}
 
             {/* Filters Panel */}
-            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-20">
+            <div className={theme.combine(theme.cardBg, 'rounded-lg shadow-sm p-4 sticky top-20')}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-lg">Filters</h2>
+                <h2 className={theme.combine('font-bold text-lg', theme.text)}>Filters</h2>
                 <button
                   onClick={resetFilters}
-                  className="text-xs text-blue-600 hover:underline"
+                  className={theme.combine('text-xs hover:underline', isVendorStore ? 'vendor-themed-link' : 'text-blue-600')}
                 >
                   Clear All
                 </button>

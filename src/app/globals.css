@@ -92,4 +92,159 @@
     animation-delay: 0.4s;
     opacity: 0;
   }
+
+  /* Vendor Theme Utilities */
+  .vendor-bg {
+    background-color: var(--vendor-bg, #FFFFFF) !important;
+  }
+
+  .vendor-text {
+    color: var(--vendor-text, #000000) !important;
+  }
+
+  .vendor-text *:not(.vendor-primary):not(.hover\:vendor-primary) {
+    color: var(--vendor-text, #000000) !important;
+  }
+
+  .vendor-text a:not(.vendor-primary):not(.hover\:vendor-primary),
+  .vendor-text a:link:not(.vendor-primary),
+  .vendor-text a:visited:not(.vendor-primary),
+  .vendor-text button:not(.vendor-primary):not(.hover\:vendor-primary) {
+    color: var(--vendor-text, #000000) !important;
+  }
+
+  a.vendor-text:not(.hover\:vendor-primary),
+  a.vendor-text:link,
+  a.vendor-text:visited,
+  button.vendor-text:not(.hover\:vendor-primary) {
+    color: var(--vendor-text, #000000) !important;
+  }
+
+  .vendor-primary {
+    color: var(--vendor-primary, #0000FF) !important;
+  }
+
+  .vendor-primary * {
+    color: var(--vendor-primary, #0000FF) !important;
+  }
+
+  .vendor-primary a,
+  .vendor-primary a:link,
+  .vendor-primary a:visited {
+    color: var(--vendor-primary, #0000FF) !important;
+  }
+
+  a.vendor-primary,
+  a.vendor-primary:link,
+  a.vendor-primary:visited {
+    color: var(--vendor-primary, #0000FF) !important;
+  }
+
+  a.hover\:vendor-primary:hover,
+  .hover\:vendor-primary:hover {
+    color: var(--vendor-primary, #0000FF) !important;
+  }
+
+  .vendor-primary-bg {
+    background-color: var(--vendor-primary, #0000FF) !important;
+  }
+
+  .vendor-secondary-bg {
+    background-color: var(--vendor-secondary, #F5F5F5) !important;
+  }
+
+  .vendor-accent {
+    color: var(--vendor-accent, #FF0000) !important;
+  }
+
+  .vendor-border-primary {
+    border-color: var(--vendor-primary, #0000FF) !important;
+  }
+
+  .vendor-border-primary-30 {
+    border-color: color-mix(in srgb, var(--vendor-primary, #0000FF) 30%, transparent) !important;
+  }
+
+  .vendor-border-primary-40 {
+    border-color: color-mix(in srgb, var(--vendor-primary, #0000FF) 40%, transparent) !important;
+  }
+
+  .vendor-text-80 {
+    color: color-mix(in srgb, var(--vendor-text, #000000) 80%, transparent) !important;
+  }
+
+  .vendor-text-80 *:not(.vendor-primary):not(.hover\:vendor-primary):not(a.vendor-text) {
+    color: color-mix(in srgb, var(--vendor-text, #000000) 80%, transparent) !important;
+  }
+
+  .vendor-text-80 a.vendor-text {
+    color: color-mix(in srgb, var(--vendor-text, #000000) 80%, transparent) !important;
+  }
+
+  .vendor-text-99 {
+    color: color-mix(in srgb, var(--vendor-text, #000000) 99%, transparent) !important;
+  }
+
+  .vendor-text-99 *:not(.vendor-primary):not(.hover\:vendor-primary) {
+    color: color-mix(in srgb, var(--vendor-text, #000000) 99%, transparent) !important;
+  }
+
+  .vendor-font {
+    font-family: var(--vendor-font, var(--marketplace-font, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif)) !important;
+  }
+
+  .vendor-heading-font {
+    font-family: var(--vendor-heading-font, var(--vendor-font, var(--marketplace-font, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif))) !important;
+  }
+
+  .vendor-themed-heading {
+    color: var(--vendor-primary, #0000FF) !important;
+    font-family: var(--vendor-heading-font, var(--vendor-font, var(--marketplace-font, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif))) !important;
+  }
+
+  .vendor-themed-link {
+    color: var(--vendor-primary, #0000FF) !important;
+    transition: opacity 0.2s;
+  }
+
+  .vendor-themed-link:hover {
+    opacity: 0.8;
+  }
+
+  .vendor-product-card {
+    background-color: var(--vendor-bg, #FFFFFF) !important;
+    border-color: color-mix(in srgb, var(--vendor-primary, #0000FF) 40%, transparent) !important;
+  }
+
+  .vendor-product-price {
+    color: var(--vendor-primary, #0000FF) !important;
+    font-weight: 600;
+  }
+
+  /* Navigation and Footer backgrounds with vendor primary tint */
+  .vendor-nav-bg {
+    background-color: var(--vendor-secondary, color-mix(in srgb, var(--vendor-primary, #0000FF) 8%, var(--vendor-bg, #FFFFFF))) !important;
+    /* Use white text on dark backgrounds */
+    color: var(--vendor-nav-text, #FFFFFF) !important;
+  }
+
+  .vendor-nav-bg *:not(.vendor-primary):not(.hover\:vendor-primary) {
+    color: var(--vendor-nav-text, #FFFFFF) !important;
+  }
+
+  .vendor-nav-bg a:not(.vendor-primary):not(.hover\:vendor-primary),
+  .vendor-nav-bg button:not(.vendor-primary):not(.hover\:vendor-primary) {
+    color: var(--vendor-nav-text, #FFFFFF) !important;
+  }
+
+  .vendor-footer-bg {
+    background-color: var(--vendor-secondary, color-mix(in srgb, var(--vendor-primary, #0000FF) 12%, var(--vendor-bg, #FFFFFF))) !important;
+    /* Use lighter text on dark backgrounds */
+    color: var(--vendor-footer-text, rgba(255, 255, 255, 0.9)) !important;
+  }
+
+  .vendor-footer-bg *:not(.vendor-primary):not(.hover\:vendor-primary) {
+    color: var(--vendor-footer-text, rgba(255, 255, 255, 0.9)) !important;
+  }
 }
+

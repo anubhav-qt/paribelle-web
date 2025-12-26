@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import MainPageClient from '@/components/MainPageClient';
 
 // Disable static generation for homepage due to client components
@@ -10,7 +11,7 @@ interface Category {
   children?: Category[];
 }
 
-async function getHomepageData(locale?: string) {
+async function getHomepageData(locale?: string, vendorSlug?: string) {
   try {
     // Use server-side API URL or fallback to localhost:3001 for development
     const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -18,6 +19,9 @@ async function getHomepageData(locale?: string) {
     const url = new URL(`${apiUrl}/api/v1/homepage/data`);
     if (locale) {
       url.searchParams.append('lang', locale);
+    }
+    if (vendorSlug) {
+      url.searchParams.append('vendorSlug', vendorSlug);
     }
     
     console.log('[Server] Fetching homepage data from:', url.toString());
@@ -57,7 +61,11 @@ async function getHomepageData(locale?: string) {
 }
 
 export default async function HomePage({ params }: { params: { locale: string } }) {
-  const data = await getHomepageData(params.locale);
+  // Get vendor slug from headers (set by middleware)
+  const headersList = headers();
+  const vendorSlug = headersList.get('x-vendor-slug') || undefined;
+  
+  const data = await getHomepageData(params.locale, vendorSlug);
 
   return (
     <MainPageClient

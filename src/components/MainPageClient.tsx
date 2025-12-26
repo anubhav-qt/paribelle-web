@@ -1,12 +1,13 @@
 'use client';
 
 import ThemeSelector from '@/components/ThemeSelector';
-import Header from '@/components/Header';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import HeroCarousel from '@/components/HeroCarousel';
 import Footer from '@/components/Footer';
 import HomepageContent from '@/components/HomepageContent';
 import { Suspense } from 'react';
 import GoogleAuthHandler from '@/components/GoogleAuthHandler';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
 
 interface Category {
   id: string;
@@ -33,12 +34,14 @@ export default function MainPageClient({
   productsByCategory,
   uncategorizedProducts,
 }: MainPageClientProps) {
+  const theme = useThemeClasses();
+  
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className={theme.combine('min-h-screen', theme.bg)}>
       <Suspense fallback={null}>
         <GoogleAuthHandler />
       </Suspense>
-      <Header showLocationFilter={settings.locationFilterEnabled} />
+      <UnifiedHeader showLocationFilter={settings.locationFilterEnabled} />
 
       <HeroCarousel />
 

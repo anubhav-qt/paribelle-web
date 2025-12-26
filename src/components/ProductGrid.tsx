@@ -5,6 +5,8 @@ import { Star, Calendar, ExternalLink, Heart } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getProductImageUrl } from '@/lib/image-url';
 import { useWishlist } from '@/contexts/WishlistContext';
+import { useVendorContext } from '@/contexts/VendorContext';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
 
 interface Category {
   id: string;
@@ -58,6 +60,8 @@ export default function ProductGrid({
   showLocationInfo = true 
 }: ProductGridProps) {
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { isVendorStore } = useVendorContext();
+  const theme = useThemeClasses();
   const getDiscount = (price: string | number, compareAtPrice?: string | number) => {
     if (!compareAtPrice || Number(compareAtPrice) <= Number(price)) return null;
     return Math.round(((Number(compareAtPrice) - Number(price)) / Number(compareAtPrice)) * 100);
@@ -81,7 +85,7 @@ export default function ProductGrid({
     }
 
     return (
-      <div key={product.id} className="group/card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-all bg-card relative">
+      <div key={product.id} className={theme.combine('group/card rounded-lg overflow-hidden hover:shadow-xl transition-all relative', isVendorStore ? 'vendor-product-card' : 'border border-border bg-card')}>
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -130,7 +134,7 @@ export default function ProductGrid({
         </div>
         <div className="p-4">
           <Link href={`/products/${product.slug}`}>
-            <h3 className="font-medium mb-1 line-clamp-2 text-sm min-h-[40px] text-foreground group-hover/card:text-primary transition-colors">
+            <h3 className={theme.combine('font-medium mb-1 line-clamp-2 text-sm min-h-[40px] transition-colors', theme.text, isVendorStore ? 'group-hover/card:vendor-primary' : 'group-hover/card:text-primary')}>
               {product.name}
             </h3>
           </Link>
@@ -146,17 +150,17 @@ export default function ProductGrid({
             </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold text-foreground">
+            <span className={theme.combine('text-lg font-bold', isVendorStore ? 'vendor-product-price' : theme.text)}>
               {getCurrencySymbol(currency)}{Number(product.price).toFixed(2)}
             </span>
             {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
-              <span className="text-xs text-muted-foreground line-through">
+              <span className={theme.combine('text-xs line-through', theme.textMuted)}>
                 {getCurrencySymbol(currency)}{Number(product.compareAtPrice).toFixed(2)}
               </span>
             )}
           </div>
           {showLocationInfo && isLocationFilterActive && product.vendor?.locationCity && (
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className={theme.combine('text-xs mt-1', theme.textMuted)}>
               📍 {product.vendor.locationCity.name}
               {product.vendor.locationSubLocation && ` - ${product.vendor.locationSubLocation.name}`}
             </div>
@@ -164,20 +168,20 @@ export default function ProductGrid({
           
           {/* Vendor Name - Always show if available */}
           {product.vendor && (
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className={theme.combine('text-xs mt-1', theme.textMuted)}>
               by{' '}
               {product.vendor.subdomain ? (
                 <a
                   href={`http://${product.vendor.subdomain}.localhost:3000`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:text-primary/80 hover:underline inline-flex items-center gap-0.5"
+                  className={theme.combine('hover:underline inline-flex items-center gap-0.5', isVendorStore ? 'vendor-themed-link' : 'text-primary hover:text-primary/80')}
                 >
                   {product.vendor.businessName || product.vendor.storeName}
                   <ExternalLink className="w-2.5 h-2.5" />
                 </a>
               ) : (
-                <span className="text-foreground font-medium">
+                <span className={theme.combine('font-medium', theme.text)}>
                   {product.vendor.businessName || product.vendor.storeName}
                 </span>
               )}
@@ -194,7 +198,7 @@ export default function ProductGrid({
       {productsWithLocation.length > 0 && (
         <div className={productsWithoutLocation.length > 0 && isLocationFilterActive ? "mb-6" : ""}>
           {isLocationFilterActive && productsWithoutLocation.length > 0 && (
-            <h3 className="text-sm font-semibold text-foreground mb-3">
+            <h3 className={theme.combine('text-sm font-semibold mb-3', theme.text)}>
               Available in Selected Location ({productsWithLocation.length})
             </h3>
           )}
@@ -208,7 +212,7 @@ export default function ProductGrid({
       {productsWithoutLocation.length > 0 && (
         <div>
           {isLocationFilterActive && (
-            <h3 className="text-sm font-semibold text-foreground mb-3">
+            <h3 className={theme.combine('text-sm font-semibold mb-3', theme.text)}>
               Other Locations ({productsWithoutLocation.length})
             </h3>
           )}
@@ -219,7 +223,7 @@ export default function ProductGrid({
       )}
 
       {products.length === 0 && (
-        <p className="text-muted-foreground text-center py-8">No products found</p>
+        <p className={theme.combine('text-center py-8', theme.textMuted)}>No products found</p>
       )}
     </div>
   );

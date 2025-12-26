@@ -96,7 +96,7 @@ export default function HeroCarousel() {
 
   return (
     <div 
-      className="relative w-full overflow-hidden"
+      className="relative w-full overflow-hidden -mb-1"
       onMouseEnter={() => setIsAutoPlaying(false)}
       onMouseLeave={() => setIsAutoPlaying(true)}
     >

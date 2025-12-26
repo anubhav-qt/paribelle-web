@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
 import { Package, Clock, CheckCircle, XCircle, Truck, Eye } from 'lucide-react';
-import Header from '@/components/Header';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import CategoryNav from '@/components/CategoryNav';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
 
 interface OrderItem {
   id: string;
@@ -47,6 +48,7 @@ interface Order {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const theme = useThemeClasses();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -270,7 +272,7 @@ export default function OrdersPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header showLocationFilter={false} showBookingsLink={true} />
+        <UnifiedHeader showLocationFilter={false} showBookingsLink={true} />
         <CategoryNav mode="navigation" />
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -281,7 +283,7 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header showLocationFilter={false} showBookingsLink={true} />
+      <UnifiedHeader showLocationFilter={false} showBookingsLink={true} />
       <CategoryNav mode="navigation" />
 
       <div className="container mx-auto px-4 py-8">

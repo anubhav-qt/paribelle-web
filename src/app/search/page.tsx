@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { Star, Package, Calendar, ChevronDown } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getProductImageUrl } from '@/lib/image-url';
-import Header from '@/components/Header';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import Footer from '@/components/Footer';
 import { useSettings } from '@/hooks/useSettings';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
+import { useVendorContext } from '@/contexts/VendorContext';
 
 interface Product {
   id: string;
@@ -33,6 +35,8 @@ function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: settings } = useSettings();
+  const theme = useThemeClasses();
+  const { vendor, isVendorStore } = useVendorContext();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,6 +142,10 @@ function SearchContent() {
       if (type) {
         params.append('productType', type);
       }
+      // Add vendor filter if on vendor store
+      if (isVendorStore && vendor) {
+        params.append('vendorId', vendor.id);
+      }
       params.append('limit', limit.toString());
       params.append('page', pageNum.toString());
       
@@ -192,7 +200,7 @@ function SearchContent() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <Header 
+      <UnifiedHeader 
         showLocationFilter={false}
         showBookingsLink={productType !== 'booking'}
         onSearch={(query) => {
@@ -205,17 +213,17 @@ function SearchContent() {
 
       {/* Categories Toolbar - Flipkart Style */}
       {categoryDisplayMode === 'top' && (
-        <div className="border-t bg-card border-border shadow-sm mb-6">
+        <div className={theme.combine('border-t shadow-sm mb-6', theme.cardBg, isVendorStore ? 'vendor-border-primary' : 'border-border')}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-0 overflow-visible">
               {/* All Categories - First Item */}
               <button
                 onClick={() => handleCategoryFilter('')}
-                className={`flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2 ${
+                className={theme.combine('flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2',
                   selectedCategory === ''
-                    ? 'text-primary border-primary bg-accent font-semibold'
-                    : 'text-foreground border-transparent hover:text-primary hover:bg-accent'
-                }`}
+                    ? isVendorStore ? 'vendor-primary vendor-border-primary font-semibold' : 'text-primary border-primary bg-accent font-semibold'
+                    : isVendorStore ? 'vendor-text border-transparent hover:vendor-primary' : 'text-foreground border-transparent hover:text-primary hover:bg-accent'
+                )}
               >
                 All Categories
               </button>
@@ -234,11 +242,11 @@ function SearchContent() {
                         handleCategoryNavigation(category.slug);
                       }
                     }}
-                    className={`flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2 ${
+                    className={theme.combine('flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2',
                       selectedCategory === category.id
-                        ? 'text-primary border-primary bg-accent font-semibold'
-                        : 'text-foreground border-transparent hover:text-primary hover:bg-accent'
-                    }`}
+                        ? isVendorStore ? 'vendor-primary vendor-border-primary font-semibold' : 'text-primary border-primary bg-accent font-semibold'
+                        : isVendorStore ? 'vendor-text border-transparent hover:vendor-primary' : 'text-foreground border-transparent hover:text-primary hover:bg-accent'
+                    )}
                   >
                     {category.name}
                     {category.children && category.children.length > 0 && (
@@ -248,13 +256,15 @@ function SearchContent() {
                   
                   {/* Subcategories Dropdown */}
                   {category.children && category.children.length > 0 && activeDropdown === category.id && (
-                    <div className="absolute top-full left-0 mt-0 bg-card shadow-xl rounded-b-lg min-w-[200px] z-[9999] border border-t-0 py-2">
+                    <div className={theme.combine('absolute top-full left-0 mt-0 shadow-xl rounded-b-lg min-w-[200px] z-[9999] border border-t-0 py-2', theme.cardBg, isVendorStore ? 'vendor-border-primary' : 'border-border')}>
                       <button
                         onClick={() => {
                           setActiveDropdown(null);
                           handleCategoryNavigation(category.slug);
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm font-semibold text-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors border-b border-border"
+                        className={theme.combine('block w-full text-left px-4 py-2 text-sm font-semibold transition-colors border-b',
+                          isVendorStore ? 'vendor-text hover:vendor-primary vendor-border-primary-30' : 'text-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 border-border'
+                        )}
                       >
                         All {category.name}
                       </button>
@@ -265,7 +275,9 @@ function SearchContent() {
                             setActiveDropdown(null);
                             handleCategoryNavigation(subcat.slug);
                           }}
-                          className="block w-full text-left px-4 py-2 text-sm text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
+                          className={theme.combine('block w-full text-left px-4 py-2 text-sm transition-colors',
+                            isVendorStore ? 'vendor-text-80 hover:vendor-primary' : 'text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950'
+                          )}
                         >
                           {subcat.name}
                         </button>
@@ -285,11 +297,11 @@ function SearchContent() {
           {/* Filters Sidebar */}
           {categoryDisplayMode === 'sidebar' && (
             <div className="w-64 flex-shrink-0">
-              <div className="bg-card rounded-lg shadow p-6 sticky top-24">
-                <h2 className="text-lg font-semibold mb-4">Filters</h2>
+              <div className={theme.combine(theme.cardBg, 'rounded-lg shadow p-6 sticky top-24')}>
+                <h2 className={theme.combine('text-lg font-semibold mb-4', theme.text)}>Filters</h2>
                 
                 <div className="mb-6">
-                  <h3 className="text-sm font-medium text-foreground mb-3">Categories</h3>
+                  <h3 className={theme.combine('text-sm font-medium mb-3', theme.text)}>Categories</h3>
                   <div className="space-y-2 max-h-[600px] overflow-y-auto">
                     <label className="flex items-center cursor-pointer hover:bg-muted p-1 rounded">
                       <input
@@ -322,24 +334,24 @@ function SearchContent() {
           {/* Results */}
           <div className="flex-1">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className={theme.combine('text-2xl font-bold', theme.text)}>
                 {productType === 'booking' ? 'Bookings & Services' : (searchQuery ? `Search Results for "${searchQuery}"` : 'All Products')}
               </h1>
-              <p className="text-muted-foreground mt-1">
+              <p className={theme.combine('mt-1', theme.textMuted)}>
                 {loading ? 'Loading...' : `${totalCount} product${totalCount !== 1 ? 's' : ''} found`}
               </p>
             </div>
 
             {loading ? (
               <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-muted-foreground">Loading products...</p>
+                <div className={theme.combine('inline-block animate-spin rounded-full h-12 w-12 border-b-2', isVendorStore ? 'border-[var(--vendor-primary)]' : 'border-blue-600')}></div>
+                <p className={theme.combine('mt-4', theme.textMuted)}>Loading products...</p>
               </div>
             ) : products.length === 0 ? (
               <div className="text-center py-12">
-                <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-foreground mb-2">No Products Found</h2>
-                <p className="text-muted-foreground">Try adjusting your search terms or filters</p>
+                <Package className={theme.combine('w-16 h-16 mx-auto mb-4', theme.textMuted)} />
+                <h2 className={theme.combine('text-xl font-semibold mb-2', theme.text)}>No Products Found</h2>
+                <p className={theme.textMuted}>Try adjusting your search terms or filters</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -347,7 +359,7 @@ function SearchContent() {
                   <Link
                     key={product.id}
                     href={`/products/${product.slug}`}
-                    className="group bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                    className={theme.combine('group rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden', isVendorStore ? 'vendor-product-card' : 'bg-card')}
                   >
                     <div className="aspect-square bg-muted overflow-hidden relative">
                       <img
@@ -370,11 +382,11 @@ function SearchContent() {
                       )}
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-foreground mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                      <h3 className={theme.combine('font-semibold mb-1 line-clamp-2 transition-colors', theme.text, isVendorStore ? 'group-hover:vendor-primary' : 'group-hover:text-blue-600')}>
                         {product.name}
                       </h3>
                       {product.shortDescription && (
-                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                        <p className={theme.combine('text-sm mb-2 line-clamp-2', theme.textMuted)}>
                           {product.shortDescription}
                         </p>
                       )}
@@ -385,21 +397,21 @@ function SearchContent() {
                             {Number(product.averageRating).toFixed(1)}
                           </span>
                         </div>
-                        <span className="text-sm text-gray-500">
+                        <span className={theme.combine('text-sm', theme.textMuted)}>
                           ({product.reviewCount})
                         </span>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-xl font-bold text-foreground">
+                        <span className={theme.combine('text-xl font-bold', isVendorStore ? 'vendor-product-price' : theme.text)}>
                           {getCurrencySymbol(currency)}{Number(product.price).toFixed(2)}
                           {product.productType === 'booking' && product.attributes?.booking?.durationUnit && (
-                            <span className="text-sm font-normal text-muted-foreground">
+                            <span className={theme.combine('text-sm font-normal', theme.textMuted)}>
                               /{product.attributes.booking.durationUnit === 'hours' ? 'hr' : product.attributes.booking.durationUnit === 'days' ? 'day' : 'session'}
                             </span>
                           )}
                         </span>
                         {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
-                          <span className="text-sm text-gray-500 line-through">
+                          <span className={theme.combine('text-sm line-through', theme.textMuted)}>
                             {getCurrencySymbol(currency)}{Number(product.compareAtPrice).toFixed(2)}
                           </span>
                         )}
@@ -413,8 +425,8 @@ function SearchContent() {
             {/* Loading More Indicator */}
             {loadingMore && (
               <div className="mt-8 text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-muted-foreground">Loading more products...</p>
+                <div className={theme.combine('inline-block animate-spin rounded-full h-8 w-8 border-b-2', isVendorStore ? 'border-[var(--vendor-primary)]' : 'border-blue-600')}></div>
+                <p className={theme.combine('mt-4', theme.textMuted)}>Loading more products...</p>
               </div>
             )}
 

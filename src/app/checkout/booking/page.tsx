@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatPrice } from '@/lib/currency';
 import { useRazorpay } from '@/hooks/useRazorpay';
-import Header from '@/components/Header';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import { 
   Calendar, 
   MapPin, 
@@ -19,7 +19,7 @@ import {
   Trash2
 } from 'lucide-react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
 
 type CheckoutStep = 'review' | 'address' | 'payment' | 'confirmation';
 
@@ -54,6 +54,7 @@ function BookingCheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { createOrder: createRazorpayOrder, verifyPayment, openCheckout } = useRazorpay();
+  const theme = useThemeClasses();
   
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('review');
   const [loading, setLoading] = useState(true);
@@ -122,7 +123,7 @@ function BookingCheckoutContent() {
     } catch (error) {
       console.error('Error parsing user data:', error);
     }
-  }, [router, searchParams, locale]);
+  }, [router, searchParams]);
 
   const fetchBookings = async (bookingIds: string[], token: string) => {
     try {
@@ -393,7 +394,7 @@ function BookingCheckoutContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header showLocationFilter={false} showBookingsLink={false} />
+        <UnifiedHeader showLocationFilter={false} showBookingsLink={false} />
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading booking details...</p>
@@ -405,7 +406,7 @@ function BookingCheckoutContent() {
   if (currentStep === 'confirmation') {
     return (
       <div className="min-h-screen bg-background">
-        <Header showLocationFilter={false} showBookingsLink={false} />
+        <UnifiedHeader showLocationFilter={false} showBookingsLink={false} />
         <div className="container mx-auto px-4 py-16">
           <div className="max-w-2xl mx-auto bg-card rounded-lg shadow-lg p-8 text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -465,7 +466,7 @@ function BookingCheckoutContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header showLocationFilter={false} showBookingsLink={false} />
+      <UnifiedHeader showLocationFilter={false} showBookingsLink={false} />
       
       <div className="container mx-auto px-4 py-8">
         {/* Progress Steps */}

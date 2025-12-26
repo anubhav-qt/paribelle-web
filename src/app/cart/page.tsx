@@ -4,7 +4,7 @@ import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/lib/currency';
 import Link from 'next/link';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
-import Header from '@/components/Header';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import CategoryNav from '@/components/CategoryNav';
 
 export default function CartPage() {
@@ -13,7 +13,7 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-background">
-        <Header showLocationFilter={false} showBookingsLink={true} />
+        <UnifiedHeader showLocationFilter={false} showBookingsLink={true} />
         <CategoryNav mode="navigation" />
 
         {/* Empty Cart */}
@@ -40,7 +40,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header showLocationFilter={false} showBookingsLink={true} />
+      <UnifiedHeader showLocationFilter={false} showBookingsLink={true} />
       <CategoryNav mode="navigation" />
 
       <div className="container mx-auto px-4 py-8">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import CategoryNav from '@/components/CategoryNav';
 import DashboardContent from '@/components/DashboardContent';
 import { ArrowLeft } from 'lucide-react';
@@ -11,7 +11,7 @@ import Link from 'next/link';
 export default function CustomerDashboard() {
   return (
     <div className="min-h-screen bg-background">
-      <Header showLocationFilter={false} showBookingsLink={true} />
+      <UnifiedHeader showLocationFilter={false} showBookingsLink={true} />
       <CategoryNav mode="navigation" />
       
       {/* Back Button */}

@@ -19,6 +19,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
+import { useThemeClasses } from '@/hooks/useThemeClasses';
 
 type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
 
@@ -26,6 +27,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, totalItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const { createOrder: createRazorpayOrder, verifyPayment, openCheckout } = useRazorpay();
+  const theme = useThemeClasses();
   
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('cart');
   const [loading, setLoading] = useState(false);

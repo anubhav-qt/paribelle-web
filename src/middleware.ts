@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     }
   }
   
-  // For subdomain routes, rewrite to vendor store pages
+  // For subdomain routes, rewrite to main pages (VendorContext will handle theme)
   if (subdomain && 
       subdomain !== 'www' && 
       subdomain !== 'marketplace' && 
@@ -29,37 +29,22 @@ export async function middleware(request: NextRequest) {
       !hostname.includes('netlify.app')) {
     
     const url = request.nextUrl.clone();
-    const pathSegments = pathname.split('/').filter(Boolean);
     
     // Don't rewrite auth/account routes - use main site's pages
     const authRoutes = ['login', 'signup', 'register', 'verify-email', 'resend-verification', 'forgot-password', 'reset-password'];
-    if (authRoutes.includes(pathSegments[0])) {
+    const firstSegment = pathname.split('/').filter(Boolean)[0];
+    if (authRoutes.includes(firstSegment)) {
       return NextResponse.next();
     }
     
     // Don't rewrite dashboard - buyers should access their regular dashboard
-    if (pathSegments[0] === 'dashboard') {
+    if (firstSegment === 'dashboard') {
       return NextResponse.next();
     }
     
-    if (pathSegments.length === 0) {
-      url.pathname = `/vendor/${subdomain}`;
-    } else if (pathSegments[0] === 'products' && pathSegments[1]) {
-      url.pathname = `/vendor/${subdomain}/products/${pathSegments[1]}`;
-    } else if (pathSegments[0] === 'search') {
-      url.pathname = `/vendor/${subdomain}/search`;
-    } else if (pathSegments[0] === 'cart') {
-      url.pathname = `/vendor/${subdomain}/cart`;
-    } else if (pathSegments[0] === 'checkout') {
-      url.pathname = `/vendor/${subdomain}/checkout`;
-    } else if (pathSegments[0] === 'orders') {
-      url.pathname = `/vendor/${subdomain}/orders`;
-    } else if (!pathSegments[0]?.startsWith('vendor') && pathSegments[0] !== 'en') {
-      const restOfPath = pathSegments.join('/');
-      url.pathname = `/vendor/${subdomain}/${restOfPath}`;
-    }
-    
-    const rewriteResponse = NextResponse.rewrite(url);
+    // All routes stay the same - VendorContext detects from subdomain
+    // Just add vendor slug header for context
+    const rewriteResponse = NextResponse.next();
     rewriteResponse.headers.set('x-vendor-slug', subdomain);
     return rewriteResponse;
   }
