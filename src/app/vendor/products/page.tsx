@@ -39,6 +39,7 @@ export default function VendorProductsPage() {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   
   // Filtering and sorting states
   const [searchQuery, setSearchQuery] = useState('');
@@ -438,6 +439,183 @@ export default function VendorProductsPage() {
               </Link>
             </div>
           </div>
+        </div>
+
+        {/* Help Section */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-blue-100 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">ℹ️</span>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Need Help?</h3>
+                <p className="text-sm text-gray-600">Learn how to add, import, and export products</p>
+              </div>
+            </div>
+            <svg
+              className={`w-6 h-6 text-gray-600 transition-transform ${showHelp ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          {showHelp && (
+            <div className="px-6 pb-6 space-y-6">
+              {/* Add Product Help */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">➕</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Add Product</h4>
+                    <p className="text-gray-700 mb-3">
+                      Click the <strong>"+ Add Product"</strong> button to create a new product in your catalog.
+                    </p>
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <p><strong>Physical Products:</strong> Regular items with inventory tracking (e.g., clothing, electronics, books)</p>
+                      <p><strong>Booking Products:</strong> Services or rentals with time slots (e.g., meeting rooms, sports courts, appointments)</p>
+                    </div>
+                    <div className="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Required Information:</p>
+                      <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                        <li>Product name and description</li>
+                        <li>Price and optional compare-at price</li>
+                        <li>SKU (Stock Keeping Unit)</li>
+                        <li>Images (featured image + additional gallery images)</li>
+                        <li>Category selection</li>
+                        <li>For booking products: duration, available days, and time slots</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export Help */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📥</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Export Products</h4>
+                    <p className="text-gray-700 mb-3">
+                      Click <strong>"📥 Export to ZIP"</strong> to download all your products and their images as a ZIP file.
+                    </p>
+                    <div className="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+                      <p className="text-sm font-medium text-gray-700 mb-2">What's included:</p>
+                      <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                        <li><strong>products.xlsx</strong> - Excel file with all product data organized by category (one sheet per category)</li>
+                        <li><strong>images/</strong> - Flat folder with all product images (image1.jpg, image2.png, etc.)</li>
+                        <li><strong>Instructions sheet</strong> - Built-in help on how to edit and re-import the Excel file</li>
+                      </ul>
+                      <p className="text-sm text-gray-600 mt-3">
+                        <strong>Use cases:</strong> Backup your catalog, bulk edit products in Excel, or migrate to another system
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Import Help */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📤</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Import Products</h4>
+                    <p className="text-gray-700 mb-3">
+                      Click <strong>"📤 Import from ZIP"</strong> to upload a ZIP file containing an Excel file with products and images.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="text-sm font-medium text-gray-700 mb-2">ZIP Structure Required:</p>
+                        <div className="text-sm text-gray-600 font-mono bg-white p-3 rounded border border-gray-300">
+                          products.zip<br />
+                          ├── products.xlsx&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← Excel file with all products<br />
+                          └── images/<br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;├── image1.jpg<br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;├── image2.png<br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;└── image3.webp&nbsp;&nbsp;&nbsp;← All images in flat folder
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Note: Images folder is flat - all images at the same level, not grouped by product
+                        </p>
+                      </div>
+
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Excel File Format:</p>
+                        <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                          <li>Products organized by category (one sheet per category)</li>
+                          <li>Columns: Product Name, Description, Images (comma-separated filenames), Price, Stock, Status, etc.</li>
+                          <li>Category-specific attributes (Size, Color, Brand, etc.) shown as columns</li>
+                          <li>Hidden _ID column tracks existing products for updates</li>
+                          <li>Instructions sheet included with detailed help</li>
+                        </ul>
+                      </div>
+
+                      <div className="p-3 bg-amber-50 rounded border border-amber-200">
+                        <p className="text-sm font-medium text-amber-800 mb-2">⚠️ Important Notes:</p>
+                        <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                          <li>Products with existing _ID will be <strong>updated</strong></li>
+                          <li>Products without _ID (new rows) will be <strong>created</strong></li>
+                          <li>In Images column, list filenames separated by commas (e.g., "photo1.jpg, photo2.png")</li>
+                          <li>Images must be in the images/ folder with matching filenames</li>
+                          <li>Supported formats: JPG, PNG, WEBP, GIF (max 5MB each)</li>
+                          <li>Invalid entries will be skipped with error messages</li>
+                        </ul>
+                      </div>
+
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <p className="text-sm font-medium text-green-800 mb-2">💡 Pro Tips:</p>
+                        <ul className="text-sm text-green-700 space-y-1 list-disc list-inside">
+                          <li><strong>Export first</strong> to get the correct Excel format and existing images</li>
+                          <li>Edit the Excel file - add/update products, change prices, etc.</li>
+                          <li>Add new images to the images/ folder</li>
+                          <li>Reference new images in the Images column using just the filename</li>
+                          <li>Keep the ZIP structure intact when re-importing</li>
+                          <li>Check the Instructions sheet in Excel for detailed editing guide</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Tips */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>💡</span> Quick Tips
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Use unique SKUs for each product</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Add high-quality images for better sales</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Regular exports create automatic backups</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Test imports with a few products first</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Use categories to organize your products</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Set compare-at prices to show discounts</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Filters and Search */}
