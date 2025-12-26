@@ -14,8 +14,11 @@ export function getImageUrl(imagePath: string | undefined | null): string {
   }
   
   // If it's a relative path, prepend the API URL
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-  return `${apiUrl}${imagePath}`;
+  // Force use of backend port 3001
+  const apiUrl = 'http://localhost:3001';
+  const fullUrl = `${apiUrl}${imagePath}`;
+  console.log('getImageUrl:', { imagePath, apiUrl, fullUrl });
+  return fullUrl;
 }
 
 /**

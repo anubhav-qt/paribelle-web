@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import { getImageUrl } from '@/lib/image-url';
 
 interface ProductImageGalleryProps {
   images: string[];
@@ -14,7 +15,9 @@ export default function ProductImageGallery({ images, productName, discount, lay
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
-  const mediaItems = images && images.length > 0 ? images : ['/placeholder-image.jpg'];
+  const mediaItems = images && images.length > 0 
+    ? images.map(img => getImageUrl(img)) 
+    : ['/placeholder-image.jpg'];
 
   const handlePrevious = () => {
     setSelectedIndex((prev) => (prev === 0 ? mediaItems.length - 1 : prev - 1));

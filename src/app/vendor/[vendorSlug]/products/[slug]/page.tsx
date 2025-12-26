@@ -10,6 +10,7 @@ import BookingCalendar from '@/components/BookingCalendar';
 import Footer from '@/components/Footer';
 import { getCurrencySymbol } from '@/lib/currency';
 import { useCart } from '@/contexts/CartContext';
+import { getProductImageUrl, getImageUrl } from '@/lib/image-url';
 
 interface Category {
   id: string;
@@ -34,6 +35,7 @@ interface Product {
   price: string | number;
   compareAtPrice?: string | number;
   featuredImage: string;
+  images?: string[];
   averageRating: string | number;
   reviewCount: number;
   categories: Category[];
@@ -67,6 +69,7 @@ export default function VendorProductDetailPage() {
   const [calendarKey, setCalendarKey] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [currency, setCurrency] = useState('INR');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
     // Check for authToken in URL (from login redirect)
@@ -399,16 +402,42 @@ export default function VendorProductDetailPage() {
 
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="grid md:grid-cols-2 gap-8 p-8">
-            <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
-              <img
-                src={product.featuredImage}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-              {discount && (
-                <span className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-md text-sm font-bold">
-                  {discount}% OFF
-                </span>
+            <div className="space-y-4">
+              <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                <img
+                  src={product.images && product.images.length > 0 
+                    ? getImageUrl(product.images[selectedImageIndex])
+                    : getProductImageUrl(product)}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+                {discount && (
+                  <span className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-md text-sm font-bold">
+                    {discount}% OFF
+                  </span>
+                )}
+              </div>
+              {/* Image Thumbnails */}
+              {product.images && product.images.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto">
+                  {product.images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImageIndex(index)}
+                      className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                        selectedImageIndex === index 
+                          ? 'border-blue-600 ring-2 ring-blue-200' 
+                          : 'border-gray-200 hover:border-gray-400'
+                      }`}
+                    >
+                      <img
+                        src={getImageUrl(image)}
+                        alt={`${product.name} - Image ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
