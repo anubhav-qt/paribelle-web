@@ -50,11 +50,13 @@ export default function CategoryNav({
   const [vendorPages, setVendorPages] = useState<VendorPage[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [hasBookingProducts, setHasBookingProducts] = useState(false);
 
   useEffect(() => {
     if (vendorId && vendorSlug) {
       fetchVendorPages();
     }
+    checkBookingProducts();
   }, [vendorId]);
 
   // Handle hash scrolling when page loads or pathname changes
@@ -122,6 +124,22 @@ export default function CategoryNav({
       }
     } catch (error) {
       console.error('Error fetching vendor pages:', error);
+    }
+  };
+
+  const checkBookingProducts = async () => {
+    try {
+      const url = vendorId 
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?vendorId=${vendorId}&productType=booking&limit=1`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?productType=booking&limit=1`;
+      
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        setHasBookingProducts(data.total > 0 || (data.products && data.products.length > 0));
+      }
+    } catch (error) {
+      console.error('Error checking booking products:', error);
     }
   };
 
@@ -223,7 +241,6 @@ export default function CategoryNav({
                     console.log('🔴 CATEGORY CLICKED:', category.slug);
                     console.log('🔴 VendorSlug:', vendorSlug);
                     console.log('🔴 Pathname:', pathname);
-                    console.log('🔴 Locale:', locale);
                     console.log('🔴 Window search:', window.location.search);
                     
                     // If no vendorSlug, we're on main marketplace
@@ -393,6 +410,34 @@ export default function CategoryNav({
               )}
             </div>
           ))}
+
+          {/* Booking & Services Link */}
+          {hasBookingProducts && (
+            <div className="relative flex-shrink-0">
+              {mode === 'navigation' ? (
+                <Link
+                  href={vendorSlug ? `/vendor/${vendorSlug}?productType=booking` : '/?productType=booking'}
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
+                >
+                  Booking & Services
+                </Link>
+              ) : mode === 'scroll' ? (
+                <Link
+                  href={vendorSlug ? `/vendor/${vendorSlug}?productType=booking` : '/?productType=booking'}
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
+                >
+                  Booking & Services
+                </Link>
+              ) : (
+                <Link
+                  href={vendorSlug ? `/vendor/${vendorSlug}?productType=booking` : '/?productType=booking'}
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 border-transparent text-foreground hover:text-primary hover:bg-muted"
+                >
+                  Booking & Services
+                </Link>
+              )}
+            </div>
+          )}
 
           {/* Vendor Pages - Right Side */}
           {vendorPages.length > 0 && vendorSlug && (

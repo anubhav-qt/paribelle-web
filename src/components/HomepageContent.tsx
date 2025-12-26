@@ -291,32 +291,15 @@ export default function HomepageContent({
 
           {/* Main Content Area */}
           <div className="flex-1 space-y-8">
-            {/* Booking Products Section - Show first when searching */}
-            {searchQuery && (() => {
-              // Collect all booking products from all categories and uncategorized
-              const allBookingProducts: Product[] = [];
+            {/* Bookings & Services Section - Always show if there are booking products */}
+            {(() => {
+              const bookingProducts = productsByCategory['bookings-services'] || [];
               
-              // Get booking products from categorized products
-              Object.values(productsByCategory).forEach(products => {
-                products.forEach(product => {
-                  if (product.productType === 'booking') {
-                    allBookingProducts.push(product);
-                  }
-                });
-              });
-              
-              // Get booking products from uncategorized
-              uncategorizedProducts.forEach(product => {
-                if (product.productType === 'booking') {
-                  allBookingProducts.push(product);
-                }
-              });
-              
-              if (allBookingProducts.length === 0) return null;
+              if (bookingProducts.length === 0) return null;
               
               return (
                 <section
-                  id="bookings-services-section"
+                  id="category-bookings-services"
                   className="bg-white rounded-lg shadow-sm p-6"
                 >
                   <div className="flex items-center justify-between mb-6">
@@ -325,7 +308,7 @@ export default function HomepageContent({
                       <p className="text-gray-600 text-sm">Book appointments and services</p>
                     </div>
                     <Link
-                      href={`/search?type=booking&q=${encodeURIComponent(searchQuery)}`}
+                      href="/?productType=booking"
                       className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
                     >
                       View All
@@ -334,7 +317,7 @@ export default function HomepageContent({
                   </div>
 
                   <ProductGrid
-                    products={allBookingProducts}
+                    products={bookingProducts}
                     currency={currency}
                     isLocationFilterActive={isLocationFilterActive}
                   />
@@ -342,15 +325,11 @@ export default function HomepageContent({
               );
             })()}
 
-            {/* Categories with Products - Filter out booking products when searching */}
+            {/* Categories with Products */}
             {categories.map((category) => {
               const categoryProducts = productsByCategory[category.slug] || [];
-              // When searching, filter out booking products from regular categories
-              const filteredProducts = searchQuery 
-                ? categoryProducts.filter(p => p.productType !== 'booking')
-                : categoryProducts;
               
-              if (filteredProducts.length === 0) return null;
+              if (categoryProducts.length === 0) return null;
 
               return (
                 <section
@@ -377,7 +356,7 @@ export default function HomepageContent({
                   </div>
 
                   <ProductGrid
-                    products={filteredProducts}
+                    products={categoryProducts}
                     currency={currency}
                     isLocationFilterActive={isLocationFilterActive}
                   />
@@ -385,13 +364,9 @@ export default function HomepageContent({
               );
             })}
 
-            {/* Uncategorized Products Section - Filter out booking products when searching */}
+            {/* Uncategorized Products Section */}
             {(() => {
-              const filteredUncategorized = searchQuery
-                ? uncategorizedProducts.filter(p => p.productType !== 'booking')
-                : uncategorizedProducts;
-              
-              if (filteredUncategorized.length === 0) return null;
+              if (uncategorizedProducts.length === 0) return null;
               
               return (
                 <section id="more-products-section" className="bg-white rounded-lg shadow-sm p-6">
@@ -403,7 +378,7 @@ export default function HomepageContent({
                   </div>
 
                   <ProductGrid
-                    products={filteredUncategorized}
+                    products={uncategorizedProducts}
                     currency={currency}
                     isLocationFilterActive={isLocationFilterActive}
                   />
