@@ -16,6 +16,7 @@ interface VendorHeaderProps {
   searchPlaceholder?: string;
   initialSearchQuery?: string;
   showSearchBar?: boolean;
+  themeConfig?: any;
 }
 
 export default function VendorHeader({ 
@@ -24,7 +25,8 @@ export default function VendorHeader({
   onSearch,
   searchPlaceholder = "Search in this store...",
   initialSearchQuery = '',
-  showSearchBar = true
+  showSearchBar = true,
+  themeConfig
 }: VendorHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -168,7 +170,10 @@ export default function VendorHeader({
   }, [user]);
 
   return (
-    <header className="sticky top-0 z-40 bg-card shadow-md overflow-visible">
+    <header className="sticky top-0 z-40 shadow-md overflow-visible" style={{
+      backgroundColor: themeConfig?.primaryColor || '#ffffff',
+      borderBottom: `3px solid ${themeConfig?.secondaryColor || '#e5e7eb'}`
+    }}>
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center overflow-visible">
           {/* Mobile Menu Button */}
@@ -189,10 +194,15 @@ export default function VendorHeader({
               />
             )}
             <div>
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="text-2xl font-bold" style={{
+                color: themeConfig?.backgroundColor || '#ffffff',
+                fontFamily: themeConfig?.headingFont || 'inherit'
+              }}>
                 {vendor?.businessName || 'Store'}
               </h1>
-              <p className="text-xs text-muted-foreground">Official Store</p>
+              <p className="text-xs" style={{
+                color: themeConfig?.backgroundColor ? `${themeConfig.backgroundColor}cc` : '#9ca3af'
+              }}>Official Store</p>
             </div>
           </Link>
           

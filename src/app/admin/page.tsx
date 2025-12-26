@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList } from 'lucide-react';
+import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 export default function AdminDashboard() {
@@ -56,6 +56,13 @@ export default function AdminDashboard() {
       icon: Users,
       href: '/admin/vendors',
       color: 'bg-purple-500',
+    },
+    {
+      title: 'Themes',
+      description: 'View and manage vendor store themes',
+      icon: Palette,
+      href: '/admin/themes',
+      color: 'bg-pink-500',
     },
     {
       title: 'Analytics',

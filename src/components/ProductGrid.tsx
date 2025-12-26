@@ -108,81 +108,82 @@ export default function ProductGrid({
             }`} 
           />
         </button>
-        <Link href={`/products/${product.slug}`} className="block">
-          <div className="relative aspect-square overflow-hidden bg-muted">
+        <div className="relative aspect-square overflow-hidden bg-muted">
+          <Link href={`/products/${product.slug}`}>
             <img
               src={getProductImageUrl(product)}
               alt={product.name}
               className="w-full h-full object-cover group-hover/card:scale-105 transition-transform"
             />
-            {discount && (
-              <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">
-                {discount}% OFF
-              </span>
-            )}
-            {product.productType === 'booking' && (
-              <span className="absolute top-2 right-2 bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                Booking
-              </span>
-            )}
-          </div>
-          <div className="p-4">
+          </Link>
+          {discount && (
+            <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">
+              {discount}% OFF
+            </span>
+          )}
+          {product.productType === 'booking' && (
+            <span className="absolute top-2 right-2 bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              Booking
+            </span>
+          )}
+        </div>
+        <div className="p-4">
+          <Link href={`/products/${product.slug}`}>
             <h3 className="font-medium mb-1 line-clamp-2 text-sm min-h-[40px] text-foreground group-hover/card:text-primary transition-colors">
               {product.name}
             </h3>
-            <div className="flex items-center gap-1 mb-2">
-              <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded text-xs">
-                <span className="font-semibold">
-                  {Number(product.averageRating).toFixed(1)}
-                </span>
-                <Star className="w-3 h-3 fill-white" />
-              </div>
-              <span className="text-xs text-muted-foreground">
-                ({product.reviewCount})
+          </Link>
+          <div className="flex items-center gap-1 mb-2">
+            <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded text-xs">
+              <span className="font-semibold">
+                {Number(product.averageRating).toFixed(1)}
               </span>
+              <Star className="w-3 h-3 fill-white" />
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-lg font-bold text-foreground">
-                {getCurrencySymbol(currency)}{Number(product.price).toFixed(2)}
+            <span className="text-xs text-muted-foreground">
+              ({product.reviewCount})
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-lg font-bold text-foreground">
+              {getCurrencySymbol(currency)}{Number(product.price).toFixed(2)}
+            </span>
+            {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
+              <span className="text-xs text-muted-foreground line-through">
+                {getCurrencySymbol(currency)}{Number(product.compareAtPrice).toFixed(2)}
               </span>
-              {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
-                <span className="text-xs text-muted-foreground line-through">
-                  {getCurrencySymbol(currency)}{Number(product.compareAtPrice).toFixed(2)}
+            )}
+          </div>
+          {showLocationInfo && isLocationFilterActive && product.vendor?.locationCity && (
+            <div className="text-xs text-muted-foreground mt-1">
+              📍 {product.vendor.locationCity.name}
+              {product.vendor.locationSubLocation && ` - ${product.vendor.locationSubLocation.name}`}
+            </div>
+          )}
+          
+          {/* Vendor Name - Always show if available */}
+          {product.vendor && (
+            <div className="text-xs text-muted-foreground mt-1">
+              by{' '}
+              {product.vendor.subdomain ? (
+                <a
+                  href={`http://${product.vendor.subdomain}.localhost:3000`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:text-primary/80 hover:underline inline-flex items-center gap-0.5"
+                >
+                  {product.vendor.businessName || product.vendor.storeName}
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              ) : (
+                <span className="text-foreground font-medium">
+                  {product.vendor.businessName || product.vendor.storeName}
                 </span>
               )}
             </div>
-            {showLocationInfo && isLocationFilterActive && product.vendor?.locationCity && (
-              <div className="text-xs text-muted-foreground mt-1">
-                📍 {product.vendor.locationCity.name}
-                {product.vendor.locationSubLocation && ` - ${product.vendor.locationSubLocation.name}`}
-              </div>
-            )}
-            
-            {/* Vendor Name - Always show if available */}
-            {product.vendor && (
-              <div className="text-xs text-muted-foreground mt-1">
-                by{' '}
-                {product.vendor.subdomain ? (
-                  <a
-                    href={`http://${product.vendor.subdomain}.localhost:3000`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:text-primary/80 hover:underline inline-flex items-center gap-0.5"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {product.vendor.businessName || product.vendor.storeName}
-                    <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                ) : (
-                  <span className="text-foreground font-medium">
-                    {product.vendor.businessName || product.vendor.storeName}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        </Link>
+          )}
+        </div>
       </div>
     );
   };

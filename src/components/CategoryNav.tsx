@@ -28,6 +28,7 @@ interface CategoryNavProps {
   mode?: 'navigation' | 'filter' | 'scroll';
   vendorSlug?: string;
   hideEmptyCategories?: boolean;
+  themeConfig?: any;
 }
 
 export default function CategoryNav({ 
@@ -36,7 +37,8 @@ export default function CategoryNav({
   selectedCategory = '',
   mode = 'navigation',
   vendorSlug,
-  hideEmptyCategories = true
+  hideEmptyCategories = true,
+  themeConfig
 }: CategoryNavProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -188,7 +190,7 @@ export default function CategoryNav({
 
   return (
     <div 
-      className="border-b border-border sticky top-[61px] z-30 bg-secondary" 
+      className="border-b sticky top-[61px] z-30 bg-secondary border-secondary-foreground/20" 
       ref={dropdownRef}
     >
       <div className="container mx-auto">
@@ -197,7 +199,7 @@ export default function CategoryNav({
           {vendorSlug && (
             <Link
               href={`/vendor/${vendorSlug}`}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted border-r border-border"
+              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r border-secondary-foreground/20 text-secondary-foreground hover:opacity-80"
             >
               <Home className="w-3.5 h-3.5" />
               Home
@@ -210,8 +212,8 @@ export default function CategoryNav({
               onClick={() => handleCategoryClick('')}
               className={`flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 
                 ${selectedCategory === '' 
-                  ? 'border-primary text-primary font-semibold bg-muted' 
-                  : 'border-transparent text-foreground hover:text-primary hover:bg-muted'
+                  ? 'border-primary text-primary font-semibold bg-secondary-foreground/10' 
+                  : 'border-transparent text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10'
                 }`}
             >
               All Products
@@ -228,7 +230,7 @@ export default function CategoryNav({
               {mode === 'navigation' ? (
                 <button
                   onClick={(e) => handleNavigateToCategory(category.slug, e)}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80"
                 >
                   {category.name}
                   {category.children && category.children.length > 0 && (
@@ -283,7 +285,7 @@ export default function CategoryNav({
                       handleScrollToCategory(category.slug);
                     }
                   }}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
                 >
                   {category.name}
                   {category.children && category.children.length > 0 && (
@@ -303,8 +305,8 @@ export default function CategoryNav({
                   }}
                   className={`flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2
                     ${selectedCategory === category.id 
-                      ? 'border-primary text-primary font-semibold bg-muted' 
-                      : 'border-transparent text-foreground hover:text-primary hover:bg-muted'
+                      ? 'border-primary text-primary font-semibold bg-secondary-foreground/10' 
+                      : 'border-transparent text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10'
                     }`}
                 >
                   {category.name}
@@ -417,21 +419,21 @@ export default function CategoryNav({
               {mode === 'navigation' ? (
                 <Link
                   href={vendorSlug ? `/vendor/${vendorSlug}?productType=booking` : '/?productType=booking'}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
                 >
                   Booking & Services
                 </Link>
               ) : mode === 'scroll' ? (
                 <Link
                   href={vendorSlug ? `/vendor/${vendorSlug}?productType=booking` : '/?productType=booking'}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
                 >
                   Booking & Services
                 </Link>
               ) : (
                 <Link
                   href={vendorSlug ? `/vendor/${vendorSlug}?productType=booking` : '/?productType=booking'}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 border-transparent text-foreground hover:text-primary hover:bg-muted"
+                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 border-transparent text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
                 >
                   Booking & Services
                 </Link>
@@ -442,12 +444,12 @@ export default function CategoryNav({
           {/* Vendor Pages - Right Side */}
           {vendorPages.length > 0 && vendorSlug && (
             <>
-              <div className="border-l border-border h-6 mx-2"></div>
+              <div className="border-l border-secondary-foreground/20 h-6 mx-2"></div>
               {vendorPages.map((page) => (
                 <Link
                   key={page.id}
                   href={`/vendor/${vendorSlug}/${page.slug}`}
-                  className="flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-foreground hover:text-primary hover:bg-muted"
+                  className="flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap text-secondary-foreground hover:opacity-80 hover:bg-secondary-foreground/10"
                 >
                   {page.title}
                 </Link>

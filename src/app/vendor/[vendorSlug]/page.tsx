@@ -363,37 +363,11 @@ export default function VendorStorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background" style={{
-      backgroundColor: vendor.themeConfig?.backgroundColor || undefined,
-      color: vendor.themeConfig?.textColor || undefined,
-      fontFamily: vendor.themeConfig?.fontFamily || undefined,
+    <div className="min-h-screen" style={{
+      backgroundColor: vendor.themeConfig?.backgroundColor || '#FFFFFF',
+      color: vendor.themeConfig?.textColor || '#1F2937',
+      fontFamily: vendor.themeConfig?.fontFamily || 'Inter',
     }}>
-      {/* Theme Styles */}
-      {vendor.themeConfig && (
-        <style jsx>{`
-          .vendor-themed-button {
-            background-color: ${vendor.themeConfig.primaryColor || '#3B82F6'};
-            color: white;
-          }
-          .vendor-themed-button:hover {
-            background-color: ${vendor.themeConfig.secondaryColor || '#2563EB'};
-          }
-          .vendor-themed-link {
-            color: ${vendor.themeConfig.primaryColor || '#3B82F6'};
-          }
-          .vendor-themed-link:hover {
-            color: ${vendor.themeConfig.secondaryColor || '#2563EB'};
-          }
-          .vendor-themed-accent {
-            color: ${vendor.themeConfig.accentColor || '#F59E0B'};
-          }
-          .vendor-themed-heading {
-            font-family: ${vendor.themeConfig.headingFont || vendor.themeConfig.fontFamily || 'inherit'};
-            color: ${vendor.themeConfig.textColor || 'inherit'};
-          }
-        `}</style>
-      )}
-      
       <VendorHeader 
         vendorSlug={vendorSlug}
         vendorId={vendor.id}
@@ -403,6 +377,7 @@ export default function VendorStorePage() {
         }}
         searchPlaceholder="Search in this store..."
         showSearchBar={vendor.themeConfig?.showSearchBar !== false}
+        themeConfig={vendor.themeConfig}
       />
 
       {/* Hero Banner Carousel - Vendor Specific */}
@@ -419,10 +394,13 @@ export default function VendorStorePage() {
         vendorId={vendor.id}
         vendorSlug={vendorSlug}
         mode="scroll"
+        themeConfig={vendor.themeConfig}
       />
 
       {/* Products Grid */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" style={{
+        backgroundColor: vendor.themeConfig?.backgroundColor || undefined,
+      }}>
         {/* Products by Category Sections */}
         {categories.map((category) => {
           const categoryProducts = productsByCategory.get(category.slug) || [];
@@ -431,7 +409,10 @@ export default function VendorStorePage() {
 
           return (
             <section key={category.id} id={`category-${category.slug}`} className="mb-12 scroll-mt-36">
-              <h2 className="text-2xl font-bold mb-6 vendor-themed-heading">
+              <h2 className="text-2xl font-bold mb-6 vendor-themed-heading" style={{
+                color: vendor.themeConfig?.primaryColor || undefined,
+                fontFamily: vendor.themeConfig?.headingFont || undefined,
+              }}>
                 {category.name} ({categoryProducts.length})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -439,9 +420,10 @@ export default function VendorStorePage() {
                   <Link
                     key={product.id}
                     href={`/products/${product.slug}`}
-                    className="bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden group border border-border"
+                    className="vendor-product-card rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden group border-2"
                     style={{
-                      borderColor: vendor.themeConfig?.primaryColor ? `${vendor.themeConfig.primaryColor}20` : undefined,
+                      backgroundColor: vendor.themeConfig?.backgroundColor || '#ffffff',
+                      borderColor: vendor.themeConfig?.primaryColor ? `${vendor.themeConfig.primaryColor}40` : '#e5e7eb',
                     }}
                   >
                     <div className="relative aspect-square overflow-hidden bg-muted">
@@ -461,9 +443,7 @@ export default function VendorStorePage() {
                         {product.shortDescription}
                       </p>
                       <div className="flex items-center justify-between">
-                        <span className="text-xl font-bold" style={{
-                          color: vendor.themeConfig?.primaryColor || undefined,
-                        }}>
+                        <span className="vendor-product-price text-xl">
                           {getCurrencySymbol(currency)}{product.price.toLocaleString()}
                           {product.productType === 'booking' && product.attributes?.booking?.durationUnit && (
                             <span className="text-sm font-normal text-muted-foreground">
@@ -472,9 +452,9 @@ export default function VendorStorePage() {
                           )}
                         </span>
                         <div className="flex items-center gap-1 text-sm">
-                          <span className="vendor-themed-accent">★</span>
-                          <span className="font-medium text-foreground">{Number(product.averageRating || 0).toFixed(1)}</span>
-                          <span className="text-muted-foreground">({product.reviewCount || 0})</span>
+                          <span style={{ color: vendor.themeConfig?.accentColor || '#F59E0B' }}>★</span>
+                          <span className="font-medium" style={{ color: vendor.themeConfig?.textColor || '#000000' }}>{Number(product.averageRating || 0).toFixed(1)}</span>
+                          <span style={{ color: vendor.themeConfig?.textColor ? `${vendor.themeConfig.textColor}80` : '#6b7280' }}>({product.reviewCount || 0})</span>
                         </div>
                       </div>
                     </div>
@@ -493,9 +473,14 @@ export default function VendorStorePage() {
         )}
 
         {/* Vendor Reviews Section */}
-        <section className="mt-16 pt-8 border-t border-border">
+        <section className="mt-16 pt-8 border-t" style={{
+          borderColor: vendor.themeConfig?.primaryColor ? `${vendor.themeConfig.primaryColor}30` : undefined,
+        }}>
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2 vendor-themed-heading">Store Reviews</h2>
+            <h2 className="text-2xl font-bold mb-2" style={{
+              color: vendor.themeConfig?.primaryColor || undefined,
+              fontFamily: vendor.themeConfig?.headingFont || undefined,
+            }}>Store Reviews</h2>
             {vendorStats && (
               <div className="flex items-center gap-4 mt-3">
                 <RatingDisplay 
@@ -504,15 +489,15 @@ export default function VendorStorePage() {
                   size="lg"
                 />
                 {vendorStats.averageProductQuality > 0 && (
-                  <div className="flex gap-4 text-sm text-muted-foreground">
+                  <div className="flex gap-4 text-sm" style={{ color: vendor.themeConfig?.textColor ? `${vendor.themeConfig.textColor}99` : '#6b7280' }}>
                     <div>
-                      Quality: <span className="font-semibold text-foreground">{vendorStats.averageProductQuality.toFixed(1)}/5</span>
+                      Quality: <span className="font-semibold" style={{ color: vendor.themeConfig?.textColor || '#000000' }}>{vendorStats.averageProductQuality.toFixed(1)}/5</span>
                     </div>
                     <div>
-                      Shipping: <span className="font-semibold text-foreground">{vendorStats.averageShippingSpeed.toFixed(1)}/5</span>
+                      Shipping: <span className="font-semibold" style={{ color: vendor.themeConfig?.textColor || '#000000' }}>{vendorStats.averageShippingSpeed.toFixed(1)}/5</span>
                     </div>
                     <div>
-                      Service: <span className="font-semibold text-foreground">{vendorStats.averageCustomerService.toFixed(1)}/5</span>
+                      Service: <span className="font-semibold" style={{ color: vendor.themeConfig?.textColor || '#000000' }}>{vendorStats.averageCustomerService.toFixed(1)}/5</span>
                     </div>
                   </div>
                 )}
@@ -561,9 +546,12 @@ export default function VendorStorePage() {
 
       {/* Custom Footer Text */}
       {vendor.themeConfig?.footerText && (
-        <div className="bg-muted border-t border-border py-6">
+        <div className="border-t py-6" style={{
+          backgroundColor: vendor.themeConfig?.secondaryColor || '#f3f4f6',
+          borderTopColor: vendor.themeConfig?.accentColor || '#e5e7eb'
+        }}>
           <div className="container mx-auto px-4 text-center">
-            <p className="text-sm" style={{ color: vendor.themeConfig?.textColor || undefined }}>
+            <p className="text-sm font-medium" style={{ color: vendor.themeConfig?.backgroundColor || '#ffffff' }}>
               {vendor.themeConfig.footerText}
             </p>
           </div>
@@ -572,7 +560,10 @@ export default function VendorStorePage() {
 
       {/* Social Links */}
       {vendor.themeConfig?.socialLinks && Object.values(vendor.themeConfig.socialLinks).some(link => link) && (
-        <div className="bg-card border-t border-border py-6">
+        <div className="border-t py-6" style={{
+          backgroundColor: vendor.themeConfig?.backgroundColor || '#ffffff',
+          borderTopColor: vendor.themeConfig?.primaryColor ? `${vendor.themeConfig.primaryColor}30` : '#e5e7eb'
+        }}>
           <div className="container mx-auto px-4">
             <div className="flex justify-center gap-6">
               {vendor.themeConfig.socialLinks.facebook && (
@@ -637,6 +628,18 @@ export default function VendorStorePage() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Theme Styles */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .vendor-product-price {
+          color: ${vendor.themeConfig?.primaryColor || '#3B82F6'};
+          font-weight: 600;
+        }
+        .vendor-product-card:hover {
+          border-color: ${vendor.themeConfig?.primaryColor || '#3B82F6'} !important;
+          box-shadow: 0 4px 6px -1px ${vendor.themeConfig?.primaryColor ? `${vendor.themeConfig.primaryColor}20` : 'rgba(0,0,0,0.1)'};
+        }
+      `}} />
     </div>
   );
 }

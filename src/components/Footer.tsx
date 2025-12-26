@@ -16,14 +16,14 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
 
   return (
     <footer 
-      className="mt-12 bg-card text-card-foreground" 
+      className="mt-12 bg-secondary text-secondary-foreground" 
     >
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About Section */}
           <div>
-            <h3 className="text-xl font-bold mb-4 text-foreground">{marketplaceName}</h3>
-            <p className="text-sm mb-4 text-muted-foreground">
+            <h3 className="text-xl font-bold mb-4 text-secondary-foreground">{marketplaceName}</h3>
+            <p className="text-sm mb-4 text-secondary-foreground/80">
               Your one-stop destination for quality products from trusted vendors across multiple categories.
             </p>
             <div className="flex gap-3">
@@ -44,8 +44,8 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
 
           {/* Shop Categories */}
           <div>
-            <h4 className="font-semibold mb-4 text-lg text-foreground">Shop by Category</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h4 className="font-semibold mb-4 text-lg text-secondary-foreground">Shop by Category</h4>
+            <ul className="space-y-2 text-sm text-secondary-foreground/80">
               {categories.slice(0, 6).map(cat => (
                 <li key={cat.id}>
                   <Link 
@@ -71,8 +71,8 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
 
           {/* Customer Support */}
           <div>
-            <h4 className="font-semibold mb-4 text-lg text-foreground">Help Center</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h4 className="font-semibold mb-4 text-lg text-secondary-foreground">Help Center</h4>
+            <ul className="space-y-2 text-sm text-secondary-foreground/80">
               <li>
                 <Link href="/help" className="hover:text-primary transition-colors">
                   Help Center
@@ -108,8 +108,8 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
 
           {/* Account & Contact */}
           <div>
-            <h4 className="font-semibold mb-4 text-lg text-foreground">My Account</h4>
-            <ul className="space-y-2 text-sm mb-6 text-muted-foreground">
+            <h4 className="font-semibold mb-4 text-lg text-secondary-foreground">My Account</h4>
+            <ul className="space-y-2 text-sm mb-6 text-secondary-foreground/80">
               <li>
                 <Link href="/login" className="hover:text-primary transition-colors">
                   Login / Register
@@ -132,7 +132,7 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
               </li>
             </ul>
 
-            <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="space-y-2 text-sm text-secondary-foreground/80">
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
                 <span>+1 (555) 123-4567</span>
@@ -152,12 +152,12 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-8 pt-8 border-t border-border">
+        <div className="mt-8 pt-8 border-t border-secondary-foreground/20">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-secondary-foreground/80">
               © {currentYear} {marketplaceName}. All rights reserved.
             </p>
-            <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
+            <div className="flex flex-wrap justify-center gap-4 text-sm text-secondary-foreground/80">
               <Link href="/privacy-policy" className="hover:text-primary transition-colors">
                 Privacy Policy
               </Link>

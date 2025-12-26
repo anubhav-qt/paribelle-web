@@ -151,7 +151,7 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-40 shadow-md bg-card">
+    <header className="sticky top-0 z-40 shadow-md bg-primary text-primary-foreground">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           <Link href="/" className="flex items-center">
@@ -165,12 +165,12 @@ export default function Header({
                   target.style.display = 'none';
                   const parent = target.parentElement;
                   if (parent) {
-                    parent.innerHTML = `<span class="text-2xl font-bold text-primary">${marketplaceName}</span>`;
+                    parent.innerHTML = `<span class="text-2xl font-bold text-primary-foreground">${marketplaceName}</span>`;
                   }
                 }}
               />
             ) : (
-              <span className="text-xl font-bold text-foreground">{marketplaceName}</span>
+              <span className="text-xl font-bold text-primary-foreground">{marketplaceName}</span>
             )}
           </Link>
           
@@ -221,10 +221,9 @@ export default function Header({
           </div>
 
           <div className="flex gap-4 items-center">
-            <ThemeToggle />
             <Link 
               href="/wishlist"
-              className="relative hover:text-primary transition-colors text-foreground"
+              className="relative hover:opacity-80 transition-colors text-primary-foreground"
               aria-label="Wishlist"
             >
               <Heart className={`w-6 h-6 ${
@@ -238,7 +237,7 @@ export default function Header({
             </Link>
             <Link 
               href="/cart"
-              className="relative hover:text-primary transition-colors text-foreground"
+              className="relative hover:opacity-80 transition-colors text-primary-foreground"
               aria-label="Cart"
             >
               <ShoppingCart className="w-6 h-6" />
@@ -254,7 +253,7 @@ export default function Header({
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setShowDropdown(!showDropdown)}
-                    className="flex items-center gap-1 px-2 py-1 text-sm hover:text-primary transition-colors font-normal text-foreground"
+                    className="flex items-center gap-1 px-2 py-1 text-sm hover:opacity-80 transition-colors font-normal text-primary-foreground"
                   >
                     <span>{user.firstName || user.email}</span>
                     <ChevronDown className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
@@ -271,6 +270,23 @@ export default function Header({
                         <ShoppingBag className="w-4 h-4" />
                         My Purchases
                       </Link>
+                      
+                      {user?.role === 'super_admin' && (
+                        <>
+                          <div className="border-t border-border my-1"></div>
+                          <Link
+                            href="/admin"
+                            className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
+                            onClick={() => setShowDropdown(false)}
+                          >
+                            <Store className="w-4 h-4" />
+                            <span className="flex flex-col">
+                              <span>Admin Dashboard</span>
+                              <span className="text-xs text-muted-foreground">Manage Marketplace</span>
+                            </span>
+                          </Link>
+                        </>
+                      )}
                       
                       {vendorSlug && (
                         <>
@@ -304,13 +320,13 @@ export default function Header({
               <>
                 <Link
                   href="/login"
-                  className="px-2 py-1 text-sm border border-border hover:border-primary hover:text-primary rounded transition-all font-normal text-foreground"
+                  className="px-2 py-1 text-sm border border-primary-foreground/30 hover:border-primary-foreground hover:bg-primary-foreground/10 rounded transition-all font-normal text-primary-foreground"
                 >
                   Login
                 </Link>
                 <Link
                   href="/signup"
-                  className="px-3 py-1 text-sm bg-primary text-primary-foreground font-normal hover:opacity-90 rounded transition-colors"
+                  className="px-3 py-1 text-sm bg-primary-foreground text-primary font-normal hover:opacity-90 rounded transition-colors"
                 >
                   Sign Up
                 </Link>
