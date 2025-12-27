@@ -3,16 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Layout } from 'lucide-react';
+import { ArrowLeft, Save, Layout, FileText } from 'lucide-react';
 import UnifiedHeader from '@/components/UnifiedHeader';
 import PageBuilder from '@/components/PageBuilder';
 import SectionLibrary from '@/components/SectionLibrary';
 import { PageSection } from '@/lib/pageSections';
+import { pageTemplates } from '@/lib/pageTemplates';
 
 export default function NewMarketplacePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showSectionLibrary, setShowSectionLibrary] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   
   const [formData, setFormData] = useState({
     title: '',
@@ -33,6 +35,28 @@ export default function NewMarketplacePage() {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
     setFormData({ ...formData, title, slug });
+  };
+
+  const handleTemplateSelect = (templateKey: string) => {
+    if (templateKey === '') {
+      setSelectedTemplate('');
+      return;
+    }
+
+    const template = pageTemplates[templateKey];
+    if (template) {
+      setFormData({
+        ...formData,
+        title: template.title,
+        slug: template.slug,
+        sections: template.sections,
+        excerpt: template.excerpt || '',
+        metaTitle: template.metaTitle || '',
+        metaDescription: template.metaDescription || '',
+        showInNavigation: template.showInNavigation !== undefined ? template.showInNavigation : true,
+      });
+      setSelectedTemplate(templateKey);
+    }
   };
 
   const handleAddSection = (section: PageSection) => {
@@ -123,6 +147,51 @@ export default function NewMarketplacePage() {
           </div>
 
           <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+            {/* Template Selector */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <h2 className="text-xl font-semibold text-blue-900">Start with a Template</h2>
+              </div>
+              <p className="text-sm text-blue-700 mb-4">
+                Choose a pre-built template to get started quickly, or create a blank page
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleTemplateSelect('')}
+                  className={`text-left p-4 rounded-lg border-2 transition-all ${
+                    selectedTemplate === ''
+                      ? 'border-blue-500 bg-white shadow-md'
+                      : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow'
+                  }`}
+                >
+                  <div className="font-semibold text-gray-900 mb-1">Blank Page</div>
+                  <div className="text-xs text-gray-600">Start from scratch</div>
+                </button>
+
+                {Object.entries(pageTemplates).map(([key, template]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleTemplateSelect(key)}
+                    className={`text-left p-4 rounded-lg border-2 transition-all ${
+                      selectedTemplate === key
+                        ? 'border-blue-500 bg-white shadow-md'
+                        : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">{template.icon}</span>
+                      <div className="font-semibold text-gray-900">{template.title}</div>
+                    </div>
+                    <div className="text-xs text-gray-600">{template.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Basic Info */}
             <div className="bg-white rounded-lg border border-border p-6 space-y-4">
               <h2 className="text-xl font-semibold">Page Information</h2>
