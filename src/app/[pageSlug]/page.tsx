@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import HeroCarousel from '@/components/HeroCarousel';
 import CategoryNav from '@/components/CategoryNav';
 import Footer from '@/components/Footer';
 import SectionRenderer from '@/components/SectionRenderer';
@@ -114,6 +115,7 @@ export default function CustomPage({ params }: { params: { pageSlug: string } })
     return (
       <>
         <UnifiedHeader />
+        <HeroCarousel />
         <CategoryNav mode="scroll" />
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
@@ -150,6 +152,7 @@ export default function CustomPage({ params }: { params: { pageSlug: string } })
   return (
     <>
       <UnifiedHeader />
+      <HeroCarousel />
       <CategoryNav mode="scroll" />
       <main className="min-h-screen bg-gray-50">
         {isBuilderMode ? (
