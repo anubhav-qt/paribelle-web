@@ -158,11 +158,12 @@ export default function UnifiedHeader({
     }
   };
 
-  // Fetch custom pages for vendor stores
+  // Fetch custom pages for vendor stores and marketplace pages for main site
   useEffect(() => {
     const fetchCustomPages = async () => {
-      if (isVendorStore && vendor?.id) {
-        try {
+      try {
+        if (isVendorStore && vendor?.id) {
+          // Fetch vendor pages
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendor.id}/pages`);
           if (response.ok) {
             const pages = await response.json();
@@ -172,9 +173,20 @@ export default function UnifiedHeader({
             );
             setCustomPages(navPages);
           }
-        } catch (error) {
-          console.error('Error fetching custom pages:', error);
+        } else if (!isVendorStore) {
+          // Fetch marketplace pages for main site
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/marketplace/pages`);
+          if (response.ok) {
+            const pages = await response.json();
+            // Filter published pages that should show in navigation
+            const navPages = pages.filter((page: any) => 
+              page.status === 'published' && page.showInNavigation
+            );
+            setCustomPages(navPages);
+          }
         }
+      } catch (error) {
+        console.error('Error fetching custom pages:', error);
       }
     };
 
@@ -388,6 +400,37 @@ export default function UnifiedHeader({
                   </div>
                 )}
               </>
+            )}
+
+            {/* Marketplace Pages Dropdown (main marketplace only) */}
+            {!isVendorStore && customPages.length > 0 && (
+              <div className="relative hidden md:block" ref={pagesDropdownRef}>
+                <button
+                  onClick={() => setShowPagesDropdown(!showPagesDropdown)}
+                  className={theme.combine(
+                    'inline-flex items-center gap-1 text-sm px-4 py-2 hover:opacity-80 rounded-lg transition-colors',
+                    'text-primary-foreground'
+                  )}
+                >
+                  <span>Pages</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showPagesDropdown ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showPagesDropdown && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl py-2 z-[9999]">
+                    {customPages.map((page) => (
+                      <Link
+                        key={page.id}
+                        href={`/${page.slug}`}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        onClick={() => setShowPagesDropdown(false)}
+                      >
+                        {page.title}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* User Menu */}

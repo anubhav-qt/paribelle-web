@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette } from 'lucide-react';
+import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette, FileText } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import UnifiedHeader from '@/components/UnifiedHeader';
 
@@ -39,6 +39,13 @@ function AdminDashboardContent() {
       icon: Package,
       href: '/admin/categories',
       color: 'bg-blue-500',
+    },
+    {
+      title: 'Custom Pages',
+      description: 'Create and manage marketplace pages',
+      icon: FileText,
+      href: '/admin/pages',
+      color: 'bg-cyan-500',
     },
     {
       title: 'Common Filters',

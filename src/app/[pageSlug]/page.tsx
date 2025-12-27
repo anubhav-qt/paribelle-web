@@ -10,7 +10,7 @@ import SectionRenderer from '@/components/SectionRenderer';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { PageSection } from '@/lib/pageSections';
 
-interface VendorPage {
+interface CustomPage {
   id: string;
   title: string;
   slug: string;
@@ -20,12 +20,12 @@ interface VendorPage {
   showInNavigation: boolean;
 }
 
-export default function VendorCustomPage({ params }: { params: { pageSlug: string } }) {
+export default function CustomPage({ params }: { params: { pageSlug: string } }) {
   const { vendor, isVendorStore, isLoading: vendorLoading } = useVendorContext();
-  const [page, setPage] = useState<VendorPage | null>(null);
+  const [page, setPage] = useState<CustomPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  console.log('🟢 VendorCustomPage:', { 
+  console.log('🟢 CustomPage:', { 
     pageSlug: params.pageSlug, 
     isVendorStore, 
     hasVendor: !!vendor,
@@ -42,39 +42,60 @@ export default function VendorCustomPage({ params }: { params: { pageSlug: strin
         console.log('🟢 Vendor still loading, waiting...');
         return;
       }
-      
-      // Only fetch if we have a vendor (i.e., on vendor subdomain)
-      if (!vendor || !isVendorStore) {
-        console.log('🟢 No vendor or not vendor store, setting loading false');
-        setIsLoading(false);
-        return;
-      }
 
       try {
-        // Fetch all pages for this vendor and find the matching slug
-        const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendor.id}/pages`;
-        console.log('🟢 Fetching pages from:', url);
-        
-        const response = await fetch(url);
+        let url: string;
+        let response: Response;
 
-        console.log('🟢 Response status:', response.status);
-        if (response.ok) {
-          const pages = await response.json();
-          console.log('🟢 Pages received:', pages.length);
-          console.log('🟢 Looking for slug:', params.pageSlug);
+        if (isVendorStore && vendor) {
+          // Fetch vendor page
+          url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendor.id}/pages`;
+          console.log('🟢 Fetching vendor pages from:', url);
           
-          // Find the page with matching slug that is published
-          const matchedPage = pages.find(
-            (p: VendorPage) => p.slug === params.pageSlug && p.status === 'published'
-          );
-          console.log('🟢 Matched page:', matchedPage);
-          setPage(matchedPage || null);
+          response = await fetch(url);
+
+          console.log('🟢 Response status:', response.status);
+          if (response.ok) {
+            const pages = await response.json();
+            console.log('🟢 Vendor pages received:', pages.length);
+            console.log('🟢 Looking for slug:', params.pageSlug);
+            
+            // Find the page with matching slug that is published
+            const matchedPage = pages.find(
+              (p: CustomPage) => p.slug === params.pageSlug && p.status === 'published'
+            );
+            console.log('🟢 Matched vendor page:', matchedPage);
+            setPage(matchedPage || null);
+          } else {
+            console.log('🟢 Vendor page response not ok');
+            setPage(null);
+          }
         } else {
-          console.log('🟢 Response not ok');
-          setPage(null);
+          // Fetch marketplace page by slug
+          url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/marketplace/pages/slug/${params.pageSlug}`;
+          console.log('🟢 Fetching marketplace page from:', url);
+          
+          response = await fetch(url);
+
+          console.log('🟢 Response status:', response.status);
+          if (response.ok) {
+            const marketplacePage = await response.json();
+            console.log('🟢 Marketplace page received:', marketplacePage);
+            
+            // Only show published pages
+            if (marketplacePage.status === 'published') {
+              setPage(marketplacePage);
+            } else {
+              console.log('🟢 Marketplace page not published');
+              setPage(null);
+            }
+          } else {
+            console.log('🟢 Marketplace page response not ok');
+            setPage(null);
+          }
         }
       } catch (error) {
-        console.error('🔴 Error fetching vendor page:', error);
+        console.error('🔴 Error fetching page:', error);
         setPage(null);
       } finally {
         setIsLoading(false);
@@ -84,8 +105,8 @@ export default function VendorCustomPage({ params }: { params: { pageSlug: strin
     fetchPage();
   }, [params.pageSlug, vendor, isVendorStore, vendorLoading]);
 
-  // If not on vendor store or page not found, show 404
-  if (!isLoading && (!isVendorStore || !page)) {
+  // If page not found after loading, show 404
+  if (!isLoading && !page) {
     notFound();
   }
 
