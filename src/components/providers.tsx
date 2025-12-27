@@ -12,10 +12,12 @@ import CartDrawer from './CartDrawer';
 
 export function Providers({ 
   children,
-  initialVendorSlug 
+  initialVendorSlug,
+  initialVendorData 
 }: { 
   children: React.ReactNode;
   initialVendorSlug?: string;
+  initialVendorData?: any;
 }) {
   const pathname = usePathname();
   const [vendorSlug, setVendorSlug] = useState<string | undefined>(initialVendorSlug);
@@ -24,6 +26,7 @@ export function Providers({
     initialVendorSlug, 
     vendorSlug, 
     pathname,
+    hasInitialVendorData: !!initialVendorData,
     hostname: typeof window !== 'undefined' ? window.location.hostname : 'server'
   });
   
@@ -61,7 +64,7 @@ export function Providers({
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-        <VendorProvider vendorSlug={vendorSlug}>
+        <VendorProvider vendorSlug={vendorSlug} initialData={initialVendorData}>
           <PoliciesProvider>
             <CartProvider>
               <WishlistProvider>

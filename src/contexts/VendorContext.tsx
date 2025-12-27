@@ -52,18 +52,84 @@ export const useVendorContext = () => useContext(VendorContext);
 interface VendorProviderProps {
   children: ReactNode;
   vendorSlug?: string;
+  initialData?: Vendor | null;
 }
 
-export function VendorProvider({ children, vendorSlug }: VendorProviderProps) {
-  const [vendor, setVendor] = useState<Vendor | null>(null);
-  const [themeConfig, setThemeConfig] = useState<ThemeConfig | null>(null);
+export function VendorProvider({ children, vendorSlug, initialData }: VendorProviderProps) {
+  const [vendor, setVendor] = useState<Vendor | null>(initialData || null);
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig | null>(initialData?.themeConfig || null);
   const [isLoading, setIsLoading] = useState(false);
   const isVendorStore = !!vendorSlug;
 
-  console.log('🔵 VendorProvider initialized:', { vendorSlug, isVendorStore });
+  console.log('🔵 VendorProvider initialized:', { vendorSlug, isVendorStore, hasInitialData: !!initialData });
+
+  // Helper function to apply theme
+  const applyTheme = (config: ThemeConfig) => {
+    const root = document.documentElement;
+    if (config.primaryColor) {
+      console.log('🔵 Setting --vendor-primary to:', config.primaryColor);
+      root.style.setProperty('--vendor-primary', config.primaryColor);
+    }
+    if (config.secondaryColor) {
+      console.log('🔵 Setting --vendor-secondary to:', config.secondaryColor);
+      root.style.setProperty('--vendor-secondary', config.secondaryColor);
+    }
+    if (config.accentColor) root.style.setProperty('--vendor-accent', config.accentColor);
+    if (config.backgroundColor) {
+      console.log('🔵 Setting --vendor-bg to:', config.backgroundColor);
+      root.style.setProperty('--vendor-bg', config.backgroundColor);
+    }
+    if (config.textColor) {
+      console.log('🔵 Setting --vendor-text to:', config.textColor);
+      root.style.setProperty('--vendor-text', config.textColor);
+    }
+    if (config.fontFamily) root.style.setProperty('--vendor-font', config.fontFamily);
+    if (config.headingFont) root.style.setProperty('--vendor-heading-font', config.headingFont);
+
+    // Log actual computed values
+    console.log('🔵 CSS Variables set on :root:', {
+      '--vendor-primary': root.style.getPropertyValue('--vendor-primary'),
+      '--vendor-secondary': root.style.getPropertyValue('--vendor-secondary'),
+      '--vendor-bg': root.style.getPropertyValue('--vendor-bg'),
+      '--vendor-text': root.style.getPropertyValue('--vendor-text'),
+    });
+
+    // Test if CSS classes work
+    setTimeout(() => {
+      const testDiv = document.createElement('div');
+      testDiv.className = 'vendor-text';
+      testDiv.style.display = 'none';
+      document.body.appendChild(testDiv);
+      const computedColor = window.getComputedStyle(testDiv).color;
+      console.log('🔵 Test element with .vendor-text has computed color:', computedColor);
+      console.log('🔵 Expected color:', config.textColor);
+      document.body.removeChild(testDiv);
+    }, 100);
+
+    // Apply custom CSS
+    if (config.customCss) {
+      const styleId = 'vendor-custom-css';
+      let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+      if (!styleElement) {
+        styleElement = document.createElement('style');
+        styleElement.id = styleId;
+        document.head.appendChild(styleElement);
+      }
+      styleElement.textContent = config.customCss;
+    }
+    console.log('🔵 Theme applied successfully');
+  };
+
+  // Apply theme immediately if we have initial data
+  useEffect(() => {
+    if (initialData?.themeConfig) {
+      console.log('🔵 Applying initial theme from server data');
+      applyTheme(initialData.themeConfig);
+    }
+  }, []);
 
   useEffect(() => {
-    console.log('🔵 VendorProvider useEffect running:', { vendorSlug, isLoading });
+    console.log('🔵 VendorProvider useEffect running:', { vendorSlug, isLoading, hasInitialData: !!initialData });
     
     if (!vendorSlug) {
       setVendor(null);
@@ -79,6 +145,12 @@ export function VendorProvider({ children, vendorSlug }: VendorProviderProps) {
       root.style.removeProperty('--vendor-text');
       root.style.removeProperty('--vendor-font');
       root.style.removeProperty('--vendor-heading-font');
+      return;
+    }
+
+    // If we have initial data and it matches the slug, don't fetch
+    if (initialData && initialData.slug === vendorSlug) {
+      console.log('🔵 Using initial data from server, skipping fetch');
       return;
     }
 
@@ -104,61 +176,9 @@ export function VendorProvider({ children, vendorSlug }: VendorProviderProps) {
 
           console.log('🔵 Theme config:', config);
 
-          // Apply theme to CSS variables
+          // Apply theme
           if (config) {
-            const root = document.documentElement;
-            if (config.primaryColor) {
-              console.log('🔵 Setting --vendor-primary to:', config.primaryColor);
-              root.style.setProperty('--vendor-primary', config.primaryColor);
-            }
-            if (config.secondaryColor) {
-              console.log('🔵 Setting --vendor-secondary to:', config.secondaryColor);
-              root.style.setProperty('--vendor-secondary', config.secondaryColor);
-            }
-            if (config.accentColor) root.style.setProperty('--vendor-accent', config.accentColor);
-            if (config.backgroundColor) {
-              console.log('🔵 Setting --vendor-bg to:', config.backgroundColor);
-              root.style.setProperty('--vendor-bg', config.backgroundColor);
-            }
-            if (config.textColor) {
-              console.log('🔵 Setting --vendor-text to:', config.textColor);
-              root.style.setProperty('--vendor-text', config.textColor);
-            }
-            if (config.fontFamily) root.style.setProperty('--vendor-font', config.fontFamily);
-            if (config.headingFont) root.style.setProperty('--vendor-heading-font', config.headingFont);
-
-            // Log actual computed values
-            console.log('🔵 CSS Variables set on :root:', {
-              '--vendor-primary': root.style.getPropertyValue('--vendor-primary'),
-              '--vendor-secondary': root.style.getPropertyValue('--vendor-secondary'),
-              '--vendor-bg': root.style.getPropertyValue('--vendor-bg'),
-              '--vendor-text': root.style.getPropertyValue('--vendor-text'),
-            });
-
-            // Test if CSS classes work
-            setTimeout(() => {
-              const testDiv = document.createElement('div');
-              testDiv.className = 'vendor-text';
-              testDiv.style.display = 'none';
-              document.body.appendChild(testDiv);
-              const computedColor = window.getComputedStyle(testDiv).color;
-              console.log('🔵 Test element with .vendor-text has computed color:', computedColor);
-              console.log('🔵 Expected color:', config.textColor);
-              document.body.removeChild(testDiv);
-            }, 100);
-
-            // Apply custom CSS
-            if (config.customCss) {
-              const styleId = 'vendor-custom-css';
-              let styleElement = document.getElementById(styleId) as HTMLStyleElement;
-              if (!styleElement) {
-                styleElement = document.createElement('style');
-                styleElement.id = styleId;
-                document.head.appendChild(styleElement);
-              }
-              styleElement.textContent = config.customCss;
-            }
-            console.log('🔵 Theme applied successfully');
+            applyTheme(config);
           } else {
             console.log('🔵 No theme config found in vendor data');
           }

@@ -157,13 +157,10 @@ export default function UnifiedHeader({
       onSearch(query);
     } else {
       if (query.trim()) {
-        if (isVendorStore && vendor) {
-          router.push(`/vendor/${vendor.slug}/search?q=${encodeURIComponent(query.trim())}`);
-        } else {
-          router.push(`/?search=${encodeURIComponent(query.trim())}`);
-        }
+        // On vendor subdomain, search within the store using relative URL
+        router.push(`/search?q=${encodeURIComponent(query.trim())}`);
       } else {
-        router.push(isVendorStore && vendor ? `/vendor/${vendor.slug}` : '/');
+        router.push('/');
       }
     }
   };
@@ -185,10 +182,11 @@ export default function UnifiedHeader({
   };
 
   // Determine home URL based on context
+  // When on vendor subdomain, use relative URLs. Only use /vendor/slug pattern on main marketplace
   const isVendorAdminPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/vendor/');
   const isAdminPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin/');
-  const homeUrl = (isVendorAdminPage || isAdminPage) ? '/' : (isVendorStore && vendor ? `/vendor/${vendor.slug}` : '/');
-  const cartUrl = isVendorStore && vendor ? `/vendor/${vendor.slug}/cart` : '/cart';
+  const homeUrl = '/';
+  const cartUrl = '/cart';
 
   return (
     <header className={theme.combine(

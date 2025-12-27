@@ -256,7 +256,7 @@ export default function CategoryNav({
           {/* Home Link - Left Side */}
           {effectiveVendorSlug && (
             <Link
-              href={`/vendor/${effectiveVendorSlug}`}
+              href="/"
               className={theme.combine(
                 "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
                 isVendorStore ? 'vendor-border-primary-30 vendor-text' : 'border-secondary-foreground/20 text-secondary-foreground'
@@ -318,8 +318,6 @@ export default function CategoryNav({
                       // Check if we're on the homepage (ignore query params for filters/search)
                       const isOnHomepage = pathname === '/' || pathname === '/';
                       console.log('🔴 isOnHomepage:', isOnHomepage);
-                      console.log('🔴 pathname === \'/\':', pathname === '/');
-                      console.log('🔴 pathname === \'/\':', pathname === '/');
                       
                       if (!isOnHomepage) {
                         console.log('🔴 NAVIGATING TO HOME WITH HASH:', `/#category-${category.slug}`);
@@ -334,13 +332,13 @@ export default function CategoryNav({
                     
                     console.log('🔴 VENDOR SLUG BRANCH');
                     // Check if we're on vendor home page (ignore query params for filters/search)
-                    const isOnVendorHome = pathname === `/vendor/${effectiveVendorSlug}`;
+                    const isOnVendorHome = pathname === '/';
                     console.log('🔴 isOnVendorHome:', isOnVendorHome);
                     
                     if (!isOnVendorHome) {
-                      console.log('🔴 NAVIGATING TO VENDOR HOME WITH HASH:', `/vendor/${effectiveVendorSlug}#category-${category.slug}`);
+                      console.log('🔴 NAVIGATING TO VENDOR HOME WITH HASH:', `/#category-${category.slug}`);
                       // Navigate to home page with hash (clears query params)
-                      window.location.href = `/vendor/${effectiveVendorSlug}#category-${category.slug}`;
+                      window.location.href = `/#category-${category.slug}`;
                     } else {
                       console.log('🔴 SCROLLING TO VENDOR CATEGORY (with or without children)');
                       handleScrollToCategory(category.slug);
@@ -456,7 +454,7 @@ export default function CategoryNav({
             <div className="relative flex-shrink-0">
               {mode === 'navigation' ? (
                 <Link
-                  href={effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}?productType=booking` : '/?productType=booking'}
+                  href="/?productType=booking"
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
@@ -466,7 +464,7 @@ export default function CategoryNav({
                 </Link>
               ) : mode === 'scroll' ? (
                 <Link
-                  href={effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}?productType=booking` : '/?productType=booking'}
+                  href="/?productType=booking"
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
@@ -476,7 +474,7 @@ export default function CategoryNav({
                 </Link>
               ) : (
                 <Link
-                  href={effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}?productType=booking` : '/?productType=booking'}
+                  href="/?productType=booking"
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 border-transparent hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
@@ -498,7 +496,7 @@ export default function CategoryNav({
               {vendorPages.map((page) => (
                 <Link
                   key={page.id}
-                  href={`/vendor/${effectiveVendorSlug}/${page.slug}`}
+                  href={`/${page.slug}`}
                   className={theme.combine(
                     "flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'

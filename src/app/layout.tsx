@@ -39,6 +39,24 @@ async function getDefaultTheme() {
   return null;
 }
 
+// Fetch vendor data on server
+async function getVendorData(vendorSlug: string) {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const response = await fetch(`${apiUrl}/api/v1/vendors/${vendorSlug}`, {
+      cache: 'no-store',
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data;
+    }
+  } catch (error) {
+    console.error('[Layout] Error fetching vendor:', error);
+  }
+  return null;
+}
+
 export default async function LocaleLayout({
   children,
 }: {
@@ -51,9 +69,14 @@ export default async function LocaleLayout({
   const headersList = headers();
   const vendorSlug = headersList.get('x-vendor-slug') || undefined;
   
+  // Fetch vendor data on server if vendor slug exists
+  const initialVendorData = vendorSlug ? await getVendorData(vendorSlug) : null;
+  
   console.log('🟣 Layout (server-side):', {
     vendorSlug,
     hasVendorSlug: !!vendorSlug,
+    hasVendorData: !!initialVendorData,
+    vendorName: initialVendorData?.businessName,
     allHeaders: Object.fromEntries(headersList.entries())
   });
 
@@ -61,7 +84,9 @@ export default async function LocaleLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider initialTheme={defaultTheme}>
-          <Providers initialVendorSlug={vendorSlug}>{children}</Providers>
+          <Providers initialVendorSlug={vendorSlug} initialVendorData={initialVendorData}>
+            {children}
+          </Providers>
         </ThemeProvider>
       </body>
     </html>
