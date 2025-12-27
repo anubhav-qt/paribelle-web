@@ -12,6 +12,8 @@ export default function VendorOrdersPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -126,6 +128,29 @@ export default function VendorOrdersPage() {
       setSortBy(field);
       setSortOrder('desc');
     }
+  };
+
+  const viewOrderDetails = (order: any) => {
+    setSelectedOrder(order);
+    setShowDetailsModal(true);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -269,12 +294,143 @@ export default function VendorOrdersPage() {
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <button className="text-blue-600 hover:text-blue-900">View Details</button>
+                      <button 
+                        onClick={() => viewOrderDetails(order)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        View Details
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Order Details Modal */}
+        {showDetailsModal && selectedOrder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b sticky top-0 bg-white">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Order #{selectedOrder.id.slice(0, 8)}
+                    </h2>
+                    <p className="text-gray-600 mt-1">{formatDate(selectedOrder.createdAt)}</p>
+                  </div>
+                  <button
+                    onClick={() => setShowDetailsModal(false)}
+                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Status */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Status</h3>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    selectedOrder.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    selectedOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    selectedOrder.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedOrder.status}
+                  </span>
+                </div>
+
+                {/* Customer Info */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Customer Information</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-1">
+                    <p><span className="font-medium">Name:</span> {selectedOrder.customerName || selectedOrder.shippingName || (typeof selectedOrder.shippingAddress === 'object' ? selectedOrder.shippingAddress?.fullName : null) || 'N/A'}</p>
+                    <p><span className="font-medium">Email:</span> {selectedOrder.customerEmail || selectedOrder.shippingEmail || 'N/A'}</p>
+                    <p><span className="font-medium">Phone:</span> {selectedOrder.customerPhone || selectedOrder.shippingPhone || (typeof selectedOrder.shippingAddress === 'object' ? selectedOrder.shippingAddress?.phone : null) || 'N/A'}</p>
+                  </div>
+                </div>
+
+                {/* Shipping Address */}
+                {selectedOrder.shippingAddress && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Shipping Address</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      {typeof selectedOrder.shippingAddress === 'string' ? (
+                        <>
+                          <p>{selectedOrder.shippingAddress}</p>
+                          {(selectedOrder.shippingCity || selectedOrder.shippingState) && (
+                            <p>{selectedOrder.shippingCity}{selectedOrder.shippingCity && selectedOrder.shippingState && ', '}{selectedOrder.shippingState}</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p>{selectedOrder.shippingAddress.addressLine1}</p>
+                          {selectedOrder.shippingAddress.addressLine2 && <p>{selectedOrder.shippingAddress.addressLine2}</p>}
+                          <p>{selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}</p>
+                          {selectedOrder.shippingAddress.country && <p>{selectedOrder.shippingAddress.country}</p>}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Order Items */}
+                {selectedOrder.items && selectedOrder.items.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Order Items</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                      {selectedOrder.items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex justify-between">
+                          <span>{item.productName || item.name} x {item.quantity}</span>
+                          <span className="font-medium">{formatCurrency((item.price || 0) * (item.quantity || 1))}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Order Summary */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Order Summary</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                    {selectedOrder.subtotal && (
+                      <div className="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span>{formatCurrency(selectedOrder.subtotal)}</span>
+                      </div>
+                    )}
+                    {selectedOrder.shippingCost !== undefined && (
+                      <div className="flex justify-between">
+                        <span>Shipping:</span>
+                        <span>{formatCurrency(selectedOrder.shippingCost)}</span>
+                      </div>
+                    )}
+                    {selectedOrder.tax !== undefined && (
+                      <div className="flex justify-between">
+                        <span>Tax:</span>
+                        <span>{formatCurrency(selectedOrder.tax)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-lg border-t pt-2">
+                      <span>Total:</span>
+                      <span>{formatCurrency(selectedOrder.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t bg-gray-50">
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
