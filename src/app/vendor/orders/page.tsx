@@ -4,8 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import UnifiedHeader from '@/components/UnifiedHeader';
 import { getVendorId } from '@/lib/auth';
+import { useSettings } from '@/hooks/useSettings';
+import { getCurrencySymbol } from '@/lib/currency';
 
 export default function VendorOrdersPage() {
+  const { data: settings } = useSettings();
+  const currency = settings?.currency || 'INR';
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'status'>('date');
@@ -136,11 +140,8 @@ export default function VendorOrdersPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
+    const symbol = getCurrencySymbol(currency);
+    return `${symbol}${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -280,7 +281,7 @@ export default function VendorOrdersPage() {
                   <tr key={order.id}>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">#{order.id.slice(0, 8)}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{order.customerName || 'N/A'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">${order.total}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{getCurrencySymbol(currency)}{order.total}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         order.status === 'completed' ? 'bg-green-100 text-green-800' :
