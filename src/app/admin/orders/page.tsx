@@ -250,7 +250,7 @@ export default function AdminOrdersPage() {
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(orders.reduce((sum, o) => sum + o.total, 0))}
+              {formatCurrency(orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0))}
             </div>
             <div className="text-sm text-gray-600 mt-1">Total Revenue</div>
           </div>
@@ -464,8 +464,21 @@ export default function AdminOrdersPage() {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Shipping Address</h3>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p>{selectedOrder.shippingAddress}</p>
-                  <p>{selectedOrder.shippingCity}, {selectedOrder.shippingState}</p>
+                  {typeof selectedOrder.shippingAddress === 'string' ? (
+                    <>
+                      <p>{selectedOrder.shippingAddress}</p>
+                      <p>{selectedOrder.shippingCity}, {selectedOrder.shippingState}</p>
+                    </>
+                  ) : typeof selectedOrder.shippingAddress === 'object' && selectedOrder.shippingAddress ? (
+                    <>
+                      <p>{selectedOrder.shippingAddress.addressLine1}</p>
+                      {selectedOrder.shippingAddress.addressLine2 && <p>{selectedOrder.shippingAddress.addressLine2}</p>}
+                      <p>{selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}</p>
+                      {selectedOrder.shippingAddress.country && <p>{selectedOrder.shippingAddress.country}</p>}
+                    </>
+                  ) : (
+                    <p>No address provided</p>
+                  )}
                 </div>
               </div>
 
