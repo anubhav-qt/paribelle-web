@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import ThemeBuilder from '@/components/ThemeBuilder';
+import UnifiedHeader from '@/components/UnifiedHeader';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -131,15 +132,18 @@ export default function AdminDefaultThemePage() {
   }
 
   return (
-    <ThemeBuilder
+    <>
+      <UnifiedHeader />
+      <ThemeBuilder
       initialTheme={themeConfig}
       onSave={handleSave}
       saving={saving}
       title="Edit Default Theme"
       subtitle="Customize the main marketplace theme"
-      backLink="/admin/themes"
-      backLinkText="Back to Themes"
+      backLink="/admin"
+      backLinkText="Back to Dashboard"
       isAdmin={true}
     />
+    </>
   );
 }

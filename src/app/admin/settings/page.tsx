@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Settings, MapPin, Save, DollarSign } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import UnifiedHeader from '@/components/UnifiedHeader';
 
 interface Setting {
   id: string;
@@ -187,27 +189,27 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <UnifiedHeader className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+    <>
+      <UnifiedHeader />
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="container mx-auto px-4 py-6">
+            <Link
+              href="/admin"
+              className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+            >
+              ← Back to Dashboard
+            </Link>
             <div className="flex items-center gap-3">
               <Settings className="w-6 h-6 text-blue-600" />
               <h1 className="text-2xl font-bold text-gray-900">Site Settings</h1>
             </div>
-            <Link
-              href="/admin"
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              ← Back to Dashboard
-            </Link>
           </div>
         </div>
-      </header>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* Content */}
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Success/Error Message */}
         {message && (
           <div
@@ -631,5 +633,6 @@ export default function AdminSettingsPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

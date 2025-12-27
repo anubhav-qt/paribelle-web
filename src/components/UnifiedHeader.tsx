@@ -174,7 +174,8 @@ export default function UnifiedHeader({
 
   // Determine home URL based on context
   const isVendorAdminPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/vendor/');
-  const homeUrl = isVendorAdminPage ? '/' : (isVendorStore && vendor ? `/vendor/${vendor.slug}` : '/');
+  const isAdminPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin/');
+  const homeUrl = (isVendorAdminPage || isAdminPage) ? '/' : (isVendorStore && vendor ? `/vendor/${vendor.slug}` : '/');
   const cartUrl = isVendorStore && vendor ? `/vendor/${vendor.slug}/cart` : '/cart';
 
   return (
@@ -197,7 +198,7 @@ export default function UnifiedHeader({
 
           {/* Logo/Brand */}
           <Link href={homeUrl} className="flex items-center gap-4">
-            {isVendorStore && vendor && !window.location.pathname.startsWith('/vendor/') ? (
+            {isVendorStore && vendor && !window.location.pathname.startsWith('/vendor/') && !window.location.pathname.startsWith('/admin/') ? (
               <>
                 {vendor.logo && (
                   <img 

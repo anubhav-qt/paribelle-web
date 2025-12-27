@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Edit2, Trash2, Save, X, Copy } from 'lucide-react';
+import UnifiedHeader from '@/components/UnifiedHeader';
 
 type FilterType = 'CHECKBOX' | 'SELECT' | 'MULTISELECT' | 'RANGE';
 
@@ -253,26 +254,22 @@ export default function CommonFiltersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <UnifiedHeader />
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/admin"
-                className="text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Common Filter Templates</h1>
-                <p className="text-gray-600 mt-1">
-                  Reusable filter configurations for categories
-                </p>
-              </div>
-            </div>
-          </div>
+          <Link
+            href="/admin"
+            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+          >
+            ← Back to Dashboard
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900">Common Filter Templates</h1>
+          <p className="text-gray-600 mt-1">
+            Reusable filter configurations for categories
+          </p>
         </div>
       </div>
 
@@ -502,5 +499,6 @@ export default function CommonFiltersPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Palette, Eye, Edit } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import UnifiedHeader from '@/components/UnifiedHeader';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -104,24 +105,20 @@ export default function AdminThemesPage() {
   const vendorsWithoutTheme = vendors.filter(v => !v.themeConfig);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <UnifiedHeader />
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/admin"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Store Themes</h1>
-                <p className="text-gray-600 mt-1">View and manage vendor store themes</p>
-              </div>
-            </div>
-          </div>
+          <Link
+            href="/admin"
+            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+          >
+            ← Back to Dashboard
+          </Link>
+          <h1 className="text-3xl font-bold text-gray-900">Store Themes</h1>
+          <p className="text-gray-600 mt-1">View and manage vendor store themes</p>
         </div>
       </div>
 
@@ -275,5 +272,6 @@ export default function AdminThemesPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

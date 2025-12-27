@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
+import UnifiedHeader from '@/components/UnifiedHeader';
 
 interface Vendor {
   id: string;
@@ -259,7 +260,9 @@ export default function AdminVendorsPage() {
   const stats = calculateStats();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <>
+      <UnifiedHeader />
+      <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
@@ -839,5 +842,6 @@ export default function AdminVendorsPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

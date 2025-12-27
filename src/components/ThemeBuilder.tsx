@@ -245,17 +245,15 @@ export default function ThemeBuilder({
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            <Link
-              href={backLink}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
-              <p className="text-gray-600 mt-1">{subtitle}</p>
-            </div>
+          <Link
+            href={backLink}
+            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+          >
+            ← {backLinkText}
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+            <p className="text-gray-600 mt-1">{subtitle}</p>
           </div>
         </div>
       </div>

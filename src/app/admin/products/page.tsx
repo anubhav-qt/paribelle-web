@@ -4,6 +4,7 @@ import { useEffect, useState, Fragment } from 'react';
 import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import UnifiedHeader from '@/components/UnifiedHeader';
 
 interface Product {
   id: string;
@@ -398,7 +399,9 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <>
+      <UnifiedHeader />
+      <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
@@ -1185,5 +1188,6 @@ export default function AdminProductsPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

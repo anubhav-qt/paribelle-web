@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Settings, ChevronRight, Package } from 'lucide-react';
+import UnifiedHeader from '@/components/UnifiedHeader';
 
 interface Category {
   id: string;
@@ -102,7 +103,9 @@ export default function AdminCategoriesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <UnifiedHeader />
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-6">
@@ -124,12 +127,6 @@ export default function AdminCategoriesPage() {
               >
                 <Settings className="w-5 h-5" />
                 Manage Categories
-              </Link>
-              <Link
-                href="/admin"
-                className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Back to Admin
               </Link>
             </div>
           </div>
@@ -158,5 +155,6 @@ export default function AdminCategoriesPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
