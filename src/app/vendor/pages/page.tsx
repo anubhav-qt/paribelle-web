@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import { Plus, Edit, Trash2, Eye, EyeOff, GripVertical } from 'lucide-react';
 
 interface VendorPage {
@@ -144,6 +145,7 @@ export default function VendorPagesPage() {
   console.log('🔵 Rendering main content');
   return (
     <div className="min-h-screen bg-background">
+      <UnifiedHeader showLocationFilter={false} />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>

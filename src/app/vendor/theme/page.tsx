@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import ThemeBuilder from '@/components/ThemeBuilder';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -147,15 +148,18 @@ export default function VendorThemePage() {
   }
 
   return (
-    <ThemeBuilder
-      initialTheme={themeConfig}
-      onSave={handleSave}
-      saving={saving}
-      title="Theme Builder"
-      subtitle="Customize your store's appearance"
-      backLink="/vendor/dashboard"
-      backLinkText="Back to Dashboard"
-      isAdmin={false}
-    />
+    <>
+      <UnifiedHeader showLocationFilter={false} />
+      <ThemeBuilder
+        initialTheme={themeConfig}
+        onSave={handleSave}
+        saving={saving}
+        title="Theme Builder"
+        subtitle="Customize your store's appearance"
+        backLink="/vendor/dashboard"
+        backLinkText="Back to Dashboard"
+        isAdmin={false}
+      />
+    </>
   );
 }

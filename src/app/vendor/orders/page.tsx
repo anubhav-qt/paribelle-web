@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import { getVendorId } from '@/lib/auth';
 
 export default function VendorOrdersPage() {
@@ -129,6 +130,7 @@ export default function VendorOrdersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <UnifiedHeader showLocationFilter={false} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <Link
