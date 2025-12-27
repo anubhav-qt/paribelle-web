@@ -1,22 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Layout, HelpCircle, Lightbulb, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, Layout } from 'lucide-react';
 import PageBuilder from '@/components/PageBuilder';
 import SectionLibrary from '@/components/SectionLibrary';
 import { PageSection } from '@/lib/pageSections';
 
-export default function EditPagePage() {
+export default function NewPagePageEnhanced() {
   const router = useRouter();
-  const params = useParams();
-  const pageId = params.id as string;
-  
   const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
   const [showSectionLibrary, setShowSectionLibrary] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -30,79 +25,6 @@ export default function EditPagePage() {
     status: 'draft',
     showInNavigation: true,
   });
-
-  useEffect(() => {
-    const fetchPage = async () => {
-      try {
-        const user = localStorage.getItem('user');
-        if (!user) {
-          alert('User not found. Please login again.');
-          router.push('/login');
-          return;
-        }
-
-        const userData = JSON.parse(user);
-        const vendorId = userData.vendorId || userData.vendor?.id;
-        
-        if (!vendorId) {
-          alert('Vendor ID not found.');
-          router.push('/vendor/pages');
-          return;
-        }
-        
-        const token = localStorage.getItem('token');
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/pages/${pageId}`;
-
-        const response = await fetch(apiUrl, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const page = await response.json();
-          
-          // Parse sections from content
-          let sections: PageSection[] = [];
-          try {
-            const parsed = JSON.parse(page.content);
-            if (Array.isArray(parsed)) {
-              sections = parsed;
-            }
-          } catch {
-            // If not JSON, create empty sections array
-            sections = [];
-          }
-
-          setFormData({
-            title: page.title || '',
-            slug: page.slug || '',
-            pageType: page.pageType || 'custom',
-            sections: sections,
-            excerpt: page.excerpt || '',
-            metaTitle: page.metaTitle || '',
-            metaDescription: page.metaDescription || '',
-            metaKeywords: page.metaKeywords || '',
-            status: page.status || 'draft',
-            showInNavigation: page.showInNavigation ?? true,
-          });
-        } else {
-          alert('Failed to load page');
-          router.push('/vendor/pages');
-        }
-      } catch (error) {
-        console.error('❌ Error loading page:', error);
-        alert('Failed to load page');
-        router.push('/vendor/pages');
-      } finally {
-        setPageLoading(false);
-      }
-    };
-
-    if (pageId) {
-      fetchPage();
-    }
-  }, [pageId, router]);
 
   const handleTitleChange = (title: string) => {
     const slug = title
@@ -135,7 +57,7 @@ export default function EditPagePage() {
       const vendorId = userData.vendorId || userData.vendor?.id;
       
       if (!vendorId) {
-        alert('Vendor ID not found.');
+        alert('Vendor ID not found. Please ensure you are logged in as a vendor.');
         setLoading(false);
         return;
       }
@@ -145,10 +67,10 @@ export default function EditPagePage() {
       // Convert sections to JSON for storage
       const finalContent = JSON.stringify(formData.sections);
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/pages/${pageId}`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/pages`;
 
       const response = await fetch(apiUrl, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -163,7 +85,7 @@ export default function EditPagePage() {
           metaDescription: formData.metaDescription,
           metaKeywords: formData.metaKeywords,
           showInNavigation: formData.showInNavigation,
-          status: publish ? 'published' : formData.status,
+          status: publish ? 'published' : 'draft',
         }),
       });
 
@@ -171,26 +93,15 @@ export default function EditPagePage() {
         router.push('/vendor/pages');
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to update page');
+        alert(error.message || 'Failed to create page');
       }
     } catch (error) {
-      console.error('❌ Error updating page:', error);
-      alert('Failed to update page');
+      console.error('❌ Error creating page:', error);
+      alert('Failed to create page');
     } finally {
       setLoading(false);
     }
   };
-
-  if (pageLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading page...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -213,92 +124,11 @@ export default function EditPagePage() {
             </Link>
           </div>
           
-          <div className="mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Edit Page</h1>
-              <p className="text-muted-foreground text-sm mt-1">
-                Modify your page using the Shopify-style section builder
-              </p>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Create New Page</h1>
+          <p className="text-muted-foreground text-sm">
+            Build your page visually with drag-and-drop sections (Shopify-style)
+          </p>
         </div>
-
-        {/* Help Guide */}
-        {showHelp && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 relative">
-            <button
-              onClick={() => setShowHelp(false)}
-              className="absolute top-4 right-4 text-blue-600 hover:text-blue-800"
-            >
-              ✕
-            </button>
-            
-            <div className="flex items-start gap-4 mb-4">
-              <HelpCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
-              <div>
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                  📝 How to Edit Your Page
-                </h3>
-                <div className="space-y-3 text-sm text-blue-800">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <strong>Edit Sections:</strong> Click on any section to modify its content, colors, images, and settings.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <strong>Add More Sections:</strong> Click "Add Section" button to insert new sections anywhere on the page.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <strong>Reorder:</strong> Use ↑↓ buttons to move sections up or down to change the layout.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <strong>Hide/Show:</strong> Toggle visibility with 👁️ button to hide sections without deleting them.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <strong>Save Changes:</strong> Click "Save Changes" or "Update & Publish" to save your changes.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4 mt-4 pt-4 border-t border-blue-200">
-              <Lightbulb className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-1" />
-              <div>
-                <h4 className="font-semibold text-blue-900 mb-2">💡 Editing Tips</h4>
-                <ul className="space-y-1 text-sm text-blue-800 list-disc list-inside">
-                  <li>Changes are <strong>not saved automatically</strong> - remember to save!</li>
-                  <li>Use "Save Changes" to keep current status (draft/published)</li>
-                  <li>You can hide sections temporarily instead of deleting them</li>
-                  <li>Each section type has different customization options</li>
-                  <li>All changes take effect immediately after saving</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!showHelp && (
-          <button
-            onClick={() => setShowHelp(true)}
-            className="mb-4 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-2"
-          >
-            <HelpCircle className="w-4 h-4" />
-            Show Help Guide
-          </button>
-        )}
 
         <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
           {/* Basic Info */}
@@ -317,9 +147,6 @@ export default function EditPagePage() {
                 placeholder="About Us"
                 required
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                This will be the main heading of your page
-              </p>
             </div>
 
             <div>
@@ -339,9 +166,6 @@ export default function EditPagePage() {
                   required
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Auto-generated from title. Use lowercase and hyphens only.
-              </p>
             </div>
 
             <div>
@@ -362,9 +186,6 @@ export default function EditPagePage() {
                 <option value="terms">Terms & Conditions</option>
                 <option value="privacy">Privacy Policy</option>
               </select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Helps organize your pages. Doesn't affect functionality.
-              </p>
             </div>
           </div>
 
@@ -391,12 +212,7 @@ export default function EditPagePage() {
 
           {/* SEO */}
           <div className="bg-white rounded-lg border border-border p-6 space-y-4">
-            <div>
-              <h2 className="text-xl font-semibold">SEO & Settings</h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Optional: Improve your page's visibility in search engines
-              </p>
-            </div>
+            <h2 className="text-xl font-semibold">SEO & Settings</h2>
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -411,9 +227,6 @@ export default function EditPagePage() {
                 className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
                 placeholder="Short description for previews and SEO"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                1-2 sentences summarizing this page
-              </p>
             </div>
 
             <div>
@@ -429,9 +242,6 @@ export default function EditPagePage() {
                 className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
                 placeholder="Leave empty to use page title"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Title shown in search results (max 60 characters)
-              </p>
             </div>
 
             <div>
@@ -447,9 +257,6 @@ export default function EditPagePage() {
                 className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
                 placeholder="Description for search engines"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Description shown in search results (max 160 characters)
-              </p>
             </div>
 
             <label className="flex items-center gap-2">
@@ -465,9 +272,6 @@ export default function EditPagePage() {
                 Show in navigation menu
               </span>
             </label>
-            <p className="text-xs text-muted-foreground ml-6">
-              Enable to add this page to your store's main navigation
-            </p>
           </div>
 
           {/* Actions - Sticky at bottom */}
@@ -479,7 +283,7 @@ export default function EditPagePage() {
                 className="inline-flex items-center gap-2 px-6 py-3 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors disabled:opacity-50"
               >
                 <Save className="w-5 h-5" />
-                {loading ? 'Saving...' : 'Save Changes'}
+                Save as Draft
               </button>
               <button
                 type="button"
@@ -487,7 +291,7 @@ export default function EditPagePage() {
                 disabled={loading}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                {loading ? 'Publishing...' : 'Update & Publish'}
+                Publish Page
               </button>
               <Link
                 href="/vendor/pages"
