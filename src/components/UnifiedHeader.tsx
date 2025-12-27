@@ -49,8 +49,11 @@ export default function UnifiedHeader({
   const [user, setUser] = useState<any>(null);
   const [vendorSlug, setVendorSlug] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showPagesDropdown, setShowPagesDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [customPages, setCustomPages] = useState<any[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pagesDropdownRef = useRef<HTMLDivElement>(null);
   
   const { data: settings } = useSettings();
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
@@ -129,16 +132,19 @@ export default function UnifiedHeader({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
       }
+      if (pagesDropdownRef.current && !pagesDropdownRef.current.contains(event.target as Node)) {
+        setShowPagesDropdown(false);
+      }
     };
 
-    if (showDropdown) {
+    if (showDropdown || showPagesDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showDropdown]);
+  }, [showDropdown, showPagesDropdown]);
 
   const fetchVendorSlug = async (vendorId: string) => {
     try {
@@ -151,6 +157,29 @@ export default function UnifiedHeader({
       console.error('Error fetching vendor slug:', error);
     }
   };
+
+  // Fetch custom pages for vendor stores
+  useEffect(() => {
+    const fetchCustomPages = async () => {
+      if (isVendorStore && vendor?.id) {
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendor.id}/pages`);
+          if (response.ok) {
+            const pages = await response.json();
+            // Filter published pages that should show in navigation
+            const navPages = pages.filter((page: any) => 
+              page.status === 'published' && page.showInNavigation
+            );
+            setCustomPages(navPages);
+          }
+        } catch (error) {
+          console.error('Error fetching custom pages:', error);
+        }
+      }
+    };
+
+    fetchCustomPages();
+  }, [isVendorStore, vendor?.id]);
 
   const handleSearch = (query: string) => {
     if (onSearch) {
@@ -321,14 +350,44 @@ export default function UnifiedHeader({
               )}
             </Link>
 
-            {/* All Vendors Link (vendor store only) */}
+            {/* All Vendors Link & Pages Dropdown (vendor store only) */}
             {isVendorStore && (
-              <Link 
-                href="http://localhost:3000" 
-                className="hidden md:inline-flex text-sm text-white px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
-              >
-                All Vendors
-              </Link>
+              <>
+                <Link 
+                  href="http://localhost:3000" 
+                  className="hidden md:inline-flex text-sm text-white px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                >
+                  All Vendors
+                </Link>
+
+                {/* Store Pages Dropdown */}
+                {customPages.length > 0 && (
+                  <div className="relative hidden md:block" ref={pagesDropdownRef}>
+                    <button
+                      onClick={() => setShowPagesDropdown(!showPagesDropdown)}
+                      className="inline-flex items-center gap-1 text-sm text-white px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                    >
+                      <span>Store Pages</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${showPagesDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showPagesDropdown && (
+                      <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl py-2 z-[9999]">
+                        {customPages.map((page) => (
+                          <Link
+                            key={page.id}
+                            href={`/${page.slug}`}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            onClick={() => setShowPagesDropdown(false)}
+                          >
+                            {page.title}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
             {/* User Menu */}
@@ -485,8 +544,30 @@ export default function UnifiedHeader({
               All Vendors
             </Link>
 
+            {/* Custom Pages */}
+            {customPages.length > 0 && (
+              <>
+                <div className={theme.combine('px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-wider opacity-60', theme.text)}>
+                  Store Pages
+                </div>
+                {customPages.map((page) => (
+                  <Link
+                    key={page.id}
+                    href={`/${page.slug}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={theme.combine('block py-2 px-4 hover:opacity-80 rounded-md transition-colors', theme.text)}
+                  >
+                    {page.title}
+                  </Link>
+                ))}
+              </>
+            )}
+
             {user ? (
               <>
+                <div className={theme.combine('px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-wider opacity-60', theme.text)}>
+                  Account
+                </div>
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}

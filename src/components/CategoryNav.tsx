@@ -485,28 +485,6 @@ export default function CategoryNav({
               )}
             </div>
           )}
-
-          {/* Vendor Pages - Right Side */}
-          {vendorPages.length > 0 && effectiveVendorSlug && (
-            <>
-              <div className={theme.combine(
-                "border-l h-6 mx-2",
-                isVendorStore ? 'vendor-border-primary-30' : 'border-secondary-foreground/20'
-              )}></div>
-              {vendorPages.map((page) => (
-                <Link
-                  key={page.id}
-                  href={`/${page.slug}`}
-                  className={theme.combine(
-                    "flex-shrink-0 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
-                    isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
-                  )}
-                >
-                  {page.title}
-                </Link>
-              ))}
-            </>
-          )}
         </div>
       </div>
     </div>
