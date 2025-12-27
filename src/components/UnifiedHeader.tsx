@@ -34,6 +34,18 @@ export default function UnifiedHeader({
   const { vendor, isVendorStore, themeConfig } = useVendorContext();
   const theme = useThemeClasses();
   
+  // Debug logging for vendor logo
+  useEffect(() => {
+    if (vendor) {
+      console.log('🔴 UnifiedHeader - Vendor data:', {
+        businessName: vendor.businessName,
+        logo: vendor.logo,
+        logoExists: !!vendor.logo,
+        isVendorStore,
+      });
+    }
+  }, [vendor, isVendorStore]);
+  
   const [user, setUser] = useState<any>(null);
   const [vendorSlug, setVendorSlug] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -198,20 +210,34 @@ export default function UnifiedHeader({
 
           {/* Logo/Brand */}
           <Link href={homeUrl} className="flex items-center gap-4">
-            {isVendorStore && vendor && !window.location.pathname.startsWith('/vendor/') && !window.location.pathname.startsWith('/admin/') ? (
+            {isVendorStore && vendor ? (
               <>
-                {vendor.logo && (
+                {vendor.logo ? (
                   <img 
-                    src={vendor.logo} 
+                    key={vendor.logo}
+                    src={`${process.env.NEXT_PUBLIC_API_URL}${vendor.logo}`} 
                     alt={vendor.businessName}
                     className="h-12 w-12 rounded-full object-cover"
+                    onError={(e) => {
+                      console.log('🔴 Image failed to load:', `${process.env.NEXT_PUBLIC_API_URL}${vendor.logo}`);
+                      // Hide image if it fails to load
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                    onLoad={() => {
+                      console.log('🔴 Image loaded successfully:', `${process.env.NEXT_PUBLIC_API_URL}${vendor.logo}`);
+                    }}
                   />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">
+                      {vendor.businessName?.substring(0, 2).toUpperCase() || 'V'}
+                    </span>
+                  </div>
                 )}
                 <div>
-                  <h1 className="text-2xl font-bold text-white">
+                  <h1 className="text-xs font-bold text-white">
                     {vendor.businessName}
                   </h1>
-                  <p className="text-xs text-white/80">Official Store</p>
                 </div>
               </>
             ) : (

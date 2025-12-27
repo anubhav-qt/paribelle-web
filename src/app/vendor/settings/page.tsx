@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import UnifiedHeader from '@/components/UnifiedHeader';
 import VendorLocationSelector from '@/components/VendorLocationSelector';
+import ImageUpload from '@/components/ImageUpload';
 import { getVendorId } from '@/lib/auth';
 
 export default function VendorSettingsPage() {
@@ -114,7 +115,8 @@ export default function VendorSettingsPage() {
           throw new Error(responseData.message || 'Failed to update settings');
         }
         alert('Settings updated successfully!');
-        fetchVendorData();
+        // Reload the page to refresh the vendor context and header
+        window.location.reload();
       } else {
         throw new Error(responseData.message || 'Failed to update settings');
       }
@@ -180,32 +182,16 @@ export default function VendorSettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Store Logo URL
+                Store Logo
               </label>
-              <input
-                type="url"
+              <ImageUpload
                 value={formData.logo}
-                onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                placeholder="https://example.com/logo.png"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(url) => setFormData({ ...formData, logo: url })}
+                label="Upload Store Logo"
               />
-              <p className="text-sm text-gray-500 mt-1">
-                Upload your logo and enter the URL here. Recommended size: 200x200px (square)
+              <p className="text-sm text-gray-500 mt-2">
+                Recommended size: 200x200px (square). Your logo will be displayed on your store page.
               </p>
-              {formData.logo && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Preview:</p>
-                  <img 
-                    src={formData.logo} 
-                    alt="Logo preview" 
-                    className="h-16 w-16 object-cover rounded-full"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
