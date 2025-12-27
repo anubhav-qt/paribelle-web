@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin, Store } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin, Store, Youtube } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
@@ -13,17 +13,68 @@ interface FooterProps {
   marketplaceName?: string;
 }
 
+interface FooterLink {
+  label: string;
+  url: string;
+}
+
+interface FooterSection {
+  title: string;
+  links: FooterLink[];
+  enabled: boolean;
+}
+
+interface FooterSettings {
+  aboutText: string;
+  socialLinks: any[];
+  customSections: FooterSection[];
+  contactInfo: {
+    phone: string;
+    email: string;
+    address: string;
+  };
+  copyrightText: string;
+  showCategories: boolean;
+  maxCategoriesDisplay: number;
+}
+
 export default function Footer({ categories = [], marketplaceName = 'GaliCart' }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
   const { isVendorStore, vendor } = useVendorContext();
   const theme = useThemeClasses();
+  const [footerSettings, setFooterSettings] = useState<FooterSettings | null>(null);
   
   // Use the same category filtering as CategoryNav - only show categories with products
   const { data: vendorCategories = [] } = useCategories({
     vendorId: vendor?.id,
     hideEmptyCategories: true, // Only show categories with products or booking services
   });
+
+  // Fetch footer settings
+  useEffect(() => {
+    const fetchFooterSettings = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/footer-settings`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📥 Footer settings received:', {
+            customSectionsCount: data.customSections?.length,
+            customSections: data.customSections,
+            socialLinksCount: data.socialLinks?.length,
+          });
+          setFooterSettings(data);
+        }
+      } catch (error) {
+        console.error('Error fetching footer settings:', error);
+      }
+    };
+
+    // Only fetch for main marketplace, not vendor stores
+    if (!isVendorStore) {
+      fetchFooterSettings();
+    }
+  }, [isVendorStore]);
 
   // Extract only parent categories (top-level) for footer display
   const parentCategories = vendorCategories.map(cat => ({
@@ -51,6 +102,28 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
     </Link>
   );
 
+  // Calculate number of columns needed
+  const columnCount = (
+    1 + // About section
+    (displayCategories.length > 0 && footerSettings?.showCategories !== false ? 1 : 0) + // Categories
+    (footerSettings?.customSections?.filter(s => s.enabled).length || 0) + // Custom sections
+    (!isVendorStore && footerSettings ? 1 : 0) + // Contact section
+    (isVendorStore && vendor ? 2 : 0) // Vendor sections
+  );
+
+  const gridClass = columnCount <= 2 ? 'lg:grid-cols-2' : 
+                    columnCount === 3 ? 'lg:grid-cols-3' : 
+                    columnCount === 4 ? 'lg:grid-cols-4' : 
+                    'lg:grid-cols-5';
+
+  console.log('🔵 Footer render:', { 
+    columnCount, 
+    gridClass,
+    isVendorStore,
+    hasFooterSettings: !!footerSettings,
+    customSectionsCount: footerSettings?.customSections?.length 
+  });
+
   return (
     <footer className="mt-12">
       <div className={theme.combine(
@@ -58,35 +131,51 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
         isVendorStore ? 'vendor-footer-bg' : 'bg-secondary text-secondary-foreground'
       )}>
         <div className="container mx-auto px-4 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className={`grid grid-cols-1 md:grid-cols-2 ${gridClass} gap-8`}>
             {/* About Section */}
             <div>
             <h3 className="text-xl font-bold mb-4">{marketplaceName}</h3>
             <p className="text-sm mb-4 opacity-90">
-              Your one-stop destination for quality products from trusted vendors across multiple categories.
+              {!isVendorStore && footerSettings ? footerSettings.aboutText : 
+                'Your one-stop destination for quality products from trusted vendors across multiple categories.'}
             </p>
             <div className="flex gap-3">
-              <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                <Facebook className="w-4 h-4" />
-              </a>
-              <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                <Twitter className="w-4 h-4" />
-              </a>
-              <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                <Linkedin className="w-4 h-4" />
-              </a>
+              {!isVendorStore && footerSettings ? (
+                footerSettings.socialLinks.filter(link => link.enabled).map((link, idx) => {
+                  const icons = { facebook: Facebook, twitter: Twitter, instagram: Instagram, linkedin: Linkedin, youtube: Youtube };
+                  const Icon = icons[link.platform as keyof typeof icons] || Facebook;
+                  return (
+                    <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer" 
+                       className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                      <Icon className="w-4 h-4" />
+                    </a>
+                  );
+                })
+              ) : (
+                <>
+                  <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                    <Facebook className="w-4 h-4" />
+                  </a>
+                  <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                    <Twitter className="w-4 h-4" />
+                  </a>
+                  <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                    <Instagram className="w-4 h-4" />
+                  </a>
+                  <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                    <Linkedin className="w-4 h-4" />
+                  </a>
+                </>
+              )}
             </div>
           </div>
 
           {/* Shop Categories */}
-          {displayCategories.length > 0 && (
+          {displayCategories.length > 0 && footerSettings?.showCategories !== false && (
             <div>
               <h4 className="font-semibold mb-4 text-lg">Shop by Category</h4>
               <ul className="space-y-2 text-sm opacity-90">
-                {displayCategories.slice(0, 6).map(cat => (
+                {displayCategories.slice(0, footerSettings?.maxCategoriesDisplay || 6).map(cat => (
                   <li key={cat.id}>
                     <Link 
                       href={`/#category-${cat.slug}`}
@@ -110,69 +199,102 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
             </div>
           )}
 
-          {/* Customer Support */}
-          <div>
-            <h4 className="font-semibold mb-4 text-lg">
-              {isVendorStore ? 'Store Info' : 'Help Center'}
-            </h4>
-            <ul className="space-y-2 text-sm opacity-90">
-              {isVendorStore ? (
-                <>
+          {/* Custom Sections from Admin */}
+          {!isVendorStore && footerSettings && footerSettings.customSections
+            .filter(section => section.enabled)
+            .map((section, idx) => {
+              console.log(`🔸 Rendering section ${idx}:`, section.title, `with ${section.links?.length || 0} links`);
+              return (
+                <div key={idx}>
+                  <h4 className="font-semibold mb-4 text-lg">{section.title}</h4>
+                  <ul className="space-y-2 text-sm opacity-90">
+                    {section.links && section.links.length > 0 ? (
+                      section.links.map((link, linkIdx) => (
+                        <li key={linkIdx}>
+                          <FooterLink href={link.url}>{link.label}</FooterLink>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="text-gray-400 italic">No links configured</li>
+                    )}
+                  </ul>
+                </div>
+              );
+            })
+          }
+
+          {/* Vendor Store - Hardcoded Sections */}
+          {isVendorStore && (
+            <>
+              <div>
+                <h4 className="font-semibold mb-4 text-lg">Store Info</h4>
+                <ul className="space-y-2 text-sm opacity-90">
                   <li><FooterLink href="/about">About Us</FooterLink></li>
                   <li><FooterLink href="/contact">Contact Store</FooterLink></li>
                   <li><FooterLink href="/shipping">Shipping Policy</FooterLink></li>
                   <li><FooterLink href="/returns">Return Policy</FooterLink></li>
-                </>
-              ) : (
-                <>
-                  <li><FooterLink href="/help">Help Center</FooterLink></li>
-                  <li><FooterLink href="/contact">Contact Us</FooterLink></li>
-                  <li><FooterLink href="/shipping">Shipping Info</FooterLink></li>
-                  <li><FooterLink href="/returns">Returns</FooterLink></li>
-                  <li><FooterLink href="/faq">FAQ</FooterLink></li>
-                  <li><FooterLink href="/track-order">Track Your Order</FooterLink></li>
-                </>
-              )}
-            </ul>
-          </div>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4 text-lg">Customer Account</h4>
+                <ul className="space-y-2 text-sm mb-6 opacity-90">
+                  <li><FooterLink href="/login">Login / Register</FooterLink></li>
+                  <li><FooterLink href="/dashboard">My Dashboard</FooterLink></li>
+                  <li><FooterLink href="/orders">Order History</FooterLink></li>
+                  <li><FooterLink href="/wishlist">My Wishlist</FooterLink></li>
+                </ul>
+              </div>
+            </>
+          )}
 
-          {/* Account & Contact */}
-          <div>
-            <h4 className="font-semibold mb-4 text-lg">
-              {isVendorStore ? 'Customer Account' : 'My Account'}
-            </h4>
-            <ul className="space-y-2 text-sm mb-6 opacity-90">
-              <li><FooterLink href="/login">Login / Register</FooterLink></li>
-              <li><FooterLink href="/dashboard">My Dashboard</FooterLink></li>
-              <li><FooterLink href="/orders">Order History</FooterLink></li>
-              <li><FooterLink href="/wishlist">My Wishlist</FooterLink></li>
-            </ul>
+          {/* Contact Info Section */}
+          {!isVendorStore && footerSettings && (
+            <div>
+              <h4 className="font-semibold mb-4 text-lg">Contact Us</h4>
+              <div className="space-y-2 text-sm opacity-90">
+                {footerSettings.contactInfo.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    <span>{footerSettings.contactInfo.phone}</span>
+                  </div>
+                )}
+                {footerSettings.contactInfo.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    <FooterLink href={`mailto:${footerSettings.contactInfo.email}`}>
+                      {footerSettings.contactInfo.email}
+                    </FooterLink>
+                  </div>
+                )}
+                {footerSettings.contactInfo.address && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 mt-0.5" />
+                    <span style={{ whiteSpace: 'pre-line' }}>{footerSettings.contactInfo.address}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-            {isVendorStore && vendor && (
+          {/* Vendor Contact */}
+          {isVendorStore && vendor && (
+            <div>
+              <h4 className="font-semibold mb-4 text-lg">Store Contact</h4>
               <div className="space-y-2 text-sm opacity-90">
                 <div className="flex items-center gap-2">
                   <Store className="w-4 h-4" />
                   <span className="font-semibold">{vendor.businessName}</span>
                 </div>
-                {vendor.contactEmail && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    <FooterLink href={`mailto:${vendor.contactEmail}`}>
-                      {vendor.contactEmail}
-                    </FooterLink>
-                  </div>
-                )}
-                {vendor.contactPhone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4" />
-                    <span>{vendor.contactPhone}</span>
-                  </div>
-                )}
+                {/* Contact details can be added to vendor interface if needed */}
               </div>
-            )}
+            </div>
+          )}
 
-            {!isVendorStore && (
-              <div className="space-y-2 text-sm">
+          {/* Default Contact for Non-Vendor without Settings */}
+          {!isVendorStore && !footerSettings && (
+            <div>
+              <h4 className="font-semibold mb-4 text-lg">Contact Us</h4>
+              <div className="space-y-2 text-sm opacity-90">
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4" />
                   <span>+1 (555) 123-4567</span>
@@ -188,8 +310,8 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
                   <span>123 Market Street<br />City, State 12345</span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom Bar */}
@@ -199,7 +321,7 @@ export default function Footer({ categories = [], marketplaceName = 'GaliCart' }
         )}>
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-center text-sm opacity-90">
-              © {currentYear} {marketplaceName}. All rights reserved.
+              © {currentYear} {marketplaceName}. {footerSettings?.copyrightText || 'All rights reserved.'}
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm opacity-90">
               <FooterLink href="/privacy-policy">Privacy Policy</FooterLink>

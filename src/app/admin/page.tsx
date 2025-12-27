@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette, FileText } from 'lucide-react';
+import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette, FileText, LayoutList } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import UnifiedHeader from '@/components/UnifiedHeader';
 
@@ -46,6 +46,13 @@ function AdminDashboardContent() {
       icon: FileText,
       href: '/admin/pages',
       color: 'bg-cyan-500',
+    },
+    {
+      title: 'Footer Settings',
+      description: 'Customize footer content and links',
+      icon: LayoutList,
+      href: '/admin/footer-settings',
+      color: 'bg-slate-500',
     },
     {
       title: 'Common Filters',
