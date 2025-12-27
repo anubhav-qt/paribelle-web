@@ -54,3 +54,51 @@ export function getVendorId(): string | null {
     return null;
   }
 }
+
+/**
+ * Get current user's ID
+ */
+export function getUserId(): string | null {
+  try {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return null;
+    
+    const user = JSON.parse(userStr);
+    return user.id || null;
+  } catch (error) {
+    console.error('Error getting user ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if current user is super admin
+ */
+export function isSuperAdmin(): boolean {
+  try {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return false;
+    
+    const user = JSON.parse(userStr);
+    return user.role === 'super_admin';
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Platform vendor ID for marketplace products created by super admin
+ */
+export const PLATFORM_VENDOR_ID = '00000000-0000-0000-0000-000000000001';
+
+/**
+ * Get vendorId for product creation
+ * For super admin: returns platform vendor ID (for marketplace products)
+ * For vendors: returns their vendorId
+ */
+export function getProductVendorId(): string | null {
+  if (isSuperAdmin()) {
+    return PLATFORM_VENDOR_ID; // Use platform vendor ID for marketplace products
+  }
+  return getVendorId(); // Use actual vendorId for vendor products
+}

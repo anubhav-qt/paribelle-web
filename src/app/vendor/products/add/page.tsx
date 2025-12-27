@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
-import { getVendorId } from '@/lib/auth';
+import { getVendorId, getUserId, isSuperAdmin, getProductVendorId } from '@/lib/auth';
 
 export default function VendorAddProductPage() {
   const router = useRouter();
@@ -64,12 +64,11 @@ export default function VendorAddProductPage() {
   }, [formData.categoryIds, productType]);
 
   const generateSKU = () => {
-    const vendorId = getVendorId();
-    if (vendorId) {
-      const vendorPrefix = vendorId.substring(0, 8).toUpperCase();
-      const timestamp = Date.now().toString().slice(-6);
-      setFormData(prev => ({ ...prev, sku: `${vendorPrefix}-${timestamp}` }));
-    }
+    const isAdmin = isSuperAdmin();
+    const prefix = isAdmin ? 'ADMIN' : getVendorId()?.substring(0, 8).toUpperCase() || 'VENDOR';
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+    setFormData(prev => ({ ...prev, sku: `${prefix}-${timestamp}-${random}` }));
   };
 
   const fetchCategories = async () => {
@@ -218,9 +217,9 @@ export default function VendorAddProductPage() {
         return;
       }
 
-      const vendorId = getVendorId();
+      const vendorId = getProductVendorId();
       if (!vendorId) {
-        alert('Vendor ID not found');
+        alert(isSuperAdmin() ? 'User ID not found' : 'Vendor ID not found');
         return;
       }
 
@@ -309,7 +308,7 @@ export default function VendorAddProductPage() {
 
       if (response.ok) {
         alert('Product created successfully!');
-        router.push('/vendor/products');
+        router.push(isSuperAdmin() ? '/admin/products' : '/vendor/products');
       } else {
         const error = await response.json();
         alert(`Failed to create product: ${error.message || 'Unknown error'}`);
@@ -327,13 +326,15 @@ export default function VendorAddProductPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <Link
-            href="/vendor/products"
+            href={isSuperAdmin() ? '/admin/products' : '/vendor/products'}
             className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
           >
             ← Back to Products
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
-          <p className="text-gray-600 mt-2">Create a new product for your store</p>
+          <p className="text-gray-600 mt-2">
+            {isSuperAdmin() ? 'Create a new marketplace product' : 'Create a new product for your store'}
+          </p>
         </div>
 
         <div className="bg-white rounded-lg shadow p-8">
@@ -671,7 +672,9 @@ export default function VendorAddProductPage() {
                       🔄
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Auto-generated with vendor prefix</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isSuperAdmin() ? 'Auto-generated with ADMIN prefix' : 'Auto-generated with vendor prefix'}
+                  </p>
                 </div>
               </div>
             )}
@@ -949,7 +952,7 @@ export default function VendorAddProductPage() {
                 {submitting ? 'Creating...' : 'Create Product'}
               </button>
               <Link
-                href="/vendor/products"
+                href={isSuperAdmin() ? '/admin/products' : '/vendor/products'}
                 className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 transition text-center"
               >
                 Cancel
