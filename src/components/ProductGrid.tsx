@@ -34,6 +34,10 @@ interface Product {
       duration?: number;
     };
   };
+  // Variation support
+  isParent?: boolean;
+  variations?: any[];
+  variationThemes?: string[];
   vendor?: {
     id: string;
     storeName?: string;
@@ -159,6 +163,14 @@ export default function ProductGrid({
               </span>
             )}
           </div>
+          
+          {/* Variation indicator */}
+          {product.isParent && product.variations && product.variations.length > 0 && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              {product.variations.length} options available
+            </div>
+          )}
+          
           {showLocationInfo && isLocationFilterActive && product.vendor?.locationCity && (
             <div className={theme.combine('text-xs mt-1', theme.textMuted)}>
               📍 {product.vendor.locationCity.name}

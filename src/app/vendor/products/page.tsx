@@ -20,6 +20,12 @@ interface Product {
   images?: string[];
   productType: 'physical' | 'booking';
   categories?: Array<{ id: string; name: string }>;
+  // Variation support
+  isParent?: boolean;
+  parentProductId?: string;
+  variations?: Product[];
+  variationAttributes?: Record<string, string>;
+  variationThemes?: string[];
   attributes?: {
     booking?: {
       duration: number;
@@ -813,8 +819,27 @@ export default function VendorProductsPage() {
                           <div className="max-w-xs">
                             <div className="text-sm font-medium text-gray-900 truncate">
                               {product.name}
+                              {product.isParent && product.variations && (
+                                <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                                  {product.variations.length} variants
+                                </span>
+                              )}
+                              {product.parentProductId && (
+                                <span className="ml-2 text-xs text-gray-500">
+                                  (Variant)
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-gray-500">{product.slug}</div>
+                            {product.variationAttributes && (
+                              <div className="text-xs text-gray-600 mt-0.5">
+                                {Object.entries(product.variationAttributes).map(([key, value]) => (
+                                  <span key={key} className="mr-2">
+                                    {key}: <strong>{value}</strong>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>

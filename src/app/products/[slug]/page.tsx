@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Star, Heart, Share2, Package, ArrowLeft, Calendar, Clock, CreditCard, ExternalLink, ShoppingCart, Facebook, Twitter, Linkedin, Link as LinkIcon, Check, XCircle } from 'lucide-react';
 import BookingCalendar from '@/components/BookingCalendar';
 import ProductImageGallery from '@/components/ProductImageGallery';
+import VariationSelector from '@/components/VariationSelector';
 import { getCurrencySymbol } from '@/lib/currency';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
@@ -52,6 +53,10 @@ interface Product {
   productType: 'physical' | 'booking';
   stockQuantity?: number;
   vendorId?: string;
+  // Variation support
+  isParent?: boolean;
+  variations?: any[];
+  variationThemes?: string[];
   vendor?: {
     id: string;
     businessName: string;
@@ -97,6 +102,7 @@ export default function ProductDetailPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [userOrderItemId, setUserOrderItemId] = useState<string | undefined>();
+  const [selectedVariation, setSelectedVariation] = useState<any>(null);
 
   useEffect(() => {
     // Reset product state when slug changes to prevent showing stale data
@@ -442,14 +448,24 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     if (!product) return;
 
+    // For products with variations, require a selection
+    if (product.isParent && !selectedVariation) {
+      alert('Please select all product options.');
+      return;
+    }
+
+    // Use selected variation or main product
+    const productToAdd = selectedVariation || product;
+    const stockQuantity = product.isParent ? selectedVariation?.stockQuantity : product.stockQuantity;
+
     // Check stock for physical products
-    if (product.productType === 'physical' && product.stockQuantity !== undefined) {
-      if (product.stockQuantity === 0) {
+    if (product.productType === 'physical' && stockQuantity !== undefined) {
+      if (stockQuantity === 0) {
         alert('Sorry, this product is out of stock.');
         return;
       }
-      if (quantity > product.stockQuantity) {
-        alert(`Sorry, only ${product.stockQuantity} items available.`);
+      if (quantity > stockQuantity) {
+        alert(`Sorry, only ${stockQuantity} items available.`);
         return;
       }
     }
@@ -458,17 +474,18 @@ export default function ProductDetailPage() {
     
     try {
       addToCart({
-        productId: product.id,
-        name: product.name,
-        slug: product.slug,
-        price: Number(product.price),
+        productId: selectedVariation?.id || product.id,
+        name: selectedVariation ? `${product.name} - ${Object.values(selectedVariation.variationAttributes).join(' ')}` : product.name,
+        slug: selectedVariation?.slug || product.slug,
+        price: Number(selectedVariation?.price || product.price),
         quantity: quantity,
-        image: product.images?.[0] || product.featuredImage || '/placeholder-product.png',
+        image: (selectedVariation?.images?.[0] || selectedVariation?.featuredImage) || product.images?.[0] || product.featuredImage || '/placeholder-product.png',
         vendorId: product.vendorId || '',
         vendorName: product.vendor?.storeName || product.vendor?.businessName || 'Unknown Vendor',
         productType: product.productType,
-        stockQuantity: product.stockQuantity,
-        maxQuantity: product.stockQuantity,
+        stockQuantity: stockQuantity,
+        maxQuantity: stockQuantity,
+        variationAttributes: selectedVariation?.variationAttributes,
       });
 
       // Reset quantity after adding to cart
@@ -663,6 +680,19 @@ export default function ProductDetailPage() {
                 <p className="text-sm text-muted-foreground">Inclusive of all taxes</p>
               </div>
 
+              {/* Product Variations */}
+              {product.isParent && product.variations && product.variations.length > 0 && product.variationThemes && (
+                <div className="mb-6">
+                  <VariationSelector
+                    variations={product.variations}
+                    variationThemes={product.variationThemes}
+                    currentPrice={typeof product.price === 'string' ? parseFloat(product.price) : product.price}
+                    currency={getCurrencySymbol(currency)}
+                    onVariationSelect={(variation) => setSelectedVariation(variation)}
+                  />
+                </div>
+              )}
+
               {/* Quantity or Booking Info */}
               {product.productType === 'physical' ? (
                 <div className="mb-6">
@@ -684,7 +714,15 @@ export default function ProductDetailPage() {
                       +
                     </button>
                   </div>
-                  {product.stockQuantity !== undefined && (
+                  {product.isParent ? (
+                    selectedVariation && selectedVariation.stockQuantity !== undefined && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {selectedVariation.stockQuantity > 0 
+                          ? `${selectedVariation.stockQuantity} in stock` 
+                          : 'Out of stock'}
+                      </p>
+                    )
+                  ) : product.stockQuantity !== undefined && (
                     <p className="text-sm text-muted-foreground mt-2">
                       {product.stockQuantity > 0 
                         ? `${product.stockQuantity} in stock` 
@@ -740,7 +778,12 @@ export default function ProductDetailPage() {
                   <>
                     <button 
                       onClick={handleAddToCart}
-                      disabled={addToCartLoading || (product.stockQuantity !== undefined && product.stockQuantity === 0)}
+                      disabled={
+                        addToCartLoading || 
+                        (product.isParent && !selectedVariation) ||
+                        (product.isParent && selectedVariation && selectedVariation.stockQuantity === 0) ||
+                        (!product.isParent && product.stockQuantity !== undefined && product.stockQuantity === 0)
+                      }
                       className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {addToCartLoading ? (
@@ -751,13 +794,22 @@ export default function ProductDetailPage() {
                       ) : (
                         <>
                           <ShoppingCart className="w-5 h-5" />
-                          {product.stockQuantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                          {product.isParent && !selectedVariation 
+                            ? 'Select Options' 
+                            : (product.isParent && selectedVariation && selectedVariation.stockQuantity === 0) || (!product.isParent && product.stockQuantity === 0)
+                            ? 'Out of Stock' 
+                            : 'Add to Cart'}
                         </>
                       )}
                     </button>
                     <button 
                       onClick={handleBuyNow}
-                      disabled={addToCartLoading || (product.stockQuantity !== undefined && product.stockQuantity === 0)}
+                      disabled={
+                        addToCartLoading || 
+                        (product.isParent && !selectedVariation) ||
+                        (product.isParent && selectedVariation && selectedVariation.stockQuantity === 0) ||
+                        (!product.isParent && product.stockQuantity !== undefined && product.stockQuantity === 0)
+                      }
                       className="flex-1 bg-accent text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Buy Now

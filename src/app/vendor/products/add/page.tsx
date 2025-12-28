@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
+import ProductVariationBuilder from '@/components/ProductVariationBuilder';
 import { getVendorId, getUserId, isSuperAdmin, getProductVendorId } from '@/lib/auth';
 
 export default function VendorAddProductPage() {
@@ -17,6 +18,14 @@ export default function VendorAddProductPage() {
   // Category filters and product attributes
   const [categoryFilters, setCategoryFilters] = useState<any[]>([]);
   const [productAttributes, setProductAttributes] = useState<Record<string, any>>({});
+  
+  // Product variations
+  const [hasVariations, setHasVariations] = useState(false);
+  const [variations, setVariations] = useState<any[]>([]);
+  const [variationThemes, setVariationThemes] = useState<string[]>([]);
+  
+  // Help section
+  const [showHelp, setShowHelp] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -239,6 +248,14 @@ export default function VendorAddProductPage() {
         productType,
       };
 
+      // Add variations if present
+      if (hasVariations && variations.length > 0) {
+        productData.variations = variations;
+        productData.variationThemes = variationThemes;
+        // For parent products with variations, don't require stock
+        productData.stockQuantity = 0;
+      }
+
       // Add attributes for physical products
       if (productType === 'physical' && Object.keys(productAttributes).length > 0) {
         // Process attributes and handle custom values
@@ -323,19 +340,280 @@ export default function VendorAddProductPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
+      {/* Unique Gradient Header */}
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-xl">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Link
             href={isSuperAdmin() ? '/admin/products' : '/vendor/products'}
-            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+            className="text-white/90 hover:text-white mb-4 inline-flex items-center gap-2 transition group"
           >
-            ← Back to Products
+            <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Products
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
-          <p className="text-gray-600 mt-2">
-            {isSuperAdmin() ? 'Create a new marketplace product' : 'Create a new product for your store'}
-          </p>
+          
+          <div className="flex items-start gap-4">
+            <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl">
+              <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h1 className="text-4xl font-bold mb-2 drop-shadow-lg">Add New Product</h1>
+              <p className="text-white/90 text-lg">
+                {isSuperAdmin() 
+                  ? '✨ Create and publish new products to the marketplace' 
+                  : '🚀 Showcase your products and grow your business'}
+              </p>
+              <div className="flex gap-4 mt-3 text-sm">
+                <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">📦 Simple Products</span>
+                <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">🎨 Product Variations</span>
+                <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">📸 Multi-Image Support</span>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          
+          {/* Help Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setShowHelp(!showHelp)}
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition"
+          >
+            <span className="text-xl">💡</span>
+            <span className="font-medium">{showHelp ? 'Hide' : 'Show'} Beginner's Guide</span>
+          </button>
+        </div>
+
+        {/* Comprehensive Help Section */}
+        {showHelp && (
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg p-8 border-2 border-blue-200">
+            <div className="flex items-start gap-3 mb-6">
+              <span className="text-4xl">📚</span>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Complete Product Creation Guide</h2>
+                <p className="text-gray-600">Follow this step-by-step guide to add your first product</p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Basic Product Guide */}
+              <div className="bg-white rounded-lg p-6 shadow">
+                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="text-2xl">📦</span>
+                  Creating a Basic Product
+                </h3>
+                <div className="space-y-3 text-sm text-gray-700">
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">1.</span>
+                    <div>
+                      <strong>Product Name:</strong> Give your product a clear, descriptive name (e.g., "Men's Cotton T-Shirt" not just "T-Shirt")
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">2.</span>
+                    <div>
+                      <strong>Description:</strong> Write detailed information about your product. Include material, features, care instructions, etc.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">3.</span>
+                    <div>
+                      <strong>Categories:</strong> Select the most specific category. Parent categories are auto-selected.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">4.</span>
+                    <div>
+                      <strong>Price:</strong> Set your selling price. Add "Compare At Price" to show discounts.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">5.</span>
+                    <div>
+                      <strong>SKU:</strong> Auto-generated unique code for your product. You can customize it.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">6.</span>
+                    <div>
+                      <strong>Stock:</strong> Enter how many items you have available.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">7.</span>
+                    <div>
+                      <strong>Images:</strong> Upload clear, high-quality product photos. First image is your main image.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Variations Guide */}
+              <div className="bg-white rounded-lg p-6 shadow">
+                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="text-2xl">🎨</span>
+                  Creating Products with Variations
+                </h3>
+                <div className="space-y-3 text-sm text-gray-700">
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                    <strong>What are variations?</strong> Use when your product comes in different colors, sizes, or styles - each with separate stock and possibly different prices.
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">1.</span>
+                    <div>
+                      <strong>Select Category:</strong> Choose a category that has attributes like "Color" or "Size" configured.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">2.</span>
+                    <div>
+                      <strong>Enable Variations:</strong> Check the "This product has multiple options" checkbox.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">3.</span>
+                    <div>
+                      <strong>Select Variation Types:</strong> Choose which attributes to use (e.g., Color + Size).
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">4.</span>
+                    <div>
+                      <strong>Pick Options:</strong> Select specific values (e.g., Red, Blue, Black for color; S, M, L for size).
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">5.</span>
+                    <div>
+                      <strong>Auto-Generation:</strong> System creates all combinations automatically (e.g., Red-S, Red-M, Blue-S, etc.).
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">6.</span>
+                    <div>
+                      <strong>Set Stock & Prices:</strong> For each variation, enter stock quantity. Adjust prices if needed (e.g., XL size costs more).
+                    </div>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded p-3 mt-3">
+                    <strong>💡 Example:</strong> T-shirt in 3 colors × 4 sizes = 12 variations total
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Attributes Guide */}
+              <div className="bg-white rounded-lg p-6 shadow">
+                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="text-2xl">🏷️</span>
+                  Product Attributes (Filters)
+                </h3>
+                <div className="space-y-3 text-sm text-gray-700">
+                  <p>
+                    <strong>What are attributes?</strong> These help customers filter and find products easily.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600">✓</span>
+                      <div><strong>Single-Value Attributes:</strong> Brand, Material, Style - used for filtering only</div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600">✓</span>
+                      <div><strong>Variation Attributes:</strong> Color, Size - used to create different product options</div>
+                    </div>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded p-3 mt-3">
+                    <strong>💡 Tip:</strong> Fill in attributes even for basic products - it makes them easier to find!
+                  </div>
+                </div>
+              </div>
+
+              {/* Common Mistakes */}
+              <div className="bg-white rounded-lg p-6 shadow">
+                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="text-2xl">⚠️</span>
+                  Common Mistakes to Avoid
+                </h3>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600">✗</span>
+                    <div>Creating separate products for each color/size (use variations instead!)</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600">✗</span>
+                    <div>Using generic names like "Product 1" or "Item"</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600">✗</span>
+                    <div>Forgetting to add product images</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600">✗</span>
+                    <div>Not setting stock quantity (shows as out of stock)</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600">✗</span>
+                    <div>Skipping product description (customers need details!)</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600">✗</span>
+                    <div>Not selecting the right category (affects visibility)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Tips */}
+            <div className="mt-6 bg-white rounded-lg p-6 shadow">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <span className="text-2xl">⚡</span>
+                Quick Tips for Success
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 text-xl">✓</span>
+                  <div>
+                    <strong>Use high-quality images:</strong> Clear, well-lit photos sell better
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 text-xl">✓</span>
+                  <div>
+                    <strong>Write detailed descriptions:</strong> Answer questions before customers ask
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 text-xl">✓</span>
+                  <div>
+                    <strong>Competitive pricing:</strong> Research similar products' prices
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 text-xl">✓</span>
+                  <div>
+                    <strong>Accurate stock:</strong> Keep inventory numbers up to date
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 text-xl">✓</span>
+                  <div>
+                    <strong>Use variations wisely:</strong> Great for similar items with different options
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 text-xl">✓</span>
+                  <div>
+                    <strong>Regular updates:</strong> Add new photos, update descriptions as needed
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -379,6 +657,7 @@ export default function VendorAddProductPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Product Name *
+                <span className="ml-2 text-xs font-normal text-gray-500">💡 Be descriptive and specific</span>
               </label>
               <input
                 type="text"
@@ -406,20 +685,23 @@ export default function VendorAddProductPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description *
+                <span className="ml-2 text-xs font-normal text-gray-500">💡 Include features, materials, care instructions</span>
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={4}
-                placeholder="Enter product description"
+                placeholder="Example: This premium cotton t-shirt is made from 100% organic cotton. Features include a comfortable crew neck, reinforced stitching, and pre-shrunk fabric. Machine washable."
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">💡 Tip: Good descriptions answer: What is it? What's it made of? How to use/care for it?</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Categories
+                <span className="ml-2 text-xs font-normal text-gray-500">💡 Choose the most specific category</span>
               </label>
               <div className="w-full px-4 py-3 border border-gray-300 rounded-lg max-h-48 overflow-y-auto bg-white">
                 {loading ? (
@@ -462,6 +744,7 @@ export default function VendorAddProductPage() {
               <p className="text-xs text-gray-500 mt-1">
                 {formData.categoryIds.length} categor{formData.categoryIds.length === 1 ? 'y' : 'ies'} selected. Select a specific category - parent categories will be auto-selected.
               </p>
+              <p className="text-xs text-blue-600 mt-1">ℹ️ Categories with attributes (like Color, Size) enable product variations feature</p>
             </div>
 
             {/* NEW: Dynamic Product Attributes Based on Category */}
@@ -596,10 +879,90 @@ export default function VendorAddProductPage() {
               </div>
             )}
 
+            {/* Variations Not Available Message */}
+            {productType === 'physical' && categoryFilters.length === 0 && formData.categoryIds.length > 0 && (
+              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">ℹ️</span>
+                  <div className="text-sm text-amber-900">
+                    <strong className="block mb-1">Product Variations Not Available</strong>
+                    <p>The selected category doesn't have attributes configured yet (like Color, Size, etc.).</p>
+                    <p className="mt-2">
+                      <strong>To use variations:</strong> Select a category that has filter attributes, or contact admin to add attributes to this category.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Product Variations Section */}
+            {productType === 'physical' && categoryFilters.length > 0 && (
+              <div className="border-t pt-6">
+                <div className="mb-4">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hasVariations}
+                      onChange={(e) => {
+                        setHasVariations(e.target.checked);
+                        if (!e.target.checked) {
+                          setVariations([]);
+                          setVariationThemes([]);
+                        }
+                      }}
+                      className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <div>
+                      <span className="text-lg font-semibold text-gray-900">
+                        This product has multiple options (like colors or sizes)
+                      </span>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Enable this to create variations with different attributes, prices, and stock levels
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Inline Help for Variations */}
+                {hasVariations && (
+                  <div className="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">ℹ️</span>
+                      <div className="text-sm text-blue-900">
+                        <strong className="block mb-2">How Product Variations Work:</strong>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li><strong>Select variation types</strong> below (e.g., Color, Size)</li>
+                          <li><strong>Choose specific options</strong> for each type (e.g., Red, Blue for colors)</li>
+                          <li><strong>System auto-generates</strong> all combinations (e.g., Red-S, Red-M, Blue-S, Blue-M)</li>
+                          <li><strong>Set stock and prices</strong> for each variation individually</li>
+                          <li><strong>No need to set base stock</strong> - each variation has its own inventory</li>
+                        </ol>
+                        <p className="mt-2 text-blue-800">
+                          <strong>💡 Example:</strong> A shirt with 3 colors × 4 sizes = 12 separate products (variations) created automatically!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {hasVariations && (
+                  <ProductVariationBuilder
+                    categoryFilters={categoryFilters}
+                    basePrice={parseFloat(formData.price) || 0}
+                    baseSKU={formData.sku}
+                    productName={formData.name}
+                    onVariationsChange={setVariations}
+                    onVariationThemesChange={setVariationThemes}
+                  />
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Price *
+                  <span className="ml-2 text-xs font-normal text-gray-500">💡 Your selling price</span>
                 </label>
                 <input
                   type="number"
@@ -612,11 +975,13 @@ export default function VendorAddProductPage() {
                   placeholder="0.00"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">💰 Set competitive pricing based on market research</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Compare At Price
+                  <span className="ml-2 text-xs font-normal text-gray-500">💡 Original price (for showing discounts)</span>
                 </label>
                 <input
                   type="number"
@@ -628,31 +993,38 @@ export default function VendorAddProductPage() {
                   step="0.01"
                   placeholder="0.00"
                 />
+                <p className="text-xs text-gray-500 mt-1">🏷️ Optional: Shows "X% OFF" badge if higher than price</p>
               </div>
             </div>
 
             {/* Physical Product Specific Fields */}
             {productType === 'physical' && (
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Stock Quantity *
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.stockQuantity}
-                    onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
-                    onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, stockQuantity: '' })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    min="0"
-                    placeholder="0"
-                    required
-                  />
-                </div>
+                {/* Hide stock quantity when variations are enabled */}
+                {!hasVariations && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Stock Quantity *
+                      <span className="ml-2 text-xs font-normal text-gray-500">💡 How many do you have?</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.stockQuantity}
+                      onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
+                      onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, stockQuantity: '' })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      min="0"
+                      placeholder="0"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">📦 Available inventory. Shows "Out of Stock" if 0</p>
+                  </div>
+                )}
 
-                <div>
+                <div className={hasVariations ? 'col-span-2' : ''}>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    SKU *
+                    SKU {hasVariations ? '(Base)' : '*'}
+                    <span className="ml-2 text-xs font-normal text-gray-500">💡 Unique product code</span>
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -661,7 +1033,7 @@ export default function VendorAddProductPage() {
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                       className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Auto-generated"
-                      required
+                      required={!hasVariations}
                     />
                     <button
                       type="button"
@@ -673,8 +1045,11 @@ export default function VendorAddProductPage() {
                     </button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    {isSuperAdmin() ? 'Auto-generated with ADMIN prefix' : 'Auto-generated with vendor prefix'}
+                    {hasVariations 
+                      ? '📦 Base SKU for variation generation (e.g., SHIRT-BASE → SHIRT-RED-S, SHIRT-BLUE-M)' 
+                      : (isSuperAdmin() ? 'Auto-generated with ADMIN prefix' : 'Auto-generated with vendor prefix')}
                   </p>
+                  <p className="text-xs text-blue-600 mt-1">ℹ️ What's a SKU? It's like a barcode - a unique ID to track this product</p>
                 </div>
               </div>
             )}
