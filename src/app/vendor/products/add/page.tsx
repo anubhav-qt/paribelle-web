@@ -28,6 +28,11 @@ export default function VendorAddProductPage() {
   // Help section
   const [showHelp, setShowHelp] = useState(false);
   
+  // Import/Export functionality
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
   // Prevent hydration errors
   const [mounted, setMounted] = useState(false);
 
@@ -354,6 +359,106 @@ export default function VendorAddProductPage() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const token = localStorage.getItem('token');
+      
+      const vendorId = getVendorId();
+      if (!vendorId) {
+        alert('Vendor ID not found');
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/export-zip/${vendorId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `products-${vendorId}-${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Failed to export products');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export products');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImporting(true);
+      setImportMessage(null);
+      
+      const token = localStorage.getItem('token');
+      
+      const vendorId = getVendorId();
+      if (!vendorId) {
+        setImportMessage({ type: 'error', text: 'Vendor ID not found' });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/import-zip/${vendorId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setImportMessage({
+          type: 'success',
+          text: `Import successful! Created: ${result.created}, Updated: ${result.updated}${
+            result.errors.length > 0 ? `, Errors: ${result.errors.length}` : ''
+          }`,
+        });
+        // Optionally redirect to products list after successful import
+        setTimeout(() => {
+          router.push('/vendor/products');
+        }, 2000);
+      } else {
+        setImportMessage({
+          type: 'error',
+          text: result.message || 'Failed to import products',
+        });
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportMessage({ type: 'error', text: 'Failed to import products' });
+    } finally {
+      setImporting(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <UnifiedHeader showLocationFilter={false} />
@@ -365,13 +470,45 @@ export default function VendorAddProductPage() {
           ← Back to Products
         </Link>
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
-          <p className="text-gray-600 mt-2">
-            {mounted ? (isSuperAdmin() 
-              ? 'Create and publish new products to the marketplace' 
-              : 'Showcase your products and grow your business')
-              : 'Showcase your products and grow your business'}
-          </p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
+              <p className="text-gray-600 mt-2">
+                {mounted ? (isSuperAdmin() 
+                  ? 'Create and publish new products to the marketplace' 
+                  : 'Showcase your products and grow your business')
+                  : 'Showcase your products and grow your business'}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                {exporting ? 'Exporting...' : '📥 Export to ZIP'}
+              </button>
+              <label className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 cursor-pointer text-sm">
+                {importing ? 'Importing...' : '📤 Import from ZIP'}
+                <input
+                  type="file"
+                  accept=".zip"
+                  onChange={handleImport}
+                  disabled={importing}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+          {importMessage && (
+            <div className={`mt-4 p-4 rounded-lg ${
+              importMessage.type === 'success' 
+                ? 'bg-green-50 text-green-800 border border-green-200' 
+                : 'bg-red-50 text-red-800 border border-red-200'
+            }`}>
+              {importMessage.text}
+            </div>
+          )}
         </div>
         <div className="mb-8">
           

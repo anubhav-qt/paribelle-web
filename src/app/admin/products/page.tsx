@@ -41,6 +41,9 @@ export default function AdminProductsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; level: number }>>([]);
   const [vendors, setVendors] = useState<Array<{ id: string; storeName: string }>>([]);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
     price: 0,
@@ -369,6 +372,98 @@ export default function AdminProductsPage() {
     });
   };
 
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const token = localStorage.getItem('token');
+      
+      // For admin, export all products by using 'all' as vendor ID
+      // The backend should handle this special case
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/export-zip/all`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `all-products-${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const error = await response.text();
+        console.error('Export error:', error);
+        alert('Failed to export products');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export products');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImporting(true);
+      setImportMessage(null);
+      
+      const token = localStorage.getItem('token');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // For admin, import all products by using 'all' as vendor ID
+      // The backend should handle this special case
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/import-zip/all`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setImportMessage({
+          type: 'success',
+          text: `Import successful! Created: ${result.created}, Updated: ${result.updated}${
+            result.errors.length > 0 ? `, Errors: ${result.errors.length}` : ''
+          }`,
+        });
+        // Refresh products list after successful import
+        fetchProducts();
+      } else {
+        setImportMessage({
+          type: 'error',
+          text: result.message || 'Failed to import products',
+        });
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportMessage({ type: 'error', text: 'Failed to import products' });
+    } finally {
+      setImporting(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
   const getStatusColor = (status: string) => {
@@ -415,13 +510,43 @@ export default function AdminProductsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Products Management</h1>
             <p className="text-gray-600 mt-2">Manage your product catalog</p>
           </div>
-          <Link 
-            href="/vendor/products/add"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition inline-block"
-          >
-            + Add New Product
-          </Link>
+          <div className="flex gap-3">
+            <button
+              onClick={handleExport}
+              disabled={exporting || products.length === 0}
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {exporting ? 'Exporting...' : '📥 Export to ZIP'}
+            </button>
+            <label className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 cursor-pointer">
+              {importing ? 'Importing...' : '📤 Import from ZIP'}
+              <input
+                type="file"
+                accept=".zip"
+                onChange={handleImport}
+                disabled={importing}
+                className="hidden"
+              />
+            </label>
+            <Link 
+              href="/vendor/products/add"
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition inline-block"
+            >
+              + Add New Product
+            </Link>
+          </div>
         </div>
+
+        {/* Import Message */}
+        {importMessage && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            importMessage.type === 'success' 
+              ? 'bg-green-50 text-green-800 border border-green-200' 
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            {importMessage.text}
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
