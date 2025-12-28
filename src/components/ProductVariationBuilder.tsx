@@ -45,15 +45,23 @@ export default function ProductVariationBuilder({
   const [themeOptions, setThemeOptions] = useState<Record<string, string[]>>({});
   const [variations, setVariations] = useState<Variation[]>([]);
   const [autoGenerate, setAutoGenerate] = useState(true);
+  const [customThemes, setCustomThemes] = useState<VariationTheme[]>([]);
+  const [showCustomThemeForm, setShowCustomThemeForm] = useState(false);
+  const [newThemeName, setNewThemeName] = useState('');
+  const [newThemeOptions, setNewThemeOptions] = useState<string>('');
+  const [customOptionInputs, setCustomOptionInputs] = useState<Record<string, string>>({});
 
   // Get available variation themes from category filters
-  const availableThemes: VariationTheme[] = categoryFilters
+  const categoryThemes: VariationTheme[] = categoryFilters
     .filter(f => ['select', 'checkbox', 'multiselect'].includes(f.type))
     .map(f => ({
       id: f.id,
       label: f.label,
       options: f.options || [],
     }));
+  
+  // Combine category themes with custom themes
+  const availableThemes: VariationTheme[] = [...categoryThemes, ...customThemes];
 
   // Generate all possible combinations
   const generateCombinations = () => {
@@ -100,6 +108,8 @@ export default function ProductVariationBuilder({
         ? prev.filter(id => id !== themeId)
         : [...prev, themeId];
       
+      // Call parent callback immediately with new themes
+      console.log('ProductVariationBuilder: Theme toggled, new themes:', newThemes);
       onVariationThemesChange(newThemes);
       return newThemes;
     });
@@ -164,6 +174,79 @@ export default function ProductVariationBuilder({
     return availableThemes.find(t => t.id === themeId)?.label || themeId;
   };
 
+  // Add custom theme
+  const handleAddCustomTheme = () => {
+    if (!newThemeName.trim()) return;
+    
+    const themeId = newThemeName.toLowerCase().replace(/\s+/g, '_');
+    const options = newThemeOptions
+      .split(',')
+      .map(opt => opt.trim())
+      .filter(opt => opt.length > 0)
+      .map(opt => ({
+        value: opt.toLowerCase().replace(/\s+/g, '_'),
+        label: opt,
+      }));
+
+    if (options.length === 0) {
+      alert('Please add at least one option');
+      return;
+    }
+
+    const newTheme: VariationTheme = {
+      id: themeId,
+      label: newThemeName,
+      options,
+    };
+
+    setCustomThemes([...customThemes, newTheme]);
+    setNewThemeName('');
+    setNewThemeOptions('');
+    setShowCustomThemeForm(false);
+  };
+
+  // Add custom option to existing theme
+  const handleAddCustomOption = (themeId: string) => {
+    const customOption = customOptionInputs[themeId]?.trim();
+    if (!customOption) return;
+
+    const theme = availableThemes.find(t => t.id === themeId);
+    if (!theme) return;
+
+    const newOption: VariationOption = {
+      value: customOption.toLowerCase().replace(/\s+/g, '_'),
+      label: customOption,
+    };
+
+    // Check if option already exists
+    if (theme.options.some(opt => opt.value === newOption.value)) {
+      alert('This option already exists');
+      return;
+    }
+
+    // Update custom themes or create new custom theme with added option
+    const isCustomTheme = customThemes.some(t => t.id === themeId);
+    
+    if (isCustomTheme) {
+      setCustomThemes(customThemes.map(t => 
+        t.id === themeId 
+          ? { ...t, options: [...t.options, newOption] }
+          : t
+      ));
+    } else {
+      // It's a category theme, create a custom version with the new option
+      const updatedTheme = {
+        ...theme,
+        options: [...theme.options, newOption],
+      };
+      
+      // Replace category theme with custom version
+      setCustomThemes([...customThemes, updatedTheme]);
+    }
+
+    setCustomOptionInputs({ ...customOptionInputs, [themeId]: '' });
+  };
+
   return (
     <div className="space-y-6 border rounded-lg p-6 bg-gray-50">
       <div className="flex items-center justify-between">
@@ -181,9 +264,57 @@ export default function ProductVariationBuilder({
 
       {/* Theme Selection */}
       <div>
-        <label className="block text-sm font-medium mb-2">
-          Select Variation Attributes
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium">
+            Select Variation Attributes
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowCustomThemeForm(!showCustomThemeForm)}
+            className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+          >
+            <Plus size={16} />
+            {showCustomThemeForm ? 'Cancel' : 'Add Custom Attribute'}
+          </button>
+        </div>
+
+        {/* Custom Theme Form */}
+        {showCustomThemeForm && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Attribute Name (e.g., "Packet Size", "Flavor")
+              </label>
+              <input
+                type="text"
+                value={newThemeName}
+                onChange={(e) => setNewThemeName(e.target.value)}
+                placeholder="Enter attribute name"
+                className="w-full px-3 py-2 border rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Options (comma-separated, e.g., "Small, Medium, Large")
+              </label>
+              <input
+                type="text"
+                value={newThemeOptions}
+                onChange={(e) => setNewThemeOptions(e.target.value)}
+                placeholder="Small, Medium, Large"
+                className="w-full px-3 py-2 border rounded-lg text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleAddCustomTheme}
+              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
+            >
+              Add Custom Attribute
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {availableThemes.map(theme => (
             <label
@@ -201,6 +332,9 @@ export default function ProductVariationBuilder({
                 className="rounded"
               />
               <span className="text-sm font-medium">{theme.label}</span>
+              {customThemes.some(t => t.id === theme.id) && (
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Custom</span>
+              )}
             </label>
           ))}
         </div>
@@ -213,10 +347,13 @@ export default function ProductVariationBuilder({
 
         return (
           <div key={themeId} className="border-t pt-4">
-            <label className="block text-sm font-medium mb-2">
-              Select {theme.label} Options
-            </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium">
+                Select {theme.label} Options
+              </label>
+            </div>
+            
+            <div className="flex flex-wrap gap-2 mb-3">
               {theme.options.map(option => (
                 <button
                   key={option.value}
@@ -231,6 +368,31 @@ export default function ProductVariationBuilder({
                   {option.label}
                 </button>
               ))}
+            </div>
+
+            {/* Add Custom Option */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customOptionInputs[themeId] || ''}
+                onChange={(e) => setCustomOptionInputs({ ...customOptionInputs, [themeId]: e.target.value })}
+                placeholder={`Add custom ${theme.label.toLowerCase()} option...`}
+                className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomOption(themeId);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => handleAddCustomOption(themeId)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-1"
+              >
+                <Plus size={16} />
+                Add
+              </button>
             </div>
           </div>
         );

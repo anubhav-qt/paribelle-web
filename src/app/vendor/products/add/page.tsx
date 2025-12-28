@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
@@ -26,6 +26,17 @@ export default function VendorAddProductPage() {
   
   // Help section
   const [showHelp, setShowHelp] = useState(false);
+
+  // Filter out attributes used in variations
+  const availableAttributeFilters = useMemo(() => {
+    const filtered = categoryFilters.filter(
+      (filter) => !variationThemes.includes(filter.id)
+    );
+    console.log('Variation themes:', variationThemes);
+    console.log('Category filters:', categoryFilters.map(f => f.id));
+    console.log('Available attribute filters:', filtered.map(f => f.id));
+    return filtered;
+  }, [categoryFilters, variationThemes]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -748,31 +759,36 @@ export default function VendorAddProductPage() {
             </div>
 
             {/* NEW: Dynamic Product Attributes Based on Category */}
-            {productType === 'physical' && categoryFilters.length > 0 && (
+            {productType === 'physical' && availableAttributeFilters.length > 0 && (
               <div className="border-t pt-6 space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-blue-900 mb-2">
                     📋 Product Attributes
                   </h3>
                   <p className="text-sm text-blue-700">
-                    {categoryFilters.length > 0 ? (
+                    {hasVariations && variationThemes.length > 0 ? (
+                      <>
+                        Fill in attributes that apply to <strong>all variations</strong> (like Brand, Material, Origin).
+                        Variation-specific attributes ({variationThemes.map(id => 
+                          categoryFilters.find(f => f.id === id)?.label || id
+                        ).join(', ')}) are handled in the variation builder above.
+                      </>
+                    ) : (
                       <>
                         Fill in attributes like{' '}
                         <strong>
-                          {categoryFilters
+                          {availableAttributeFilters
                             .map(f => f.label)
                             .slice(0, 3)
                             .join(', ')}
                         </strong>
-                        {categoryFilters.length > 3 && ', etc.'} to help customers filter and find your product easily.
+                        {availableAttributeFilters.length > 3 && ', etc.'} to help customers filter and find your product easily.
                       </>
-                    ) : (
-                      'These attributes help customers filter and find your product. Fill in relevant details for better discoverability.'
                     )}
                   </p>
                 </div>
 
-                {categoryFilters.map((filter) => {
+                {availableAttributeFilters.map((filter) => {
                   const isCustomValue = productAttributes[filter.id] === '__custom__';
                   
                   return (
@@ -873,7 +889,9 @@ export default function VendorAddProductPage() {
 
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
                   <p className="text-xs text-yellow-800">
-                    💡 <strong>Tip:</strong> Filling in these attributes makes your product easier to find when customers use filters!
+                    💡 <strong>Tip:</strong> {hasVariations 
+                      ? 'These attributes apply to all variations. Variation-specific details are set in the builder above.' 
+                      : 'Filling in these attributes makes your product easier to find when customers use filters!'}
                   </p>
                 </div>
               </div>
@@ -952,7 +970,10 @@ export default function VendorAddProductPage() {
                     baseSKU={formData.sku}
                     productName={formData.name}
                     onVariationsChange={setVariations}
-                    onVariationThemesChange={setVariationThemes}
+                    onVariationThemesChange={(themes) => {
+                      console.log('Parent received variation themes:', themes);
+                      setVariationThemes(themes);
+                    }}
                   />
                 )}
               </div>
