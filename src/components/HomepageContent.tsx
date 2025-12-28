@@ -321,6 +321,22 @@ export default function HomepageContent({
               <div className={theme.combine(theme.cardBg, 'rounded-lg shadow-sm p-4 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto')}>
                 <h2 className={theme.combine('font-bold text-lg mb-4 sticky top-0 pb-2 z-10', theme.cardBg, theme.text)}>All Categories</h2>
                 <div className="space-y-1">
+                  {/* Bookings & Services */}
+                  {productsByCategory['bookings-services'] && productsByCategory['bookings-services'].length > 0 && (
+                    <div>
+                      <Link
+                        href="#category-bookings-services"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          scrollToElement('category-bookings-services');
+                        }}
+                        className={theme.combine('flex items-center justify-between px-3 py-2 text-sm font-medium rounded transition-colors', theme.text, isVendorStore ? 'hover:vendor-primary' : 'hover:text-primary hover:bg-accent/10')}
+                      >
+                        <span>Bookings & Services</span>
+                      </Link>
+                    </div>
+                  )}
+                  
                   {categories.map((category) => (
                     <div key={category.id}>
                       <Link
