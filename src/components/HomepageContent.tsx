@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import ProductGrid from './ProductGrid';
 import CategoryNav from './CategoryNav';
+import StoreNav from './StoreNav';
 import { useLocale } from 'next-intl';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
@@ -288,6 +289,9 @@ export default function HomepageContent({
 
   return (
     <div>
+      {/* Store Navigation Bar */}
+      <StoreNav />
+      
       {/* Category Navigation Bar */}
       <CategoryNav mode="scroll" />
 
