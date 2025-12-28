@@ -46,24 +46,7 @@ export default function CategoryNav({
   const pathname = usePathname();
   const theme = useThemeClasses();
   const { isVendorStore, vendor } = useVendorContext();
-  
-  console.log('🟡 CategoryNav render:', { 
-    isVendorStore, 
-    vendorId: vendor?.id, 
-    vendorSlug: vendor?.slug,
-    themeClasses: {
-      bg: theme.bg,
-      text: theme.text,
-      primary: theme.primary
-    }
-  });
-
-  const navBarClassName = theme.combine(
-    "border-b sticky top-[76px] z-30",
-    isVendorStore ? 'vendor-nav-bg vendor-border-primary vendor-text' : 'bg-secondary border-secondary-foreground/20'
-  );
-  
-  console.log('🟡 CategoryNav className:', navBarClassName);
+  const [categoryDisplayMode, setCategoryDisplayMode] = useState<'top' | 'sidebar'>('top');
   
   // Use vendorId from props or context
   const effectiveVendorId = vendorId || (isVendorStore && vendor ? vendor.id : undefined);
@@ -79,6 +62,50 @@ export default function CategoryNav({
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [hasBookingProducts, setHasBookingProducts] = useState(false);
+  
+  // Fetch category display mode setting
+  useEffect(() => {
+    console.log('🔷 CategoryNav useEffect triggered', { isVendorStore, hasVendor: !!vendor });
+    
+    // For vendor stores, check the vendor's own categoryDisplayMode setting
+    if (isVendorStore && vendor) {
+      console.log('🔵 CategoryNav: Vendor detected', { vendorId: vendor.id, vendorSlug: vendor.slug, vendor });
+      const vendorDisplayMode = (vendor as any).categoryDisplayMode || 'top';
+      console.log('🔵 CategoryNav: Vendor categoryDisplayMode from vendor object:', vendorDisplayMode);
+      setCategoryDisplayMode(vendorDisplayMode as 'top' | 'sidebar');
+      return;
+    }
+
+    const fetchCategoryDisplayMode = async () => {
+      try {
+        console.log('🔷 CategoryNav: Fetching settings from API...');
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${API_URL}/api/v1/settings/category_display_mode`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('🟢 CategoryNav: Settings received:', data);
+          const mode = data.value || 'top';
+          console.log('🟢 CategoryNav: Display mode value:', mode);
+          console.log('🟢 CategoryNav: Calling setCategoryDisplayMode with:', mode);
+          setCategoryDisplayMode(mode as 'top' | 'sidebar');
+          console.log('🟢 CategoryNav: setCategoryDisplayMode called');
+        } else {
+          console.log('🔴 CategoryNav: Failed to fetch settings, response not ok');
+          setCategoryDisplayMode('top');
+        }
+      } catch (error) {
+        console.error('🔴 CategoryNav: Error fetching category display mode:', error);
+        setCategoryDisplayMode('top');
+      }
+    };
+
+    fetchCategoryDisplayMode();
+  }, [isVendorStore, vendor]);
+
+  // Log whenever categoryDisplayMode changes
+  useEffect(() => {
+    console.log('🟣 CategoryNav: categoryDisplayMode state changed to:', categoryDisplayMode);
+  }, [categoryDisplayMode]);
 
   useEffect(() => {
     if (effectiveVendorId && effectiveVendorSlug) {
@@ -244,7 +271,35 @@ export default function CategoryNav({
     }
   };
 
-  if (isLoading) return null;
+  if (isLoading) {
+    console.log('🟠 CategoryNav: isLoading = true, returning null');
+    return null;
+  }
+
+  console.log('🔵 CategoryNav: Before conditional check', { 
+    categoryDisplayMode,
+    shouldHide: categoryDisplayMode !== 'top',
+    isVendorStore,
+    vendorId: vendor?.id,
+  });
+
+  // Hide CategoryNav if display mode is sidebar
+  if (categoryDisplayMode !== 'top') {
+    console.log('🔴 CategoryNav: HIDING because mode is:', categoryDisplayMode, '(not "top")');
+    return null;
+  }
+  
+  console.log('🟢 CategoryNav: RENDERING - mode is "top"', { 
+    isVendorStore, 
+    categoryDisplayMode,
+    vendorId: vendor?.id, 
+    vendorSlug: vendor?.slug,
+  });
+
+  const navBarClassName = theme.combine(
+    "border-b sticky top-[76px] z-30",
+    isVendorStore ? 'vendor-nav-bg vendor-border-primary vendor-text' : 'bg-secondary border-secondary-foreground/20'
+  );
 
   return (
     <div 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import { Plus, Edit2, Trash2, ChevronRight, Folder, Settings } from 'lucide-react';
 
 interface Category {
@@ -277,15 +278,18 @@ export default function VendorCategoriesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <UnifiedHeader showLocationFilter={false} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <Link
-              href="/vendor/dashboard"
-              className="text-blue-600 hover:text-blue-800 text-sm inline-block mb-2"
-            >
-              ← Back to Dashboard
-            </Link>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          <CategorySidebar />
+          <div className="flex-1 max-w-7xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <Link
+                  href="/vendor/dashboard"
+                  className="text-blue-600 hover:text-blue-800 text-sm inline-block mb-2"
+                >
+                  ← Back to Dashboard
+                </Link>
             <h1 className="text-3xl font-bold">My Categories</h1>
             <p className="text-gray-600 mt-1">
               Manage your custom categories and view global categories
@@ -678,6 +682,8 @@ export default function VendorCategoriesPage() {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );

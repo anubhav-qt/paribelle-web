@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import ThemeBuilder from '@/components/ThemeBuilder';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -151,15 +152,18 @@ export default function VendorThemePage() {
   return (
     <>
       <UnifiedHeader showLocationFilter={false} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <a
-            href="/vendor/dashboard"
-            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
-          >
-            ← Back to Dashboard
-          </a>
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* <CategorySidebar /> */}
+          <div className="flex-1 max-w-7xl">
+            <div className="mb-6">
+              <a
+                href="/vendor/dashboard"
+                className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+              >
+                ← Back to Dashboard
+              </a>
+            </div>
 
         {/* Help Section */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
@@ -397,7 +401,6 @@ export default function VendorThemePage() {
             </div>
           )}
         </div>
-      </div>
 
       <ThemeBuilder
         initialTheme={themeConfig}
@@ -409,6 +412,9 @@ export default function VendorThemePage() {
         backLinkText="Back to Dashboard"
         isAdmin={false}
       />
+          </div>
+        </div>
+      </div>
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
 import ProductVariationBuilder from '@/components/ProductVariationBuilder';
@@ -461,14 +462,17 @@ export default function VendorAddProductPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <UnifiedHeader showLocationFilter={false} />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link
-          href={mounted && isSuperAdmin() ? '/admin/products' : '/vendor/products'}
-          className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
-        >
-          ← Back to Products
-        </Link>
+      {/* <UnifiedHeader showLocationFilter={false} /> */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* <CategorySidebar /> */}
+          <div className="flex-1 max-w-4xl">
+            <Link
+              href={mounted && isSuperAdmin() ? '/admin/products' : '/vendor/products'}
+              className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
+            >
+              ← Back to Products
+            </Link>
         <div className="mb-8">
           <div className="flex justify-between items-start">
             <div>
@@ -1477,6 +1481,8 @@ export default function VendorAddProductPage() {
               </Link>
             </div>
           </form>
+        </div>
+          </div>
         </div>
       </div>
     </div>

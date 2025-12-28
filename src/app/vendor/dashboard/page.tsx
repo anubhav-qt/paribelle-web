@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, HelpCircle } from 'lucide-react';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import { useVendorDashboard } from '@/hooks/useVendorDashboard';
 
 interface Vendor {
@@ -78,7 +79,11 @@ export default function VendorDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <UnifiedHeader />
+      {/* <UnifiedHeader /> */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* <CategorySidebar /> */}
+          <div className="flex-1">
       
       {/* Dashboard Header */}
       <header className="bg-white shadow">
@@ -1045,6 +1050,9 @@ export default function VendorDashboardPage() {
           </div>
         )}
       </main>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

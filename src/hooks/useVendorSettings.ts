@@ -18,6 +18,7 @@ interface VendorSettings {
   shippingCost?: string;
   freeShippingThreshold?: string;
   logo?: string;
+  categoryDisplayMode?: 'top' | 'sidebar';
 }
 
 interface UpdateVendorSettingsPayload {
@@ -36,6 +37,7 @@ interface UpdateVendorSettingsPayload {
   shippingCost?: string;
   freeShippingThreshold?: string;
   logo?: string;
+  categoryDisplayMode?: 'top' | 'sidebar';
 }
 
 // Fetch vendor settings
@@ -60,7 +62,12 @@ async function fetchVendorSettings(): Promise<VendorSettings> {
     throw new Error('Failed to fetch vendor settings');
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log('📥 fetchVendorSettings response:', result);
+  
+  // Backend returns {statusCode, message, data} or just the vendor object
+  // Handle both cases
+  return result.data || result;
 }
 
 // Update vendor settings
@@ -71,6 +78,9 @@ async function updateVendorSettings(payload: UpdateVendorSettingsPayload): Promi
   if (!token || !vendorId) {
     throw new Error('Authentication required');
   }
+
+  console.log('📤 updateVendorSettings called with payload:', payload);
+  console.log('📤 Sending to:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`);
 
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`,
@@ -89,7 +99,10 @@ async function updateVendorSettings(payload: UpdateVendorSettingsPayload): Promi
     throw new Error(error.message || 'Failed to update vendor settings');
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log('✅ updateVendorSettings response:', result);
+  console.log('✅ Full response.data:', JSON.stringify(result.data, null, 2));
+  return result;
 }
 
 // Hook to fetch vendor settings
@@ -108,9 +121,11 @@ export function useUpdateVendorSettings() {
 
   return useMutation({
     mutationFn: updateVendorSettings,
-    onSuccess: (data) => {
-      // Update cache with new data
-      queryClient.setQueryData(['vendor-settings'], data);
+    onSuccess: (response) => {
+      // Update cache with new data from response.data
+      if (response.data) {
+        queryClient.setQueryData(['vendor-settings'], response.data);
+      }
       // Also invalidate dashboard data as it might include vendor info
       queryClient.invalidateQueries({ queryKey: ['vendor-dashboard'] });
     },

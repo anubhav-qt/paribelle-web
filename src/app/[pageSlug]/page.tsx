@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import HeroCarousel from '@/components/HeroCarousel';
 import CategoryNav from '@/components/CategoryNav';
 import Footer from '@/components/Footer';
@@ -169,7 +170,9 @@ export default function CustomPage({ params }: { params: { pageSlug: string } })
         ) : (
           // Render markdown content
           <div className="container mx-auto px-4 py-8">
-            <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm p-8">
+            <div className="flex gap-6">
+              <CategorySidebar />
+              <div className="flex-1 max-w-4xl bg-white rounded-lg shadow-sm p-8">
               <h1 className="text-3xl font-bold mb-6 text-gray-900">{page.title}</h1>
               <div className="prose prose-lg max-w-none dark:prose-invert">
                 <ReactMarkdown
@@ -225,6 +228,7 @@ export default function CustomPage({ params }: { params: { pageSlug: string } })
                   {page.content}
                 </ReactMarkdown>
               </div>
+            </div>
             </div>
           </div>
         )}

@@ -41,11 +41,19 @@ export function Providers({
       return;
     }
     
-    // Check pathname for /vendor/slug pattern
+    // Check pathname for /vendor/slug pattern, but exclude vendor dashboard routes
+    const dashboardRoutes = ['dashboard', 'settings', 'products', 'orders', 'analytics', 'profile', 'theme'];
     const match = pathname?.match(/^\/vendor\/([^\/]+)/);
     const slug = match?.[1];
-    console.log('🟠 Pathname check:', { match, slug });
-    setVendorSlug(slug);
+    
+    // Don't treat dashboard routes as vendor slugs
+    if (slug && dashboardRoutes.includes(slug)) {
+      console.log('🟠 Ignoring dashboard route as vendor slug:', slug);
+      setVendorSlug(undefined);
+    } else {
+      console.log('🟠 Pathname check:', { match, slug });
+      setVendorSlug(slug);
+    }
   }, [pathname, initialVendorSlug]);
   const [queryClient] = useState(
     () =>

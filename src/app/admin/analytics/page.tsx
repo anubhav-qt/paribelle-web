@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -111,7 +112,9 @@ export default function AdminAnalyticsPage() {
     <>
       <UnifiedHeader />
       <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
+        <div className="flex gap-6">
+          {/* <CategorySidebar hideEmptyCategories={false} /> */}
+          <div className="flex-1 max-w-7xl">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -325,8 +328,9 @@ export default function AdminAnalyticsPage() {
             </div>
           </>
         )}
+          </div>
+        </div>
       </div>
-    </div>
     </>
   );
 }

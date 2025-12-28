@@ -17,6 +17,7 @@ import { usePolicies } from '@/contexts/PoliciesContext';
 import CartButton from '@/components/CartButton';
 import CategoryNav from '@/components/CategoryNav';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import Footer from '@/components/Footer';
 import RatingDisplay from '@/components/RatingDisplay';
 import ReviewCard from '@/components/ReviewCard';
@@ -594,13 +595,17 @@ export default function ProductDetailPage() {
 
       <CategoryNav mode="navigation" />
 
-      {/* Breadcrumb */}
-      <div className="bg-card border-b border-border">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Link href="/" className="text-muted-foreground hover:text-primary">
-              Home
-            </Link>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          <CategorySidebar />
+          <div className="flex-1">
+            {/* Breadcrumb */}
+            <div className="bg-card border-b border-border mb-4">
+              <div className="px-4 py-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Link href="/" className="text-muted-foreground hover:text-primary">
+                    Home
+                  </Link>
             {product.categories && product.categories.length > 0 && (
               <>
                 <span className="text-muted-foreground">/</span>
@@ -614,35 +619,34 @@ export default function ProductDetailPage() {
             )}
             <span className="text-muted-foreground">/</span>
             <span className="text-foreground font-medium truncate">{product.name}</span>
-          </div>
-        </div>
-      </div>
+                </div>
+              </div>
+            </div>
 
-      {/* Product Detail */}
-      <div className="container mx-auto px-4 py-8">
-        <Link 
-          href="/"
-          className="inline-flex items-center gap-2 text-primary hover:underline mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Products
-        </Link>
+            {/* Product Detail */}
+            <Link 
+              href="/"
+              className="inline-flex items-center gap-2 text-primary hover:underline mb-6"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Products
+            </Link>
 
-        <div className="bg-card rounded-lg shadow-sm overflow-hidden border border-border">
-          <div className="grid md:grid-cols-2 gap-8 p-8">
-            {/* Product Image Gallery */}
-            <ProductImageGallery
-              images={product.images && product.images.length > 0 ? product.images : [product.featuredImage]}
-              productName={product.name}
-              discount={discount}
-              layout={thumbnailLayout}
-            />
+            <div className="bg-card rounded-lg shadow-sm overflow-hidden border border-border">
+              <div className="grid md:grid-cols-2 gap-8 p-8">
+                {/* Product Image Gallery */}
+                <ProductImageGallery
+                  images={product.images && product.images.length > 0 ? product.images : [product.featuredImage]}
+                  productName={product.name}
+                  discount={discount}
+                  layout={thumbnailLayout}
+                />
 
-            {/* Product Info */}
-            <div className="flex flex-col">
-              <h1 className="text-3xl font-bold mb-3 text-foreground">{product.name}</h1>
+                {/* Product Info */}
+                <div className="flex flex-col">
+                  <h1 className="text-3xl font-bold mb-3 text-foreground">{product.name}</h1>
               
-              <p className="text-muted-foreground mb-4">{product.shortDescription}</p>
+                  <p className="text-muted-foreground mb-4">{product.shortDescription}</p>
 
               {/* Rating */}
               <div className="flex items-center gap-3 mb-6">
@@ -1073,6 +1077,8 @@ export default function ProductDetailPage() {
                 </div>
               )
             )}
+          </div>
+        </div>
           </div>
         </div>
       </div>

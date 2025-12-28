@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import VendorLocationSelector from '@/components/VendorLocationSelector';
 import ImageUpload from '@/components/ImageUpload';
 import { useVendorSettings, useUpdateVendorSettings } from '@/hooks/useVendorSettings';
@@ -28,11 +29,19 @@ export default function VendorSettingsPage() {
     shippingCost: '',
     freeShippingThreshold: '',
     logo: '',
+    categoryDisplayMode: 'sidebar' as 'sidebar' | 'top',
   });
 
   // Update form data when vendor data loads
   useEffect(() => {
+    console.log('📋 Form population useEffect triggered, vendor:', vendor);
     if (vendor) {
+      console.log('📋 Populating form with vendor data:', {
+        storeName: vendor.storeName,
+        businessName: vendor.businessName,
+        contactEmail: vendor.contactEmail,
+        categoryDisplayMode: (vendor as any).categoryDisplayMode
+      });
       setFormData({
         storeName: vendor.storeName || '',
         businessName: vendor.businessName || '',
@@ -49,21 +58,28 @@ export default function VendorSettingsPage() {
         shippingCost: vendor.shippingCost || '50',
         freeShippingThreshold: vendor.freeShippingThreshold || '',
         logo: vendor.logo || '',
+        categoryDisplayMode: (vendor as any).categoryDisplayMode || 'sidebar',
       });
+      console.log('📋 Form populated successfully');
+    } else {
+      console.log('📋 No vendor data to populate form');
     }
   }, [vendor]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('📤 Saving vendor settings with formData:', formData);
+    
     try {
-      await updateSettingsMutation.mutateAsync(formData);
+      const result = await updateSettingsMutation.mutateAsync(formData);
+      console.log('✅ Save completed, result:', result);
       alert('Settings updated successfully!');
-      // Reload the page to refresh the vendor context and header
-      window.location.reload();
+      // No need to reload - React Query will update the cache automatically
     } catch (error: any) {
-      console.error('Error updating settings:', error);
-      alert(`Failed to update settings: ${error.message || 'Unknown error'}`);\n    }
+      console.error('❌ Error updating settings:', error);
+      alert(`Failed to update settings: ${error.message || 'Unknown error'}`);
+    }
   };
 
   if (loading) {
@@ -74,10 +90,20 @@ export default function VendorSettingsPage() {
     );
   }
 
+  console.log('🎨🎨🎨 FULL RENDER - formData state:', {
+    storeName: formData.storeName,
+    businessName: formData.businessName,
+    contactEmail: formData.contactEmail,
+    categoryDisplayMode: formData.categoryDisplayMode
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <UnifiedHeader showLocationFilter={false} />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* <CategorySidebar /> */}
+          <div className="flex-1 max-w-4xl">
         <div className="mb-8">
           <Link
             href="/vendor/dashboard"
@@ -301,6 +327,7 @@ export default function VendorSettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Store Name *
                 </label>
+                {console.log('🎨 Rendering storeName input with value:', formData.storeName)}
                 <input
                   type="text"
                   value={formData.storeName}
@@ -314,6 +341,7 @@ export default function VendorSettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Business Name
                 </label>
+                {console.log('🎨 Rendering businessName input with value:', formData.businessName)}
                 <input
                   type="text"
                   value={formData.businessName}
@@ -451,15 +479,33 @@ export default function VendorSettingsPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Category Display Mode */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category Navigation Style
+                </label>
+                <select
+                  value={formData.categoryDisplayMode}
+                  onChange={(e) => setFormData({ ...formData, categoryDisplayMode: e.target.value as 'sidebar' | 'top' })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="sidebar">Sidebar (Vertical)</option>
+                  <option value="top">Top Navigation (Horizontal)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Choose how categories are displayed on your store pages
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-4 pt-4">
               <button
                 type="submit"
-                disabled={saving}
+                disabled={updateSettingsMutation.isPending}
                 className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {updateSettingsMutation.isPending ? 'Saving...' : 'Save Changes'}
               </button>
               <Link
                 href="/vendor/dashboard"
@@ -469,8 +515,10 @@ export default function VendorSettingsPage() {
               </Link>
             </div>
           </form>
+          </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

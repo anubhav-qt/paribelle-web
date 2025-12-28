@@ -40,6 +40,7 @@ export default function VendorLocationSelector({
   const [selectedCity, setSelectedCity] = useState(initialCityId || '');
   const [selectedSubLocation, setSelectedSubLocation] = useState(initialSubLocationId || '');
   const [pincode, setPincode] = useState(initialPincode || '');
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Manual entry states
   const [showAddCity, setShowAddCity] = useState(false);
@@ -66,6 +67,30 @@ export default function VendorLocationSelector({
   }, [selectedCity]);
 
   useEffect(() => {
+    // Update local state when initial props change (when parent's formData is populated)
+    if (initialCityId && initialCityId !== selectedCity) {
+      setSelectedCity(initialCityId);
+    }
+    if (initialSubLocationId && initialSubLocationId !== selectedSubLocation) {
+      setSelectedSubLocation(initialSubLocationId);
+    }
+    if (initialPincode && initialPincode !== pincode) {
+      setPincode(initialPincode);
+    }
+  }, [initialCityId, initialSubLocationId, initialPincode]);
+
+  useEffect(() => {
+    // Mark as initialized after first render
+    setIsInitialized(true);
+  }, []);
+
+  useEffect(() => {
+    // Only notify parent after initialization and if we have actual changes
+    // Skip the initial notification to prevent overwriting parent's formData
+    if (!isInitialized) {
+      return;
+    }
+    
     // Notify parent of changes
     const cityData = cities.find(c => c.id === selectedCity);
     const subLocationData = subLocations.find(s => s.id === selectedSubLocation);
@@ -78,7 +103,7 @@ export default function VendorLocationSelector({
       subLocationName: subLocationData?.name,
       pincode,
     });
-  }, [selectedCity, selectedSubLocation, pincode]);
+  }, [selectedCity, selectedSubLocation, pincode, cities, subLocations, isInitialized]);
 
   const fetchCities = async (search?: string) => {
     try {

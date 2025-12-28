@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import { Plus, Edit, Trash2, Eye, EyeOff, GripVertical } from 'lucide-react';
 
 interface VendorPage {
@@ -148,14 +149,17 @@ export default function VendorPagesPage() {
     <div className="min-h-screen bg-background">
       <UnifiedHeader showLocationFilter={false} />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <Link
-              href="/vendor/dashboard"
-              className="text-blue-600 hover:text-blue-800 text-sm inline-block mb-2"
-            >
-              ← Back to Dashboard
-            </Link>
+        <div className="flex gap-6">
+          {/* <CategorySidebar /> */}
+          <div className="flex-1 max-w-7xl">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <Link
+                  href="/vendor/dashboard"
+                  className="text-blue-600 hover:text-blue-800 text-sm inline-block mb-2"
+                >
+                  ← Back to Dashboard
+                </Link>
             <h1 className="text-3xl font-bold text-foreground">Custom Pages</h1>
             <p className="text-muted-foreground mt-2">
               Manage your store's custom pages (About, Contact, etc.)
@@ -488,6 +492,8 @@ export default function VendorPagesPage() {
             </table>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );

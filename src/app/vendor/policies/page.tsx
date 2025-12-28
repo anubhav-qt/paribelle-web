@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import { Package, XCircle } from 'lucide-react';
 import { useVendorPolicies, useUpdateVendorPolicies } from '@/hooks/useVendorPolicies';
 
@@ -109,7 +110,10 @@ export default function VendorPoliciesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <UnifiedHeader showLocationFilter={false} />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* <CategorySidebar /> */}
+          <div className="flex-1 max-w-4xl">
         <div className="mb-8">
           <Link
             href="/vendor/dashboard"
@@ -565,6 +569,8 @@ export default function VendorPoliciesPage() {
             </Link>
           </div>
         </form>
+          </div>
+        </div>
       </div>
     </div>
   );

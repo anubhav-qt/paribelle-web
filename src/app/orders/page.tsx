@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/currency';
 import { Package, Clock, CheckCircle, XCircle, Truck, Eye } from 'lucide-react';
 import UnifiedHeader from '@/components/UnifiedHeader';
 import CategoryNav from '@/components/CategoryNav';
+import CategorySidebar from '@/components/CategorySidebar';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 
 interface OrderItem {
@@ -287,15 +288,18 @@ export default function OrdersPage() {
       <CategoryNav mode="navigation" />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Link
-            href="/dashboard"
-            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
-          >
-            ← Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold text-foreground">My Orders</h1>
-        </div>
+        <div className="flex gap-6">
+          <CategorySidebar />
+          <div className="flex-1 max-w-7xl">
+            <div className="mb-6">
+              <Link
+                href="/dashboard"
+                className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+              >
+                ← Back to Dashboard
+              </Link>
+              <h1 className="text-3xl font-bold text-foreground">My Orders</h1>
+            </div>
 
         {/* Filters and Search */}
         <div className="bg-card rounded-lg shadow-sm border border-border p-4 mb-6">
@@ -771,6 +775,8 @@ export default function OrdersPage() {
           </div>
         </div>
       )}
-    </div>
+          </div>
+        </div>
+      </div>
   );
 }

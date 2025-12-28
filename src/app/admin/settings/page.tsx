@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Settings, MapPin, Save, DollarSign } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 
 interface Setting {
   id: string;
@@ -50,58 +51,58 @@ export default function AdminSettingsPage() {
       setLoading(true);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/admin/all`);
       if (response.ok) {
-        const data = await response.json();
-        setSettings(data);
+            const data = await response.json();
+            setSettings(data);
         
-        // Set form values from loaded settings
-        const locationSetting = data.find((s: Setting) => s.key === 'location_filter_enabled');
-        if (locationSetting) {
+            // Set form values from loaded settings
+            const locationSetting = data.find((s: Setting) => s.key === 'location_filter_enabled');
+            if (locationSetting) {
           setLocationFilterEnabled(locationSetting.value === true || locationSetting.value === 'true');
-        }
+            }
         
-        const currencySetting = data.find((s: Setting) => s.key === 'currency');
-        if (currencySetting) {
+            const currencySetting = data.find((s: Setting) => s.key === 'currency');
+            if (currencySetting) {
           setCurrency(currencySetting.value || 'INR');
-        }
+            }
         
-        const categoryModeSetting = data.find((s: Setting) => s.key === 'category_display_mode');
-        if (categoryModeSetting) {
+            const categoryModeSetting = data.find((s: Setting) => s.key === 'category_display_mode');
+            if (categoryModeSetting) {
           setCategoryDisplayMode(categoryModeSetting.value === 'top' ? 'top' : 'sidebar');
-        }
+            }
         
-        const thumbnailLayoutSetting = data.find((s: Setting) => s.key === 'thumbnailLayout');
-        if (thumbnailLayoutSetting) {
+            const thumbnailLayoutSetting = data.find((s: Setting) => s.key === 'thumbnailLayout');
+            if (thumbnailLayoutSetting) {
           setThumbnailLayout(thumbnailLayoutSetting.value === 'horizontal' ? 'horizontal' : 'vertical');
-        }
+            }
         
-        const heroBannersSetting = data.find((s: Setting) => s.key === 'hero_banners');
-        if (heroBannersSetting && Array.isArray(heroBannersSetting.value)) {
+            const heroBannersSetting = data.find((s: Setting) => s.key === 'hero_banners');
+            if (heroBannersSetting && Array.isArray(heroBannersSetting.value)) {
           setHeroBanners(heroBannersSetting.value);
-        } else {
+            } else {
           setHeroBanners([]);
-        }
+            }
         
-        const logoSetting = data.find((s: Setting) => s.key === 'marketplace_logo');
-        if (logoSetting) {
+            const logoSetting = data.find((s: Setting) => s.key === 'marketplace_logo');
+            if (logoSetting) {
           setMarketplaceLogo(logoSetting.value || '');
-        }
+            }
         
-        const nameSetting = data.find((s: Setting) => s.key === 'marketplace_name');
-        if (nameSetting) {
+            const nameSetting = data.find((s: Setting) => s.key === 'marketplace_name');
+            if (nameSetting) {
           setMarketplaceName(nameSetting.value || 'GaliCart');
-        }
+            }
 
-        const returnPolicySetting = data.find((s: Setting) => s.key === 'return_policy');
-        if (returnPolicySetting?.value) {
+            const returnPolicySetting = data.find((s: Setting) => s.key === 'return_policy');
+            if (returnPolicySetting?.value) {
           const parsed = typeof returnPolicySetting.value === 'string' ? JSON.parse(returnPolicySetting.value) : returnPolicySetting.value;
           setReturnPolicy(parsed);
-        }
+            }
 
-        const cancellationPolicySetting = data.find((s: Setting) => s.key === 'cancellation_policy');
-        if (cancellationPolicySetting?.value) {
+            const cancellationPolicySetting = data.find((s: Setting) => s.key === 'cancellation_policy');
+            if (cancellationPolicySetting?.value) {
           const parsed = typeof cancellationPolicySetting.value === 'string' ? JSON.parse(cancellationPolicySetting.value) : cancellationPolicySetting.value;
           setCancellationPolicy(parsed);
-        }
+            }
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -114,12 +115,12 @@ export default function AdminSettingsPage() {
   const updateSetting = async (key: string, value: any, description?: string) => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/${key}`,
-        {
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/${key}`,
+            {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ value, description }),
-        }
+            }
       );
       
       if (!response.ok) throw new Error('Failed to update setting');
@@ -135,64 +136,64 @@ export default function AdminSettingsPage() {
       setSaving(true);
       
       const locationSuccess = await updateSetting(
-        'location_filter_enabled',
-        locationFilterEnabled,
-        'Enable/disable location-based product filtering across the marketplace'
+            'location_filter_enabled',
+            locationFilterEnabled,
+            'Enable/disable location-based product filtering across the marketplace'
       );
       
       const currencySuccess = await updateSetting(
-        'currency',
-        currency,
-        'Default currency for the marketplace'
+            'currency',
+            currency,
+            'Default currency for the marketplace'
       );
       
       const categoryModeSuccess = await updateSetting(
-        'category_display_mode',
-        categoryDisplayMode,
-        'Display categories at the top toolbar or in the left sidebar tree. Values: "top" or "sidebar"'
+            'category_display_mode',
+            categoryDisplayMode,
+            'Display categories at the top toolbar or in the left sidebar tree. Values: "top" or "sidebar"'
       );
       
       const thumbnailLayoutSuccess = await updateSetting(
-        'thumbnailLayout',
-        thumbnailLayout,
-        'Product image thumbnail layout orientation. Values: "vertical" (Amazon-style left sidebar) or "horizontal" (bottom strip)'
+            'thumbnailLayout',
+            thumbnailLayout,
+            'Product image thumbnail layout orientation. Values: "vertical" (Amazon-style left sidebar) or "horizontal" (bottom strip)'
       );
       
       const heroBannersSuccess = await updateSetting(
-        'hero_banners',
-        heroBanners,
-        'Hero carousel banners for homepage'
+            'hero_banners',
+            heroBanners,
+            'Hero carousel banners for homepage'
       );
       
       const logoSuccess = await updateSetting(
-        'marketplace_logo',
-        marketplaceLogo,
-        'Marketplace logo URL'
+            'marketplace_logo',
+            marketplaceLogo,
+            'Marketplace logo URL'
       );
       
       const nameSuccess = await updateSetting(
-        'marketplace_name',
-        marketplaceName,
-        'Marketplace name displayed in header'
+            'marketplace_name',
+            marketplaceName,
+            'Marketplace name displayed in header'
       );
 
       const returnPolicySuccess = await updateSetting(
-        'return_policy',
-        JSON.stringify(returnPolicy),
-        'Marketplace default return policy'
+            'return_policy',
+            JSON.stringify(returnPolicy),
+            'Marketplace default return policy'
       );
 
       const cancellationPolicySuccess = await updateSetting(
-        'cancellation_policy',
-        JSON.stringify(cancellationPolicy),
-        'Marketplace default cancellation policy'
+            'cancellation_policy',
+            JSON.stringify(cancellationPolicy),
+            'Marketplace default cancellation policy'
       );
 
       if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroBannersSuccess && logoSuccess && nameSuccess && returnPolicySuccess && cancellationPolicySuccess) {
-        showMessage('success', 'Settings saved successfully!');
-        await fetchSettings(); // Refresh settings
+            showMessage('success', 'Settings saved successfully!');
+            await fetchSettings(); // Refresh settings
       } else {
-        showMessage('error', 'Failed to save settings');
+            showMessage('error', 'Failed to save settings');
       }
     } catch (error) {
       showMessage('error', 'An error occurred while saving');
@@ -209,7 +210,7 @@ export default function AdminSettingsPage() {
   if (authLoading || !isAuthenticated || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -218,8 +219,8 @@ export default function AdminSettingsPage() {
     <>
       <UnifiedHeader />
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b">
+            {/* Header */}
+            <div className="bg-white shadow-sm border-b">
           <div className="container mx-auto px-4 py-6">
             <Link
               href="/admin"
@@ -232,31 +233,32 @@ export default function AdminSettingsPage() {
               <h1 className="text-2xl font-bold text-gray-900">Site Settings</h1>
             </div>
           </div>
-        </div>
+            </div>
 
-        {/* Content */}
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Success/Error Message */}
-        {message && (
-          <div
-            className={`mb-6 p-4 rounded-lg ${
-              message.type === 'success'
-                ? 'bg-green-50 text-green-800 border border-green-200'
-                : 'bg-red-50 text-red-800 border border-red-200'
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
+            {/* Content */}
+            <div className="container mx-auto px-4 py-8">
+          <div className="flex-1 max-w-4xl">
+            {/* Success/Error Message */}
+            {message && (
+              <div
+                className={`mb-6 p-4 rounded-lg ${
+                  message.type === 'success'
+                    ? 'bg-green-50 text-green-800 border border-green-200'
+                    : 'bg-red-50 text-red-800 border border-red-200'
+                }`}
+              >
+                {message.text}
+              </div>
+            )}
 
-        {/* Marketplace Branding */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Settings className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Marketplace Branding</h2>
-          </div>
+            {/* Marketplace Branding */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Settings className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Marketplace Branding</h2>
+              </div>
 
-          <div className="space-y-4">
+              <div className="space-y-4">
             <div>
               <label htmlFor="marketplaceName" className="block font-medium text-gray-900 mb-2">
                 Marketplace Name
@@ -311,10 +313,10 @@ export default function AdminSettingsPage() {
               </p>
             </div>
           </div>
-        </div>
+            </div>
 
-        {/* Location Filter Settings */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            {/* Location Filter Settings */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <MapPin className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900">Location Filter</h2>
@@ -347,10 +349,10 @@ export default function AdminSettingsPage() {
               </p>
             </div>
           </div>
-        </div>
+            </div>
 
-        {/* Currency Settings */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            {/* Currency Settings */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <DollarSign className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900">Currency</h2>
@@ -385,10 +387,10 @@ export default function AdminSettingsPage() {
               </p>
             </div>
           </div>
-        </div>
+            </div>
 
-        {/* Category Display Mode Settings */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            {/* Category Display Mode Settings */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Settings className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900">Category Display</h2>
@@ -424,10 +426,10 @@ export default function AdminSettingsPage() {
               </p>
             </div>
           </div>
-        </div>
+            </div>
 
-        {/* Product Image Gallery Settings */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            {/* Product Image Gallery Settings */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Settings className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900">Product Image Gallery</h2>
@@ -463,10 +465,10 @@ export default function AdminSettingsPage() {
               </p>
             </div>
           </div>
-        </div>
+            </div>
 
-        {/* Hero Banners Management */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            {/* Hero Banners Management */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Settings className="w-5 h-5 text-blue-600" />
@@ -637,10 +639,10 @@ export default function AdminSettingsPage() {
               </ul>
             </div>
           </div>
-        </div>
+            </div>
 
-        {/* Marketplace Policies */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            {/* Marketplace Policies */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Settings className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900">Marketplace Default Policies</h2>
@@ -728,10 +730,10 @@ export default function AdminSettingsPage() {
               )}
             </div>
           </div>
-        </div>
+            </div>
 
-        {/* Save Button */}
-        <div className="flex justify-end gap-4">
+            {/* Save Button */}
+            <div className="flex justify-end gap-4">
           <button
             onClick={fetchSettings}
             disabled={saving}
@@ -747,9 +749,10 @@ export default function AdminSettingsPage() {
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save Settings'}
           </button>
-        </div>
+            </div>
+          </div>
+            </div>
       </div>
-    </div>
     </>
   );
 }

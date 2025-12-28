@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import CategorySidebar from '@/components/CategorySidebar';
 import { ArrowLeft, Plus, Trash2, Save, MoveUp, MoveDown, Image as ImageIcon } from 'lucide-react';
 
 interface HeroBanner {
@@ -159,15 +160,18 @@ export default function VendorHeroBannersPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <UnifiedHeader showLocationFilter={false} />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <Link
-            href="/vendor/dashboard"
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </Link>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* <CategorySidebar /> */}
+          <div className="flex-1 max-w-6xl">
+            <div className="mb-6">
+              <Link
+                href="/vendor/dashboard"
+                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Link>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Hero Banners</h1>
@@ -607,6 +611,8 @@ export default function VendorHeroBannersPage() {
             <Save className="w-5 h-5" />
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
+        </div>
+          </div>
         </div>
       </div>
     </div>
