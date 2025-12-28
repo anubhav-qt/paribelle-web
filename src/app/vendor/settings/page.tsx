@@ -5,13 +5,13 @@ import Link from 'next/link';
 import UnifiedHeader from '@/components/UnifiedHeader';
 import VendorLocationSelector from '@/components/VendorLocationSelector';
 import ImageUpload from '@/components/ImageUpload';
-import { getVendorId } from '@/lib/auth';
+import { useVendorSettings, useUpdateVendorSettings } from '@/hooks/useVendorSettings';
 
 export default function VendorSettingsPage() {
-  const [vendor, setVendor] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { data: vendor, isLoading: loading } = useVendorSettings();
+  const updateSettingsMutation = useUpdateVendorSettings();
   const [showHelp, setShowHelp] = useState(false);
+  
   const [formData, setFormData] = useState({
     storeName: '',
     businessName: '',
@@ -30,103 +30,40 @@ export default function VendorSettingsPage() {
     logo: '',
   });
 
+  // Update form data when vendor data loads
   useEffect(() => {
-    fetchVendorData();
-  }, []);
-
-  const fetchVendorData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        return;
-      }
-
-      const vendorId = getVendorId();
-      if (!vendorId) {
-        console.error('No vendorId found');
-        return;
-      }
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    if (vendor) {
+      setFormData({
+        storeName: vendor.storeName || '',
+        businessName: vendor.businessName || '',
+        contactEmail: vendor.contactEmail || '',
+        contactPhone: vendor.contactPhone || '',
+        description: vendor.description || '',
+        address: vendor.address || '',
+        city: vendor.city || '',
+        state: vendor.state || '',
+        postalCode: vendor.postalCode || '',
+        cityId: vendor.cityId || '',
+        subLocationId: vendor.subLocationId || '',
+        pincode: vendor.pincode || '',
+        shippingCost: vendor.shippingCost || '50',
+        freeShippingThreshold: vendor.freeShippingThreshold || '',
+        logo: vendor.logo || '',
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setVendor(data);
-        setFormData({
-          storeName: data.storeName || '',
-          businessName: data.businessName || '',
-          contactEmail: data.contactEmail || '',
-          contactPhone: data.contactPhone || '',
-          description: data.description || '',
-          address: data.address || '',
-          city: data.city || '',
-          state: data.state || '',
-          postalCode: data.postalCode || '',
-          cityId: data.cityId || '',
-          subLocationId: data.subLocationId || '',
-          pincode: data.pincode || '',
-          shippingCost: data.shippingCost || '50',
-          freeShippingThreshold: data.freeShippingThreshold || '',
-          logo: data.logo || '',
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching vendor data:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [vendor]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        return;
-      }
-
-      const vendorId = getVendorId();
-      if (!vendorId) {
-        console.error('No vendorId found');
-        return;
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const responseData = await response.json();
-      console.log('Update response:', responseData);
-
-      if (response.ok) {
-        if (responseData.statusCode && responseData.statusCode !== 200) {
-          throw new Error(responseData.message || 'Failed to update settings');
-        }
-        alert('Settings updated successfully!');
-        // Reload the page to refresh the vendor context and header
-        window.location.reload();
-      } else {
-        throw new Error(responseData.message || 'Failed to update settings');
-      }
-    } catch (error) {
+      await updateSettingsMutation.mutateAsync(formData);
+      alert('Settings updated successfully!');
+      // Reload the page to refresh the vendor context and header
+      window.location.reload();
+    } catch (error: any) {
       console.error('Error updating settings:', error);
-      alert('Failed to update settings. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+      alert(`Failed to update settings: ${error.message || 'Unknown error'}`);\n    }
   };
 
   if (loading) {

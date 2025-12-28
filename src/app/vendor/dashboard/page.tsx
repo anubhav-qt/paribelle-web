@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, HelpCircle } from 'lucide-react';
 import UnifiedHeader from '@/components/UnifiedHeader';
+import { useVendorDashboard } from '@/hooks/useVendorDashboard';
 
 interface Vendor {
   id: string;
@@ -20,123 +21,12 @@ interface Vendor {
 
 export default function VendorDashboardPage() {
   const router = useRouter();
-  const [vendor, setVendor] = useState<Vendor | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [adminUser, setAdminUser] = useState<any>(null);
+  const { data, isLoading, error: queryError } = useVendorDashboard();
   const [showHelp, setShowHelp] = useState(false);
-
-  useEffect(() => {
-    fetchVendorData();
-  }, []);
-
-  const fetchVendorData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
-      
-      if (!token || !userStr) {
-        router.push('/login');
-        return;
-      }
-
-      const user = JSON.parse(userStr);
-      setAdminUser(user);
-      
-      // Extract vendorId from JWT token if not in user object or localStorage
-      let vendorId = user.vendorId || localStorage.getItem('vendorId');
-      
-      if (!vendorId && token) {
-        try {
-          const tokenParts = token.split('.');
-          if (tokenParts.length === 3) {
-            const base64Url = tokenParts[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(
-              atob(base64)
-                .split('')
-                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                .join('')
-            );
-            const decodedToken = JSON.parse(jsonPayload);
-            
-            if (decodedToken.vendorId) {
-              vendorId = decodedToken.vendorId;
-              localStorage.setItem('vendorId', vendorId);
-              console.log('VendorId extracted from JWT:', vendorId);
-            }
-          }
-        } catch (decodeError) {
-          console.error('Error decoding JWT token:', decodeError);
-        }
-      }
-      
-      console.log('User data:', user);
-      console.log('Final vendorId:', vendorId);
-      
-      // Check if user is a vendor admin
-      if (user.role !== 'vendor_admin') {
-        setError('This account is not a vendor account. Please use a vendor login.');
-        setIsLoading(false);
-        return;
-      }
-      
-      // Fetch vendor data using the vendorId
-      if (!vendorId) {
-        setError('No vendor account found for this user. Please contact support.');
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('Fetching vendor:', vendorId);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-
-      // Check if response is ok
-      if (!response.ok) {
-        // Try to parse error message
-        let errorMessage = `Failed to fetch vendor data (${response.status})`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          // Response wasn't JSON, use status text
-          errorMessage = `Failed to fetch vendor data: ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Check if response has content
-      const contentType = response.headers.get('content-type');
-      console.log('Content-Type:', contentType);
-      
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response');
-      }
-
-      const text = await response.text();
-      console.log('Response text:', text);
-      
-      if (!text) {
-        throw new Error('Server returned empty response');
-      }
-
-      const vendorData = JSON.parse(text);
-      console.log('Vendor data:', vendorData);
-      setVendor(vendorData);
-      setIsLoading(false);
-    } catch (err: any) {
-      console.error('Vendor fetch error:', err);
-      setError(err.message || 'Failed to load vendor data');
-      setIsLoading(false);
-    }
-  };
+  
+  const vendor = data?.vendor || null;
+  const adminUser = data?.adminUser || null;
+  const error = queryError?.message || '';
 
   const handleLogout = () => {
     localStorage.removeItem('token');

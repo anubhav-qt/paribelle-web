@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import UnifiedHeader from '@/components/UnifiedHeader';
 import { Package, XCircle } from 'lucide-react';
-import { getVendorId } from '@/lib/auth';
+import { useVendorPolicies, useUpdateVendorPolicies } from '@/hooks/useVendorPolicies';
 
 interface Policy {
   enabled: boolean;
@@ -15,26 +15,14 @@ interface Policy {
 
 export default function VendorPoliciesPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [vendor, setVendor] = useState<any>(null);
+  const { data, isLoading: loading, error } = useVendorPolicies();
+  const updatePoliciesMutation = useUpdateVendorPolicies();
   const [showHelp, setShowHelp] = useState(false);
-  const [marketplacePolicies, setMarketplacePolicies] = useState<{
-    returnPolicy: Policy | null;
-    cancellationPolicy: Policy | null;
-  }>({ returnPolicy: null, cancellationPolicy: null });
   
-  const [formData, setFormData] = useState<{
-    returnPolicy: {
-      enabled: boolean;
-      days?: number;
-      text: string;
-    };
-    cancellationPolicy: {
-      enabled: boolean;
-      text: string;
-    };
-  }>({
+  const vendor = data?.vendor;
+  const marketplacePolicies = data?.marketplacePolicies || { returnPolicy: null, cancellationPolicy: null };
+  
+  const [formData, setFormData] = useState({
     returnPolicy: {
       enabled: true,
       days: 7,
@@ -51,144 +39,64 @@ export default function VendorPoliciesPage() {
     cancellation: true,
   });
 
+  // Update form data when vendor data loads
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        router.push('/login');
-        return;
+    if (data) {
+      // Set return policy
+      if (vendor?.returnPolicy) {
+        setFormData(prev => ({ ...prev, returnPolicy: vendor.returnPolicy }));
+        setUseMarketplaceDefaults(prev => ({ ...prev, return: false }));
+      } else if (marketplacePolicies.returnPolicy) {
+        setFormData(prev => ({ 
+          ...prev, 
+          returnPolicy: {
+            enabled: marketplacePolicies.returnPolicy.enabled,
+            days: marketplacePolicies.returnPolicy.days || 7,
+            text: marketplacePolicies.returnPolicy.text,
+          }
+        }));
       }
 
-      const vendorId = getVendorId();
-      if (!vendorId) {
-        console.error('No vendorId found');
-        router.push('/login');
-        return;
+      // Set cancellation policy
+      if (vendor?.cancellationPolicy) {
+        setFormData(prev => ({ ...prev, cancellationPolicy: vendor.cancellationPolicy }));
+        setUseMarketplaceDefaults(prev => ({ ...prev, cancellation: false }));
+      } else if (marketplacePolicies.cancellationPolicy) {
+        setFormData(prev => ({ 
+          ...prev, 
+          cancellationPolicy: {
+            enabled: marketplacePolicies.cancellationPolicy.enabled,
+            text: marketplacePolicies.cancellationPolicy.text,
+          }
+        }));
       }
-
-      // Fetch marketplace default policies
-      const [returnRes, cancellationRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/return_policy`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/cancellation_policy`),
-      ]);
-
-      if (returnRes.ok) {
-        const data = await returnRes.json();
-        const policy = data.value ? JSON.parse(data.value) : null;
-        setMarketplacePolicies(prev => ({ ...prev, returnPolicy: policy }));
-      }
-
-      if (cancellationRes.ok) {
-        const data = await cancellationRes.json();
-        const policy = data.value ? JSON.parse(data.value) : null;
-        setMarketplacePolicies(prev => ({ ...prev, cancellationPolicy: policy }));
-      }
-
-      // Fetch vendor data
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setVendor(data);
-        
-        // If vendor has custom policies, use them; otherwise use marketplace defaults
-        if (data.returnPolicy) {
-          setFormData(prev => ({ ...prev, returnPolicy: data.returnPolicy }));
-          setUseMarketplaceDefaults(prev => ({ ...prev, return: false }));
-        } else if (marketplacePolicies.returnPolicy) {
-          const mp = marketplacePolicies.returnPolicy;
-          setFormData(prev => ({ 
-            ...prev, 
-            returnPolicy: { 
-              enabled: mp.enabled,
-              days: mp.days || 7,
-              text: mp.text 
-            } 
-          }));
-        }
-
-        if (data.cancellationPolicy) {
-          setFormData(prev => ({ ...prev, cancellationPolicy: data.cancellationPolicy }));
-          setUseMarketplaceDefaults(prev => ({ ...prev, cancellation: false }));
-        } else if (marketplacePolicies.cancellationPolicy) {
-          const mc = marketplacePolicies.cancellationPolicy;
-          setFormData(prev => ({ 
-            ...prev, 
-            cancellationPolicy: { 
-              enabled: mc.enabled,
-              text: mc.text 
-            } 
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [data, vendor, marketplacePolicies]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        return;
-      }
-
-      const vendorId = getVendorId();
-      if (!vendorId) {
-        console.error('No vendorId found');
-        return;
-      }
-
-      // If using marketplace defaults, send null to clear custom policies
       const payload = {
         returnPolicy: useMarketplaceDefaults.return ? null : formData.returnPolicy,
         cancellationPolicy: useMarketplaceDefaults.cancellation ? null : formData.cancellationPolicy,
       };
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/policies`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        alert('Policies updated successfully!');
-        
-        // Clear cache for this vendor's policies
-        const cacheKey = `vendor_${vendorId}_policies`;
-        const timestampKey = `vendor_${vendorId}_policies_timestamp`;
-        localStorage.removeItem(cacheKey);
-        localStorage.removeItem(timestampKey);
-        
-        fetchData();
-      } else {
-        throw new Error('Failed to update policies');
-      }
-    } catch (error) {
+      await updatePoliciesMutation.mutateAsync(payload);
+      alert('Policies updated successfully!');
+    } catch (error: any) {
       console.error('Error updating policies:', error);
-      alert('Failed to update policies. Please try again.');
-    } finally {
-      setSaving(false);
+      alert(`Failed to update policies: ${error.message || 'Unknown error'}`);
     }
   };
+
+  // Handle authentication error
+  if (error) {
+    if (error.message === 'Authentication required') {
+      router.push('/login');
+      return null;
+    }
+  }
 
   if (loading) {
     return (
@@ -644,10 +552,10 @@ export default function VendorPoliciesPage() {
           <div className="flex gap-4 pt-4">
             <button
               type="submit"
-              disabled={saving}
+              disabled={updatePoliciesMutation.isPending}
               className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save Policies'}
+              {updatePoliciesMutation.isPending ? 'Saving...' : 'Save Policies'}
             </button>
             <Link
               href="/vendor/dashboard"
