@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import UnifiedHeader from '@/components/UnifiedHeader';
 import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
 import ProductVariationBuilder from '@/components/ProductVariationBuilder';
@@ -26,6 +27,9 @@ export default function VendorAddProductPage() {
   
   // Help section
   const [showHelp, setShowHelp] = useState(false);
+  
+  // Prevent hydration errors
+  const [mounted, setMounted] = useState(false);
 
   // Filter out attributes used in variations
   const availableAttributeFilters = useMemo(() => {
@@ -71,6 +75,7 @@ export default function VendorAddProductPage() {
   useEffect(() => {
     fetchCategories();
     generateSKU();
+    setMounted(true);
   }, []);
 
   // Fetch category filters when categories are selected
@@ -351,43 +356,23 @@ export default function VendorAddProductPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Unique Gradient Header */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-xl">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Link
-            href={isSuperAdmin() ? '/admin/products' : '/vendor/products'}
-            className="text-white/90 hover:text-white mb-4 inline-flex items-center gap-2 transition group"
-          >
-            <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Products
-          </Link>
-          
-          <div className="flex items-start gap-4">
-            <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl">
-              <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold mb-2 drop-shadow-lg">Add New Product</h1>
-              <p className="text-white/90 text-lg">
-                {isSuperAdmin() 
-                  ? '✨ Create and publish new products to the marketplace' 
-                  : '🚀 Showcase your products and grow your business'}
-              </p>
-              <div className="flex gap-4 mt-3 text-sm">
-                <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">📦 Simple Products</span>
-                <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">🎨 Product Variations</span>
-                <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">📸 Multi-Image Support</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <UnifiedHeader showLocationFilter={false} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Link
+          href={mounted && isSuperAdmin() ? '/admin/products' : '/vendor/products'}
+          className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
+        >
+          ← Back to Products
+        </Link>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
+          <p className="text-gray-600 mt-2">
+            {mounted ? (isSuperAdmin() 
+              ? 'Create and publish new products to the marketplace' 
+              : 'Showcase your products and grow your business')
+              : 'Showcase your products and grow your business'}
+          </p>
+        </div>
         <div className="mb-8">
           
           {/* Help Toggle Button */}
@@ -1068,7 +1053,7 @@ export default function VendorAddProductPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     {hasVariations 
                       ? '📦 Base SKU for variation generation (e.g., SHIRT-BASE → SHIRT-RED-S, SHIRT-BLUE-M)' 
-                      : (isSuperAdmin() ? 'Auto-generated with ADMIN prefix' : 'Auto-generated with vendor prefix')}
+                      : (mounted && isSuperAdmin() ? 'Auto-generated with ADMIN prefix' : 'Auto-generated with vendor prefix')}
                   </p>
                   <p className="text-xs text-blue-600 mt-1">ℹ️ What's a SKU? It's like a barcode - a unique ID to track this product</p>
                 </div>
@@ -1348,7 +1333,7 @@ export default function VendorAddProductPage() {
                 {submitting ? 'Creating...' : 'Create Product'}
               </button>
               <Link
-                href={isSuperAdmin() ? '/admin/products' : '/vendor/products'}
+                href={mounted && isSuperAdmin() ? '/admin/products' : '/vendor/products'}
                 className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 transition text-center"
               >
                 Cancel
