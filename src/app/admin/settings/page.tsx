@@ -36,6 +36,8 @@ export default function AdminSettingsPage() {
     ctaLink: string;
     order: number;
   }>>([]);
+  const [returnPolicy, setReturnPolicy] = useState<{ enabled: boolean; days?: number; text: string }>({ enabled: false, text: '' });
+  const [cancellationPolicy, setCancellationPolicy] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: '' });
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -87,6 +89,18 @@ export default function AdminSettingsPage() {
         const nameSetting = data.find((s: Setting) => s.key === 'marketplace_name');
         if (nameSetting) {
           setMarketplaceName(nameSetting.value || 'GaliCart');
+        }
+
+        const returnPolicySetting = data.find((s: Setting) => s.key === 'return_policy');
+        if (returnPolicySetting?.value) {
+          const parsed = typeof returnPolicySetting.value === 'string' ? JSON.parse(returnPolicySetting.value) : returnPolicySetting.value;
+          setReturnPolicy(parsed);
+        }
+
+        const cancellationPolicySetting = data.find((s: Setting) => s.key === 'cancellation_policy');
+        if (cancellationPolicySetting?.value) {
+          const parsed = typeof cancellationPolicySetting.value === 'string' ? JSON.parse(cancellationPolicySetting.value) : cancellationPolicySetting.value;
+          setCancellationPolicy(parsed);
         }
       }
     } catch (error) {
@@ -162,7 +176,19 @@ export default function AdminSettingsPage() {
         'Marketplace name displayed in header'
       );
 
-      if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroBannersSuccess && logoSuccess && nameSuccess) {
+      const returnPolicySuccess = await updateSetting(
+        'return_policy',
+        JSON.stringify(returnPolicy),
+        'Marketplace default return policy'
+      );
+
+      const cancellationPolicySuccess = await updateSetting(
+        'cancellation_policy',
+        JSON.stringify(cancellationPolicy),
+        'Marketplace default cancellation policy'
+      );
+
+      if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroBannersSuccess && logoSuccess && nameSuccess && returnPolicySuccess && cancellationPolicySuccess) {
         showMessage('success', 'Settings saved successfully!');
         await fetchSettings(); // Refresh settings
       } else {
@@ -609,6 +635,97 @@ export default function AdminSettingsPage() {
                 <li>Leave image URL empty to use gradient background</li>
                 <li>Display order determines the sequence (lower numbers appear first)</li>
               </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Marketplace Policies */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Settings className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Marketplace Default Policies</h2>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            These are the default policies that vendors can use. Vendors can override these with their own custom policies.
+          </p>
+
+          <div className="space-y-6">
+            {/* Return Policy */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium text-gray-900">Return Policy</h3>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={returnPolicy.enabled}
+                    onChange={(e) => setReturnPolicy({ ...returnPolicy, enabled: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Enable return policy</span>
+                </label>
+              </div>
+
+              {returnPolicy.enabled && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Return Window (days)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={returnPolicy.days || 0}
+                      onChange={(e) => setReturnPolicy({ ...returnPolicy, days: parseInt(e.target.value) || 0 })}
+                      className="w-full md:w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Number of days customers have to return items</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Policy Details
+                    </label>
+                    <textarea
+                      value={returnPolicy.text}
+                      onChange={(e) => setReturnPolicy({ ...returnPolicy, text: e.target.value })}
+                      rows={4}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Describe your return policy in detail..."
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Cancellation Policy */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium text-gray-900">Cancellation Policy</h3>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={cancellationPolicy.enabled}
+                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, enabled: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Enable cancellation policy</span>
+                </label>
+              </div>
+
+              {cancellationPolicy.enabled && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Policy Details
+                  </label>
+                  <textarea
+                    value={cancellationPolicy.text}
+                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, text: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Describe your cancellation policy in detail..."
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
