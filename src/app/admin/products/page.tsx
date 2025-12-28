@@ -4,6 +4,7 @@ import { useEffect, useState, Fragment } from 'react';
 import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
 import UnifiedHeader from '@/components/UnifiedHeader';
 
 interface Product {
@@ -29,14 +30,26 @@ interface Product {
 
 export default function AdminProductsPage() {
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [groupBy, setGroupBy] = useState<'none' | 'vendor'>('vendor');
   const [collapsedVendors, setCollapsedVendors] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalProducts, setTotalProducts] = useState(0);
+  
+  // Use React Query for products
+  const { data: productsData, isLoading: loading } = useAdminProducts({
+    page: currentPage,
+    limit: 20,
+    status: statusFilter,
+    search: searchTerm,
+    groupBy,
+  });
+  
+  const products = productsData?.products || [];
+  const totalProducts = productsData?.total || 0;
+  
+  const updateStatusMutation = useUpdateProductStatus();
+  const deleteProductMutation = useDeleteProduct();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; level: number }>>([]);
@@ -69,54 +82,9 @@ export default function AdminProductsPage() {
   const itemsPerPage = 20;
 
   useEffect(() => {
-    fetchProducts();
-  }, [currentPage, statusFilter, searchTerm, groupBy]);
-
-  useEffect(() => {
     fetchCategories();
     fetchVendors();
   }, []);
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (statusFilter !== 'all') params.append('status', statusFilter);
-      if (searchTerm) params.append('search', searchTerm);
-      
-      // When grouping by vendor, fetch all products (no pagination)
-      // Otherwise, use pagination
-      if (groupBy === 'vendor') {
-        params.append('page', '1');
-        params.append('limit', '1000'); // Fetch all products for grouping
-      } else {
-        params.append('page', currentPage.toString());
-        params.append('limit', itemsPerPage.toString());
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?${params}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Handle both array and paginated response formats
-      if (Array.isArray(data)) {
-        setProducts(data);
-        setTotalProducts(data.length);
-      } else {
-        setProducts(data.products || []);
-        setTotalProducts(data.total || 0);
-      }
-    } catch (error) {
-      setProducts([]);
-      setTotalProducts(0);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchCategories = async () => {
     try {
@@ -183,14 +151,9 @@ export default function AdminProductsPage() {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      fetchProducts();
-    } catch (error) {
-      // Error handling
+      await updateStatusMutation.mutateAsync({ productId: id, status: newStatus });
+    } catch (error: any) {
+      alert(`Failed to update status: ${error.message || 'Unknown error'}`);
     }
   };
 
