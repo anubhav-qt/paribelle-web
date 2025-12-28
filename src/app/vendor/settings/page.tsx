@@ -11,6 +11,7 @@ export default function VendorSettingsPage() {
   const [vendor, setVendor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [formData, setFormData] = useState({
     storeName: '',
     businessName: '',
@@ -149,6 +150,211 @@ export default function VendorSettingsPage() {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Store Settings</h1>
           <p className="text-gray-600 mt-2">Update your store information</p>
+        </div>
+
+        {/* Help Section */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            type="button"
+            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-blue-100 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">💡</span>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Beginner's Guide</h3>
+                <p className="text-sm text-gray-600">Learn how to configure your store settings properly</p>
+              </div>
+            </div>
+            <svg
+              className={`w-6 h-6 text-gray-600 transition-transform ${showHelp ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          {showHelp && (
+            <div className="px-6 pb-6 space-y-6">
+              {/* Store Identity */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🏪</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Store Identity & Branding</h4>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="font-medium text-blue-700 mb-2">🏷️ Store Name (Required)</p>
+                        <p className="text-sm text-blue-600">This is how customers see your store. Choose a memorable, descriptive name (e.g., "TechHub Electronics", "Bella's Boutique").</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">🏢 Business Name</p>
+                        <p className="text-sm text-gray-600">Your registered company name for invoices and legal documents (can be different from Store Name).</p>
+                      </div>
+                      <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                        <p className="font-medium text-purple-700 mb-2">🖼️ Store Logo</p>
+                        <p className="text-sm text-purple-600">Upload a 200x200px square image. Shows on your store page and builds brand recognition. Use a clear, simple design.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📞</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Contact Information</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600">📧</span>
+                        <div>
+                          <p className="font-medium text-gray-700">Contact Email (Required)</p>
+                          <p className="text-sm text-gray-600">Customers use this to reach you. Check it regularly! Use a professional email.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600">☎️</span>
+                        <div>
+                          <p className="font-medium text-gray-700">Contact Phone</p>
+                          <p className="text-sm text-gray-600">Optional but recommended. Provides another way for customers to contact you.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600">📝</span>
+                        <div>
+                          <p className="font-medium text-gray-700">Description</p>
+                          <p className="text-sm text-gray-600">Tell customers about your store, what makes you unique, your story (e.g., "Family-owned since 1995, specializing in handcrafted leather goods").</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location & Shipping */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📍</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Location & Shipping Settings</h4>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">🏠 Address & Location</p>
+                        <p className="text-sm text-gray-600 mb-2">Enter your business address, city, state, and pincode. Select City and Sub-Location to help customers find you.</p>
+                        <p className="text-xs text-gray-500 italic">Note: Location helps with local delivery and customer trust.</p>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <p className="font-medium text-green-700 mb-2">🚚 Shipping Cost</p>
+                        <p className="text-sm text-green-600">Set your default shipping fee (e.g., ₹50). This applies to all orders unless you set free shipping threshold.</p>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="font-medium text-blue-700 mb-2">🎁 Free Shipping Threshold</p>
+                        <p className="text-sm text-blue-600">Orders above this amount get free shipping (e.g., ₹500). Leave empty if you don't offer free shipping. This encourages larger orders!</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Best Practices */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">⭐</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Setting Up Your Store - Best Practices</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                        <p className="text-gray-700"><strong>Fill everything:</strong> Complete all fields. More information = more customer trust.</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                        <p className="text-gray-700"><strong>Professional branding:</strong> Use a quality logo and clear description. First impressions matter!</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                        <p className="text-gray-700"><strong>Competitive shipping:</strong> Research competitors' shipping costs. Too high scares buyers away.</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                        <p className="text-gray-700"><strong>Update regularly:</strong> Keep contact info current. Nothing worse than customers unable to reach you!</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                        <p className="text-gray-700"><strong>Test everything:</strong> After saving, view your store as a customer to see how it looks.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Common Mistakes */}
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-5 border border-red-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>⚠️</span> Common Mistakes to Avoid
+                </h4>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Generic names:</strong> "MyStore" or "Shop123" aren't memorable. Be unique!</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Personal email:</strong> Use business email, not "cooldude2000@email.com"</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Blurry logo:</strong> Low-quality images look unprofessional</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>No description:</strong> Customers want to know who you are!</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Unrealistic shipping:</strong> ₹10 shipping nationwide isn't sustainable</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Tips */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>💡</span> Quick Tips
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Save often while editing settings</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Use keywords in description for SEO</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Set free shipping threshold to boost sales</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Respond quickly to customer emails</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Update logo during rebranding</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Review settings quarterly for accuracy</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">

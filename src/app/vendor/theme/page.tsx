@@ -57,6 +57,7 @@ export default function VendorThemePage() {
   const [saving, setSaving] = useState(false);
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>(defaultTheme);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     fetchVendorData();
@@ -150,6 +151,254 @@ export default function VendorThemePage() {
   return (
     <>
       <UnifiedHeader showLocationFilter={false} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <a
+            href="/vendor/dashboard"
+            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+          >
+            ← Back to Dashboard
+          </a>
+        </div>
+
+        {/* Help Section */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            type="button"
+            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-blue-100 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">💡</span>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Beginner's Guide</h3>
+                <p className="text-sm text-gray-600">Learn how to customize your store's appearance and branding</p>
+              </div>
+            </div>
+            <svg
+              className={`w-6 h-6 text-gray-600 transition-transform ${showHelp ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          {showHelp && (
+            <div className="px-6 pb-6 space-y-6">
+              {/* What is Theme Builder */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🎨</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">What is the Theme Builder?</h4>
+                    <p className="text-gray-700 mb-3">
+                      The Theme Builder lets you customize how your store looks to match your brand identity. Change colors, 
+                      fonts, layout, and more - no coding required! Create a unique, professional storefront that stands out 
+                      from competitors.
+                    </p>
+                    <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                      <p className="text-sm font-medium text-blue-800 mb-2">✨ What You Can Customize:</p>
+                      <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                        <li><strong>Colors:</strong> Primary, secondary, accent, background, and text colors</li>
+                        <li><strong>Typography:</strong> Font families for headings and body text</li>
+                        <li><strong>Layout:</strong> Modern, Classic, Minimal, or Bold layout styles</li>
+                        <li><strong>Branding:</strong> Logo visibility and positioning</li>
+                        <li><strong>Features:</strong> Search bar, footer text, social media links</li>
+                        <li><strong>Custom CSS:</strong> Advanced users can add custom styles</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Color Selection */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🌈</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Choosing Colors</h4>
+                    <p className="text-gray-700 mb-3">
+                      Colors are crucial for brand recognition and user experience. Choose colors that reflect your brand 
+                      personality and ensure good readability.
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">🎯 Primary Color</p>
+                        <p className="text-sm text-gray-600">Main brand color. Used for buttons, links, and key elements. Should be bold and eye-catching.</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">🎨 Secondary Color</p>
+                        <p className="text-sm text-gray-600">Supporting color for backgrounds, cards, and subtle elements. Often a lighter/muted tone.</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">✨ Accent Color</p>
+                        <p className="text-sm text-gray-600">For highlights, badges, and call-outs. Should complement primary color.</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">📄 Background & Text</p>
+                        <p className="text-sm text-gray-600">Ensure good contrast. Dark text on light background (or vice versa) for readability.</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 p-3 bg-green-50 rounded border border-green-200">
+                      <p className="text-sm font-medium text-green-800 mb-2">💡 Color Tips:</p>
+                      <ul className="text-sm text-green-700 space-y-1 list-disc list-inside">
+                        <li>Use brand colors you already have (logo, packaging)</li>
+                        <li>Test color combinations for accessibility (WCAG standards)</li>
+                        <li>Limit to 2-3 main colors for consistency</li>
+                        <li>Preview changes before saving</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Typography */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🔤</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Selecting Fonts</h4>
+                    <p className="text-gray-700 mb-3">
+                      Typography affects readability and brand perception. Choose fonts that are clear, professional, 
+                      and match your brand personality.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="font-medium text-blue-700 mb-2">📖 Body Font</p>
+                        <p className="text-sm text-blue-600">Used for paragraphs and general text. Should be highly readable (e.g., Inter, Roboto, Open Sans).</p>
+                      </div>
+                      <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                        <p className="font-medium text-purple-700 mb-2">🎯 Heading Font</p>
+                        <p className="text-sm text-purple-600">For titles and headings. Can be more decorative than body font (e.g., Montserrat, Poppins, Playfair Display).</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 p-3 bg-amber-50 rounded border border-amber-200">
+                      <p className="text-sm font-medium text-amber-800 mb-2">⚠️ Font Best Practices:</p>
+                      <p className="text-sm text-amber-700">Use max 2 different fonts (one for headings, one for body). Too many fonts look unprofessional.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Layout Styles */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📐</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Layout Styles</h4>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="font-medium text-blue-700 mb-2">🏢 Modern</p>
+                        <p className="text-sm text-blue-600">Clean, spacious design with rounded corners and subtle shadows. Best for tech, fashion, lifestyle stores.</p>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <p className="font-medium text-green-700 mb-2">🎩 Classic</p>
+                        <p className="text-sm text-green-600">Traditional, timeless design with sharp corners. Good for professional services, formal products.</p>
+                      </div>
+                      <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                        <p className="font-medium text-purple-700 mb-2">✨ Minimal</p>
+                        <p className="text-sm text-purple-600">Simple, clean with lots of white space. Perfect for luxury brands, art, photography.</p>
+                      </div>
+                      <div className="p-3 bg-orange-50 rounded border border-orange-200">
+                        <p className="font-medium text-orange-700 mb-2">💥 Bold</p>
+                        <p className="text-sm text-orange-600">Eye-catching with strong contrasts and large elements. Great for youth-focused, energetic brands.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom CSS */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">💻</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Advanced: Custom CSS</h4>
+                    <p className="text-gray-700 mb-3">
+                      For advanced users who know CSS, you can add custom styles to fine-tune your store's appearance 
+                      beyond the standard options.
+                    </p>
+                    <div className="p-3 bg-amber-50 rounded border border-amber-200">
+                      <p className="text-sm font-medium text-amber-800 mb-2">⚠️ Important:</p>
+                      <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                        <li>Only use if you understand CSS - incorrect code can break your store</li>
+                        <li>Test thoroughly after adding custom CSS</li>
+                        <li>Keep a backup of working CSS before making changes</li>
+                        <li>Use browser developer tools to test styles first</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Common Mistakes */}
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-5 border border-red-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>⚠️</span> Common Mistakes to Avoid
+                </h4>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Too many colors:</strong> Stick to 2-3 main colors. More looks chaotic</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Poor contrast:</strong> Light text on light background is unreadable</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Decorative fonts everywhere:</strong> Use fancy fonts sparingly (headings only)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Ignoring mobile:</strong> Always preview on mobile devices</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Frequent changes:</strong> Constant rebranding confuses customers</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Tips */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>💡</span> Quick Tips
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Preview changes before saving</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Match colors to your existing brand</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Test on different devices and screens</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Keep it simple and consistent</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Get feedback from others before finalizing</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Save theme changes regularly</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <ThemeBuilder
         initialTheme={themeConfig}
         onSave={handleSave}

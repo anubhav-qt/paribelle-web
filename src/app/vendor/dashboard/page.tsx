@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, HelpCircle } from 'lucide-react';
 import UnifiedHeader from '@/components/UnifiedHeader';
 
 interface Vendor {
@@ -143,6 +143,22 @@ export default function VendorDashboardPage() {
     router.push('/vendor/register');
   };
 
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      active: 'bg-green-100 text-green-800',
+      suspended: 'bg-red-100 text-red-800',
+      rejected: 'bg-gray-100 text-gray-800',
+    };
+    return (
+      <span
+        className={`px-3 py-1 rounded-full text-sm font-medium ${styles[status as keyof typeof styles] || styles.pending}`}
+      >
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -169,22 +185,6 @@ export default function VendorDashboardPage() {
       </div>
     );
   }
-
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      active: 'bg-green-100 text-green-800',
-      suspended: 'bg-red-100 text-red-800',
-      rejected: 'bg-gray-100 text-gray-800',
-    };
-    return (
-      <span
-        className={`px-3 py-1 rounded-full text-sm font-medium ${styles[status as keyof typeof styles] || styles.pending}`}
-      >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -347,10 +347,10 @@ export default function VendorDashboardPage() {
             className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-blue-100 transition-colors"
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">ℹ️</span>
+              <span className="text-2xl">💡</span>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Vendor Dashboard Help</h3>
-                <p className="text-sm text-gray-600">Learn how to use each feature of your vendor dashboard</p>
+                <h3 className="text-lg font-semibold text-gray-900">Complete Beginner's Guide</h3>
+                <p className="text-sm text-gray-600">Step-by-step guide to running a successful store on our platform</p>
               </div>
             </div>
             <svg
@@ -364,254 +364,385 @@ export default function VendorDashboardPage() {
           </button>
           
           {showHelp && (
-            <div className="px-6 pb-6 space-y-4">
-              {/* Products Help */}
+            <div className="px-6 pb-6 space-y-6">
+              {/* Getting Started */}
               <div className="bg-white rounded-lg p-5 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <span className="text-3xl">📦</span>
+                  <span className="text-3xl">🚀</span>
                   <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Products</h4>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Getting Started with Your Vendor Dashboard</h4>
                     <p className="text-gray-700 mb-3">
-                      Manage all your product listings in one place. Add, edit, delete, and organize your catalog.
+                      Welcome to your vendor dashboard! This is your command center for managing your online store. 
+                      Everything you need to sell products, manage orders, and grow your business is right here.
                     </p>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><strong>What you can do:</strong></p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li><strong>Add Products:</strong> Create new product listings with images, prices, descriptions, and attributes</li>
-                        <li><strong>Product Types:</strong> Physical products (with inventory) or Booking products (with time slots)</li>
-                        <li><strong>Bulk Operations:</strong> Import/Export products using Excel files with images in ZIP format</li>
-                        <li><strong>Search & Filter:</strong> Find products by name, SKU, category, type, or status</li>
-                        <li><strong>Quick Edit:</strong> Update product details, prices, and stock directly from the list</li>
-                        <li><strong>Categories:</strong> Assign products to categories for better organization</li>
-                        <li><strong>Multiple Images:</strong> Add featured image + gallery images (up to 5MB each)</li>
-                      </ul>
-                    </div>
-                    <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-                      <p className="text-sm font-medium text-blue-900">💡 Pro Tip:</p>
-                      <p className="text-sm text-blue-800">Use the Export feature to backup your products, edit them in Excel, and re-import for bulk updates!</p>
+                    <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded border border-blue-200">
+                      <p className="text-sm font-medium text-blue-800 mb-2">🎯 Your First Steps:</p>
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                          <p className="text-sm text-blue-700"><strong>Complete Store Settings:</strong> Add your store name, logo, description, and contact information</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                          <p className="text-sm text-blue-700"><strong>Set Up Policies:</strong> Configure return, cancellation, and shipping policies</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                          <p className="text-sm text-blue-700"><strong>Create Categories:</strong> Organize how customers will browse your products</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                          <p className="text-sm text-blue-700"><strong>Add Your First Products:</strong> Start building your catalog with high-quality images and descriptions</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                          <p className="text-sm text-blue-700"><strong>Customize Your Store:</strong> Use Theme Builder and Hero Banners to make your store unique</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Categories Help */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">🏷️</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Categories</h4>
-                    <p className="text-gray-700 mb-3">
-                      Create custom categories to organize your products. Support for nested subcategories up to 3 levels deep.
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><strong>Features:</strong></p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li><strong>Hierarchical Structure:</strong> Create parent categories and subcategories (e.g., Electronics → Phones → Smartphones)</li>
-                        <li><strong>Custom Filters:</strong> Define filter attributes for each category (Size, Color, Brand, Material, etc.)</li>
-                        <li><strong>Visual Management:</strong> Upload category images and set display order</li>
-                        <li><strong>Navigation Control:</strong> Show/hide categories in main navigation menu</li>
-                        <li><strong>SEO-Friendly:</strong> Auto-generated slugs for clean URLs</li>
-                      </ul>
-                    </div>
-                    <div className="mt-3 p-3 bg-amber-50 rounded border border-amber-200">
-                      <p className="text-sm font-medium text-amber-900">📋 Example Use Case:</p>
-                      <p className="text-sm text-amber-800">Create "Clothing" category with filters: Size (S, M, L, XL), Color, Brand. Products in this category automatically show these filter options!</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Hero Banners Help */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">🎨</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Hero Banners</h4>
-                    <p className="text-gray-700 mb-3">
-                      Create eye-catching carousel banners for your store's homepage to promote products, sales, or announcements.
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><strong>Capabilities:</strong></p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li><strong>Auto-Rotating Carousel:</strong> Multiple slides that automatically transition</li>
-                        <li><strong>Custom Images:</strong> Upload high-quality banner images (recommended: 1920x600px)</li>
-                        <li><strong>Call-to-Action:</strong> Add titles, descriptions, and button text with custom links</li>
-                        <li><strong>Display Control:</strong> Set which banners are active and control their order</li>
-                        <li><strong>Responsive Design:</strong> Banners automatically adapt to mobile, tablet, and desktop</li>
-                        <li><strong>Link Destinations:</strong> Link to products, categories, or custom pages</li>
-                      </ul>
-                    </div>
-                    <div className="mt-3 p-3 bg-purple-50 rounded border border-purple-200">
-                      <p className="text-sm font-medium text-purple-900">🎯 Best Practice:</p>
-                      <p className="text-sm text-purple-800">Use 3-5 banners max. Feature seasonal sales, new arrivals, and bestsellers. Keep text concise and CTAs clear!</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Theme Builder Help */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">🎨</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Theme Builder</h4>
-                    <p className="text-gray-700 mb-3">
-                      Customize your store's visual appearance with colors, fonts, and layout options - no coding required!
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><strong>Customization Options:</strong></p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li><strong>Color Scheme:</strong> Set primary, secondary, and accent colors for buttons, links, and highlights</li>
-                        <li><strong>Typography:</strong> Choose fonts for headings and body text from Google Fonts library</li>
-                        <li><strong>Logo & Branding:</strong> Upload your store logo and set brand colors</li>
-                        <li><strong>Layout Options:</strong> Grid vs List view, card styles, spacing preferences</li>
-                        <li><strong>Dark Mode:</strong> Enable/disable dark mode support for your store</li>
-                        <li><strong>Live Preview:</strong> See changes in real-time before publishing</li>
-                      </ul>
-                    </div>
-                    <div className="mt-3 p-3 bg-green-50 rounded border border-green-200">
-                      <p className="text-sm font-medium text-green-900">✨ Design Tip:</p>
-                      <p className="text-sm text-green-800">Match your theme colors with your logo. Use high contrast for buttons to improve click rates!</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Custom Pages Help */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">📄</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Custom Pages</h4>
-                    <p className="text-gray-700 mb-3">
-                      Create custom content pages like About Us, Contact, FAQs, or any informational page for your store.
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><strong>Features:</strong></p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li><strong>Rich Text Editor:</strong> Format text, add images, lists, and links with WYSIWYG editor</li>
-                        <li><strong>Page Templates:</strong> Pre-built templates for common pages (About, Contact, Terms, Privacy)</li>
-                        <li><strong>SEO Settings:</strong> Set meta titles, descriptions, and keywords for each page</li>
-                        <li><strong>Navigation Menu:</strong> Add pages to header/footer navigation automatically</li>
-                        <li><strong>Custom Slugs:</strong> Create clean, readable URLs (e.g., /about-us, /shipping-info)</li>
-                        <li><strong>Draft Mode:</strong> Work on pages privately before publishing</li>
-                      </ul>
-                    </div>
-                    <div className="mt-3 p-3 bg-indigo-50 rounded border border-indigo-200">
-                      <p className="text-sm font-medium text-indigo-900">📝 Essential Pages:</p>
-                      <p className="text-sm text-indigo-800">Create: About Us, Contact, Shipping Info, Returns Policy, FAQs, and Terms & Conditions for customer trust!</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Orders Help */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">📋</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Orders Received</h4>
-                    <p className="text-gray-700 mb-3">
-                      View and manage all customer orders. Update order status, process refunds, and communicate with customers.
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><strong>Order Management:</strong></p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li><strong>Order Tracking:</strong> See all orders with status (Pending, Confirmed, Processing, Shipped, Delivered)</li>
-                        <li><strong>Status Updates:</strong> Change order status to keep customers informed</li>
-                        <li><strong>Order Details:</strong> View customer info, items ordered, shipping address, payment details</li>
-                        <li><strong>Filter & Search:</strong> Find orders by order number, customer name, date, or status</li>
-                        <li><strong>Notifications:</strong> Get alerts for new orders via email</li>
-                        <li><strong>Export Orders:</strong> Download order data for accounting or reporting</li>
-                        <li><strong>Refund Processing:</strong> Handle returns and refunds directly from order page</li>
-                      </ul>
-                    </div>
-                    <div className="mt-3 p-3 bg-orange-50 rounded border border-orange-200">
-                      <p className="text-sm font-medium text-orange-900">⚡ Quick Actions:</p>
-                      <p className="text-sm text-orange-800">Update order status promptly! Customers appreciate being kept in the loop about their order progress.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Policies Help */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">📋</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Policies</h4>
-                    <p className="text-gray-700 mb-3">
-                      Configure your store's return, refund, and cancellation policies. Define rules that customers must follow.
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><strong>Policy Types:</strong></p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li><strong>Return Policy:</strong> Set timeframe for returns (e.g., 7, 15, 30 days), conditions, and process</li>
-                        <li><strong>Refund Policy:</strong> Define how refunds work (full/partial, method, processing time)</li>
-                        <li><strong>Cancellation Policy:</strong> Set rules for order cancellation (timeframe, conditions, fees)</li>
-                        <li><strong>Shipping Policy:</strong> Delivery times, shipping costs, and coverage areas</li>
-                        <li><strong>Custom Policies:</strong> Add store-specific policies (warranty, exchanges, etc.)</li>
-                        <li><strong>Display Options:</strong> Show policies on product pages, checkout, and footer</li>
-                      </ul>
-                    </div>
-                    <div className="mt-3 p-3 bg-red-50 rounded border border-red-200">
-                      <p className="text-sm font-medium text-red-900">⚠️ Important:</p>
-                      <p className="text-sm text-red-800">Clear policies reduce disputes and build trust. Make them easy to find and understand!</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Settings Help */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">⚙️</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Settings</h4>
-                    <p className="text-gray-700 mb-3">
-                      Manage your store's core settings including business information, payment methods, and account preferences.
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><strong>Configuration Options:</strong></p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li><strong>Store Information:</strong> Update store name, description, contact details, and address</li>
-                        <li><strong>Business Details:</strong> Set business hours, contact phone, support email</li>
-                        <li><strong>Payment Gateway:</strong> Configure Razorpay, Stripe, or other payment methods</li>
-                        <li><strong>Shipping Zones:</strong> Define delivery areas and shipping charges</li>
-                        <li><strong>Tax Settings:</strong> Set GST/tax rates for different product categories</li>
-                        <li><strong>Email Notifications:</strong> Configure automated emails for orders, shipping, etc.</li>
-                        <li><strong>Account Security:</strong> Update password, enable 2FA, manage login sessions</li>
-                      </ul>
-                    </div>
-                    <div className="mt-3 p-3 bg-teal-50 rounded border border-teal-200">
-                      <p className="text-sm font-medium text-teal-900">🔒 Security:</p>
-                      <p className="text-sm text-teal-800">Keep your store information up-to-date and enable two-factor authentication for extra security!</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Store Stats Help */}
+              {/* Understanding Dashboard Cards */}
               <div className="bg-white rounded-lg p-5 shadow-sm">
                 <div className="flex items-start gap-3">
                   <span className="text-3xl">📊</span>
                   <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Store Statistics</h4>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Understanding Your Dashboard</h4>
                     <p className="text-gray-700 mb-3">
-                      Track your store's performance with key metrics displayed at the top of your dashboard.
+                      The dashboard shows 8 main sections, each with a dedicated page for managing different aspects of your store. 
+                      Hover over the help icon (ℹ️) on each card to see quick tips!
                     </p>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p><strong>Key Metrics:</strong></p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li><strong>Total Sales:</strong> Total revenue generated from all completed orders</li>
-                        <li><strong>Total Orders:</strong> Number of orders received (all statuses)</li>
-                        <li><strong>Rating:</strong> Average customer rating (1-5 stars) based on reviews</li>
-                        <li><strong>Status:</strong> Your vendor account status (Active, Pending, Suspended)</li>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">📦</span>
+                          <p className="font-medium text-blue-800">Products Section</p>
+                        </div>
+                        <p className="text-sm text-blue-700">Your product catalog. Add new items, edit existing ones, manage inventory, set prices, upload images, and organize with categories. Supports both physical products (with stock) and booking products (with time slots).</p>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">🏷️</span>
+                          <p className="font-medium text-green-800">Categories</p>
+                        </div>
+                        <p className="text-sm text-green-700">Create custom categories and subcategories to organize your products. Define filter attributes (Size, Color, Brand, etc.) so customers can easily find what they want. Supports hierarchical structure up to 3 levels.</p>
+                      </div>
+                      <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">🎨</span>
+                          <p className="font-medium text-purple-800">Hero Banners</p>
+                        </div>
+                        <p className="text-sm text-purple-700">Create rotating banner slides for your store's homepage. Promote sales, new arrivals, or featured products with eye-catching images, titles, and call-to-action buttons. Perfect for seasonal campaigns!</p>
+                      </div>
+                      <div className="p-3 bg-orange-50 rounded border border-orange-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">🖌️</span>
+                          <p className="font-medium text-orange-800">Theme Builder</p>
+                        </div>
+                        <p className="text-sm text-orange-700">Customize your store's look and feel. Change colors, fonts, layout styles, and branding elements. Make your store match your brand identity without any coding required!</p>
+                      </div>
+                      <div className="p-3 bg-pink-50 rounded border border-pink-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">📄</span>
+                          <p className="font-medium text-pink-800">Custom Pages</p>
+                        </div>
+                        <p className="text-sm text-pink-700">Create essential pages like About Us, Contact, FAQ, Shipping Info, and more. Use the rich text editor to format content, add images, and create professional informational pages.</p>
+                      </div>
+                      <div className="p-3 bg-yellow-50 rounded border border-yellow-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">📋</span>
+                          <p className="font-medium text-yellow-800">Orders</p>
+                        </div>
+                        <p className="text-sm text-yellow-700">View and manage all customer orders. Update order status (Pending → Confirmed → Processing → Shipped → Delivered), view customer details, process refunds, and track sales performance.</p>
+                      </div>
+                      <div className="p-3 bg-red-50 rounded border border-red-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">📜</span>
+                          <p className="font-medium text-red-800">Policies</p>
+                        </div>
+                        <p className="text-sm text-red-700">Set your return, cancellation, and shipping policies. Clear policies build customer trust and reduce disputes. Use marketplace defaults or create custom policies tailored to your business needs.</p>
+                      </div>
+                      <div className="p-3 bg-teal-50 rounded border border-teal-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">⚙️</span>
+                          <p className="font-medium text-teal-800">Settings</p>
+                        </div>
+                        <p className="text-sm text-teal-700">Manage store information, business details, contact info, logo, location, and shipping costs. Keep this information up-to-date so customers can reach you and know shipping charges.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Management Detailed */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📦</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Product Management Deep Dive</h4>
+                    <p className="text-gray-700 mb-3">
+                      Products are the heart of your store. Here's everything you need to know about adding and managing them effectively.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-800 mb-2">🎯 Types of Products</p>
+                        <ul className="text-sm text-gray-700 space-y-1">
+                          <li><strong>• Physical Products:</strong> Regular items with inventory (clothing, electronics, food). Track stock quantity, set SKU, manage variations (sizes, colors).</li>
+                          <li><strong>• Booking Products:</strong> Services or rentals with time slots (meeting rooms, sports courts, appointments). Set duration, available days, time slots.</li>
+                          <li><strong>• Variable Products:</strong> Products with multiple options (e.g., T-shirt in S/M/L/XL and Red/Blue/Green = 12 variations). Each variation has its own price and stock.</li>
+                        </ul>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="font-medium text-blue-800 mb-2">📸 Product Images Best Practices</p>
+                        <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                          <li>Use high-resolution images (at least 1000x1000px)</li>
+                          <li>Add a featured image + 4-5 gallery images showing different angles</li>
+                          <li>Use white or clean backgrounds for professional look</li>
+                          <li>Show product in use (lifestyle photos) when possible</li>
+                          <li>Optimize file size (under 5MB each) for fast loading</li>
+                          <li>Supported formats: JPG, PNG, WEBP, GIF</li>
+                        </ul>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <p className="font-medium text-green-800 mb-2">💰 Pricing Strategies</p>
+                        <ul className="text-sm text-green-700 space-y-1">
+                          <li><strong>• Regular Price:</strong> Your selling price</li>
+                          <li><strong>• Compare-at Price:</strong> Original price (shown crossed out) to display discounts</li>
+                          <li><strong>• Bulk Pricing:</strong> Offer discounts for quantity purchases</li>
+                          <li><strong>• Competitive Research:</strong> Check competitors' prices before setting yours</li>
+                        </ul>
+                      </div>
+                      <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                        <p className="font-medium text-purple-800 mb-2">📦 Bulk Operations (Import/Export)</p>
+                        <p className="text-sm text-purple-700 mb-2">Save time by managing products in Excel:</p>
+                        <ul className="text-sm text-purple-700 space-y-1 list-disc list-inside">
+                          <li><strong>Export:</strong> Download all products as Excel file + images in ZIP</li>
+                          <li><strong>Edit in Excel:</strong> Update prices, descriptions, stock in bulk</li>
+                          <li><strong>Import:</strong> Upload modified ZIP file to update many products at once</li>
+                          <li>Perfect for: Price updates, stock adjustments, adding multiple products</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Fulfillment Workflow */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🔄</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Order Fulfillment Workflow</h4>
+                    <p className="text-gray-700 mb-3">
+                      Understanding the order lifecycle is crucial for customer satisfaction. Here's the complete workflow:
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded border border-yellow-200">
+                        <span className="bg-yellow-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                        <div className="flex-1">
+                          <p className="font-medium text-yellow-800">🟡 Pending</p>
+                          <p className="text-sm text-yellow-700">New order just placed. <strong>Action:</strong> Review order details, check inventory availability. Confirm within 24 hours!</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-blue-50 rounded border border-blue-200">
+                        <span className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                        <div className="flex-1">
+                          <p className="font-medium text-blue-800">🔵 Confirmed</p>
+                          <p className="text-sm text-blue-700">Order accepted by you. <strong>Action:</strong> Start preparing items for shipment. Print invoice and packing slip.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-purple-50 rounded border border-purple-200">
+                        <span className="bg-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                        <div className="flex-1">
+                          <p className="font-medium text-purple-800">🟣 Processing</p>
+                          <p className="text-sm text-purple-700">Items being packed. <strong>Action:</strong> Pack items securely, attach shipping label, prepare for dispatch.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-orange-50 rounded border border-orange-200">
+                        <span className="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                        <div className="flex-1">
+                          <p className="font-medium text-orange-800">🟠 Shipped</p>
+                          <p className="text-sm text-orange-700">Order dispatched. <strong>Action:</strong> Update with tracking number. Customer gets notification with tracking link.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-green-50 rounded border border-green-200">
+                        <span className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                        <div className="flex-1">
+                          <p className="font-medium text-green-800">🟢 Delivered</p>
+                          <p className="text-sm text-green-700">Customer received order. <strong>Action:</strong> Mark as delivered. Follow up to request review!</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 p-3 bg-amber-50 rounded border border-amber-200">
+                      <p className="text-sm font-medium text-amber-800 mb-1">⚡ Pro Tips for Fast Fulfillment:</p>
+                      <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                        <li>Check orders daily (morning and evening)</li>
+                        <li>Keep packing materials and labels ready</li>
+                        <li>Update status immediately after each step</li>
+                        <li>Provide tracking numbers when available</li>
+                        <li>Aim to ship within 24-48 hours for best reviews</li>
                       </ul>
                     </div>
-                    <div className="mt-3 p-3 bg-pink-50 rounded border border-pink-200">
-                      <p className="text-sm font-medium text-pink-900">📈 Growth Tip:</p>
-                      <p className="text-sm text-pink-800">Monitor your rating closely! Encourage satisfied customers to leave reviews to boost your store's credibility.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Store Branding & Customization */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🎨</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Creating a Professional Store Brand</h4>
+                    <p className="text-gray-700 mb-3">
+                      Your store's appearance and content create the first impression. Make it count!
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                          <p className="font-medium text-blue-800 mb-2">🏪 Store Identity</p>
+                          <ul className="text-sm text-blue-700 space-y-1">
+                            <li>✓ Choose a memorable store name</li>
+                            <li>✓ Create/upload a professional logo</li>
+                            <li>✓ Write compelling store description</li>
+                            <li>✓ Add high-quality store banner</li>
+                            <li>✓ Complete contact information</li>
+                          </ul>
+                        </div>
+                        <div className="p-3 bg-green-50 rounded border border-green-200">
+                          <p className="font-medium text-green-800 mb-2">🎨 Visual Design</p>
+                          <ul className="text-sm text-green-700 space-y-1">
+                            <li>✓ Use Theme Builder for colors/fonts</li>
+                            <li>✓ Match colors to your brand</li>
+                            <li>✓ Choose readable fonts</li>
+                            <li>✓ Maintain consistent style</li>
+                            <li>✓ Test on mobile devices</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                          <p className="font-medium text-purple-800 mb-2">📄 Content Pages</p>
+                          <ul className="text-sm text-purple-700 space-y-1">
+                            <li>✓ About Us - Your story and mission</li>
+                            <li>✓ Contact - Form, email, phone</li>
+                            <li>✓ FAQ - Common questions answered</li>
+                            <li>✓ Shipping Info - Delivery details</li>
+                            <li>✓ Terms & Conditions - Legal terms</li>
+                          </ul>
+                        </div>
+                        <div className="p-3 bg-orange-50 rounded border border-orange-200">
+                          <p className="font-medium text-orange-800 mb-2">🎯 Marketing Elements</p>
+                          <ul className="text-sm text-orange-700 space-y-1">
+                            <li>✓ Create 3-5 hero banner slides</li>
+                            <li>✓ Highlight sales and promotions</li>
+                            <li>✓ Feature new arrivals</li>
+                            <li>✓ Add clear call-to-actions</li>
+                            <li>✓ Update seasonally</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance & Growth */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📈</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Growing Your Store</h4>
+                    <p className="text-gray-700 mb-3">
+                      Beyond the basics, here are strategies to increase sales and build customer loyalty:
+                    </p>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <p className="font-medium text-green-800 mb-2">🌟 Get More Sales</p>
+                        <ul className="text-sm text-green-700 space-y-1 list-disc list-inside">
+                          <li><strong>Competitive Pricing:</strong> Research competitors, offer fair prices</li>
+                          <li><strong>High-Quality Images:</strong> Professional photos increase conversion by 30%+</li>
+                          <li><strong>Detailed Descriptions:</strong> Answer all customer questions in product description</li>
+                          <li><strong>Fast Shipping:</strong> Offer quick delivery options</li>
+                          <li><strong>Promotions:</strong> Run seasonal sales and limited-time offers</li>
+                          <li><strong>Bundle Deals:</strong> "Buy 2 Get 10% Off" encourages larger purchases</li>
+                        </ul>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="font-medium text-blue-800 mb-2">⭐ Build Great Reputation</p>
+                        <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                          <li><strong>Fast Response:</strong> Reply to inquiries within hours, not days</li>
+                          <li><strong>Accurate Descriptions:</strong> Products should match descriptions exactly</li>
+                          <li><strong>Quality Packaging:</strong> Protect items well during shipping</li>
+                          <li><strong>Request Reviews:</strong> Ask satisfied customers to leave feedback</li>
+                          <li><strong>Handle Issues Professionally:</strong> Resolve problems quickly and fairly</li>
+                          <li><strong>Clear Policies:</strong> Set expectations upfront to avoid misunderstandings</li>
+                        </ul>
+                      </div>
+                      <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                        <p className="font-medium text-purple-800 mb-2">🔄 Customer Retention</p>
+                        <ul className="text-sm text-purple-700 space-y-1 list-disc list-inside">
+                          <li><strong>Email Follow-ups:</strong> Thank customers after purchase</li>
+                          <li><strong>Loyalty Programs:</strong> Offer returning customer discounts</li>
+                          <li><strong>Seasonal Updates:</strong> Notify about new arrivals and sales</li>
+                          <li><strong>Personalization:</strong> Remember customer preferences</li>
+                          <li><strong>Excellent Service:</strong> Go above and beyond expectations</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Common Mistakes */}
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-5 border border-red-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>⚠️</span> Common Mistakes New Vendors Make
+                </h4>
+                <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>Incomplete product info:</strong> Missing details lose sales. Fill ALL fields!</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>Poor quality images:</strong> Blurry/small photos make products look cheap</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>Ignoring orders:</strong> Slow response = bad reviews and lost customers</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>No inventory management:</strong> Overselling creates angry customers</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>Unclear policies:</strong> Vague terms lead to disputes and refunds</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>Unrealistic pricing:</strong> Too high = no sales; too low = no profit</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>Generic store design:</strong> Default theme doesn't build brand identity</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>No custom pages:</strong> Missing About/Contact pages look unprofessional</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>Slow shipping:</strong> Customers expect fast delivery nowadays</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span><strong>Not updating status:</strong> Keep customers informed about their orders!</span>
                     </div>
                   </div>
                 </div>
@@ -625,35 +756,99 @@ export default function VendorDashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
-                    <span><strong>Complete Your Profile:</strong> Add logo, banner, and store description</span>
+                    <span>Complete all 8 sections before launching</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
-                    <span><strong>Add Quality Images:</strong> Use high-resolution product photos</span>
+                    <span>Add at least 10 products to start</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
-                    <span><strong>Set Competitive Prices:</strong> Research market prices before listing</span>
+                    <span>Use high-quality photos for all products</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
-                    <span><strong>Organize with Categories:</strong> Makes shopping easier for customers</span>
+                    <span>Respond to orders within 24 hours</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
-                    <span><strong>Update Stock Regularly:</strong> Prevent overselling by keeping inventory current</span>
+                    <span>Update inventory regularly to avoid stockouts</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
-                    <span><strong>Respond to Orders Quickly:</strong> Fast processing improves customer satisfaction</span>
+                    <span>Create 3-5 hero banners for promotions</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
-                    <span><strong>Use Hero Banners:</strong> Promote sales and new products on homepage</span>
+                    <span>Set clear return and cancellation policies</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
-                    <span><strong>Create Essential Pages:</strong> About, Contact, Shipping, and Return policies</span>
+                    <span>Customize theme to match your brand</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Add About Us and Contact pages</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Check dashboard daily for new orders</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Ask happy customers for reviews</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Monitor your store rating and improve</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Next Steps */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-5 border border-blue-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>🎯</span> Ready to Start? Here's Your Action Plan
+                </h4>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <p className="font-medium text-blue-900 mb-3">Complete these in order for the best results:</p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2 p-2 bg-white rounded">
+                      <span className="text-blue-600 font-bold">1.</span>
+                      <span><strong>Settings:</strong> Fill in store name, logo, description, contact info, and shipping costs</span>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 bg-white rounded">
+                      <span className="text-blue-600 font-bold">2.</span>
+                      <span><strong>Policies:</strong> Set return/cancellation policies (or use marketplace defaults)</span>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 bg-white rounded">
+                      <span className="text-blue-600 font-bold">3.</span>
+                      <span><strong>Categories:</strong> Create 3-5 main categories for your products</span>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 bg-white rounded">
+                      <span className="text-blue-600 font-bold">4.</span>
+                      <span><strong>Products:</strong> Add your first 10-20 products with great photos and descriptions</span>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 bg-white rounded">
+                      <span className="text-blue-600 font-bold">5.</span>
+                      <span><strong>Theme:</strong> Customize colors and fonts to match your brand</span>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 bg-white rounded">
+                      <span className="text-blue-600 font-bold">6.</span>
+                      <span><strong>Hero Banners:</strong> Create 3 promotional banners for your homepage</span>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 bg-white rounded">
+                      <span className="text-blue-600 font-bold">7.</span>
+                      <span><strong>Custom Pages:</strong> Add About Us and Contact pages</span>
+                    </div>
+                    <div className="flex items-start gap-2 p-2 bg-white rounded">
+                      <span className="text-blue-600 font-bold">8.</span>
+                      <span><strong>Test:</strong> Visit your store as a customer to check everything looks good!</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
+                    <p className="text-sm font-medium text-green-900">🎉 You're Ready to Sell!</p>
+                    <p className="text-sm text-green-800">Once you complete these steps, your store will be live and customers can start ordering!</p>
                   </div>
                 </div>
               </div>
@@ -665,79 +860,223 @@ export default function VendorDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link
             href="/vendor/products"
-            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
+            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow group relative ${
               vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Products</h3>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📦</span>
+                <h3 className="text-lg font-medium text-gray-900">Products</h3>
+              </div>
+              <div className="relative">
+                <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <div className="absolute right-0 top-8 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
+                  <p className="font-semibold mb-1">What you can do:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>Add products with images & details</li>
+                    <li>Create variations (colors, sizes)</li>
+                    <li>Bulk import/export via Excel</li>
+                    <li>Manage inventory & pricing</li>
+                  </ul>
+                  <div className="absolute -top-2 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <p className="text-sm text-gray-600">Manage your product catalog</p>
           </Link>
 
           <Link
             href="/vendor/categories"
-            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
+            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow group relative ${
               vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Categories</h3>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🏷️</span>
+                <h3 className="text-lg font-medium text-gray-900">Categories</h3>
+              </div>
+              <div className="relative">
+                <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <div className="absolute right-0 top-8 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
+                  <p className="font-semibold mb-1">Organize your store:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>Create nested categories (3 levels)</li>
+                    <li>Add custom filters (Size, Color, etc.)</li>
+                    <li>Upload category images</li>
+                    <li>Control navigation display</li>
+                  </ul>
+                  <div className="absolute -top-2 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <p className="text-sm text-gray-600">Organize products with custom categories</p>
           </Link>
 
           <Link
             href="/vendor/hero-banners"
-            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
+            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow group relative ${
               vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Hero Banners</h3>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🎯</span>
+                <h3 className="text-lg font-medium text-gray-900">Hero Banners</h3>
+              </div>
+              <div className="relative">
+                <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <div className="absolute right-0 top-8 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
+                  <p className="font-semibold mb-1">Create engaging banners:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>Auto-rotating carousel slides</li>
+                    <li>Add titles, descriptions & CTAs</li>
+                    <li>Link to products or categories</li>
+                    <li>Use 1920x600px images</li>
+                  </ul>
+                  <div className="absolute -top-2 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <p className="text-sm text-gray-600">Customize your store's hero section</p>
           </Link>
 
           <Link
             href="/vendor/theme"
-            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
+            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow group relative ${
               vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
-            <h3 className="text-lg font-medium text-gray-900 mb-2">🎨 Theme Builder</h3>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🎨</span>
+                <h3 className="text-lg font-medium text-gray-900">Theme Builder</h3>
+              </div>
+              <div className="relative">
+                <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <div className="absolute right-0 top-8 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
+                  <p className="font-semibold mb-1">Customize your brand:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>Set colors & fonts</li>
+                    <li>Upload logo & branding</li>
+                    <li>Configure layout preferences</li>
+                    <li>Live preview changes</li>
+                  </ul>
+                  <div className="absolute -top-2 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <p className="text-sm text-gray-600">Customize your store's appearance</p>
           </Link>
 
           <Link
             href="/vendor/pages"
-            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
+            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow group relative ${
               vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
-            <h3 className="text-lg font-medium text-gray-900 mb-2">📄 Custom Pages</h3>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📄</span>
+                <h3 className="text-lg font-medium text-gray-900">Custom Pages</h3>
+              </div>
+              <div className="relative">
+                <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <div className="absolute right-0 top-8 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
+                  <p className="font-semibold mb-1">Build content pages:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>Rich text WYSIWYG editor</li>
+                    <li>About, Contact, FAQ templates</li>
+                    <li>SEO-friendly meta settings</li>
+                    <li>Add to navigation menus</li>
+                  </ul>
+                  <div className="absolute -top-2 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <p className="text-sm text-gray-600">Create About, Contact, and custom pages</p>
           </Link>
 
           <Link
             href="/vendor/orders"
-            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
+            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow group relative ${
               vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Orders Received</h3>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📋</span>
+                <h3 className="text-lg font-medium text-gray-900">Orders Received</h3>
+              </div>
+              <div className="relative">
+                <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <div className="absolute right-0 top-8 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
+                  <p className="font-semibold mb-1">Manage orders:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>View all customer orders</li>
+                    <li>Update order status</li>
+                    <li>Process refunds & returns</li>
+                    <li>Export order data</li>
+                  </ul>
+                  <div className="absolute -top-2 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <p className="text-sm text-gray-600">View and manage customer orders</p>
           </Link>
 
           <Link
             href="/vendor/policies"
-            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow ${
+            className={`bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow group relative ${
               vendor?.status !== 'active' ? 'opacity-50 pointer-events-none' : ''
             }`}
           >
-            <h3 className="text-lg font-medium text-gray-900 mb-2">📋 Policies</h3>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📋</span>
+                <h3 className="text-lg font-medium text-gray-900">Policies</h3>
+              </div>
+              <div className="relative">
+                <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <div className="absolute right-0 top-8 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
+                  <p className="font-semibold mb-1">Set store rules:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>Return & refund policies</li>
+                    <li>Cancellation timeframes</li>
+                    <li>Shipping policies</li>
+                    <li>Show on product pages</li>
+                  </ul>
+                  <div className="absolute -top-2 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <p className="text-sm text-gray-600">Configure return & cancellation policies</p>
           </Link>
 
           <Link
             href="/vendor/settings"
-            className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow"
+            className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow group relative"
           >
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Settings</h3>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">⚙️</span>
+                <h3 className="text-lg font-medium text-gray-900">Settings</h3>
+              </div>
+              <div className="relative">
+                <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <div className="absolute right-0 top-8 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
+                  <p className="font-semibold mb-1">Configure store:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>Business information</li>
+                    <li>Payment gateway setup</li>
+                    <li>Shipping zones & charges</li>
+                    <li>Email notifications</li>
+                  </ul>
+                  <div className="absolute -top-2 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <p className="text-sm text-gray-600">Update store information</p>
           </Link>
         </div>

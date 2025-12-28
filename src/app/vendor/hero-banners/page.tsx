@@ -22,6 +22,7 @@ export default function VendorHeroBannersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [vendorId, setVendorId] = useState<string>('');
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     fetchBanners();
@@ -183,6 +184,250 @@ export default function VendorHeroBannersPage() {
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
+        </div>
+
+        {/* Help Section */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-blue-100 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">💡</span>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Beginner's Guide</h3>
+                <p className="text-sm text-gray-600">Learn how to create eye-catching hero banners for your store</p>
+              </div>
+            </div>
+            <svg
+              className={`w-6 h-6 text-gray-600 transition-transform ${showHelp ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          {showHelp && (
+            <div className="px-6 pb-6 space-y-6">
+              {/* What are Hero Banners */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🎨</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">What are Hero Banners?</h4>
+                    <p className="text-gray-700 mb-3">
+                      Hero banners are the large, eye-catching images that appear at the top of your store page in a rotating carousel. 
+                      They're the first thing customers see when visiting your store - use them to showcase featured products, 
+                      promotions, new arrivals, or your brand story.
+                    </p>
+                    <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                      <p className="text-sm font-medium text-blue-800 mb-2">✨ Best Uses for Hero Banners:</p>
+                      <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                        <li><strong>Sales & Promotions</strong> - "50% Off Summer Collection"</li>
+                        <li><strong>New Product Launches</strong> - "Introducing Our New Smartwatch"</li>
+                        <li><strong>Seasonal Campaigns</strong> - "Holiday Gift Guide 2024"</li>
+                        <li><strong>Brand Storytelling</strong> - "Handcrafted with Love Since 1990"</li>
+                        <li><strong>Feature Highlights</strong> - "Free Shipping on Orders Above ₹500"</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Creating Banners */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">➕</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Creating a Hero Banner</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                        <p className="text-gray-700">Click the <strong>"+ Add Banner"</strong> button to create a new slide</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                        <p className="text-gray-700"><strong>Image URL:</strong> Enter the full URL of your banner image (e.g., https://your-site.com/banner.jpg)</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                        <p className="text-gray-700"><strong>Title:</strong> Main heading shown on the banner (e.g., "Summer Sale")</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                        <p className="text-gray-700"><strong>Subtitle:</strong> Supporting text below the title (e.g., "Up to 50% off on selected items")</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                        <p className="text-gray-700"><strong>CTA Text:</strong> Button text (e.g., "Shop Now", "Learn More", "Get Started")</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">6</span>
+                        <p className="text-gray-700"><strong>CTA Link:</strong> Where the button takes customers (e.g., /category/summer-collection)</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">7</span>
+                        <p className="text-gray-700">Click <strong>"Save Changes"</strong> at the top to publish your banners</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Image Guidelines */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📐</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Image Size & Quality Guidelines</h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <p className="font-medium text-green-800 mb-2">✅ Recommended Specs</p>
+                        <ul className="text-sm text-green-700 space-y-1 list-disc list-inside">
+                          <li><strong>Dimensions:</strong> 1920x600 pixels</li>
+                          <li><strong>Aspect Ratio:</strong> 16:5 (widescreen)</li>
+                          <li><strong>Format:</strong> JPG, PNG, or WEBP</li>
+                          <li><strong>File Size:</strong> Under 500KB for fast loading</li>
+                          <li><strong>Resolution:</strong> 72 DPI for web</li>
+                        </ul>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="font-medium text-blue-800 mb-2">💡 Design Tips</p>
+                        <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                          <li>Use high-contrast colors for text</li>
+                          <li>Keep main content in center 60%</li>
+                          <li>Avoid text on busy backgrounds</li>
+                          <li>Use bold, readable fonts</li>
+                          <li>Optimize images before uploading</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reordering & Managing */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🔄</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Reordering & Managing Banners</h4>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">⬆️⬇️ Change Order</p>
+                        <p className="text-sm text-gray-600">Use the up/down arrow buttons to reorder slides. The top banner shows first in the carousel rotation.</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">🗑️ Delete Banner</p>
+                        <p className="text-sm text-gray-600">Click the trash icon to remove a banner. You'll be asked to confirm before deletion.</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">💾 Save Changes</p>
+                        <p className="text-sm text-gray-600">Always click "Save Changes" at the top after editing. Changes won't appear until you save.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* CTA Best Practices */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🎯</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Effective Call-to-Action (CTA)</h4>
+                    <p className="text-gray-700 mb-3">
+                      A good CTA button drives customer action. Make it clear, compelling, and relevant to your banner's message.
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <p className="text-sm font-medium text-green-800 mb-2">✅ Good CTAs</p>
+                        <ul className="text-sm text-green-700 space-y-1">
+                          <li>"Shop Summer Sale" → clear and specific</li>
+                          <li>"Explore Collection" → invites browsing</li>
+                          <li>"Get 50% Off" → highlights benefit</li>
+                          <li>"Learn More" → for information pages</li>
+                        </ul>
+                      </div>
+                      <div className="p-3 bg-red-50 rounded border border-red-200">
+                        <p className="text-sm font-medium text-red-800 mb-2">❌ Weak CTAs</p>
+                        <ul className="text-sm text-red-700 space-y-1">
+                          <li>"Click Here" → too generic</li>
+                          <li>"Submit" → not action-oriented</li>
+                          <li>"Go" → lacks context</li>
+                          <li>"OK" → not compelling</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Common Mistakes */}
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-5 border border-red-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>⚠️</span> Common Mistakes to Avoid
+                </h4>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Too many banners:</strong> 3-5 banners max. More causes slow loading and banner blindness.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Low-quality images:</strong> Blurry or pixelated images look unprofessional and hurt credibility.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Too much text:</strong> Keep copy short and punchy. Long paragraphs don't work on banners.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Broken links:</strong> Always test CTA links before saving. Broken links frustrate customers.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Outdated content:</strong> Update banners regularly. Don't keep "Summer Sale" in winter!</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Tips */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>💡</span> Quick Tips
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Update banners for seasons and holidays</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Use action-oriented language in titles</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Test on mobile devices after publishing</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Compress images to improve page speed</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Maintain consistent brand colors and style</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Track which banners drive the most clicks</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">

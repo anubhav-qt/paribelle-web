@@ -18,6 +18,7 @@ export default function VendorOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -167,6 +168,262 @@ export default function VendorOrdersPage() {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Orders Received</h1>
           <p className="text-gray-600 mt-2">Orders from your customers (excluding your own purchases)</p>
+        </div>
+
+        {/* Help Section */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-blue-100 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">💡</span>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Beginner's Guide</h3>
+                <p className="text-sm text-gray-600">Learn how to manage and fulfill customer orders</p>
+              </div>
+            </div>
+            <svg
+              className={`w-6 h-6 text-gray-600 transition-transform ${showHelp ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          {showHelp && (
+            <div className="px-6 pb-6 space-y-6">
+              {/* Understanding Orders */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📦</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Understanding Your Orders</h4>
+                    <p className="text-gray-700 mb-3">
+                      This page shows <strong>orders received from your customers</strong> - not orders you placed yourself. 
+                      When someone buys your products, their order appears here for you to process and fulfill.
+                    </p>
+                    <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                      <p className="text-sm font-medium text-blue-800 mb-2">ℹ️ Important Note:</p>
+                      <p className="text-sm text-blue-700">
+                        Orders YOU place (your own purchases) appear in <strong>"My Purchases"</strong> section, not here. 
+                        This separation helps you distinguish between orders to fulfill vs. orders you've made.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Statuses */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🔄</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Order Status Workflow</h4>
+                    <p className="text-gray-700 mb-3">
+                      Each order goes through several stages. Update the status as you process the order to keep customers informed.
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded border border-yellow-200">
+                        <span className="text-xl">🟡</span>
+                        <div>
+                          <p className="font-medium text-yellow-800">Pending</p>
+                          <p className="text-sm text-yellow-700">New order, awaiting your confirmation. Review and confirm within 24 hours.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-blue-50 rounded border border-blue-200">
+                        <span className="text-xl">🔵</span>
+                        <div>
+                          <p className="font-medium text-blue-800">Confirmed</p>
+                          <p className="text-sm text-blue-700">Order accepted. Start preparing the items for shipment.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-purple-50 rounded border border-purple-200">
+                        <span className="text-xl">🟣</span>
+                        <div>
+                          <p className="font-medium text-purple-800">Processing</p>
+                          <p className="text-sm text-purple-700">Actively packing or preparing the order for dispatch.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-orange-50 rounded border border-orange-200">
+                        <span className="text-xl">🟠</span>
+                        <div>
+                          <p className="font-medium text-orange-800">Shipped</p>
+                          <p className="text-sm text-orange-700">Order dispatched. Provide tracking number if available.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-green-50 rounded border border-green-200">
+                        <span className="text-xl">🟢</span>
+                        <div>
+                          <p className="font-medium text-green-800">Delivered</p>
+                          <p className="text-sm text-green-700">Successfully delivered to customer. Order complete!</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-red-50 rounded border border-red-200">
+                        <span className="text-xl">🔴</span>
+                        <div>
+                          <p className="font-medium text-red-800">Cancelled</p>
+                          <p className="text-sm text-red-700">Order cancelled by you or the customer. Refund may be required.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Processing Orders */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">✅</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">How to Process an Order</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                        <p className="text-gray-700"><strong>Review the order:</strong> Click "View Details" to see all items, quantities, shipping address, and customer information</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                        <p className="text-gray-700"><strong>Check inventory:</strong> Verify you have all items in stock before confirming</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                        <p className="text-gray-700"><strong>Update status:</strong> Change from "Pending" to "Confirmed" once you accept the order</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                        <p className="text-gray-700"><strong>Pack the items:</strong> Prepare the products for shipment. Update status to "Processing"</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                        <p className="text-gray-700"><strong>Ship the order:</strong> Send via courier. Update status to "Shipped" and add tracking number</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">6</span>
+                        <p className="text-gray-700"><strong>Confirm delivery:</strong> Once customer receives, mark as "Delivered"</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Handling Special Cases */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🛠️</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Handling Special Situations</h4>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-amber-50 rounded border border-amber-200">
+                        <p className="font-medium text-amber-800 mb-2">📋 Out of Stock Items</p>
+                        <p className="text-sm text-amber-700">Contact customer immediately via email/phone. Offer alternatives or partial fulfillment. If cancelled, issue refund promptly.</p>
+                      </div>
+                      <div className="p-3 bg-red-50 rounded border border-red-200">
+                        <p className="font-medium text-red-800 mb-2">❌ Cancellation Requests</p>
+                        <p className="text-sm text-red-700">If order is not yet shipped, accept cancellation and process refund. If already shipped, explain return process per your return policy.</p>
+                      </div>
+                      <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                        <p className="font-medium text-purple-800 mb-2">🔄 Returns & Refunds</p>
+                        <p className="text-sm text-purple-700">Follow your store's return policy. Inspect returned items. Issue refund after verifying condition. Update order status accordingly.</p>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="font-medium text-blue-800 mb-2">📞 Customer Queries</p>
+                        <p className="text-sm text-blue-700">Respond within 24 hours. Check order details before replying. Provide tracking info if asked. Be professional and helpful.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Using Filters */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🔍</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Using Search and Filters</h4>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">🔎 Search</p>
+                        <p className="text-sm text-gray-600">Find orders by Order ID, customer name, email, or phone number</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">📊 Status Filter</p>
+                        <p className="text-sm text-gray-600">View only Pending, Confirmed, Processing, Shipped, Delivered, or Cancelled orders</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">⬆️ Sort</p>
+                        <p className="text-sm text-gray-600">Sort by Date (newest/oldest), Amount (high/low), or Status</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Common Mistakes */}
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-5 border border-red-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>⚠️</span> Common Mistakes to Avoid
+                </h4>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Delayed confirmations:</strong> Always confirm orders within 24 hours to build customer trust</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Not updating status:</strong> Keep status current so customers know where their order is</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Ignoring customer messages:</strong> Respond promptly to build good reputation</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Poor packaging:</strong> Protect items well during shipping to avoid damage and returns</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>No tracking info:</strong> Provide tracking numbers when available - customers appreciate it</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Tips */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>💡</span> Quick Tips
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Check orders daily to avoid delays</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Use filters to prioritize pending orders</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Double-check shipping address before dispatching</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Keep packing materials and labels ready</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Include invoice and thank you note in package</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Maintain good inventory to avoid stock issues</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Filters and Search */}

@@ -23,6 +23,7 @@ export default function VendorCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -304,6 +305,250 @@ export default function VendorCategoriesPage() {
             <Plus className="w-5 h-5" />
             Add Category
           </button>
+        </div>
+
+        {/* Help Section */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-blue-100 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">💡</span>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Beginner's Guide</h3>
+                <p className="text-sm text-gray-600">Learn how to create and manage product categories</p>
+              </div>
+            </div>
+            <svg
+              className={`w-6 h-6 text-gray-600 transition-transform ${showHelp ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          {showHelp && (
+            <div className="px-6 pb-6 space-y-6">
+              {/* What are Categories */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📁</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">What are Categories?</h4>
+                    <p className="text-gray-700 mb-3">
+                      Categories help organize your products into logical groups, making it easier for customers to find what they need. 
+                      Think of them like folders on your computer - you can have main categories and sub-categories within them.
+                    </p>
+                    <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                      <p className="text-sm font-medium text-blue-800 mb-2">📝 Examples of Category Structures:</p>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li><strong>Clothing →</strong> Men's Wear → Shirts, Pants, Shoes</li>
+                        <li><strong>Electronics →</strong> Mobile Phones, Laptops, Accessories</li>
+                        <li><strong>Food →</strong> Snacks → Chips, Cookies, Candy</li>
+                        <li><strong>Sports →</strong> Cricket → Bats, Balls, Protective Gear</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Global vs Custom Categories */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🌍</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Global vs Custom Categories</h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="font-medium text-gray-700 mb-2">🌐 Global Categories</p>
+                        <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                          <li>Shared across all vendors</li>
+                          <li>Cannot be edited or deleted by you</li>
+                          <li>Marked with "Global" badge</li>
+                          <li>Use these for standard product types</li>
+                        </ul>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="font-medium text-blue-700 mb-2">📋 Your Custom Categories</p>
+                        <ul className="text-sm text-blue-600 space-y-1 list-disc list-inside">
+                          <li>Created specifically for your store</li>
+                          <li>Can edit, delete, and manage filters</li>
+                          <li>Blue folder icon indicates yours</li>
+                          <li>Perfect for unique product types</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Creating Categories */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">➕</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Creating a New Category</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                        <p className="text-gray-700">Click the <strong>"+ Add Category"</strong> button in the top right</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                        <p className="text-gray-700">Enter a <strong>Name</strong> (e.g., "Custom T-Shirts"). The slug will auto-generate (e.g., "custom-t-shirts")</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                        <p className="text-gray-700"><strong>(Optional)</strong> Add a description to explain what products belong in this category</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                        <p className="text-gray-700"><strong>(Optional)</strong> Select a <strong>Parent Category</strong> to make this a subcategory (e.g., T-Shirts under Clothing)</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                        <p className="text-gray-700">Set <strong>Sort Order</strong> (lower numbers appear first, e.g., 1, 2, 3...)</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">6</span>
+                        <p className="text-gray-700">Click <strong>"Create Category"</strong> or <strong>"Update Category"</strong></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Managing Filters */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">⚙️</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Managing Category Filters</h4>
+                    <p className="text-gray-700 mb-3">
+                      Filters help customers narrow down products within a category. For example, in a "Shirts" category, 
+                      you might have filters for Size (S, M, L, XL), Color (Red, Blue, Green), and Brand.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <span className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                        <p className="text-gray-700">Click the <strong>⚙️ Settings</strong> icon next to your custom category</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                        <p className="text-gray-700">Add filter attributes (e.g., "Size", "Color", "Material")</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                        <p className="text-gray-700">For each attribute, add possible values (e.g., Size: Small, Medium, Large)</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                        <p className="text-gray-700">When adding products to this category, you can select these filter values</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-amber-50 rounded border border-amber-200">
+                      <p className="text-sm font-medium text-amber-800 mb-2">⚠️ Note:</p>
+                      <p className="text-sm text-amber-700">You can only manage filters for YOUR custom categories. Global categories' filters are managed by administrators.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hierarchical Structure */}
+              <div className="bg-white rounded-lg p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🌲</span>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Creating Category Hierarchy</h4>
+                    <p className="text-gray-700 mb-3">
+                      You can nest categories to create a tree structure. This helps organize products logically and improves customer navigation.
+                    </p>
+                    <div className="p-3 bg-gray-50 rounded border border-gray-200 font-mono text-sm">
+                      <div className="text-gray-700">
+                        📁 <strong>Clothing</strong> (Main Category)<br />
+                        &nbsp;&nbsp;└─ 📁 Men's Wear (Sub-category)<br />
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ 👕 Shirts (Sub-sub-category)<br />
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ 👖 Pants<br />
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ 👞 Shoes<br />
+                        &nbsp;&nbsp;└─ 📁 Women's Wear<br />
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ 👗 Dresses<br />
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ 👠 Heels
+                      </div>
+                    </div>
+                    <div className="mt-3 p-3 bg-green-50 rounded border border-green-200">
+                      <p className="text-sm font-medium text-green-800 mb-2">💡 Best Practice:</p>
+                      <p className="text-sm text-green-700">Keep hierarchy to 2-3 levels maximum. Too many levels make navigation confusing for customers.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Common Mistakes */}
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-5 border border-red-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>⚠️</span> Common Mistakes to Avoid
+                </h4>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Too many categories:</strong> Having 50+ categories overwhelms customers. Group similar items together.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Vague names:</strong> "Miscellaneous" or "Other" categories are not helpful. Be specific (e.g., "Office Supplies").</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Duplicate categories:</strong> Don't create "T-Shirts" and "Tshirts" separately. Use one consistent name.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Empty categories:</strong> Don't create categories you won't use. Create them as you add products.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 font-bold">✗</span>
+                    <span><strong>Ignoring sort order:</strong> Random ordering confuses customers. Use logical order (e.g., main categories first).</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Tips */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span>💡</span> Quick Tips
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Start with broad categories, add subcategories later</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Use global categories when they fit your products</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Create custom categories for unique product types</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Add filters to help customers find products quickly</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Use descriptive, clear category names</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Assign products to the most specific category</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {loading ? (
