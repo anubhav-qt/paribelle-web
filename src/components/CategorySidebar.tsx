@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Package, Calendar, Layers } from 'lucide-react';
+import { ChevronRight, Package, Calendar, Layers, Menu, X } from 'lucide-react';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useCategories } from '@/hooks/useCategories';
@@ -10,6 +10,13 @@ import { useCategories } from '@/hooks/useCategories';
 interface CategorySidebarProps {
   vendorId?: string;
   hideEmptyCategories?: boolean;
+}
+
+interface VendorPage {
+  id: string;
+  title: string;
+  slug: string;
+  showInNavigation: boolean;
 }
 
 export default function CategorySidebar({ 
@@ -21,9 +28,13 @@ export default function CategorySidebar({
   const [hasBookingProducts, setHasBookingProducts] = useState(false);
   const [categoryDisplayMode, setCategoryDisplayMode] = useState<'top' | 'sidebar'>('sidebar');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [customPages, setCustomPages] = useState<VendorPage[]>([]);
+  const [showPagesMenu, setShowPagesMenu] = useState(false);
+  const pagesMenuRef = useRef<HTMLDivElement>(null);
   
   // Use vendorId from props or context
   const effectiveVendorId = vendorId || (isVendorStore && vendor ? vendor.id : undefined);
+  const effectiveVendorSlug = isVendorStore && vendor ? vendor.slug : undefined;
   
   // Fetch categories using React Query
   const { data: categories = [], isLoading } = useCategories({
@@ -64,6 +75,55 @@ export default function CategorySidebar({
   useEffect(() => {
     checkBookingProducts();
   }, [effectiveVendorId]);
+
+  // Fetch custom pages
+  useEffect(() => {
+    const fetchCustomPages = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        let url: string;
+        
+        console.log('📄 CategorySidebar: Fetching custom pages', { isVendorStore, effectiveVendorId });
+        
+        if (isVendorStore && effectiveVendorId) {
+          url = `${API_URL}/api/v1/vendors/${effectiveVendorId}/pages`;
+        } else {
+          url = `${API_URL}/api/v1/marketplace/pages`;
+        }
+        
+        console.log('📄 CategorySidebar: Fetching from URL:', url);
+        
+        const response = await fetch(url);
+        if (response.ok) {
+          const pages = await response.json();
+          console.log('📄 CategorySidebar: Pages received:', pages);
+          const publishedPages = pages.filter((p: VendorPage) => p.showInNavigation);
+          console.log('📄 CategorySidebar: Published pages:', publishedPages);
+          setCustomPages(publishedPages);
+        } else {
+          console.error('📄 CategorySidebar: Failed to fetch pages, status:', response.status);
+        }
+      } catch (error) {
+        console.error('📄 CategorySidebar: Error fetching custom pages:', error);
+      }
+    };
+
+    fetchCustomPages();
+  }, [isVendorStore, effectiveVendorId]);
+
+  // Close pages menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pagesMenuRef.current && !pagesMenuRef.current.contains(event.target as Node)) {
+        setShowPagesMenu(false);
+      }
+    };
+
+    if (showPagesMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showPagesMenu]);
 
   const checkBookingProducts = async () => {
     try {
@@ -123,6 +183,8 @@ export default function CategorySidebar({
     return null;
   }
 
+  console.log('📄 CategorySidebar: Rendering with customPages:', customPages, 'length:', customPages.length);
+
   return (
     <aside className="hidden lg:block w-72 flex-shrink-0">
       <div className={theme.combine(theme.cardBg, 'rounded-xl shadow-lg border border-gray-200/50 overflow-hidden sticky top-20 max-h-[calc(100vh-6rem)]')}>
@@ -144,6 +206,66 @@ export default function CategorySidebar({
         {/* Categories List */}
         <div className="p-4 overflow-y-auto max-h-[calc(100vh-14rem)] custom-scrollbar">
           <div className="space-y-1">
+            {/* Pages Menu Section */}
+            {customPages.length > 0 && (
+              <div className="mb-3" ref={pagesMenuRef}>
+                <button
+                  onClick={() => setShowPagesMenu(!showPagesMenu)}
+                  className={theme.combine(
+                    'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200',
+                    showPagesMenu
+                      ? isVendorStore 
+                        ? 'bg-[var(--vendor-primary)]/10 text-[var(--vendor-primary)] font-medium shadow-sm'
+                        : 'bg-blue-50 text-blue-600 font-medium shadow-sm'
+                      : theme.combine(
+                          theme.text,
+                          'hover:bg-gray-50 hover:shadow-sm'
+                        )
+                  )}
+                >
+                  <div className={theme.combine(
+                    'w-8 h-8 rounded-lg flex items-center justify-center transition-colors',
+                    showPagesMenu
+                      ? isVendorStore 
+                        ? 'bg-[var(--vendor-primary)] text-white'
+                        : 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
+                  )}>
+                    {showPagesMenu ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                  </div>
+                <span className="flex-1 text-sm font-medium text-left">More</span>
+                  <ChevronRight className={theme.combine(
+                    'w-4 h-4 transition-transform',
+                    showPagesMenu ? 'rotate-90' : ''
+                  )} />
+                </button>
+
+                {/* Pages Dropdown */}
+                {showPagesMenu && (
+                  <div className="mt-2 space-y-1 pl-11">
+                    {customPages.map((page) => {
+                      const baseUrl = isVendorStore ? '' : (effectiveVendorSlug ? `/${effectiveVendorSlug}` : '');
+                      const pageUrl = `${baseUrl}/${page.slug}`;
+                      
+                      return (
+                        <Link
+                          key={page.id}
+                          href={pageUrl}
+                          onClick={() => setShowPagesMenu(false)}
+                          className={theme.combine(
+                            'block px-3 py-2 text-sm rounded-md transition-all',
+                            isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-gray-600 hover:bg-gray-100'
+                          )}
+                        >
+                          {page.title}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Bookings & Services */}
             {hasBookingProducts && (
               <Link

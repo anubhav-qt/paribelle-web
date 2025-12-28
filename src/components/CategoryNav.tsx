@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Home } from 'lucide-react';
+import { ChevronDown, Home, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useCategories } from '@/hooks/useCategories';
@@ -59,8 +59,11 @@ export default function CategoryNav({
   });
   
   const [vendorPages, setVendorPages] = useState<VendorPage[]>([]);
+  const [customPages, setCustomPages] = useState<VendorPage[]>([]);
+  const [showPagesMenu, setShowPagesMenu] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pagesMenuRef = useRef<HTMLDivElement>(null);
   const [hasBookingProducts, setHasBookingProducts] = useState(false);
   
   // Fetch category display mode setting
@@ -198,19 +201,49 @@ export default function CategoryNav({
     }
   };
 
+  // Fetch custom pages
+  useEffect(() => {
+    const fetchCustomPages = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        let url: string;
+        
+        if (isVendorStore && effectiveVendorId) {
+          url = `${API_URL}/api/v1/vendors/${effectiveVendorId}/pages`;
+        } else {
+          url = `${API_URL}/api/v1/marketplace/pages`;
+        }
+        
+        const response = await fetch(url);
+        if (response.ok) {
+          const pages = await response.json();
+          const publishedPages = pages.filter((p: VendorPage) => p.showInNavigation);
+          setCustomPages(publishedPages);
+        }
+      } catch (error) {
+        console.error('Error fetching custom pages:', error);
+      }
+    };
+
+    fetchCustomPages();
+  }, [isVendorStore, effectiveVendorId]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setActiveDropdown(null);
       }
+      if (pagesMenuRef.current && !pagesMenuRef.current.contains(event.target as Node)) {
+        setShowPagesMenu(false);
+      }
     };
 
-    if (activeDropdown && mode !== 'navigation') {
+    if ((activeDropdown && mode !== 'navigation') || showPagesMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [activeDropdown, mode]);
+  }, [activeDropdown, mode, showPagesMenu]);
 
   const handleCategoryClick = (categoryId: string) => {
     if (mode === 'filter' && onCategorySelect) {
@@ -309,17 +342,63 @@ export default function CategoryNav({
       <div className="container mx-auto">
         <div className="flex items-center gap-0 flex-wrap">
           {/* Home Link - Left Side */}
-          {effectiveVendorSlug && (
-            <Link
-              href="/"
-              className={theme.combine(
-                "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
-                isVendorStore ? 'vendor-border-primary-30 vendor-text' : 'border-secondary-foreground/20 text-secondary-foreground'
+          <Link
+            href="/"
+            className={theme.combine(
+              "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
+              isVendorStore ? 'vendor-border-primary-30 vendor-text' : 'border-secondary-foreground/20 text-secondary-foreground'
+            )}
+          >
+            <Home className="w-3.5 h-3.5" />
+            Home
+          </Link>
+
+          {/* Pages Menu Button */}
+          {customPages.length > 0 && (
+            <div className="relative flex-shrink-0" ref={pagesMenuRef}>
+              <button
+                onClick={() => setShowPagesMenu(!showPagesMenu)}
+                className={theme.combine(
+                  "flex items-center gap-2 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
+                  isVendorStore ? 'vendor-border-primary-30 vendor-text' : 'border-secondary-foreground/20 text-secondary-foreground'
+                )}
+                aria-label="View pages"
+              >
+                {showPagesMenu ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                <span>More</span>
+              </button>
+
+              {/* Pages Dropdown */}
+              {showPagesMenu && (
+                <div
+                  className={theme.combine(
+                    "absolute left-0 mt-2 w-64 rounded-lg shadow-lg border z-50 max-h-96 overflow-y-auto",
+                    isVendorStore ? 'vendor-nav-bg vendor-border-primary' : 'bg-white border-gray-200'
+                  )}
+                >
+                  <div className="py-2">
+                    {customPages.map((page) => {
+                      const baseUrl = isVendorStore ? '' : (effectiveVendorSlug ? `/${effectiveVendorSlug}` : '');
+                      const pageUrl = `${baseUrl}/${page.slug}`;
+                      
+                      return (
+                        <Link
+                          key={page.id}
+                          href={pageUrl}
+                          onClick={() => setShowPagesMenu(false)}
+                          className={theme.combine(
+                            "block px-4 py-3 text-sm transition-all hover:opacity-80",
+                            isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-gray-700 hover:bg-gray-100'
+                          )}
+                        >
+                          {page.title}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
-            >
-              <Home className="w-3.5 h-3.5" />
-              Home
-            </Link>
+            </div>
           )}
 
           {/* Categories - Middle */}

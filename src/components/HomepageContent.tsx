@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import ProductGrid from './ProductGrid';
 import CategoryNav from './CategoryNav';
+import CategorySidebar from './CategorySidebar';
 import StoreNav from './StoreNav';
 import { useLocale } from 'next-intl';
 import { useVendorContext } from '@/contexts/VendorContext';
@@ -289,9 +290,6 @@ export default function HomepageContent({
 
   return (
     <div>
-      {/* Store Navigation Bar */}
-      <StoreNav />
-      
       {/* Category Navigation Bar */}
       <CategoryNav mode="scroll" />
 
@@ -319,50 +317,11 @@ export default function HomepageContent({
 
         {!loading && (
           <div className="flex gap-6">
-          {/* Left Sidebar - Categories Tree */}
-          {categoryDisplayMode === 'sidebar' && (
-            <aside className="hidden lg:block w-64 flex-shrink-0">
-              <div className={theme.combine(theme.cardBg, 'rounded-lg shadow-sm p-4 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto')}>
-                <h2 className={theme.combine('font-bold text-lg mb-4 sticky top-0 pb-2 z-10', theme.cardBg, theme.text)}>All Categories</h2>
-                <div className="space-y-1">
-                  {/* Bookings & Services */}
-                  {productsByCategory['bookings-services'] && productsByCategory['bookings-services'].length > 0 && (
-                    <div>
-                      <Link
-                        href="#category-bookings-services"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          scrollToElement('category-bookings-services');
-                        }}
-                        className={theme.combine('flex items-center justify-between px-3 py-2 text-sm font-medium rounded transition-colors', theme.text, isVendorStore ? 'hover:vendor-primary' : 'hover:text-primary hover:bg-accent/10')}
-                      >
-                        <span>Bookings & Services</span>
-                      </Link>
-                    </div>
-                  )}
-                  
-                  {categories.map((category) => (
-                    <div key={category.id}>
-                      <Link
-                        href={`#category-${category.slug}`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          scrollToElement(`category-${category.slug}`);
-                        }}
-                        className={theme.combine('flex items-center justify-between px-3 py-2 text-sm font-medium rounded transition-colors', theme.text, isVendorStore ? 'hover:vendor-primary' : 'hover:text-primary hover:bg-accent/10')}
-                      >
-                        <span>{category.name}</span>
-                        {category.children && category.children.length > 0 && <ChevronRight className="w-4 h-4" />}
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </aside>
-          )}
+            {/* Left Sidebar - Categories */}
+            <CategorySidebar />
 
-          {/* Main Content Area */}
-          <div className="flex-1 space-y-8">
+            {/* Main Content Area */}
+            <div className="flex-1 space-y-8">
             {/* Bookings & Services Section - Always show if there are booking products */}
             {(() => {
               const bookingProducts = productsByCategory['bookings-services'] || [];
