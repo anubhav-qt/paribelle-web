@@ -67,6 +67,9 @@ export default function VendorProductsPage() {
     images: [] as string[],
     productType: 'physical' as 'physical' | 'booking',
     categoryIds: [] as string[],
+    hasVariants: false,
+    variations: [] as any[],
+    variationThemes: [] as string[],
     attributes: {
       booking: {
         duration: 60,
@@ -154,28 +157,98 @@ export default function VendorProductsPage() {
     }
   };
 
-  const handleEdit = (product: Product) => {
-    setEditingProduct(product);
-    setEditFormData({
-      name: product.name,
-      price: product.price,
-      compareAtPrice: product.compareAtPrice || 0,
-      stockQuantity: product.stockQuantity,
-      sku: product.sku,
-      featuredImage: product.featuredImage || '',
-      images: product.images || [],
-      productType: product.productType || 'physical',
-      categoryIds: product.categories?.map(c => c.id) || [],
-      attributes: {
-        booking: {
-          duration: product.attributes?.booking?.duration || 60,
-          durationUnit: product.attributes?.booking?.durationUnit || 'hours',
-          bufferTime: product.attributes?.booking?.bufferTime || 0,
-          availableDays: product.attributes?.booking?.availableDays || [],
-          timeSlots: product.attributes?.booking?.timeSlots || [{ start: '09:00', end: '17:00' }],
+  const handleEdit = async (product: Product) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Fetch full product details with variations
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${product.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      },
-    });
+      });
+      
+      if (response.ok) {
+        const fullProduct = await response.json();
+        setEditingProduct(fullProduct);
+        setEditFormData({
+          name: fullProduct.name,
+          price: fullProduct.price,
+          compareAtPrice: fullProduct.compareAtPrice || 0,
+          stockQuantity: fullProduct.stockQuantity,
+          sku: fullProduct.sku,
+          featuredImage: fullProduct.featuredImage || '',
+          images: fullProduct.images || [],
+          productType: fullProduct.productType || 'physical',
+          categoryIds: fullProduct.categories?.map((c: any) => c.id) || [],
+          hasVariants: fullProduct.isParent || false,
+          variations: fullProduct.variations || [],
+          variationThemes: fullProduct.variationThemes || [],
+          attributes: {
+            booking: {
+              duration: fullProduct.attributes?.booking?.duration || 60,
+              durationUnit: fullProduct.attributes?.booking?.durationUnit || 'hours',
+              bufferTime: fullProduct.attributes?.booking?.bufferTime || 0,
+              availableDays: fullProduct.attributes?.booking?.availableDays || [],
+              timeSlots: fullProduct.attributes?.booking?.timeSlots || [{ start: '09:00', end: '17:00' }],
+            },
+          },
+        });
+      } else {
+        // Fallback to the product data we already have
+        setEditingProduct(product);
+        setEditFormData({
+          name: product.name,
+          price: product.price,
+          compareAtPrice: product.compareAtPrice || 0,
+          stockQuantity: product.stockQuantity,
+          sku: product.sku,
+          featuredImage: product.featuredImage || '',
+          images: product.images || [],
+          productType: product.productType || 'physical',
+          categoryIds: product.categories?.map(c => c.id) || [],
+          hasVariants: product.isParent || false,
+          variations: product.variations || [],
+          variationThemes: product.variationThemes || [],
+          attributes: {
+            booking: {
+              duration: product.attributes?.booking?.duration || 60,
+              durationUnit: product.attributes?.booking?.durationUnit || 'hours',
+              bufferTime: product.attributes?.booking?.bufferTime || 0,
+              availableDays: product.attributes?.booking?.availableDays || [],
+              timeSlots: product.attributes?.booking?.timeSlots || [{ start: '09:00', end: '17:00' }],
+            },
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      // Fallback to the product data we already have
+      setEditingProduct(product);
+      setEditFormData({
+        name: product.name,
+        price: product.price,
+        compareAtPrice: product.compareAtPrice || 0,
+        stockQuantity: product.stockQuantity,
+        sku: product.sku,
+        featuredImage: product.featuredImage || '',
+        images: product.images || [],
+        productType: product.productType || 'physical',
+        categoryIds: product.categories?.map(c => c.id) || [],
+        hasVariants: product.isParent || false,
+        variations: product.variations || [],
+        variationThemes: product.variationThemes || [],
+        attributes: {
+          booking: {
+            duration: product.attributes?.booking?.duration || 60,
+            durationUnit: product.attributes?.booking?.durationUnit || 'hours',
+            bufferTime: product.attributes?.booking?.bufferTime || 0,
+            availableDays: product.attributes?.booking?.availableDays || [],
+            timeSlots: product.attributes?.booking?.timeSlots || [{ start: '09:00', end: '17:00' }],
+          },
+        },
+      });
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -184,6 +257,7 @@ export default function VendorProductsPage() {
     try {
       const token = localStorage.getItem('token');
       
+      // Update main product
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${editingProduct.id}`, {
         method: 'PATCH',
         headers: { 
@@ -193,15 +267,42 @@ export default function VendorProductsPage() {
         body: JSON.stringify(editFormData),
       });
       
-      if (response.ok) {
-        alert('Product updated successfully!');
-        setEditingProduct(null);
-        fetchProducts();
-      } else {
+      if (!response.ok) {
         const error = await response.json();
         alert(`Failed to update product: ${error.message || 'Unknown error'}`);
+        return;
       }
+
+      // If product has variants, update each variant
+      if (editFormData.hasVariants && editFormData.variations && editFormData.variations.length > 0) {
+        for (const variant of editFormData.variations) {
+          if (variant.id) {
+            const variantResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${variant.id}`, {
+              method: 'PATCH',
+              headers: { 
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                sku: variant.sku,
+                price: variant.price,
+                compareAtPrice: variant.compareAtPrice,
+                stockQuantity: variant.stockQuantity,
+              }),
+            });
+            
+            if (!variantResponse.ok) {
+              console.error(`Failed to update variant ${variant.id}`);
+            }
+          }
+        }
+      }
+      
+      alert('Product updated successfully!');
+      setEditingProduct(null);
+      fetchProducts();
     } catch (error) {
+      console.error('Update error:', error);
       alert('Failed to update product. Please try again.');
     }
   };
@@ -218,6 +319,9 @@ export default function VendorProductsPage() {
       images: [],
       productType: 'physical',
       categoryIds: [],
+      hasVariants: false,
+      variations: [],
+      variationThemes: [],
       attributes: {
         booking: {
           duration: 60,
@@ -839,7 +943,7 @@ export default function VendorProductsPage() {
                               <div className="text-xs text-gray-600 mt-0.5">
                                 {Object.entries(product.variationAttributes).map(([key, value]) => (
                                   <span key={key} className="mr-2">
-                                    {key}: <strong>{value}</strong>
+                                    {key}: <strong>{String(value)}</strong>
                                   </span>
                                 ))}
                               </div>
@@ -947,26 +1051,40 @@ export default function VendorProductsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Price
                     </label>
-                    <input
-                      type="number"
-                      value={editFormData.price}
-                      onChange={(e) => setEditFormData({ ...editFormData, price: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      step="0.01"
-                    />
+                    {editFormData.hasVariants ? (
+                      <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                        <p className="text-sm">Price set per variant</p>
+                        <p className="text-xs mt-1">See variants table below</p>
+                      </div>
+                    ) : (
+                      <input
+                        type="number"
+                        value={editFormData.price}
+                        onChange={(e) => setEditFormData({ ...editFormData, price: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        step="0.01"
+                      />
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Compare At Price
                     </label>
-                    <input
-                      type="number"
-                      value={editFormData.compareAtPrice}
-                      onChange={(e) => setEditFormData({ ...editFormData, compareAtPrice: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      step="0.01"
-                    />
+                    {editFormData.hasVariants ? (
+                      <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                        <p className="text-sm">Compare price per variant</p>
+                        <p className="text-xs mt-1">See variants table below</p>
+                      </div>
+                    ) : (
+                      <input
+                        type="number"
+                        value={editFormData.compareAtPrice}
+                        onChange={(e) => setEditFormData({ ...editFormData, compareAtPrice: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        step="0.01"
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -1284,15 +1402,24 @@ export default function VendorProductsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Stock Quantity
                     </label>
-                    <input
-                      type="number"
-                      value={editFormData.stockQuantity}
-                      onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      disabled={editFormData.productType === 'booking'}
-                    />
-                    {editFormData.productType === 'booking' && (
-                      <p className="text-xs text-gray-500 mt-1">Stock not applicable for booking products</p>
+                    {editFormData.hasVariants ? (
+                      <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                        <p className="text-sm">Stock set per variant</p>
+                        <p className="text-xs mt-1">See variants table below</p>
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="number"
+                          value={editFormData.stockQuantity}
+                          onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: parseInt(e.target.value) || 0 })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          disabled={editFormData.productType === 'booking'}
+                        />
+                        {editFormData.productType === 'booking' && (
+                          <p className="text-xs text-gray-500 mt-1">Stock not applicable for booking products</p>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -1300,12 +1427,19 @@ export default function VendorProductsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       SKU
                     </label>
-                    <input
-                      type="text"
-                      value={editFormData.sku}
-                      onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                    {editFormData.hasVariants ? (
+                      <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                        <p className="text-sm">SKU set per variant</p>
+                        <p className="text-xs mt-1">See variants table below</p>
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editFormData.sku}
+                        onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -1327,6 +1461,104 @@ export default function VendorProductsPage() {
                   value={editFormData.featuredImage}
                   onChange={(url) => setEditFormData({ ...editFormData, featuredImage: url })}
                 />
+
+                {/* Variant Information Display */}
+                {editFormData.hasVariants && editFormData.variations && editFormData.variations.length > 0 && (
+                  <div className="border-t pt-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                        📦 Product Variants
+                      </h3>
+                      <p className="text-sm text-blue-700 mb-3">
+                        This product has {editFormData.variations.length} variants. You can view and edit variant details below.
+                      </p>
+                      
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white rounded border">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Variant</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">SKU</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Price</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Compare Price</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Stock</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {editFormData.variations.map((variant: any, index: number) => (
+                              <tr key={variant.id || index} className="hover:bg-gray-50">
+                                <td className="px-3 py-2 text-sm">
+                                  {variant.variationAttributes ? 
+                                    Object.entries(variant.variationAttributes).map(([key, value]) => (
+                                      <span key={key} className="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs mr-1">
+                                        {key}: {value as string}
+                                      </span>
+                                    ))
+                                    : 'N/A'}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="text"
+                                    value={variant.sku || ''}
+                                    onChange={(e) => {
+                                      const newVariations = [...editFormData.variations];
+                                      newVariations[index] = { ...newVariations[index], sku: e.target.value };
+                                      setEditFormData({ ...editFormData, variations: newVariations });
+                                    }}
+                                    className="w-full px-2 py-1 text-xs border rounded"
+                                  />
+                                </td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="number"
+                                    value={variant.price || 0}
+                                    onChange={(e) => {
+                                      const newVariations = [...editFormData.variations];
+                                      newVariations[index] = { ...newVariations[index], price: parseFloat(e.target.value) || 0 };
+                                      setEditFormData({ ...editFormData, variations: newVariations });
+                                    }}
+                                    className="w-full px-2 py-1 text-xs border rounded"
+                                    step="0.01"
+                                  />
+                                </td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="number"
+                                    value={variant.compareAtPrice || ''}
+                                    onChange={(e) => {
+                                      const newVariations = [...editFormData.variations];
+                                      newVariations[index] = { ...newVariations[index], compareAtPrice: parseFloat(e.target.value) || undefined };
+                                      setEditFormData({ ...editFormData, variations: newVariations });
+                                    }}
+                                    className="w-full px-2 py-1 text-xs border rounded"
+                                    step="0.01"
+                                    placeholder="Optional"
+                                  />
+                                </td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="number"
+                                    value={variant.stockQuantity || 0}
+                                    onChange={(e) => {
+                                      const newVariations = [...editFormData.variations];
+                                      newVariations[index] = { ...newVariations[index], stockQuantity: parseInt(e.target.value) || 0 };
+                                      setEditFormData({ ...editFormData, variations: newVariations });
+                                    }}
+                                    className="w-full px-2 py-1 text-xs border rounded"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      <p className="text-xs text-amber-600 mt-3">
+                        ⚠️ To add/remove variants or change variant types, please use the "Add Product" page to create a new product.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

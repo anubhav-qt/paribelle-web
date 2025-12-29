@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export interface VariantOption {
   id: string;
   name: string;
   values: string[];
+  isCategoryFilter?: boolean; // Track if this comes from category
+  availableOptions?: { value: string; label: string }[]; // Available options from category
 }
 
 export interface VariantCombination {
@@ -13,6 +15,7 @@ export interface VariantCombination {
   attributes: { [key: string]: string };
   sku: string;
   price: number;
+  compareAtPrice?: number;
   stock: number;
   enabled: boolean;
 }
@@ -21,67 +24,84 @@ interface ProductVariantManagerProps {
   onVariantsChange: (options: VariantOption[], combinations: VariantCombination[]) => void;
   initialOptions?: VariantOption[];
   initialCombinations?: VariantCombination[];
+  categoryFilters?: any[]; // Category-suggested variant types (like Size, Color from category)
+  baseSKU?: string; // Base SKU for auto-generating variant SKUs
 }
 
 export default function ProductVariantManager({
   onVariantsChange,
   initialOptions = [],
   initialCombinations = [],
+  categoryFilters = [],
+  baseSKU = '',
 }: ProductVariantManagerProps) {
   const [variantOptions, setVariantOptions] = useState<VariantOption[]>(initialOptions);
   const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>(initialCombinations);
-  const [newOptionName, setNewOptionName] = useState('');
-  const [newOptionValues, setNewOptionValues] = useState<{ [key: string]: string }>({});
+  const [newCustomVariantName, setNewCustomVariantName] = useState('');
+  const [newCustomVariantValues, setNewCustomVariantValues] = useState('');
 
-  // Add a new variant option type (e.g., Size, Color)
-  const addVariantOption = () => {
-    if (!newOptionName.trim()) return;
+  // Initialize category filters as variant options on mount
+  useEffect(() => {
+    if (categoryFilters.length > 0 && initialOptions.length === 0) {
+      const categoryOptions: VariantOption[] = categoryFilters.map(filter => ({
+        id: filter.id,
+        name: filter.label,
+        values: [], // User will select which values to use
+        isCategoryFilter: true,
+        availableOptions: filter.options || [],
+      }));
+      setVariantOptions(categoryOptions);
+    }
+  }, [categoryFilters]);
+
+  // Toggle a value for a category filter variant
+  const toggleCategoryValue = (optionId: string, value: string) => {
+    const updatedOptions = variantOptions.map((option) => {
+      if (option.id === optionId) {
+        const values = option.values.includes(value)
+          ? option.values.filter((v) => v !== value)
+          : [...option.values, value];
+        return { ...option, values };
+      }
+      return option;
+    });
+
+    setVariantOptions(updatedOptions);
+    regenerateCombinations(updatedOptions);
+  };
+
+  // Add custom variant (not from category)
+  const addCustomVariant = () => {
+    if (!newCustomVariantName.trim() || !newCustomVariantValues.trim()) {
+      alert('Please enter variant name and values (comma-separated)');
+      return;
+    }
+
+    const values = newCustomVariantValues
+      .split(',')
+      .map(v => v.trim())
+      .filter(v => v.length > 0);
+
+    if (values.length === 0) {
+      alert('Please enter at least one value');
+      return;
+    }
 
     const newOption: VariantOption = {
-      id: `option_${Date.now()}`,
-      name: newOptionName,
-      values: [],
+      id: `custom_${Date.now()}`,
+      name: newCustomVariantName,
+      values,
+      isCategoryFilter: false,
     };
 
     const updatedOptions = [...variantOptions, newOption];
     setVariantOptions(updatedOptions);
-    setNewOptionName('');
-    onVariantsChange(updatedOptions, variantCombinations);
-  };
-
-  // Add a value to a variant option (e.g., "Small", "Medium", "Large" to Size)
-  const addValueToOption = (optionId: string) => {
-    const value = newOptionValues[optionId]?.trim();
-    if (!value) return;
-
-    const updatedOptions = variantOptions.map((option) => {
-      if (option.id === optionId && !option.values.includes(value)) {
-        return { ...option, values: [...option.values, value] };
-      }
-      return option;
-    });
-
-    setVariantOptions(updatedOptions);
-    setNewOptionValues({ ...newOptionValues, [optionId]: '' });
-
-    // Regenerate combinations when values change
+    setNewCustomVariantName('');
+    setNewCustomVariantValues('');
     regenerateCombinations(updatedOptions);
   };
 
-  // Remove a value from a variant option
-  const removeValueFromOption = (optionId: string, value: string) => {
-    const updatedOptions = variantOptions.map((option) => {
-      if (option.id === optionId) {
-        return { ...option, values: option.values.filter((v) => v !== value) };
-      }
-      return option;
-    });
-
-    setVariantOptions(updatedOptions);
-    regenerateCombinations(updatedOptions);
-  };
-
-  // Remove a variant option type
+  // Remove a variant option
   const removeVariantOption = (optionId: string) => {
     const updatedOptions = variantOptions.filter((opt) => opt.id !== optionId);
     setVariantOptions(updatedOptions);
@@ -112,11 +132,17 @@ export default function ProductVariantManager({
         Object.keys(attributes).every((key) => vc.attributes[key] === attributes[key])
       );
 
+      // Auto-generate SKU if not provided
+      const autoSKU = baseSKU 
+        ? `${baseSKU}-${Object.values(attributes).join('-').toUpperCase().replace(/\s+/g, '-')}`
+        : `VAR-${Date.now()}-${index}`;
+
       return {
         id: existing?.id || `combo_${Date.now()}_${index}`,
         attributes,
-        sku: existing?.sku || '',
+        sku: existing?.sku || autoSKU,
         price: existing?.price || 0,
+        compareAtPrice: existing?.compareAtPrice,
         stock: existing?.stock || 0,
         enabled: existing?.enabled ?? true,
       };
@@ -150,7 +176,7 @@ export default function ProductVariantManager({
   };
 
   // Bulk update all combinations
-  const bulkUpdateCombinations = (field: 'price' | 'stock', value: number) => {
+  const bulkUpdateCombinations = (field: 'price' | 'stock' | 'compareAtPrice', value: number) => {
     const updated = variantCombinations.map((combo) => ({
       ...combo,
       [field]: value,
@@ -167,90 +193,123 @@ export default function ProductVariantManager({
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Product Variants</h3>
           <p className="text-sm text-gray-600 mt-1">
-            Add variant options like Size, Color, Material, etc. and define pricing for each combination.
+            Select variant options from your category and add custom variants. Pricing rows will appear below.
           </p>
         </div>
       </div>
 
-      {/* Add Variant Option Type */}
-      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Add Variant Type
-        </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newOptionName}
-            onChange={(e) => setNewOptionName(e.target.value)}
-            placeholder="e.g., Size, Color, Material, Packet Size"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            onKeyPress={(e) => e.key === 'Enter' && addVariantOption()}
-          />
+      {/* Category Filter Variants */}
+      {variantOptions.filter(opt => opt.isCategoryFilter).map((option) => (
+        <div key={option.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h4 className="text-md font-semibold text-blue-900 flex items-center gap-2">
+                <span>📋</span> {option.name}
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">From Category</span>
+              </h4>
+              <p className="text-sm text-blue-700 mt-1">Select the values you want to offer:</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => removeVariantOption(option.id)}
+              className="text-red-600 hover:text-red-700 text-sm font-medium"
+            >
+              Remove
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {option.availableOptions?.map((availOption) => {
+              const isSelected = option.values.includes(availOption.value);
+              return (
+                <label
+                  key={availOption.value}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-blue-100 border-blue-500'
+                      : 'bg-white border-gray-300 hover:border-blue-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleCategoryValue(option.id, availOption.value)}
+                    className="h-4 w-4 text-blue-600 rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-900">{availOption.label}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          {option.values.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-blue-200">
+              <p className="text-sm text-blue-800">
+                <strong>Selected ({option.values.length}):</strong> {option.values.join(', ')}
+              </p>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Add Custom Variant */}
+      <div className="bg-purple-50 rounded-lg p-4 border-2 border-purple-200">
+        <h4 className="text-md font-semibold text-purple-900 mb-3 flex items-center gap-2">
+          <span>➕</span> Add Custom Variant
+        </h4>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Variant Name
+            </label>
+            <input
+              type="text"
+              value={newCustomVariantName}
+              onChange={(e) => setNewCustomVariantName(e.target.value)}
+              placeholder="e.g., Packet Size, Weight, Flavor, Style"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Values (comma-separated)
+            </label>
+            <input
+              type="text"
+              value={newCustomVariantValues}
+              onChange={(e) => setNewCustomVariantValues(e.target.value)}
+              placeholder="e.g., 250g, 500g, 1kg  OR  Vanilla, Chocolate, Strawberry"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
           <button
             type="button"
-            onClick={addVariantOption}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={addCustomVariant}
+            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
           >
-            Add Type
+            Add Custom Variant
           </button>
         </div>
       </div>
 
-      {/* Existing Variant Options */}
-      {variantOptions.map((option) => (
-        <div key={option.id} className="bg-white border border-gray-200 rounded-lg p-4">
+      {/* Custom Variants Display */}
+      {variantOptions.filter(opt => !opt.isCategoryFilter).map((option) => (
+        <div key={option.id} className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-md font-semibold text-gray-900">{option.name}</h4>
+            <div>
+              <h4 className="text-md font-semibold text-purple-900 flex items-center gap-2">
+                <span>🎨</span> {option.name}
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Custom</span>
+              </h4>
+              <p className="text-sm text-purple-700 mt-1">Values: {option.values.join(', ')}</p>
+            </div>
             <button
               type="button"
               onClick={() => removeVariantOption(option.id)}
-              className="text-red-600 hover:text-red-700 text-sm"
+              className="text-red-600 hover:text-red-700 text-sm font-medium"
             >
-              Remove Type
+              Remove
             </button>
-          </div>
-
-          {/* Add Values to Option */}
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              value={newOptionValues[option.id] || ''}
-              onChange={(e) =>
-                setNewOptionValues({ ...newOptionValues, [option.id]: e.target.value })
-              }
-              placeholder={`Add ${option.name} value (e.g., Small, Red, 500g)`}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyPress={(e) => e.key === 'Enter' && addValueToOption(option.id)}
-            />
-            <button
-              type="button"
-              onClick={() => addValueToOption(option.id)}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Add Value
-            </button>
-          </div>
-
-          {/* Display Values */}
-          <div className="flex flex-wrap gap-2">
-            {option.values.map((value) => (
-              <span
-                key={value}
-                className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-              >
-                {value}
-                <button
-                  type="button"
-                  onClick={() => removeValueFromOption(option.id, value)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            {option.values.length === 0 && (
-              <span className="text-sm text-gray-500 italic">No values added yet</span>
-            )}
           </div>
         </div>
       ))}
@@ -272,6 +331,18 @@ export default function ProductVariantManager({
                     const value = parseFloat(e.target.value);
                     if (!isNaN(value) && value > 0) {
                       bulkUpdateCombinations('price', value);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Bulk compare price"
+                  className="px-3 py-1 border border-gray-300 rounded text-sm w-32"
+                  onBlur={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value > 0) {
+                      bulkUpdateCombinations('compareAtPrice', value);
                       e.target.value = '';
                     }
                   }}
@@ -314,6 +385,9 @@ export default function ProductVariantManager({
                     Price (₹)
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Compare Price (₹)
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Stock
                   </th>
                 </tr>
@@ -349,6 +423,18 @@ export default function ProductVariantManager({
                         value={combo.price || ''}
                         onChange={(e) =>
                           updateCombination(combo.id, 'price', parseFloat(e.target.value) || 0)
+                        }
+                        placeholder="0.00"
+                        step="0.01"
+                        className="px-2 py-1 border border-gray-300 rounded text-sm w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <input
+                        type="number"
+                        value={combo.compareAtPrice || ''}
+                        onChange={(e) =>
+                          updateCombination(combo.id, 'compareAtPrice', parseFloat(e.target.value) || undefined)
                         }
                         placeholder="0.00"
                         step="0.01"

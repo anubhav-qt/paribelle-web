@@ -3,6 +3,7 @@
 import { useEffect, useState, Fragment } from 'react';
 import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
+import MultiImageUpload from '@/components/MultiImageUpload';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
 import UnifiedHeader from '@/components/UnifiedHeader';
@@ -17,6 +18,7 @@ interface Product {
   status: string;
   sku: string;
   featuredImage?: string;
+  images?: string[];
   productType: 'physical' | 'booking';
   categories: Array<{ id: string; name: string }>;
   vendor?: { 
@@ -26,6 +28,12 @@ interface Product {
     contactEmail: string;
   };
   createdAt: string;
+  // Variation support
+  isParent?: boolean;
+  parentProductId?: string;
+  variations?: Product[];
+  variationAttributes?: Record<string, string>;
+  variationThemes?: string[];
 }
 
 export default function AdminProductsPage() {
@@ -64,7 +72,11 @@ export default function AdminProductsPage() {
     stockQuantity: 0,
     sku: '',
     featuredImage: '',
+    images: [] as string[],
     productType: 'physical' as 'physical' | 'booking',
+    hasVariants: false,
+    variations: [] as any[],
+    variationThemes: [] as string[],
   });
   const [newProductFormData, setNewProductFormData] = useState({
     name: '',
@@ -166,7 +178,11 @@ export default function AdminProductsPage() {
       stockQuantity: product.stockQuantity,
       sku: product.sku,
       featuredImage: product.featuredImage || '',
+      images: product.images || [],
       productType: product.productType || 'physical',
+      hasVariants: product.isParent || false,
+      variations: product.variations || [],
+      variationThemes: product.variationThemes || [],
     });
   };
 
@@ -207,7 +223,11 @@ export default function AdminProductsPage() {
       stockQuantity: 0,
       sku: '',
       featuredImage: '',
+      images: [],
       productType: 'physical',
+      hasVariants: false,
+      variations: [],
+      variationThemes: [],
     });
   };
 
@@ -975,24 +995,38 @@ export default function AdminProductsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Price (₹)
                   </label>
-                  <input
-                    type="number"
-                    value={editFormData.price}
-                    onChange={(e) => setEditFormData({ ...editFormData, price: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  {editFormData.hasVariants ? (
+                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                      <p className="text-sm">Price set per variant</p>
+                      <p className="text-xs mt-1">See variants table below</p>
+                    </div>
+                  ) : (
+                    <input
+                      type="number"
+                      value={editFormData.price}
+                      onChange={(e) => setEditFormData({ ...editFormData, price: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Compare At Price (₹)
                   </label>
-                  <input
-                    type="number"
-                    value={editFormData.compareAtPrice}
-                    onChange={(e) => setEditFormData({ ...editFormData, compareAtPrice: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  {editFormData.hasVariants ? (
+                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                      <p className="text-sm">Compare price per variant</p>
+                      <p className="text-xs mt-1">See variants table below</p>
+                    </div>
+                  ) : (
+                    <input
+                      type="number"
+                      value={editFormData.compareAtPrice}
+                      onChange={(e) => setEditFormData({ ...editFormData, compareAtPrice: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -1020,15 +1054,24 @@ export default function AdminProductsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Stock Quantity
                   </label>
-                  <input
-                    type="number"
-                    value={editFormData.stockQuantity}
-                    onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={editFormData.productType === 'booking'}
-                  />
-                  {editFormData.productType === 'booking' && (
-                    <p className="text-xs text-gray-500 mt-1">Stock not applicable for booking products</p>
+                  {editFormData.hasVariants ? (
+                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                      <p className="text-sm">Stock set per variant</p>
+                      <p className="text-xs mt-1">See variants table below</p>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="number"
+                        value={editFormData.stockQuantity}
+                        onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: parseInt(e.target.value) || 0 })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        disabled={editFormData.productType === 'booking'}
+                      />
+                      {editFormData.productType === 'booking' && (
+                        <p className="text-xs text-gray-500 mt-1">Stock not applicable for booking products</p>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -1036,17 +1079,135 @@ export default function AdminProductsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     SKU
                   </label>
-                  <input
-                    type="text"
-                    value={editFormData.sku}
-                    onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  {editFormData.hasVariants ? (
+                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                      <p className="text-sm">SKU set per variant</p>
+                      <p className="text-xs mt-1">See variants table below</p>
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editFormData.sku}
+                      onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  )}
                 </div>
               </div>
 
+              {/* Variant Information Display */}
+              {editFormData.hasVariants && editFormData.variations && editFormData.variations.length > 0 && (
+                <div className="border-t pt-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                      📦 Product Variants
+                    </h3>
+                    <p className="text-sm text-blue-700 mb-3">
+                      This product has {editFormData.variations.length} variants. You can view and edit variant details below.
+                    </p>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full bg-white rounded border">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Variant</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">SKU</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Price</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Compare Price</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Stock</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {editFormData.variations.map((variant: any, index: number) => (
+                            <tr key={variant.id || index} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 text-sm">
+                                {variant.variationAttributes ? 
+                                  Object.entries(variant.variationAttributes).map(([key, value]) => (
+                                    <span key={key} className="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs mr-1">
+                                      {key}: {String(value)}
+                                    </span>
+                                  ))
+                                  : 'N/A'}
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="text"
+                                  value={variant.sku || ''}
+                                  onChange={(e) => {
+                                    const newVariations = [...editFormData.variations];
+                                    newVariations[index] = { ...newVariations[index], sku: e.target.value };
+                                    setEditFormData({ ...editFormData, variations: newVariations });
+                                  }}
+                                  className="w-full px-2 py-1 text-xs border rounded"
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="number"
+                                  value={variant.price || 0}
+                                  onChange={(e) => {
+                                    const newVariations = [...editFormData.variations];
+                                    newVariations[index] = { ...newVariations[index], price: parseFloat(e.target.value) || 0 };
+                                    setEditFormData({ ...editFormData, variations: newVariations });
+                                  }}
+                                  className="w-full px-2 py-1 text-xs border rounded"
+                                  step="0.01"
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="number"
+                                  value={variant.compareAtPrice || ''}
+                                  onChange={(e) => {
+                                    const newVariations = [...editFormData.variations];
+                                    newVariations[index] = { ...newVariations[index], compareAtPrice: parseFloat(e.target.value) || undefined };
+                                    setEditFormData({ ...editFormData, variations: newVariations });
+                                  }}
+                                  className="w-full px-2 py-1 text-xs border rounded"
+                                  step="0.01"
+                                  placeholder="Optional"
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="number"
+                                  value={variant.stockQuantity || 0}
+                                  onChange={(e) => {
+                                    const newVariations = [...editFormData.variations];
+                                    newVariations[index] = { ...newVariations[index], stockQuantity: parseInt(e.target.value) || 0 };
+                                    setEditFormData({ ...editFormData, variations: newVariations });
+                                  }}
+                                  className="w-full px-2 py-1 text-xs border rounded"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <p className="text-xs text-amber-600 mt-3">
+                      ⚠️ To add/remove variants or change variant types, please use the "Add Product" page to create a new product.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <MultiImageUpload
+                label="Product Images"
+                value={editFormData.images}
+                onChange={(urls) => {
+                  setEditFormData({ ...editFormData, images: urls });
+                  // Auto-set featured image to first image if not set
+                  if (!editFormData.featuredImage && urls.length > 0) {
+                    setEditFormData(prev => ({ ...prev, featuredImage: urls[0] }));
+                  }
+                }}
+                maxImages={10}
+              />
+
               <ImageUpload
-                label="Featured Image"
+                label="Featured Image (Optional - uses first product image if not set)"
                 value={editFormData.featuredImage}
                 onChange={(url) => setEditFormData({ ...editFormData, featuredImage: url })}
               />

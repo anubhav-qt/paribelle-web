@@ -88,6 +88,12 @@ export default function VariationSelector({
     return theme.charAt(0).toUpperCase() + theme.slice(1);
   };
 
+  // Calculate discount for a variation
+  const getVariantDiscount = (price: number, compareAtPrice?: number) => {
+    if (!compareAtPrice || compareAtPrice <= price) return null;
+    return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
+  };
+
   return (
     <div className="space-y-4">
       {variationThemes.map(theme => {
@@ -181,11 +187,21 @@ export default function VariationSelector({
                   : 'Out of stock'}
               </div>
             </div>
-            {selectedVariation.price !== currentPrice && (
+            <div className="text-right">
               <div className="text-lg font-bold text-green-900">
                 {currency}{Number(selectedVariation.price).toFixed(2)}
               </div>
-            )}
+              {selectedVariation.compareAtPrice && Number(selectedVariation.compareAtPrice) > Number(selectedVariation.price) && (
+                <div className="flex items-center gap-2 justify-end mt-1">
+                  <span className="text-sm text-gray-500 line-through">
+                    {currency}{Number(selectedVariation.compareAtPrice).toFixed(2)}
+                  </span>
+                  <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-0.5 rounded">
+                    {getVariantDiscount(Number(selectedVariation.price), Number(selectedVariation.compareAtPrice))}% OFF
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

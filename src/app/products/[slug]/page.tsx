@@ -10,6 +10,7 @@ import { Star, Heart, Share2, Package, ArrowLeft, Calendar, Clock, CreditCard, E
 import BookingCalendar from '@/components/BookingCalendar';
 import ProductImageGallery from '@/components/ProductImageGallery';
 import VariationSelector from '@/components/VariationSelector';
+import ProductVariantSelector from '@/components/ProductVariantSelector';
 import { getCurrencySymbol } from '@/lib/currency';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
@@ -38,6 +39,18 @@ interface BookingData {
   timeSlots: { start: string; end: string }[];
 }
 
+interface ProductVariant {
+  id: string;
+  productId: string;
+  sku: string;
+  variantAttributes: Record<string, string>;
+  price: string | number;
+  compareAtPrice?: string | number;
+  stockQuantity: number;
+  images?: string[];
+  isActive: boolean;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -54,10 +67,14 @@ interface Product {
   productType: 'physical' | 'booking';
   stockQuantity?: number;
   vendorId?: string;
-  // Variation support
+  // Variation support (legacy)
   isParent?: boolean;
   variations?: any[];
   variationThemes?: string[];
+  // Product variants support (new)
+  hasVariants?: boolean;
+  variantOptions?: any[];
+  productVariants?: ProductVariant[];
   vendor?: {
     id: string;
     businessName: string;
@@ -104,6 +121,7 @@ export default function ProductDetailPage() {
   const [hasPurchased, setHasPurchased] = useState(false);
   const [userOrderItemId, setUserOrderItemId] = useState<string | undefined>();
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
   useEffect(() => {
     // Reset product state when slug changes to prevent showing stale data
@@ -565,6 +583,72 @@ export default function ProductDetailPage() {
     return Math.round(((Number(compareAtPrice) - Number(price)) / Number(compareAtPrice)) * 100);
   };
 
+  // Get the lowest price from variants or main product price
+  const getDisplayPrice = () => {
+    // If a new variant is selected, use its price
+    if (selectedVariant) {
+      return Number(selectedVariant.price);
+    }
+    
+    // If a legacy variation is selected
+    if (selectedVariation) {
+      return Number(selectedVariation.price);
+    }
+    
+    // If product has new variants, show the lowest variant price
+    if (product?.hasVariants && product.productVariants && product.productVariants.length > 0) {
+      const lowestPrice = Math.min(...product.productVariants.map((v: any) => Number(v.price)));
+      return lowestPrice;
+    }
+    
+    // If product has legacy variations
+    if (product?.isParent && product.variations && product.variations.length > 0) {
+      const lowestPrice = Math.min(...product.variations.map((v: any) => Number(v.price)));
+      return lowestPrice;
+    }
+    
+    return Number(product?.price || 0);
+  };
+
+  // Get the best discount from all variants or main product
+  const getBestDiscount = () => {
+    // If a variant is selected, return its discount
+    if (selectedVariant) {
+      return getDiscount(selectedVariant.price, selectedVariant.compareAtPrice);
+    }
+    
+    // If a legacy variation is selected
+    if (selectedVariation) {
+      return getDiscount(selectedVariation.price, selectedVariation.compareAtPrice);
+    }
+    
+    // Check new product variants for best discount
+    if (product?.hasVariants && product.productVariants && product.productVariants.length > 0) {
+      const variantDiscounts = product.productVariants
+        .filter((v: any) => v.compareAtPrice && Number(v.compareAtPrice) > Number(v.price))
+        .map((v: any) => getDiscount(v.price, v.compareAtPrice))
+        .filter((d): d is number => d !== null);
+      
+      if (variantDiscounts.length > 0) {
+        return Math.max(...variantDiscounts);
+      }
+    }
+    
+    // Check legacy variations
+    if (product?.isParent && product.variations && product.variations.length > 0) {
+      const variantDiscounts = product.variations
+        .filter((v: any) => v.compareAtPrice && Number(v.compareAtPrice) > Number(v.price))
+        .map((v: any) => getDiscount(v.price, v.compareAtPrice))
+        .filter((d): d is number => d !== null);
+      
+      if (variantDiscounts.length > 0) {
+        return Math.max(...variantDiscounts);
+      }
+    }
+    
+    return getDiscount(product?.price, product?.compareAtPrice);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -587,7 +671,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const discount = getDiscount(product.price, product.compareAtPrice);
+  const discount = getBestDiscount();
 
   return (
     <div className="min-h-screen bg-background">
@@ -638,7 +722,7 @@ export default function ProductDetailPage() {
                 <ProductImageGallery
                   images={product.images && product.images.length > 0 ? product.images : [product.featuredImage]}
                   productName={product.name}
-                  discount={discount}
+                  discount={discount || undefined}
                   layout={thumbnailLayout}
                 />
 
@@ -659,18 +743,46 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
+              {/* Product Variants - Amazon Style Selector */}
+              {product.hasVariants && product.variantOptions && product.productVariants && product.productVariants.length > 0 && (
+                <div className="mb-6">
+                  <ProductVariantSelector
+                    variantOptions={product.variantOptions}
+                    productVariants={product.productVariants}
+                    onVariantSelect={setSelectedVariant}
+                    currency={currency}
+                  />
+                </div>
+              )}
+
               {/* Price */}
               <div className="mb-6">
                 <div className="flex items-baseline gap-3 mb-2">
                   <span className="text-4xl font-bold text-foreground">
-                    {getCurrencySymbol(currency)}{Number(product.price).toLocaleString()}
+                    {/* Show "From" prefix if has variants but none selected */}
+                    {((product.hasVariants && !selectedVariant) || (product.isParent && !selectedVariation)) && (
+                      <span className="text-2xl font-normal text-muted-foreground mr-1">From </span>
+                    )}
+                    {getCurrencySymbol(currency)}{getDisplayPrice().toLocaleString()}
                     {product.productType === 'booking' && product.attributes?.booking?.durationUnit && (
                       <span className="text-lg font-normal text-muted-foreground">
                         /{product.attributes.booking.durationUnit === 'hours' ? 'hr' : product.attributes.booking.durationUnit === 'days' ? 'day' : 'session'}
                       </span>
                     )}
                   </span>
-                  {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
+                  {/* Show discount for selected variant */}
+                  {selectedVariant && selectedVariant.compareAtPrice && Number(selectedVariant.compareAtPrice) > Number(selectedVariant.price) && (
+                    <>
+                      <span className="text-xl text-muted-foreground line-through">
+                        {getCurrencySymbol(currency)}{Number(selectedVariant.compareAtPrice).toLocaleString()}
+                      </span>
+                      <span className="text-green-600 font-semibold">
+                        {getDiscount(selectedVariant.price, selectedVariant.compareAtPrice)}% off
+                      </span>
+                    </>
+                  )}
+                  {/* Show discount for main product if no variants selected */}
+                  {!selectedVariant && !selectedVariation && !product.hasVariants && product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && !product.isParent && (
                     <>
                       <span className="text-xl text-muted-foreground line-through">
                         {getCurrencySymbol(currency)}{Number(product.compareAtPrice).toLocaleString()}
@@ -679,6 +791,12 @@ export default function ProductDetailPage() {
                         {discount}% off
                       </span>
                     </>
+                  )}
+                  {/* Show best discount for products with variants */}
+                  {(product.isParent && !selectedVariation && getBestDiscount()) && (
+                    <span className="text-green-600 font-semibold">
+                      Up to {getBestDiscount()}% off
+                    </span>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">Inclusive of all taxes</p>

@@ -421,7 +421,7 @@ export default function ProductVariationBuilder({
             {variations.map((variation, index) => (
               <div
                 key={index}
-                className="bg-white border rounded-lg p-4 grid grid-cols-1 md:grid-cols-5 gap-4"
+                className="bg-white border rounded-lg p-4 grid grid-cols-1 md:grid-cols-6 gap-4"
               >
                 {/* Attributes Display */}
                 <div className="md:col-span-1">
@@ -456,6 +456,19 @@ export default function ProductVariationBuilder({
                     onChange={(e) => updateVariation(index, 'price', parseFloat(e.target.value))}
                     className="w-full px-2 py-1 text-sm border rounded"
                     step="0.01"
+                  />
+                </div>
+
+                {/* Compare At Price */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Compare Price</label>
+                  <input
+                    type="number"
+                    value={variation.compareAtPrice || ''}
+                    onChange={(e) => updateVariation(index, 'compareAtPrice', parseFloat(e.target.value) || undefined)}
+                    className="w-full px-2 py-1 text-sm border rounded"
+                    step="0.01"
+                    placeholder="Optional"
                   />
                 </div>
 

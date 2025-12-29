@@ -23,12 +23,7 @@ export default function VendorAddProductPage() {
   const [categoryFilters, setCategoryFilters] = useState<any[]>([]);
   const [productAttributes, setProductAttributes] = useState<Record<string, any>>({});
   
-  // Product variations
-  const [hasVariations, setHasVariations] = useState(false);
-  const [variations, setVariations] = useState<any[]>([]);
-  const [variationThemes, setVariationThemes] = useState<string[]>([]);
-  
-  // Custom variants (independent of category)
+  // Product variants
   const [hasCustomVariants, setHasCustomVariants] = useState(false);
   const [variantOptions, setVariantOptions] = useState<VariantOption[]>([]);
   const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>([]);
@@ -44,16 +39,10 @@ export default function VendorAddProductPage() {
   // Prevent hydration errors
   const [mounted, setMounted] = useState(false);
 
-  // Filter out attributes used in variations
+  // All category filters are available since we only use custom variants now
   const availableAttributeFilters = useMemo(() => {
-    const filtered = categoryFilters.filter(
-      (filter) => !variationThemes.includes(filter.id)
-    );
-    console.log('Variation themes:', variationThemes);
-    console.log('Category filters:', categoryFilters.map(f => f.id));
-    console.log('Available attribute filters:', filtered.map(f => f.id));
-    return filtered;
-  }, [categoryFilters, variationThemes]);
+    return categoryFilters;
+  }, [categoryFilters]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -296,10 +285,13 @@ export default function VendorAddProductPage() {
       }
 
       // Auto-generate slug from name if not provided
-      const slug = formData.slug || 
+      // Add timestamp to ensure uniqueness
+      const baseSlug = formData.slug || 
         formData.name.toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/(^-|-$)/g, '');
+      
+      const slug = `${baseSlug}-${Date.now()}`;
 
       const productData: any = {
         ...formData,
@@ -309,20 +301,12 @@ export default function VendorAddProductPage() {
         hsnCode: formData.hsnCode || null,
         gstRate: formData.gstRate || 18,
         priceType: formData.priceType,
-        basePrice: parseFloat(calculateGST().basePrice),
-        gstAmount: parseFloat(calculateGST().gstAmount),
+        basePrice: parseFloat(String(calculateGST().basePrice)),
+        gstAmount: parseFloat(String(calculateGST().gstAmount)),
         stockQuantity: parseInt(formData.stockQuantity) || 0,
         vendorId,
         productType,
       };
-
-      // Add variations if present
-      if (hasVariations && variations.length > 0) {
-        productData.variations = variations;
-        productData.variationThemes = variationThemes;
-        // For parent products with variations, don't require stock
-        productData.stockQuantity = 0;
-      }
 
       // Add custom variants if present
       if (hasCustomVariants && variantOptions.length > 0) {
@@ -738,7 +722,11 @@ export default function VendorAddProductPage() {
                 <div className="space-y-2 text-sm text-gray-700">
                   <div className="flex items-start gap-2">
                     <span className="text-red-600">✗</span>
-                    <div>Creating separate products for each color/size (use variations instead!)</div>
+                    <div><strong>Creating separate products for each size/color</strong> - Use "Custom Variants" instead to keep them under one product!</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600">✓</span>
+                    <div className="text-green-800"><strong>Correct:</strong> One product "T-Shirt" with XL, L, M variants</div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-red-600">✗</span>
@@ -945,32 +933,21 @@ export default function VendorAddProductPage() {
             </div>
 
             {/* NEW: Dynamic Product Attributes Based on Category */}
-            {productType === 'physical' && availableAttributeFilters.length > 0 && (
+            {productType === 'physical' && availableAttributeFilters.length > 0 && !hasCustomVariants && (
               <div className="border-t pt-6 space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-blue-900 mb-2">
                     📋 Product Attributes
                   </h3>
                   <p className="text-sm text-blue-700">
-                    {hasVariations && variationThemes.length > 0 ? (
-                      <>
-                        Fill in attributes that apply to <strong>all variations</strong> (like Brand, Material, Origin).
-                        Variation-specific attributes ({variationThemes.map(id => 
-                          categoryFilters.find(f => f.id === id)?.label || id
-                        ).join(', ')}) are handled in the variation builder above.
-                      </>
-                    ) : (
-                      <>
-                        Fill in attributes like{' '}
-                        <strong>
-                          {availableAttributeFilters
-                            .map(f => f.label)
-                            .slice(0, 3)
-                            .join(', ')}
-                        </strong>
-                        {availableAttributeFilters.length > 3 && ', etc.'} to help customers filter and find your product easily.
-                      </>
-                    )}
+                    Fill in attributes like{' '}
+                    <strong>
+                      {availableAttributeFilters
+                        .map(f => f.label)
+                        .slice(0, 3)
+                        .join(', ')}
+                    </strong>
+                    {availableAttributeFilters.length > 3 && ', etc.'} to help customers filter and find your product easily.
                   </p>
                 </div>
 
@@ -1075,9 +1052,7 @@ export default function VendorAddProductPage() {
 
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
                   <p className="text-xs text-yellow-800">
-                    💡 <strong>Tip:</strong> {hasVariations 
-                      ? 'These attributes apply to all variations. Variation-specific details are set in the builder above.' 
-                      : 'Filling in these attributes makes your product easier to find when customers use filters!'}
+                    💡 <strong>Tip:</strong> Filling in these attributes makes your product easier to find when customers use filters!
                   </p>
                 </div>
               </div>
@@ -1099,74 +1074,8 @@ export default function VendorAddProductPage() {
               </div>
             )}
 
-            {/* Product Variations Section */}
-            {productType === 'physical' && categoryFilters.length > 0 && (
-              <div className="border-t pt-6">
-                <div className="mb-4">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={hasVariations}
-                      onChange={(e) => {
-                        setHasVariations(e.target.checked);
-                        if (!e.target.checked) {
-                          setVariations([]);
-                          setVariationThemes([]);
-                        }
-                      }}
-                      className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <div>
-                      <span className="text-lg font-semibold text-gray-900">
-                        This product has multiple options (like colors or sizes)
-                      </span>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Enable this to create variations with different attributes, prices, and stock levels
-                      </p>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Inline Help for Variations */}
-                {hasVariations && (
-                  <div className="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">ℹ️</span>
-                      <div className="text-sm text-blue-900">
-                        <strong className="block mb-2">How Product Variations Work:</strong>
-                        <ol className="list-decimal list-inside space-y-1">
-                          <li><strong>Select variation types</strong> below (e.g., Color, Size)</li>
-                          <li><strong>Choose specific options</strong> for each type (e.g., Red, Blue for colors)</li>
-                          <li><strong>System auto-generates</strong> all combinations (e.g., Red-S, Red-M, Blue-S, Blue-M)</li>
-                          <li><strong>Set stock and prices</strong> for each variation individually</li>
-                          <li><strong>No need to set base stock</strong> - each variation has its own inventory</li>
-                        </ol>
-                        <p className="mt-2 text-blue-800">
-                          <strong>💡 Example:</strong> A shirt with 3 colors × 4 sizes = 12 separate products (variations) created automatically!
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {hasVariations && (
-                  <ProductVariationBuilder
-                    categoryFilters={categoryFilters}
-                    basePrice={parseFloat(formData.price) || 0}
-                    baseSKU={formData.sku}
-                    productName={formData.name}
-                    onVariationsChange={setVariations}
-                    onVariationThemesChange={(themes) => {
-                      console.log('Parent received variation themes:', themes);
-                      setVariationThemes(themes);
-                    }}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* Custom Product Variants Section (Independent of Category) */}
-            {productType === 'physical' && !hasVariations && (
+            {/* Product Variants Section */}
+            {productType === 'physical' && (
               <div className="border-t pt-6">
                 <div className="mb-4">
                   <label className="flex items-center space-x-3 cursor-pointer">
@@ -1184,10 +1093,10 @@ export default function VendorAddProductPage() {
                     />
                     <div>
                       <span className="text-lg font-semibold text-gray-900">
-                        Add Custom Product Variants
+                        ✨ Add Product Variants
                       </span>
                       <p className="text-sm text-gray-600 mt-1">
-                        Create custom variant types (Size, Color, Packet Size, etc.) independent of category attributes
+                        ✅ Perfect for sizes, colors, flavors, and any product variations
                       </p>
                     </div>
                   </label>
@@ -1198,20 +1107,38 @@ export default function VendorAddProductPage() {
                     <div className="flex items-start gap-3">
                       <span className="text-2xl">🎨</span>
                       <div className="text-sm text-purple-900">
-                        <strong className="block mb-2">Custom Variants Features:</strong>
-                        <ul className="list-disc list-inside space-y-1">
-                          <li><strong>Add any variant type:</strong> Size, Color, Material, Packet Size, Weight, Flavor, etc.</li>
-                          <li><strong>Add multiple values:</strong> Each variant type can have many options</li>
-                          <li><strong>Auto-generate combinations:</strong> All possible combinations are created automatically</li>
-                          <li><strong>Individual pricing:</strong> Set unique SKU, price, and stock for each combination</li>
-                          <li><strong>Bulk updates:</strong> Apply price or stock to all variants at once</li>
-                        </ul>
+                        <strong className="block mb-2">✅ How Product Variants Work:</strong>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li><strong>Use category suggestions</strong> or add custom variant types (e.g., Size, Color)</li>
+                          <li><strong>Add values</strong> for each type (e.g., S, M, L, XL for Size)</li>
+                          <li><strong>All combinations</strong> are auto-generated as variants under one product</li>
+                          <li><strong>Set prices & stock</strong> for each variant individually</li>
+                        </ol>
                         <p className="mt-2 text-purple-800">
-                          <strong>💡 Example:</strong> Coffee beans → Variant types: "Roast" (Light, Medium, Dark) + "Size" (250g, 500g, 1kg) = 9 variants
+                          <strong>💡 Example:</strong> T-Shirt with Color (Red, Blue) + Size (S, M, L) = 6 variants under one product!
                         </p>
                       </div>
                     </div>
                   </div>
+                )}
+
+                {hasCustomVariants && (
+                  <>
+                    <div className="text-sm text-purple-900 mb-4">
+                      <strong className="block mb-2">Product Variants Features:</strong>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li><strong>Category suggestions:</strong> Click suggested variant types from your category (if available)</li>
+                        <li><strong>Custom types:</strong> Add any variant type - Size, Color, Material, Packet Size, Weight, Flavor, etc.</li>
+                        <li><strong>Multiple values:</strong> Each variant type can have unlimited options</li>
+                        <li><strong>Auto-generate combinations:</strong> All possible combinations are created automatically</li>
+                        <li><strong>Individual pricing:</strong> Set unique SKU, price, and stock for each combination</li>
+                        <li><strong>Bulk updates:</strong> Apply price or stock to all variants at once</li>
+                      </ul>
+                      <p className="mt-2 text-purple-800">
+                        <strong>💡 Example:</strong> Coffee → Color (suggested from category) + Roast (custom) + Size (custom) = Coffee-Black-Dark-500g, Coffee-Brown-Light-250g, etc.
+                      </p>
+                    </div>
+                  </>
                 )}
 
                 {hasCustomVariants && (
@@ -1223,6 +1150,8 @@ export default function VendorAddProductPage() {
                     }}
                     initialOptions={variantOptions}
                     initialCombinations={variantCombinations}
+                    categoryFilters={categoryFilters}
+                    baseSKU={formData.sku}
                   />
                 )}
               </div>
@@ -1284,18 +1213,27 @@ export default function VendorAddProductPage() {
                     {formData.priceType === 'mrp_with_gst' ? 'MRP (with GST)' : 'Selling Price (without GST)'} *
                     <span className="ml-2 text-xs font-normal text-gray-500">💡 Your price</span>
                   </label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, price: '' })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">💰 Set competitive pricing based on market research</p>
+                  {hasCustomVariants ? (
+                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                      <p className="text-sm">Price set per variant</p>
+                      <p className="text-xs mt-1">Configure prices in the variants table above</p>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="number"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, price: '' })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">💰 Set competitive pricing based on market research</p>
+                    </>
+                  )}
                 </div>
 
                 <div>
@@ -1303,17 +1241,26 @@ export default function VendorAddProductPage() {
                     Compare At Price
                     <span className="ml-2 text-xs font-normal text-gray-500">💡 Original price (for showing discounts)</span>
                   </label>
-                  <input
-                    type="number"
-                    value={formData.compareAtPrice}
-                    onChange={(e) => setFormData({ ...formData, compareAtPrice: e.target.value })}
-                    onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, compareAtPrice: '' })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">🏷️ Optional: Shows "X% OFF" badge if higher than price</p>
+                  {hasCustomVariants ? (
+                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                      <p className="text-sm">Compare price set per variant</p>
+                      <p className="text-xs mt-1">Configure in the variants table above</p>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="number"
+                        value={formData.compareAtPrice}
+                        onChange={(e) => setFormData({ ...formData, compareAtPrice: e.target.value })}
+                        onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, compareAtPrice: '' })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">🏷️ Optional: Shows "X% OFF" badge if higher than price</p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -1389,8 +1336,8 @@ export default function VendorAddProductPage() {
             {/* Physical Product Specific Fields */}
             {productType === 'physical' && (
               <div className="grid grid-cols-2 gap-4">
-                {/* Hide stock quantity when variations are enabled */}
-                {!hasVariations && (
+                {/* Hide stock quantity when variants are enabled */}
+                {!hasCustomVariants && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Stock Quantity *
@@ -1410,9 +1357,9 @@ export default function VendorAddProductPage() {
                   </div>
                 )}
 
-                <div className={hasVariations ? 'col-span-2' : ''}>
+                <div className={hasCustomVariants ? 'col-span-2' : ''}>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    SKU {hasVariations ? '(Base)' : '*'}
+                    SKU {hasCustomVariants ? '(Base)' : '*'}
                     <span className="ml-2 text-xs font-normal text-gray-500">💡 Unique product code</span>
                   </label>
                   <div className="flex gap-2">
@@ -1422,7 +1369,7 @@ export default function VendorAddProductPage() {
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                       className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Auto-generated"
-                      required={!hasVariations}
+                      required={!hasCustomVariants}
                     />
                     <button
                       type="button"
@@ -1434,8 +1381,8 @@ export default function VendorAddProductPage() {
                     </button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    {hasVariations 
-                      ? '📦 Base SKU for variation generation (e.g., SHIRT-BASE → SHIRT-RED-S, SHIRT-BLUE-M)' 
+                    {hasCustomVariants 
+                      ? '📦 Base SKU for variant generation (e.g., SHIRT-BASE → SHIRT-RED-S, SHIRT-BLUE-M)' 
                       : (mounted && isSuperAdmin() ? 'Auto-generated with ADMIN prefix' : 'Auto-generated with vendor prefix')}
                   </p>
                   <p className="text-xs text-blue-600 mt-1">ℹ️ What's a SKU? It's like a barcode - a unique ID to track this product</p>
