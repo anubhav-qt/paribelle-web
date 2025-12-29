@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette, FileText, LayoutList } from 'lucide-react';
+import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette, FileText, LayoutList, Shield } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import UnifiedHeader from '@/components/UnifiedHeader';
 
@@ -26,6 +26,20 @@ export default function AdminDashboard() {
 
 function AdminDashboardContent() {
   const adminCards = [
+    {
+      title: 'Platform KYC',
+      description: 'Complete platform KYC for GST filing',
+      icon: Shield,
+      href: '/admin/platform-kyc',
+      color: 'bg-red-500',
+    },
+    {
+      title: 'Vendor KYC Verification',
+      description: 'Review and approve vendor KYC documents',
+      icon: Users,
+      href: '/admin/kyc-verification',
+      color: 'bg-amber-500',
+    },
     {
       title: 'Settings',
       description: 'Configure site-wide settings and features',

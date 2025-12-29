@@ -18,6 +18,8 @@ interface Vendor {
   totalSales: number;
   totalOrders: number;
   rating: number;
+  kycStatus?: 'pending' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+  kycRejectedReason?: string;
 }
 
 export default function VendorDashboardPage() {
@@ -233,6 +235,105 @@ export default function VendorDashboardPage() {
               </div>
             </dl>
           </div>
+        </div>
+
+        {/* KYC Verification Section - Dynamic based on status */}
+        <div className="mb-6">
+          {vendor?.kycStatus === 'approved' ? (
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg rounded-lg p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-1">✓ KYC Verified</h3>
+                    <p className="text-green-100">Your account is verified and ready to sell</p>
+                  </div>
+                </div>
+                <Link href="/vendor/kyc">
+                  <span className="bg-white text-green-600 px-4 py-2 rounded-full text-sm font-semibold hover:bg-green-50 transition-colors">
+                    View Details
+                  </span>
+                </Link>
+              </div>
+            </div>
+          ) : vendor?.kycStatus === 'rejected' ? (
+            <Link href="/vendor/kyc">
+              <div className="bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-shadow cursor-pointer">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold mb-1">KYC Rejected</h3>
+                      <p className="text-red-100">{vendor.kycRejectedReason || 'Please resubmit your documents'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-white text-red-600 px-4 py-2 rounded-full text-sm font-semibold">
+                      Resubmit
+                    </span>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ) : vendor?.kycStatus === 'under_review' || vendor?.kycStatus === 'submitted' ? (
+            <div className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-lg rounded-lg p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                    <svg className="w-8 h-8 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-1">KYC Under Review</h3>
+                    <p className="text-amber-100">Your documents are being verified. We'll notify you soon!</p>
+                  </div>
+                </div>
+                <Link href="/vendor/kyc">
+                  <span className="bg-white text-amber-600 px-4 py-2 rounded-full text-sm font-semibold hover:bg-amber-50 transition-colors">
+                    View Status
+                  </span>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <Link href="/vendor/kyc">
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-shadow cursor-pointer">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold mb-1">KYC Verification Required</h3>
+                      <p className="text-indigo-100">Complete your KYC to start selling products</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-white text-indigo-600 px-4 py-2 rounded-full text-sm font-semibold">
+                      Complete KYC
+                    </span>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
 
         {/* Help Section */}

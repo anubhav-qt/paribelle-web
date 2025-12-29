@@ -30,6 +30,7 @@ export default function VendorSettingsPage() {
     freeShippingThreshold: '',
     logo: '',
     categoryDisplayMode: 'sidebar' as 'sidebar' | 'top',
+    invoiceFrequency: 'per_order',
   });
 
   // Update form data when vendor data loads
@@ -59,6 +60,7 @@ export default function VendorSettingsPage() {
         freeShippingThreshold: vendor.freeShippingThreshold || '',
         logo: vendor.logo || '',
         categoryDisplayMode: (vendor as any).categoryDisplayMode || 'sidebar',
+        invoiceFrequency: (vendor as any).invoiceFrequency || 'per_order',
       });
       console.log('📋 Form populated successfully');
     } else {
@@ -495,6 +497,26 @@ export default function VendorSettingsPage() {
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
                   Choose how categories are displayed on your store pages
+                </p>
+              </div>
+
+              {/* Invoice Frequency */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Invoice Generation Frequency
+                </label>
+                <select
+                  value={formData.invoiceFrequency}
+                  onChange={(e) => setFormData({ ...formData, invoiceFrequency: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="per_order">Per Order - Invoice after each order</option>
+                  <option value="daily">Daily - Combined invoice at end of day</option>
+                  <option value="weekly">Weekly - Combined invoice every Monday</option>
+                  <option value="monthly">Monthly - Combined invoice on 1st of month</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Choose how often you want to receive consolidated invoices for your sales
                 </p>
               </div>
             </div>

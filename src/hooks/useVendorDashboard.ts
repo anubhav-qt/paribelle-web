@@ -11,6 +11,8 @@ interface Vendor {
   totalSales: number;
   totalOrders: number;
   rating: number;
+  kycStatus?: 'pending' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+  kycRejectedReason?: string;
 }
 
 interface VendorDashboardData {

@@ -8,6 +8,8 @@ import CategorySidebar from '@/components/CategorySidebar';
 import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
 import ProductVariationBuilder from '@/components/ProductVariationBuilder';
+import HsnCodeAutocomplete from '@/components/HsnCodeAutocomplete';
+import ProductVariantManager, { VariantOption, VariantCombination } from '@/components/ProductVariantManager';
 import { getVendorId, getUserId, isSuperAdmin, getProductVendorId } from '@/lib/auth';
 
 export default function VendorAddProductPage() {
@@ -25,6 +27,11 @@ export default function VendorAddProductPage() {
   const [hasVariations, setHasVariations] = useState(false);
   const [variations, setVariations] = useState<any[]>([]);
   const [variationThemes, setVariationThemes] = useState<string[]>([]);
+  
+  // Custom variants (independent of category)
+  const [hasCustomVariants, setHasCustomVariants] = useState(false);
+  const [variantOptions, setVariantOptions] = useState<VariantOption[]>([]);
+  const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>([]);
   
   // Help section
   const [showHelp, setShowHelp] = useState(false);
@@ -60,6 +67,12 @@ export default function VendorAddProductPage() {
     status: 'active',
     featuredImage: '',
     images: [] as string[],
+    // GST fields
+    hsnCode: '',
+    gstRate: 18,
+    priceType: 'selling_price_without_gst' as 'mrp_with_gst' | 'selling_price_without_gst',
+    // Variants
+    hasVariants: false,
   });
 
   // Booking-specific fields
@@ -100,6 +113,34 @@ export default function VendorAddProductPage() {
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.random().toString(36).substring(2, 5).toUpperCase();
     setFormData(prev => ({ ...prev, sku: `${prefix}-${timestamp}-${random}` }));
+  };
+
+  // Calculate GST breakdown
+  const calculateGST = () => {
+    const price = parseFloat(formData.price) || 0;
+    const gstRate = formData.gstRate || 0;
+    
+    if (price === 0) return { basePrice: 0, gstAmount: 0, finalPrice: 0 };
+
+    if (formData.priceType === 'mrp_with_gst') {
+      // Price includes GST - extract base price
+      const basePrice = price / (1 + gstRate / 100);
+      const gstAmount = price - basePrice;
+      return {
+        basePrice: basePrice.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        finalPrice: price.toFixed(2),
+      };
+    } else {
+      // Price doesn't include GST - calculate GST amount
+      const gstAmount = price * gstRate / 100;
+      const finalPrice = price + gstAmount;
+      return {
+        basePrice: price.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        finalPrice: finalPrice.toFixed(2),
+      };
+    }
   };
 
   const fetchCategories = async () => {
@@ -265,6 +306,11 @@ export default function VendorAddProductPage() {
         slug,
         price: parseFloat(formData.price) || 0,
         compareAtPrice: parseFloat(formData.compareAtPrice) || 0,
+        hsnCode: formData.hsnCode || null,
+        gstRate: formData.gstRate || 18,
+        priceType: formData.priceType,
+        basePrice: parseFloat(calculateGST().basePrice),
+        gstAmount: parseFloat(calculateGST().gstAmount),
         stockQuantity: parseInt(formData.stockQuantity) || 0,
         vendorId,
         productType,
@@ -275,6 +321,20 @@ export default function VendorAddProductPage() {
         productData.variations = variations;
         productData.variationThemes = variationThemes;
         // For parent products with variations, don't require stock
+        productData.stockQuantity = 0;
+      }
+
+      // Add custom variants if present
+      if (hasCustomVariants && variantOptions.length > 0) {
+        productData.hasVariants = true;
+        productData.variantOptions = variantOptions;
+        productData.variants = variantCombinations.filter(v => v.enabled).map(combo => ({
+          attributes: combo.attributes,
+          sku: combo.sku,
+          price: combo.price,
+          stock: combo.stock,
+        }));
+        // For products with custom variants, don't require parent stock
         productData.stockQuantity = 0;
       }
 
@@ -1105,43 +1165,225 @@ export default function VendorAddProductPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            {/* Custom Product Variants Section (Independent of Category) */}
+            {productType === 'physical' && !hasVariations && (
+              <div className="border-t pt-6">
+                <div className="mb-4">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hasCustomVariants}
+                      onChange={(e) => {
+                        setHasCustomVariants(e.target.checked);
+                        if (!e.target.checked) {
+                          setVariantOptions([]);
+                          setVariantCombinations([]);
+                        }
+                      }}
+                      className="h-5 w-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                    />
+                    <div>
+                      <span className="text-lg font-semibold text-gray-900">
+                        Add Custom Product Variants
+                      </span>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Create custom variant types (Size, Color, Packet Size, etc.) independent of category attributes
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {hasCustomVariants && (
+                  <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded mb-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">🎨</span>
+                      <div className="text-sm text-purple-900">
+                        <strong className="block mb-2">Custom Variants Features:</strong>
+                        <ul className="list-disc list-inside space-y-1">
+                          <li><strong>Add any variant type:</strong> Size, Color, Material, Packet Size, Weight, Flavor, etc.</li>
+                          <li><strong>Add multiple values:</strong> Each variant type can have many options</li>
+                          <li><strong>Auto-generate combinations:</strong> All possible combinations are created automatically</li>
+                          <li><strong>Individual pricing:</strong> Set unique SKU, price, and stock for each combination</li>
+                          <li><strong>Bulk updates:</strong> Apply price or stock to all variants at once</li>
+                        </ul>
+                        <p className="mt-2 text-purple-800">
+                          <strong>💡 Example:</strong> Coffee beans → Variant types: "Roast" (Light, Medium, Dark) + "Size" (250g, 500g, 1kg) = 9 variants
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {hasCustomVariants && (
+                  <ProductVariantManager
+                    onVariantsChange={(options, combinations) => {
+                      setVariantOptions(options);
+                      setVariantCombinations(combinations);
+                      setFormData(prev => ({ ...prev, hasVariants: options.length > 0 }));
+                    }}
+                    initialOptions={variantOptions}
+                    initialCombinations={variantCombinations}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* GST & Pricing Section */}
+            <div className="border-t pt-6 mt-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <span>💰</span> Pricing & GST Configuration
+              </h3>
+
+              {/* Price Type Selection */}
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price *
-                  <span className="ml-2 text-xs font-normal text-gray-500">💡 Your selling price</span>
+                  Price Type *
                 </label>
-                <input
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, price: '' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">💰 Set competitive pricing based on market research</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition ${
+                    formData.priceType === 'mrp_with_gst' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-300'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="priceType"
+                      value="mrp_with_gst"
+                      checked={formData.priceType === 'mrp_with_gst'}
+                      onChange={(e) => setFormData({ ...formData, priceType: e.target.value as any })}
+                      className="mt-1"
+                    />
+                    <div>
+                      <p className="font-medium text-gray-900">MRP (with GST)</p>
+                      <p className="text-xs text-gray-600 mt-1">Price already includes GST. System will extract base price and tax amount.</p>
+                      <p className="text-xs text-blue-600 mt-1">💡 Example: ₹1,180 → ₹1,000 + ₹180 GST @18%</p>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition ${
+                    formData.priceType === 'selling_price_without_gst' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-300'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="priceType"
+                      value="selling_price_without_gst"
+                      checked={formData.priceType === 'selling_price_without_gst'}
+                      onChange={(e) => setFormData({ ...formData, priceType: e.target.value as any })}
+                      className="mt-1"
+                    />
+                    <div>
+                      <p className="font-medium text-gray-900">Selling Price (without GST)</p>
+                      <p className="text-xs text-gray-600 mt-1">Price excludes GST. System will add GST to calculate final price.</p>
+                      <p className="text-xs text-blue-600 mt-1">💡 Example: ₹1,000 + ₹180 GST @18% → ₹1,180</p>
+                    </div>
+                  </label>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Compare At Price
-                  <span className="ml-2 text-xs font-normal text-gray-500">💡 Original price (for showing discounts)</span>
-                </label>
-                <input
-                  type="number"
-                  value={formData.compareAtPrice}
-                  onChange={(e) => setFormData({ ...formData, compareAtPrice: e.target.value })}
-                  onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, compareAtPrice: '' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-                <p className="text-xs text-gray-500 mt-1">🏷️ Optional: Shows "X% OFF" badge if higher than price</p>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {formData.priceType === 'mrp_with_gst' ? 'MRP (with GST)' : 'Selling Price (without GST)'} *
+                    <span className="ml-2 text-xs font-normal text-gray-500">💡 Your price</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, price: '' })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">💰 Set competitive pricing based on market research</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Compare At Price
+                    <span className="ml-2 text-xs font-normal text-gray-500">💡 Original price (for showing discounts)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.compareAtPrice}
+                    onChange={(e) => setFormData({ ...formData, compareAtPrice: e.target.value })}
+                    onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, compareAtPrice: '' })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">🏷️ Optional: Shows "X% OFF" badge if higher than price</p>
+                </div>
               </div>
+
+              {/* GST Configuration */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    HSN Code (Optional)
+                    <span className="ml-2 text-xs font-normal text-gray-500">💡 For tax classification</span>
+                  </label>
+                  <HsnCodeAutocomplete
+                    value={formData.hsnCode}
+                    onSelect={(hsnCode, recommendedGstRate) => {
+                      setFormData({
+                        ...formData,
+                        hsnCode,
+                        gstRate: recommendedGstRate,
+                      });
+                    }}
+                    placeholder="Search HSN code..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    GST Rate (%) *
+                    <span className="ml-2 text-xs font-normal text-gray-500">💡 Tax percentage</span>
+                  </label>
+                  <select
+                    value={formData.gstRate}
+                    onChange={(e) => setFormData({ ...formData, gstRate: parseFloat(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="0">0% - Essential Items (Books, Milk, Grains)</option>
+                    <option value="5">5% - Basic Goods (Edible oil, Sugar, Apparel ≤₹1000)</option>
+                    <option value="12">12% - Standard Items (Processed food, Computers)</option>
+                    <option value="18">18% - Most Products (Default)</option>
+                    <option value="28">28% - Luxury Items (Cars, Tobacco, AC)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">📋 Auto-filled from HSN code. You can change if needed.</p>
+                </div>
+              </div>
+
+              {/* GST Calculation Preview */}
+              {formData.price && parseFloat(formData.price) > 0 && (
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    <span>📊</span> GST Breakdown Preview
+                  </h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-white rounded p-3 text-center">
+                      <p className="text-xs text-gray-600 mb-1">Base Price</p>
+                      <p className="text-lg font-bold text-gray-900">₹{calculateGST().basePrice}</p>
+                    </div>
+                    <div className="bg-white rounded p-3 text-center">
+                      <p className="text-xs text-gray-600 mb-1">GST @ {formData.gstRate}%</p>
+                      <p className="text-lg font-bold text-orange-600">₹{calculateGST().gstAmount}</p>
+                    </div>
+                    <div className="bg-white rounded p-3 text-center">
+                      <p className="text-xs text-gray-600 mb-1">Final Price</p>
+                      <p className="text-lg font-bold text-green-600">₹{calculateGST().finalPrice}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-3 text-center">
+                    💡 {formData.priceType === 'mrp_with_gst' 
+                      ? 'Customer pays ₹' + calculateGST().finalPrice + ' (includes ₹' + calculateGST().gstAmount + ' GST)'
+                      : 'Customer pays ₹' + calculateGST().finalPrice + ' (₹' + calculateGST().basePrice + ' + ₹' + calculateGST().gstAmount + ' GST)'}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Physical Product Specific Fields */}
