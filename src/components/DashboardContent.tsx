@@ -12,7 +12,8 @@ import {
   CreditCard, 
   Clock,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  Receipt
 } from 'lucide-react';
 
 interface Order {
@@ -454,7 +455,7 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Link
           href={`${getRoutePrefix()}/orders`}
           className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-shadow group"
@@ -467,6 +468,20 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
           </div>
           <h3 className="font-semibold text-lg mb-1 text-foreground">My Orders</h3>
           <p className="text-muted-foreground text-sm">View and track your orders</p>
+        </Link>
+
+        <Link
+          href={`${getRoutePrefix()}/dashboard/invoices`}
+          className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-shadow group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-3 bg-emerald-500/10 rounded-lg group-hover:bg-emerald-500/20 transition-colors">
+              <Receipt className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+          </div>
+          <h3 className="font-semibold text-lg mb-1 text-foreground">My Invoices</h3>
+          <p className="text-muted-foreground text-sm">View and download invoices</p>
         </Link>
 
         <Link

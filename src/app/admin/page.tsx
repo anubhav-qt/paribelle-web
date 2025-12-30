@@ -83,6 +83,13 @@ function AdminDashboardContent() {
       color: 'bg-yellow-500',
     },
     {
+      title: 'Invoices',
+      description: 'Manage customer and vendor invoices',
+      icon: Receipt,
+      href: '/admin/invoices',
+      color: 'bg-emerald-500',
+    },
+    {
       title: 'Products',
       description: 'View and manage all products',
       icon: ShoppingBag,
