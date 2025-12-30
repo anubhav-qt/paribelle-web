@@ -8,6 +8,16 @@ import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
 import UnifiedHeader from '@/components/UnifiedHeader';
 
+interface ProductVariant {
+  id: string;
+  sku: string;
+  variantAttributes: Record<string, string>;
+  price: number;
+  compareAtPrice?: number;
+  stockQuantity: number;
+  isActive: boolean;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -28,12 +38,16 @@ interface Product {
     contactEmail: string;
   };
   createdAt: string;
-  // Variation support
+  // Variation support (legacy)
   isParent?: boolean;
   parentProductId?: string;
   variations?: Product[];
   variationAttributes?: Record<string, string>;
   variationThemes?: string[];
+  // Product variants support (new)
+  hasVariants?: boolean;
+  variantOptions?: any[];
+  productVariants?: ProductVariant[];
 }
 
 export default function AdminProductsPage() {
@@ -77,6 +91,8 @@ export default function AdminProductsPage() {
     hasVariants: false,
     variations: [] as any[],
     variationThemes: [] as string[],
+    productVariants: [] as ProductVariant[],
+    variantOptions: [] as any[],
   });
   const [newProductFormData, setNewProductFormData] = useState({
     name: '',
@@ -151,7 +167,7 @@ export default function AdminProductsPage() {
       
       if (response.ok) {
         alert('Product deleted successfully!');
-        fetchProducts();
+        window.location.reload();
       } else {
         const error = await response.json();
         alert(`Failed to delete product: ${error.message || 'Unknown error'}`);
@@ -169,21 +185,72 @@ export default function AdminProductsPage() {
     }
   };
 
-  const handleEdit = (product: Product) => {
-    setEditingProduct(product);
-    setEditFormData({
-      name: product.name,
-      price: product.price,
-      compareAtPrice: product.compareAtPrice || 0,
-      stockQuantity: product.stockQuantity,
-      sku: product.sku,
-      featuredImage: product.featuredImage || '',
-      images: product.images || [],
-      productType: product.productType || 'physical',
-      hasVariants: product.isParent || false,
-      variations: product.variations || [],
-      variationThemes: product.variationThemes || [],
-    });
+  const handleEdit = async (product: Product) => {
+    // Fetch full product details including variants
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${product.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const fullProduct = await response.json();
+        setEditingProduct(fullProduct);
+        setEditFormData({
+          name: fullProduct.name,
+          price: fullProduct.price,
+          compareAtPrice: fullProduct.compareAtPrice || 0,
+          stockQuantity: fullProduct.stockQuantity,
+          sku: fullProduct.sku,
+          featuredImage: fullProduct.featuredImage || '',
+          images: fullProduct.images || [],
+          productType: fullProduct.productType || 'physical',
+          hasVariants: fullProduct.hasVariants || fullProduct.isParent || false,
+          variations: fullProduct.variations || [],
+          variationThemes: fullProduct.variationThemes || [],
+          productVariants: fullProduct.productVariants || [],
+          variantOptions: fullProduct.variantOptions || [],
+        });
+      } else {
+        setEditingProduct(product);
+        setEditFormData({
+          name: product.name,
+          price: product.price,
+          compareAtPrice: product.compareAtPrice || 0,
+          stockQuantity: product.stockQuantity,
+          sku: product.sku,
+          featuredImage: product.featuredImage || '',
+          images: product.images || [],
+          productType: product.productType || 'physical',
+          hasVariants: product.hasVariants || product.isParent || false,
+          variations: product.variations || [],
+          variationThemes: product.variationThemes || [],
+          productVariants: product.productVariants || [],
+          variantOptions: product.variantOptions || [],
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      // Fallback to using the product from the list
+      setEditingProduct(product);
+      setEditFormData({
+        name: product.name,
+        price: product.price,
+        compareAtPrice: product.compareAtPrice || 0,
+        stockQuantity: product.stockQuantity,
+        sku: product.sku,
+        featuredImage: product.featuredImage || '',
+        images: product.images || [],
+        productType: product.productType || 'physical',
+        hasVariants: product.hasVariants || product.isParent || false,
+        variations: product.variations || [],
+        variationThemes: product.variationThemes || [],
+        productVariants: product.productVariants || [],
+        variantOptions: product.variantOptions || [],
+      });
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -204,12 +271,14 @@ export default function AdminProductsPage() {
       if (response.ok) {
         alert('Product updated successfully!');
         setEditingProduct(null);
-        fetchProducts();
+        // Refetch products using React Query
+        window.location.reload();
       } else {
         const error = await response.json();
         alert(`Failed to update product: ${error.message || 'Unknown error'}`);
       }
     } catch (error) {
+      console.error('Save error:', error);
       alert('Failed to update product. Please try again.');
     }
   };
@@ -228,6 +297,8 @@ export default function AdminProductsPage() {
       hasVariants: false,
       variations: [],
       variationThemes: [],
+      productVariants: [],
+      variantOptions: [],
     });
   };
 
@@ -315,7 +386,7 @@ export default function AdminProductsPage() {
       }
 
       handleCloseAddModal();
-      fetchProducts();
+      window.location.reload();
       alert('Product created successfully!');
     } catch (error) {
       alert(`Failed to create product: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -430,7 +501,7 @@ export default function AdminProductsPage() {
           }`,
         });
         // Refresh products list after successful import
-        fetchProducts();
+        window.location.reload();
       } else {
         setImportMessage({
           type: 'error',
@@ -468,6 +539,28 @@ export default function AdminProductsPage() {
     return 'text-green-600';
   };
 
+  const getPriceDisplay = (product: Product) => {
+    // If product has variants, show variant price range
+    if (product.hasVariants && product.productVariants && product.productVariants.length > 0) {
+      const prices = product.productVariants
+        .map(v => v.price)
+        .filter(p => p !== undefined && p !== null && p > 0);
+      
+      if (prices.length === 0) return { display: '₹0.00', isRange: false };
+      
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      
+      if (minPrice === maxPrice) {
+        return { display: `₹${minPrice.toFixed(2)}`, isRange: false };
+      }
+      return { display: `₹${minPrice.toFixed(2)} - ₹${maxPrice.toFixed(2)}`, isRange: true };
+    }
+    
+    // Regular product price
+    return { display: `₹${Number(product.price || 0).toFixed(2)}`, isRange: false };
+  };
+
   if (authLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -480,7 +573,7 @@ export default function AdminProductsPage() {
     <>
       <UnifiedHeader />
       <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -785,7 +878,7 @@ export default function AdminProductsPage() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="text-sm font-semibold text-gray-900">
-                                    ₹{Number(product.price).toFixed(2)}
+                                    {getPriceDisplay(product).display}
                                   </div>
                                   {product.compareAtPrice && (
                                     <div className="text-xs text-gray-500 line-through">
@@ -873,7 +966,7 @@ export default function AdminProductsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-semibold text-gray-900">
-                              ₹{Number(product.price).toFixed(2)}
+                              {getPriceDisplay(product).display}
                             </div>
                             {product.compareAtPrice && (
                               <div className="text-xs text-gray-500 line-through">
@@ -973,11 +1066,13 @@ export default function AdminProductsPage() {
 
       {/* Edit Modal */}
       {editingProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Product</h2>
-            
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-8 border-b">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Product</h2>
+            </div>
+            <div className="p-8 overflow-y-auto flex-1">
+              <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Product Name
@@ -1193,6 +1288,131 @@ export default function AdminProductsPage() {
                 </div>
               )}
 
+              {/* New Product Variants Display & Edit */}
+              {editFormData.hasVariants && editFormData.productVariants && editFormData.productVariants.length > 0 && (
+                <div className="border-t pt-4">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4 mb-4">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                      <span>🎯</span> Product Variants
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">New System</span>
+                    </h3>
+                    <p className="text-sm text-blue-700 mb-3">
+                      This product has {editFormData.productVariants.length} variants with Amazon-style selection. Edit prices and stock below.
+                    </p>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full bg-white rounded-lg shadow-sm">
+                        <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Variant Combination</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">SKU</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Price (₹)</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                              Compare Price (₹)
+                              <span className="block text-xs font-normal text-gray-500 normal-case mt-1">For discount display</span>
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Stock</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Discount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {editFormData.productVariants.map((variant: ProductVariant, index: number) => {
+                            const discount = variant.compareAtPrice && variant.compareAtPrice > variant.price
+                              ? Math.round(((variant.compareAtPrice - variant.price) / variant.compareAtPrice) * 100)
+                              : null;
+                            
+                            return (
+                              <tr key={variant.id || index} className="hover:bg-blue-50 transition-colors">
+                                <td className="px-4 py-3 text-sm">
+                                  <div className="flex flex-wrap gap-1">
+                                    {Object.entries(variant.variantAttributes).map(([key, value]) => (
+                                      <span key={key} className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                                        {key}: {value}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="text"
+                                    value={variant.sku || ''}
+                                    readOnly
+                                    className="w-full px-2 py-1 text-xs border rounded bg-gray-50 text-gray-600"
+                                    title="SKU cannot be edited"
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="number"
+                                    value={variant.price || ''}
+                                    onChange={(e) => {
+                                      const newVariants = [...editFormData.productVariants];
+                                      newVariants[index] = { 
+                                        ...newVariants[index], 
+                                        price: e.target.value ? parseFloat(e.target.value) : undefined as any
+                                      };
+                                      setEditFormData({ ...editFormData, productVariants: newVariants });
+                                    }}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    step="0.01"
+                                    placeholder="Required"
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="number"
+                                    value={variant.compareAtPrice || ''}
+                                    onChange={(e) => {
+                                      const newVariants = [...editFormData.productVariants];
+                                      newVariants[index] = { 
+                                        ...newVariants[index], 
+                                        compareAtPrice: e.target.value ? parseFloat(e.target.value) : undefined 
+                                      };
+                                      setEditFormData({ ...editFormData, productVariants: newVariants });
+                                    }}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    step="0.01"
+                                    placeholder="Optional"
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="number"
+                                    value={variant.stockQuantity || 0}
+                                    onChange={(e) => {
+                                      const newVariants = [...editFormData.productVariants];
+                                      newVariants[index] = { ...newVariants[index], stockQuantity: parseInt(e.target.value) || 0 };
+                                      setEditFormData({ ...editFormData, productVariants: newVariants });
+                                    }}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  {discount ? (
+                                    <span className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold">
+                                      {discount}% OFF
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">No discount</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800 flex items-center gap-2">
+                        <span className="text-lg">💡</span>
+                        <span><strong>Tip:</strong> Set "Compare Price" higher than "Price" to show discount badges on the product detail page (e.g., Price: ₹100, Compare Price: ₹150 = 33% OFF)</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <MultiImageUpload
                 label="Product Images"
                 value={editFormData.images}
@@ -1211,18 +1431,21 @@ export default function AdminProductsPage() {
                 value={editFormData.featuredImage}
                 onChange={(url) => setEditFormData({ ...editFormData, featuredImage: url })}
               />
+              </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="p-6 border-t bg-gray-50 flex gap-3 sticky bottom-0">
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+                disabled={editFormData.hasVariants && editFormData.productVariants.some(v => !v.price || v.price <= 0)}
+                className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                title={editFormData.hasVariants && editFormData.productVariants.some(v => !v.price || v.price <= 0) ? 'Please fill all variant prices' : ''}
               >
                 Save Changes
               </button>
               <button
                 onClick={handleCancelEdit}
-                className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition"
+                className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition font-semibold"
               >
                 Cancel
               </button>
