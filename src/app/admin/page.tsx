@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette, FileText, LayoutList, Shield } from 'lucide-react';
+import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette, FileText, LayoutList, Shield, Receipt } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import UnifiedHeader from '@/components/UnifiedHeader';
 
@@ -74,6 +74,13 @@ function AdminDashboardContent() {
       icon: Filter,
       href: '/admin/common-filters',
       color: 'bg-indigo-500',
+    },
+    {
+      title: 'HSN Codes',
+      description: 'Manage HSN codes and GST rates',
+      icon: Receipt,
+      href: '/admin/hsn-codes',
+      color: 'bg-yellow-500',
     },
     {
       title: 'Products',
