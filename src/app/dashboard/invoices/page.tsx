@@ -20,12 +20,9 @@ interface Invoice {
   emailSent: boolean;
 }
 
-interface VendorDashboardInvoicesProps {
-  vendorId: string;
-}
-
-export default function VendorDashboardInvoices({ vendorId }: VendorDashboardInvoicesProps) {
+export default function VendorDashboardInvoices() {
   const router = useRouter();
+  const [vendorId, setVendorId] = useState<string>('');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,6 +36,27 @@ export default function VendorDashboardInvoices({ vendorId }: VendorDashboardInv
     pendingPayout: 0,
     paidPayout: 0,
   });
+
+  // Get vendorId from localStorage on mount
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        if (user.vendorId) {
+          setVendorId(user.vendorId);
+        } else {
+          setError('Vendor ID not found. Please log in again.');
+          setLoading(false);
+        }
+      } catch (err) {
+        setError('Failed to load user data. Please log in again.');
+        setLoading(false);
+      }
+    } else {
+      router.push('/login');
+    }
+  }, [router]);
 
   useEffect(() => {
     if (vendorId) {
