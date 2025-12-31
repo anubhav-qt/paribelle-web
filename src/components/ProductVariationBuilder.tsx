@@ -73,8 +73,11 @@ export default function ProductVariationBuilder({
     }));
 
     // Generate cartesian product
-    const cartesian = (...arrays: string[][]) => 
-      arrays.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
+    const cartesian = (...arrays: string[][]): string[][] => 
+      arrays.reduce((a: string[][], b: string[]) => 
+        a.flatMap(d => b.map(e => [...(Array.isArray(d) ? d : [d]), e])), 
+        [[]] as string[][]
+      );
 
     const optionArrays = themesWithOptions.map(theme => theme.options);
     if (optionArrays.some(arr => arr.length === 0)) return [];
@@ -82,7 +85,7 @@ export default function ProductVariationBuilder({
     const combinations = cartesian(...optionArrays);
     
     return combinations.map((combo, index) => {
-      const comboArray = Array.isArray(combo[0]) ? combo : [combo];
+      const comboArray = Array.isArray(combo) ? combo : [combo];
       const attributes: Record<string, string> = {};
       
       selectedThemes.forEach((themeId, i) => {

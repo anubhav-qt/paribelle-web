@@ -646,7 +646,11 @@ export default function ProductDetailPage() {
       }
     }
     
-    return getDiscount(product?.price, product?.compareAtPrice);
+    if (product?.price) {
+      return getDiscount(product.price, product.compareAtPrice);
+    }
+    
+    return null;
   };
 
   if (loading) {

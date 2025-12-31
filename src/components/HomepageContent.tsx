@@ -8,7 +8,6 @@ import ProductGrid from './ProductGrid';
 import CategoryNav from './CategoryNav';
 import CategorySidebar from './CategorySidebar';
 import StoreNav from './StoreNav';
-import { useLocale } from 'next-intl';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 

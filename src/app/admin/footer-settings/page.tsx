@@ -125,7 +125,7 @@ export default function FooterSettingsPage() {
       }
     } catch (error) {
       console.error('❌ Error updating footer settings:', error);
-      alert(`Error updating footer settings: ${error.message}`);
+      alert(`Error updating footer settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }

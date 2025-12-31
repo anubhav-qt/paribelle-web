@@ -159,11 +159,9 @@ export default function CustomPage({ params }: { params: { pageSlug: string } })
         {isBuilderMode ? (
           // Render sections in builder mode
           <div>
-            {console.log('🟢 Rendering sections:', sections.length, 'visible:', sections.filter(s => s.visible !== false).length)}
             {sections
               .filter(s => s.visible !== false) // Show sections unless explicitly hidden
               .map((section) => {
-                console.log('🟢 Rendering section:', section.type, section.title);
                 return <SectionRenderer key={section.id} section={section} />;
               })}
           </div>

@@ -47,13 +47,13 @@ export default function VendorPoliciesPage() {
       if (vendor?.returnPolicy) {
         setFormData(prev => ({ ...prev, returnPolicy: vendor.returnPolicy }));
         setUseMarketplaceDefaults(prev => ({ ...prev, return: false }));
-      } else if (marketplacePolicies.returnPolicy) {
+      } else if (marketplacePolicies.returnPolicy && marketplacePolicies.returnPolicy !== null) {
         setFormData(prev => ({ 
           ...prev, 
           returnPolicy: {
-            enabled: marketplacePolicies.returnPolicy.enabled,
-            days: marketplacePolicies.returnPolicy.days || 7,
-            text: marketplacePolicies.returnPolicy.text,
+            enabled: marketplacePolicies.returnPolicy!.enabled,
+            days: marketplacePolicies.returnPolicy!.days || 7,
+            text: marketplacePolicies.returnPolicy!.text,
           }
         }));
       }
@@ -62,12 +62,12 @@ export default function VendorPoliciesPage() {
       if (vendor?.cancellationPolicy) {
         setFormData(prev => ({ ...prev, cancellationPolicy: vendor.cancellationPolicy }));
         setUseMarketplaceDefaults(prev => ({ ...prev, cancellation: false }));
-      } else if (marketplacePolicies.cancellationPolicy) {
+      } else if (marketplacePolicies.cancellationPolicy && marketplacePolicies.cancellationPolicy !== null) {
         setFormData(prev => ({ 
           ...prev, 
           cancellationPolicy: {
-            enabled: marketplacePolicies.cancellationPolicy.enabled,
-            text: marketplacePolicies.cancellationPolicy.text,
+            enabled: marketplacePolicies.cancellationPolicy!.enabled,
+            text: marketplacePolicies.cancellationPolicy!.text,
           }
         }));
       }

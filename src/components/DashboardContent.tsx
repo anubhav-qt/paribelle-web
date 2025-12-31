@@ -76,16 +76,6 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
     }
   }, [router, vendorSlug]);
 
-  const oldFetchDashboardData = async (token: string) => {
-    try {
-      // This function is no longer needed - useOrders hook handles this
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'confirmed':

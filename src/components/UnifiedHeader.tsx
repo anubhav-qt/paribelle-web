@@ -61,6 +61,7 @@ export default function UnifiedHeader({
   const marketplaceName = settings?.name || 'GaliCart';
   const locationFilterEnabled = showLocationFilter && (settings?.locationEnabled || false);
   const showSearchBar = isVendorStore ? (themeConfig?.showSearchBar !== false) : true;
+  const customPages: any[] = []; // TODO: Implement custom pages feature
   
   const placeholder = searchPlaceholder || (isVendorStore ? 'Search in this store...' : 'Search products...');
 

@@ -329,7 +329,6 @@ export default function VendorSettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Store Name *
                 </label>
-                {console.log('🎨 Rendering storeName input with value:', formData.storeName)}
                 <input
                   type="text"
                   value={formData.storeName}
@@ -343,7 +342,6 @@ export default function VendorSettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Business Name
                 </label>
-                {console.log('🎨 Rendering businessName input with value:', formData.businessName)}
                 <input
                   type="text"
                   value={formData.businessName}

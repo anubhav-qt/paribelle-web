@@ -57,15 +57,18 @@ export default function SectionRenderer({ section, isPreview = false }: SectionR
 
 // Hero Section
 function HeroSection({ settings }: { settings: any }) {
-  const heightClasses = {
+  const heightClasses: Record<string, string> = {
     small: 'min-h-[300px]',
     medium: 'min-h-[400px]',
     large: 'min-h-[500px]',
   };
 
+  const height = settings.height || 'large';
+  const heightClass = heightClasses[height] || heightClasses.large;
+
   return (
     <div 
-      className={`relative ${heightClasses[settings.height || 'large']} flex items-center justify-center text-${settings.alignment || 'center'}`}
+      className={`relative ${heightClass} flex items-center justify-center text-${settings.alignment || 'center'}`}
       style={{
         backgroundColor: settings.backgroundColor,
         backgroundImage: settings.backgroundImage ? `url(${settings.backgroundImage})` : 'none',
@@ -93,11 +96,14 @@ function HeroSection({ settings }: { settings: any }) {
 
 // Features Section
 function FeaturesSection({ settings }: { settings: any }) {
-  const gridCols = {
+  const gridCols: Record<number, string> = {
     2: 'md:grid-cols-2',
     3: 'md:grid-cols-3',
     4: 'md:grid-cols-4',
   };
+
+  const columns = settings.columns || 3;
+  const gridColClass = gridCols[columns] || gridCols[3];
 
   return (
     <div className="py-16" style={{ backgroundColor: settings.backgroundColor }}>
@@ -110,7 +116,7 @@ function FeaturesSection({ settings }: { settings: any }) {
             )}
           </div>
         )}
-        <div className={`grid grid-cols-1 ${gridCols[settings.columns || 3]} gap-8`}>
+        <div className={`grid grid-cols-1 ${gridColClass} gap-8`}>
           {settings.features?.map((feature: any, index: number) => (
             <div key={index} className="text-center">
               <div className="text-4xl mb-4">{feature.icon}</div>
@@ -155,17 +161,22 @@ function ContentSection({ settings }: { settings: any }) {
 
 // Gallery Section
 function GallerySection({ settings }: { settings: any }) {
-  const gridCols = {
+  const gridCols: Record<number, string> = {
     2: 'md:grid-cols-2',
     3: 'md:grid-cols-3',
     4: 'md:grid-cols-4',
   };
 
-  const spacing = {
+  const spacing: Record<string, string> = {
     small: 'gap-2',
     medium: 'gap-4',
     large: 'gap-8',
   };
+
+  const columns = settings.columns || 4;
+  const spacingValue = settings.spacing || 'medium';
+  const gridColClass = gridCols[columns] || gridCols[4];
+  const spacingClass = spacing[spacingValue] || spacing.medium;
 
   return (
     <div className="py-16">
@@ -173,7 +184,7 @@ function GallerySection({ settings }: { settings: any }) {
         {settings.title && (
           <h2 className="text-3xl font-bold text-center mb-12">{settings.title}</h2>
         )}
-        <div className={`grid grid-cols-2 ${gridCols[settings.columns || 4]} ${spacing[settings.spacing || 'medium']}`}>
+        <div className={`grid grid-cols-2 ${gridColClass} ${spacingClass}`}>
           {settings.images?.map((image: any, index: number) => (
             <div key={index} className="aspect-square overflow-hidden rounded-lg">
               <img
@@ -314,11 +325,14 @@ function ContactSection({ settings }: { settings: any }) {
 
 // Team Section
 function TeamSection({ settings }: { settings: any }) {
-  const gridCols = {
+  const gridCols: Record<number, string> = {
     2: 'md:grid-cols-2',
     3: 'md:grid-cols-3',
     4: 'md:grid-cols-4',
   };
+
+  const columns = settings.columns || 3;
+  const gridColClass = gridCols[columns] || gridCols[3];
 
   return (
     <div className="py-16">
@@ -329,7 +343,7 @@ function TeamSection({ settings }: { settings: any }) {
             <p className="text-lg text-muted-foreground">{settings.subtitle}</p>
           )}
         </div>
-        <div className={`grid grid-cols-1 ${gridCols[settings.columns || 3]} gap-8`}>
+        <div className={`grid grid-cols-1 ${gridColClass} gap-8`}>
           {settings.members?.map((member: any, index: number) => (
             <div key={index} className="text-center">
               {member.photo ? (
@@ -461,16 +475,19 @@ function CTASection({ settings }: { settings: any }) {
 // Text Block Section - Perfect for legal documents
 function TextBlockSection({ settings }: { settings: any }) {
   const HeadingTag = settings.headingLevel || 'h2';
-  const paddingClasses = {
+  const paddingClasses: Record<string, string> = {
     none: 'py-0',
     small: 'py-6',
     normal: 'py-12',
     large: 'py-20',
   };
 
+  const padding = settings.padding || 'normal';
+  const paddingClass = paddingClasses[padding] || paddingClasses.normal;
+
   return (
     <div
-      className={paddingClasses[settings.padding || 'normal']}
+      className={paddingClass}
       style={{
         backgroundColor: settings.backgroundColor,
         color: settings.textColor,
@@ -560,27 +577,31 @@ function TableSection({ settings }: { settings: any }) {
 
 // Alert Section
 function AlertSection({ settings }: { settings: any }) {
-  const alertStyles = {
+  const alertStyles: Record<string, string> = {
     info: 'bg-blue-50 border-blue-200 text-blue-900',
     warning: 'bg-yellow-50 border-yellow-200 text-yellow-900',
     error: 'bg-red-50 border-red-200 text-red-900',
     success: 'bg-green-50 border-green-200 text-green-900',
   };
 
-  const alertIcons = {
+  const alertIcons: Record<string, JSX.Element> = {
     info: <Info className="w-6 h-6" />,
     warning: <AlertTriangle className="w-6 h-6" />,
     error: <AlertCircle className="w-6 h-6" />,
     success: <CheckCircle className="w-6 h-6" />,
   };
 
+  const type = settings.type || 'info';
+  const alertStyle = alertStyles[type] || alertStyles.info;
+  const alertIcon = alertIcons[type] || alertIcons.info;
+
   return (
     <div className="py-8">
       <div className="container mx-auto px-4 max-w-4xl">
-        <div className={`${alertStyles[settings.type || 'info']} border-2 rounded-lg p-6`}>
+        <div className={`${alertStyle} border-2 rounded-lg p-6`}>
           <div className="flex items-start gap-4">
             <div className="flex-shrink-0">
-              {settings.icon || alertIcons[settings.type || 'info']}
+              {settings.icon || alertIcon}
             </div>
             <div className="flex-1">
               {settings.title && (
@@ -642,33 +663,38 @@ function AccordionSection({ settings }: { settings: any }) {
 
 // Divider Section
 function DividerSection({ settings }: { settings: any }) {
-  const spacingClasses = {
+  const spacingClasses: Record<string, string> = {
     small: 'py-4',
     normal: 'py-8',
     large: 'py-12',
   };
 
-  const thicknessClasses = {
+  const thicknessClasses: Record<string, string> = {
     thin: 'border-t',
     medium: 'border-t-2',
     thick: 'border-t-4',
   };
 
+  const spacing = settings.spacing || 'normal';
+  const spacingClass = spacingClasses[spacing] || spacingClasses.normal;
+  const thickness = settings.thickness || 'thin';
+  const thicknessClass = thicknessClasses[thickness] || thicknessClasses.thin;
+
   if (settings.style === 'space') {
-    return <div className={spacingClasses[settings.spacing || 'normal']}></div>;
+    return <div className={spacingClass}></div>;
   }
 
   return (
-    <div className={spacingClasses[settings.spacing || 'normal']}>
+    <div className={spacingClass}>
       <div className="container mx-auto px-4">
         {settings.text ? (
           <div className="flex items-center gap-4">
-            <div className={`flex-1 ${thicknessClasses[settings.thickness || 'thin']}`} style={{ borderColor: settings.color }}></div>
+            <div className={`flex-1 ${thicknessClass}`} style={{ borderColor: settings.color }}></div>
             <span className="text-muted-foreground font-medium">{settings.text}</span>
-            <div className={`flex-1 ${thicknessClasses[settings.thickness || 'thin']}`} style={{ borderColor: settings.color }}></div>
+            <div className={`flex-1 ${thicknessClass}`} style={{ borderColor: settings.color }}></div>
           </div>
         ) : (
-          <div className={thicknessClasses[settings.thickness || 'thin']} style={{ borderColor: settings.color }}></div>
+          <div className={thicknessClass} style={{ borderColor: settings.color }}></div>
         )}
       </div>
     </div>
@@ -686,11 +712,14 @@ function LastUpdatedSection({ settings }: { settings: any }) {
     });
   };
 
-  const alignmentClasses = {
+  const alignmentClasses: Record<string, string> = {
     left: 'text-left',
     center: 'text-center',
     right: 'text-right',
   };
+
+  const alignment = settings.alignment || 'left';
+  const alignmentClass = alignmentClasses[alignment] || alignmentClasses.left;
 
   return (
     <div
@@ -698,7 +727,7 @@ function LastUpdatedSection({ settings }: { settings: any }) {
       style={{ backgroundColor: settings.backgroundColor }}
     >
       <div className="container mx-auto px-4 max-w-4xl">
-        <div className={`flex items-center gap-2 ${alignmentClasses[settings.alignment || 'left']}`}>
+        <div className={`flex items-center gap-2 ${alignmentClass}`}>
           <Calendar className="w-5 h-5 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
             <strong>{settings.prefix}</strong> {formatDate(settings.date)}

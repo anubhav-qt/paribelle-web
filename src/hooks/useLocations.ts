@@ -5,12 +5,14 @@ import { useQuery } from '@tanstack/react-query';
 interface City {
   id: string;
   name: string;
+  state?: string;
 }
 
 interface SubLocation {
   id: string;
   name: string;
   cityId: string;
+  zipCode?: string;
 }
 
 export function useCities() {

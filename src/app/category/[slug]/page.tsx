@@ -309,7 +309,7 @@ export default function CategoryPage() {
         showLocationFilter={locationFilterEnabled}
         showBookingsLink={true}
       />
-      <CategoryNav categories={categories} />
+      <CategoryNav />
 
       {/* Breadcrumb */}
       <div className={theme.combine(theme.cardBg, 'border-b', isVendorStore ? 'vendor-border-primary' : 'border-border')}>

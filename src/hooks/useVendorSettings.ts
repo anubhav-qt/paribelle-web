@@ -122,10 +122,8 @@ export function useUpdateVendorSettings() {
   return useMutation({
     mutationFn: updateVendorSettings,
     onSuccess: (response) => {
-      // Update cache with new data from response.data
-      if (response.data) {
-        queryClient.setQueryData(['vendor-settings'], response.data);
-      }
+      // Update cache with new data from response
+      queryClient.setQueryData(['vendor-settings'], response);
       // Also invalidate dashboard data as it might include vendor info
       queryClient.invalidateQueries({ queryKey: ['vendor-dashboard'] });
     },

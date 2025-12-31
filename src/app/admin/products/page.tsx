@@ -395,8 +395,8 @@ export default function AdminProductsPage() {
 
   const groupProductsByVendor = () => {
     const grouped = new Map<string, { vendor: any; products: Product[] }>();
-    
-    products.forEach((product) => {
+
+    products.forEach((product: Product) => {
       const vendorId = product.vendor?.id || 'no-vendor';
       const vendorName = product.vendor?.storeName || product.vendor?.businessName || 'No Vendor Assigned';
       const vendorEmail = product.vendor?.contactEmail || '';
@@ -633,19 +633,19 @@ export default function AdminProductsPage() {
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Active</div>
             <div className="text-2xl font-bold text-green-600">
-              {products.filter((p) => p.status === 'active').length}
+              {products.filter((p: Product) => p.status === 'active').length}
             </div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Low Stock</div>
             <div className="text-2xl font-bold text-orange-600">
-              {products.filter((p) => p.stockQuantity < 10 && p.stockQuantity > 0).length}
+              {products.filter((p: Product) => p.stockQuantity < 10 && p.stockQuantity > 0).length}
             </div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Out of Stock</div>
             <div className="text-2xl font-bold text-red-600">
-              {products.filter((p) => p.stockQuantity === 0).length}
+              {products.filter((p: Product) => p.stockQuantity === 0).length}
             </div>
           </div>
         </div>
@@ -926,7 +926,7 @@ export default function AdminProductsPage() {
                         );
                       })
                     ) : (
-                      products.map((product) => (
+                      products.map((product: Product) => (
                         <tr key={product.id} className="hover:bg-gray-50 border-b border-gray-200">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">

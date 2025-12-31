@@ -12,6 +12,7 @@ export interface CartItem {
   productType: 'physical' | 'booking';
   stockQuantity?: number;
   maxQuantity?: number;
+  variationAttributes?: Record<string, string>;
 }
 
 export interface CartContextType {

@@ -36,6 +36,7 @@ export function useInfiniteProducts(options: UseProductsOptions = {}) {
   
   return useInfiniteQuery({
     queryKey: ['products', 'infinite', categoryId, search, vendorId, limit],
+    initialPageParam: 1,
     queryFn: async ({ pageParam = 1 }) => {
       const params = new URLSearchParams();
       if (categoryId) params.append('categoryId', categoryId);

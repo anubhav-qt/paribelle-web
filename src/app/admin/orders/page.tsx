@@ -19,7 +19,14 @@ interface Order {
   shippingName: string;
   shippingEmail: string;
   shippingPhone: string;
-  shippingAddress: string;
+  shippingAddress: string | {
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country?: string;
+  };
   shippingCity: string;
   shippingState: string;
   createdAt: string;
