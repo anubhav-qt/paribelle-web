@@ -123,13 +123,21 @@ export default function AdminPagesPage() {
                   Create custom pages for your marketplace
                 </p>
               </div>
-              <Link
-                href="/admin/pages/new"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                New Page
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
+                >
+                  ← Dashboard
+                </Link>
+                <Link
+                  href="/admin/pages/new"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Page
+                </Link>
+              </div>
             </div>
           </div>
 
