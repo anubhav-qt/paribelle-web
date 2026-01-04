@@ -123,6 +123,19 @@ export default function ProductDetailPage() {
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
+  // Clamp quantity to available stock whenever stock or variant changes
+  useEffect(() => {
+    if (!product) return;
+    
+    const maxStock = product.isParent 
+      ? (selectedVariation?.stockQuantity || 999)
+      : (selectedVariant?.stockQuantity || product.stockQuantity || 999);
+    
+    if (quantity > maxStock) {
+      setQuantity(Math.max(1, maxStock));
+    }
+  }, [product, selectedVariation, selectedVariant, quantity]);
+
   useEffect(() => {
     // Reset product state when slug changes to prevent showing stale data
     setProduct(null);
@@ -839,13 +852,18 @@ export default function ProductDetailPage() {
                           ? (selectedVariation?.stockQuantity || 999)
                           : (selectedVariant?.stockQuantity || product.stockQuantity || 999);
                         
-                        if (quantity >= maxStock) {
-                          alert(`Maximum ${maxStock} items available in stock.`);
+                        const newQuantity = quantity + 1;
+                        
+                        if (newQuantity > maxStock) {
+                          alert(`Cannot add more. Maximum ${maxStock} items available in stock.`);
                         } else {
-                          setQuantity(quantity + 1);
+                          setQuantity(newQuantity);
                         }
                       }}
-                      className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-foreground"
+                      disabled={quantity >= (product.isParent 
+                        ? (selectedVariation?.stockQuantity || 999)
+                        : (selectedVariant?.stockQuantity || product.stockQuantity || 999))}
+                      className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       +
                     </button>
