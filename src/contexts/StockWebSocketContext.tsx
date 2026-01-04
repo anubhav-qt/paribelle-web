@@ -82,7 +82,11 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
 
   useEffect(() => {
     // Connect to WebSocket server
-    const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
+    // Remove /api/v1 from the API URL for WebSocket connection
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const wsUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
+    
+    const socketInstance = io(wsUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,

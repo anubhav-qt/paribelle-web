@@ -40,6 +40,22 @@ export function useThemeClasses() {
     productCard: isVendorStore ? 'vendor-product-card' : 'bg-card border border-border',
     productPrice: isVendorStore ? 'vendor-product-price' : 'text-primary font-semibold',
     
+    // Button styles
+    primaryButton: isVendorStore 
+      ? 'vendor-primary-bg text-white hover:opacity-90' 
+      : 'bg-primary text-primary-foreground hover:bg-primary/90',
+    secondaryButton: isVendorStore
+      ? 'vendor-secondary-bg vendor-text hover:opacity-90'
+      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    
+    // Input/Form styles
+    input: isVendorStore
+      ? 'vendor-bg vendor-text vendor-border-primary focus:ring-vendor-primary'
+      : 'bg-background text-foreground border-input focus:ring-ring',
+    card: isVendorStore
+      ? 'vendor-bg vendor-border-primary'
+      : 'bg-card border-border',
+    
     // Helper to combine classes
     combine: (...classes: string[]) => classes.filter(Boolean).join(' '),
     
