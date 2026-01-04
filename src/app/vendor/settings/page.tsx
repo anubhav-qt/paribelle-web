@@ -28,6 +28,7 @@ export default function VendorSettingsPage() {
     pincode: '',
     shippingCost: '',
     freeShippingThreshold: '',
+    commissionRate: '',
     logo: '',
     categoryDisplayMode: 'sidebar' as 'sidebar' | 'top',
     invoiceFrequency: 'per_order',
@@ -58,6 +59,7 @@ export default function VendorSettingsPage() {
         pincode: vendor.pincode || '',
         shippingCost: vendor.shippingCost || '50',
         freeShippingThreshold: vendor.freeShippingThreshold || '',
+        commissionRate: vendor.commissionRate || '10',
         logo: vendor.logo || '',
         categoryDisplayMode: (vendor as any).categoryDisplayMode || 'sidebar',
         invoiceFrequency: (vendor as any).invoiceFrequency || 'per_order',
@@ -440,7 +442,7 @@ export default function VendorSettingsPage() {
 
             {/* Shipping Settings */}
             <div className="border-t pt-6 mt-6">
-              <h3 className="text-lg font-semibold mb-4">Shipping Settings</h3>
+              <h3 className="text-lg font-semibold mb-4">Shipping & Commission Settings</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -477,6 +479,32 @@ export default function VendorSettingsPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     Orders above this amount get free shipping (leave empty for no free shipping)
                   </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Commission Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={formData.commissionRate}
+                    onChange={(e) => setFormData({ ...formData, commissionRate: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                    placeholder="10.00"
+                    readOnly
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Platform commission on your sales (set by marketplace admin, read-only)
+                  </p>
+                  <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200 text-xs text-blue-800">
+                    <p className="font-medium mb-1">📊 Commission Calculation:</p>
+                    <p>If order total = ₹1000 and rate = {formData.commissionRate}%:</p>
+                    <p className="ml-2">• Commission deducted: ₹{((parseFloat(formData.commissionRate) || 10) * 10).toFixed(2)}</p>
+                    <p className="ml-2">• Your payout: ₹{(1000 - ((parseFloat(formData.commissionRate) || 10) * 10)).toFixed(2)}</p>
+                  </div>
                 </div>
               </div>
 

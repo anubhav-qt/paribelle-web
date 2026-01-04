@@ -8,6 +8,7 @@ import { CartProvider } from '@/contexts/CartContext';
 import { WishlistProvider } from '@/contexts/WishlistContext';
 import { PoliciesProvider } from '@/contexts/PoliciesContext';
 import { VendorProvider } from '@/contexts/VendorContext';
+import { StockWebSocketProvider } from '@/contexts/StockWebSocketContext';
 import CartDrawer from './CartDrawer';
 
 export function Providers({ 
@@ -73,14 +74,16 @@ export function Providers({
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <VendorProvider vendorSlug={vendorSlug} initialData={initialVendorData}>
-          <PoliciesProvider>
-            <CartProvider>
-              <WishlistProvider>
-                {children}
-                <CartDrawer />
-              </WishlistProvider>
-            </CartProvider>
-          </PoliciesProvider>
+          <StockWebSocketProvider>
+            <PoliciesProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  {children}
+                  <CartDrawer />
+                </WishlistProvider>
+              </CartProvider>
+            </PoliciesProvider>
+          </StockWebSocketProvider>
         </VendorProvider>
       </ThemeProvider>
     </QueryClientProvider>

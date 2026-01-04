@@ -28,6 +28,7 @@ interface Product {
   reviewCount: number;
   categories: Category[];
   productType?: 'physical' | 'booking';
+  stockQuantity?: number;
   attributes?: {
     booking?: {
       durationUnit?: 'hours' | 'days' | 'sessions';
@@ -134,6 +135,13 @@ export default function ProductGrid({
               <Calendar className="w-3 h-3" />
               Booking
             </span>
+          )}
+          {product.productType === 'physical' && product.stockQuantity === 0 && (
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+              <span className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
+                SOLD OUT
+              </span>
+            </div>
           )}
         </div>
         <div className="p-4">

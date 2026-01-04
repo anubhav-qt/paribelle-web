@@ -289,7 +289,7 @@ export default function CheckoutPage() {
             contact: address.phone,
           },
           theme: {
-            color: '#3b82f6',
+            color: getComputedStyle(document.documentElement).getPropertyValue('--marketplace-primary').trim() || '#FF9900',
           },
         },
         async (response) => {

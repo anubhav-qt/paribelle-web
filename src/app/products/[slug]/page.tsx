@@ -834,7 +834,17 @@ export default function ProductDetailPage() {
                     </button>
                     <span className="text-lg font-semibold w-12 text-center text-foreground">{quantity}</span>
                     <button
-                      onClick={() => setQuantity(quantity + 1)}
+                      onClick={() => {
+                        const maxStock = product.isParent 
+                          ? (selectedVariation?.stockQuantity || 999)
+                          : (selectedVariant?.stockQuantity || product.stockQuantity || 999);
+                        
+                        if (quantity >= maxStock) {
+                          alert(`Maximum ${maxStock} items available in stock.`);
+                        } else {
+                          setQuantity(quantity + 1);
+                        }
+                      }}
                       className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-foreground"
                     >
                       +

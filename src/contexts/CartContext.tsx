@@ -39,6 +39,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const existingItem = prev.find((item) => item.productId === newItem.productId);
       
       if (existingItem) {
+        // Check stock limit
+        const maxStock = existingItem.stockQuantity || 999;
+        const newQuantity = existingItem.quantity + newItem.quantity;
+        
+        if (newQuantity > maxStock) {
+          alert(`Cannot add more. Only ${maxStock} items available in stock.`);
+          return prev;
+        }
+        
         // Update quantity if item already exists
         return prev.map((item) =>
           item.productId === newItem.productId
@@ -51,6 +60,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
               }
             : item
         );
+      }
+      
+      // Check stock for new item
+      const maxStock = newItem.stockQuantity || 999;
+      if (newItem.quantity > maxStock) {
+        alert(`Cannot add ${newItem.quantity} items. Only ${maxStock} available in stock.`);
+        return prev;
       }
       
       // Add new item with generated ID
@@ -77,17 +93,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     setItems((prev) =>
-      prev.map((item) =>
-        item.productId === productId
-          ? {
-              ...item,
-              quantity: Math.min(
-                quantity,
-                item.maxQuantity || item.stockQuantity || 999
-              ),
-            }
-          : item
-      )
+      prev.map((item) => {
+        if (item.productId === productId) {
+          const maxStock = item.maxQuantity || item.stockQuantity || 999;
+          const newQuantity = Math.min(quantity, maxStock);
+          
+          if (quantity > maxStock) {
+            alert(`Maximum ${maxStock} items available in stock.`);
+          }
+          
+          return {
+            ...item,
+            quantity: newQuantity,
+          };
+        }
+        return item;
+      })
     );
   };
 

@@ -10,6 +10,7 @@ import CategorySidebar from './CategorySidebar';
 import StoreNav from './StoreNav';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
+import { useStockWebSocket } from '@/contexts/StockWebSocketContext';
 
 interface Category {
   id: string;
@@ -31,6 +32,7 @@ interface Product {
   reviewCount: number;
   categories: Category[];
   productType?: 'physical' | 'booking';
+  stockQuantity?: number;
   attributes?: {
     booking?: {
       durationUnit?: 'hours' | 'days' | 'sessions';
@@ -69,6 +71,7 @@ export default function HomepageContent({
   const searchParams = useSearchParams();
   const { vendor, isVendorStore } = useVendorContext();
   const theme = useThemeClasses();
+  const { subscribeToBulkStockUpdates, subscribeToRatingUpdates, subscribeToPriceUpdates, isConnected } = useStockWebSocket();
   const [categories] = useState<Category[]>(initialCategories);
   const [productsByCategory, setProductsByCategory] = useState<Record<string, Product[]>>(initialProductsByCategory);
   const [uncategorizedProducts, setUncategorizedProducts] = useState<Product[]>(initialUncategorizedProducts);
@@ -83,6 +86,102 @@ export default function HomepageContent({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Listen for real-time stock updates via WebSocket
+  useEffect(() => {
+    if (!mounted) return;
+
+    const unsubscribe = subscribeToBulkStockUpdates((data) => {
+      console.log('Received bulk stock update:', data);
+      
+      // Update stock quantities in productsByCategory
+      setProductsByCategory((prev) => {
+        const updated = { ...prev };
+        data.updates.forEach(({ productId, stockQuantity }) => {
+          Object.keys(updated).forEach((categorySlug) => {
+            updated[categorySlug] = updated[categorySlug].map((product) =>
+              product.id === productId
+                ? { ...product, stockQuantity }
+                : product
+            );
+          });
+        });
+        return updated;
+      });
+
+      // Update stock quantities in uncategorizedProducts
+      setUncategorizedProducts((prev) =>
+        prev.map((product) => {
+          const update = data.updates.find((u) => u.productId === product.id);
+          return update ? { ...product, stockQuantity: update.stockQuantity } : product;
+        })
+      );
+    });
+
+    return unsubscribe;
+  }, [mounted, subscribeToBulkStockUpdates]);
+
+  // Listen for real-time price updates
+  useEffect(() => {
+    if (!mounted) return;
+
+    const unsubscribe = subscribeToPriceUpdates((data) => {
+      console.log('Received price update:', data);
+      
+      setProductsByCategory((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach((categorySlug) => {
+          updated[categorySlug] = updated[categorySlug].map((product) =>
+            product.id === data.productId
+              ? { ...product, price: data.price, compareAtPrice: data.compareAtPrice }
+              : product
+          );
+        });
+        return updated;
+      });
+
+      setUncategorizedProducts((prev) =>
+        prev.map((product) =>
+          product.id === data.productId
+            ? { ...product, price: data.price, compareAtPrice: data.compareAtPrice }
+            : product
+        )
+      );
+    });
+
+    return unsubscribe;
+  }, [mounted, subscribeToPriceUpdates]);
+
+  // Listen for real-time rating updates
+  useEffect(() => {
+    if (!mounted) return;
+
+    const unsubscribe = subscribeToRatingUpdates((data) => {
+      console.log('Received rating update:', data);
+      
+      setProductsByCategory((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach((categorySlug) => {
+          updated[categorySlug] = updated[categorySlug].map((product) =>
+            product.id === data.productId
+              ? { ...product, averageRating: data.averageRating, reviewCount: data.reviewCount }
+              : product
+          );
+        });
+        return updated;
+      });
+
+      setUncategorizedProducts((prev) =>
+        prev.map((product) =>
+          product.id === data.productId
+            ? { ...product, averageRating: data.averageRating, reviewCount: data.reviewCount }
+            : product
+        )
+      );
+    });
+
+    return unsubscribe;
+  }, [mounted, subscribeToRatingUpdates]);
 
   // Filter initial data by vendor if on vendor store
   useEffect(() => {
