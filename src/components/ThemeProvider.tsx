@@ -48,7 +48,10 @@ export default function ThemeProvider({
         if (response.ok) {
           const data = await response.json();
           if (data.value) {
-            const savedTheme = JSON.parse(data.value);
+            // Handle both string and object formats
+            const savedTheme = typeof data.value === 'string' 
+              ? JSON.parse(data.value) 
+              : data.value;
             setTheme({ ...defaultFallbackTheme, ...savedTheme });
           }
         }
