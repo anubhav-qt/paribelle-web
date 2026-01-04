@@ -164,7 +164,7 @@ export default function AddressManager({
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/v1/user/addresses', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/addresses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -248,8 +248,8 @@ export default function AddressManager({
 
     try {
       const url = editingAddressId 
-        ? `http://localhost:3001/api/v1/user/addresses/${editingAddressId}`
-        : 'http://localhost:3001/api/v1/user/addresses';
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/addresses/${editingAddressId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/addresses`;
       
       const method = editingAddressId ? 'PUT' : 'POST';
 
@@ -336,7 +336,7 @@ export default function AddressManager({
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/v1/user/addresses/${addressId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/addresses/${addressId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

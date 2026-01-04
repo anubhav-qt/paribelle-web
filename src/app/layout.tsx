@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 // Fetch default theme on server
 async function getDefaultTheme() {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     const response = await fetch(`${apiUrl}/api/v1/settings/default-theme`, {
       cache: 'no-store',
     });
@@ -42,7 +42,7 @@ async function getDefaultTheme() {
 // Fetch vendor data on server
 async function getVendorData(vendorSlug: string) {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     const response = await fetch(`${apiUrl}/api/v1/vendors/${vendorSlug}`, {
       cache: 'no-store',
     });

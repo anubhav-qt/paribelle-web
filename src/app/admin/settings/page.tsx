@@ -627,15 +627,28 @@ export default function AdminSettingsPage() {
             )}
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                <strong>Tips:</strong>
+              <p className="text-sm text-blue-800 font-semibold mb-3">
+                <strong>📸 How to Add Images from Unsplash:</strong>
               </p>
-              <ul className="text-sm text-blue-800 mt-2 space-y-1 list-disc list-inside">
+              <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                <li>Go to <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">unsplash.com</a> and search for your desired image (e.g., "fashion", "marketplace", "products")</li>
+                <li>Click on the image you like to open it in full view</li>
+                <li>Right-click on the image and select "Copy Image Address" or "Copy Image Link"</li>
+                <li>Paste the URL in the "Image URL" field above</li>
+                <li><strong>Optimize for hero banner:</strong> Add <code className="bg-blue-100 px-1 py-0.5 rounded">?w=1920&h=600&fit=crop</code> at the end of the URL for perfect sizing</li>
+                <li className="font-medium">Example: <code className="bg-blue-100 px-1 py-0.5 rounded text-xs break-all">https://images.unsplash.com/photo-xxxxx?w=1920&h=600&fit=crop</code></li>
+              </ol>
+              <p className="text-sm text-blue-800 mt-3">
+                <strong>💡 Additional Tips:</strong>
+              </p>
+              <ul className="text-sm text-blue-800 mt-2 space-y-1 list-disc list-inside ml-4">
                 <li>Banners auto-rotate every 5 seconds</li>
                 <li>Users can manually navigate using arrows or dots</li>
-                <li>Recommended image dimensions: 1920x600px or 16:9 aspect ratio</li>
+                <li>Recommended dimensions: 1920x600px or 16:9 aspect ratio</li>
                 <li>Leave image URL empty to use gradient background</li>
                 <li>Display order determines the sequence (lower numbers appear first)</li>
+                <li>Use high-quality, relevant images that match your brand</li>
+                <li>Ensure images are properly licensed (Unsplash images are free to use)</li>
               </ul>
             </div>
           </div>

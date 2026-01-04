@@ -15,13 +15,13 @@ interface ThemeConfig {
 }
 
 const defaultFallbackTheme: ThemeConfig = {
-  primaryColor: '#3B82F6',
-  secondaryColor: '#F1F5F9',
-  accentColor: '#F1F5F9',
+  primaryColor: '#FF9900',
+  secondaryColor: '#232F3E',
+  accentColor: '#FF9900',
   backgroundColor: '#FFFFFF',
-  textColor: '#0F172A',
-  fontFamily: 'Inter',
-  headingFont: 'Inter',
+  textColor: '#0F1111',
+  fontFamily: 'Amazon Ember, Arial, sans-serif',
+  headingFont: 'Amazon Ember, Arial, sans-serif',
   cardColor: '#FFFFFF',
   borderColor: '#E2E8F0',
 };

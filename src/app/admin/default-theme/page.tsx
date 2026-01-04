@@ -31,13 +31,13 @@ interface ThemeConfig {
 }
 
 const defaultTheme: ThemeConfig = {
-  primaryColor: '#3B82F6', // Matches Tailwind primary hsl(221.2 83.2% 53.3%)
-  secondaryColor: '#F1F5F9', // Matches Tailwind secondary hsl(210 40% 96.1%)
-  accentColor: '#F1F5F9', // Matches Tailwind accent hsl(210 40% 96.1%)
-  backgroundColor: '#FFFFFF', // Matches Tailwind background hsl(0 0% 100%)
-  textColor: '#0F172A', // Matches Tailwind foreground hsl(222.2 84% 4.9%)
-  fontFamily: 'Inter',
-  headingFont: 'Inter',
+  primaryColor: '#FF9900', // Amazon orange
+  secondaryColor: '#232F3E', // Amazon dark blue
+  accentColor: '#FF9900', // Amazon orange
+  backgroundColor: '#FFFFFF',
+  textColor: '#0F1111', // Amazon text color
+  fontFamily: 'Amazon Ember, Arial, sans-serif',
+  headingFont: 'Amazon Ember, Arial, sans-serif',
   layout: 'modern',
   customCss: '',
   showLogo: true,
