@@ -8,6 +8,7 @@ import ProductGrid from './ProductGrid';
 import CategoryNav from './CategoryNav';
 import CategorySidebar from './CategorySidebar';
 import StoreNav from './StoreNav';
+import ThemeRenderer from './ThemeRenderer';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useStockWebSocket } from '@/contexts/StockWebSocketContext';
@@ -389,7 +390,7 @@ export default function HomepageContent({
   return (
     <div>
       {/* Category Navigation Bar */}
-      <CategoryNav mode="scroll" />
+      <ThemeRenderer component="nav" fallback={<CategoryNav mode="scroll" />} />
 
       {/* Main Content with Sidebar */}
       <div className="container mx-auto px-4 pb-8">

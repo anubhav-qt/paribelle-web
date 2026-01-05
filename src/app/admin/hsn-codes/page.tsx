@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Receipt, Plus, Edit2, Trash2, Search, Upload, Download } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 
 interface HSNCode {
   id: string;
@@ -210,7 +210,7 @@ export default function HSNCodesPage() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50">
         <div className="bg-white shadow-sm border-b">
           <div className="container mx-auto px-4 py-6">

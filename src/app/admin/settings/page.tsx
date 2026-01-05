@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Settings, MapPin, Save, DollarSign } from 'lucide-react';
+import { Settings, MapPin, Save, DollarSign, Upload } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 
 interface Setting {
@@ -20,6 +20,8 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [locationFilterEnabled, setLocationFilterEnabled] = useState(true);
@@ -115,6 +117,52 @@ export default function AdminSettingsPage() {
       showMessage('error', 'Failed to load settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showMessage('error', 'Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showMessage('error', 'Image size should be less than 2MB');
+      return;
+    }
+
+    try {
+      setUploadingLogo(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/upload/image`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      const data = await response.json();
+      // Store the relative URL (will be prefixed with API URL when fetched)
+      setMarketplaceLogo(data.url);
+      showMessage('success', 'Logo uploaded successfully. Remember to save settings.');
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      showMessage('error', 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -229,7 +277,7 @@ export default function AdminSettingsPage() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <div className="bg-white shadow-sm border-b">
@@ -290,24 +338,54 @@ export default function AdminSettingsPage() {
 
             <div>
               <label htmlFor="marketplaceLogo" className="block font-medium text-gray-900 mb-2">
-                Logo URL
+                Logo
               </label>
-              <input
-                type="url"
-                id="marketplaceLogo"
-                value={marketplaceLogo}
-                onChange={(e) => setMarketplaceLogo(e.target.value)}
-                placeholder="https://example.com/logo.png"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="text-sm text-gray-600 mt-2">
-                Upload your logo and enter the URL. Leave empty to show text name only. Recommended size: 200x60px
-              </p>
+              <div className="space-y-3">
+                {/* Upload Button */}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    id="logoFileInput"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                  </button>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Upload an image (max 2MB). Recommended size: 200x60px
+                  </p>
+                </div>
+
+                {/* URL Input (Optional) */}
+                <div>
+                  <label htmlFor="marketplaceLogoUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                    Or enter Logo URL
+                  </label>
+                  <input
+                    type="url"
+                    id="marketplaceLogoUrl"
+                    value={marketplaceLogo}
+                    onChange={(e) => setMarketplaceLogo(e.target.value)}
+                    placeholder="https://example.com/logo.png or /logo.png"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
               {marketplaceLogo && (
                 <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
                   <p className="text-sm font-medium text-gray-700 mb-2">Preview:</p>
                   <img 
-                    src={marketplaceLogo} 
+                    src={marketplaceLogo.startsWith('http') ? marketplaceLogo : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${marketplaceLogo}`} 
                     alt="Logo preview" 
                     className="h-12 object-contain"
                     onError={(e) => {
@@ -806,6 +884,29 @@ export default function AdminSettingsPage() {
             </div>
           </div>
             </div>
+      </div>
+
+      {/* Sticky Save Button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-end gap-4 max-w-4xl ml-auto">
+            <button
+              onClick={fetchSettings}
+              disabled={saving}
+              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Reset
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );

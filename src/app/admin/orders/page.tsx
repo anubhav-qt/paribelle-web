@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowUpDown, Eye, Search, Filter, Download } from 'lucide-react';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 
 interface Order {
   id: string;
@@ -213,7 +213,7 @@ export default function AdminOrdersPage() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}

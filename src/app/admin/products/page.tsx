@@ -6,7 +6,7 @@ import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 
 interface ProductVariant {
   id: string;
@@ -571,7 +571,7 @@ export default function AdminProductsPage() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
         {/* Header */}

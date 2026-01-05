@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Edit2, Trash2, Save, X, Copy } from 'lucide-react';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 
 type FilterType = 'CHECKBOX' | 'SELECT' | 'MULTISELECT' | 'RANGE';
 
@@ -255,7 +255,7 @@ export default function CommonFiltersPage() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Star, SlidersHorizontal, ChevronDown, Package, Calendar } from 'lucide-react';
 import LocationFilter from '@/components/LocationFilter';
 import { getCurrencySymbol } from '@/lib/currency';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import CategoryNav from '@/components/CategoryNav';
 import Footer from '@/components/Footer';
 import { useThemeClasses } from '@/hooks/useThemeClasses';

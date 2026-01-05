@@ -243,9 +243,12 @@ export default function UnifiedHeader({
               <>
                 {marketplaceLogo ? (
                   <img 
-                    src={marketplaceLogo} 
+                    src={marketplaceLogo.startsWith('http') ? marketplaceLogo : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${marketplaceLogo}`} 
                     alt={marketplaceName} 
                     className="h-10 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 ) : (
                   <span className="text-xl font-bold text-primary-foreground">{marketplaceName}</span>
@@ -519,6 +522,15 @@ export default function UnifiedHeader({
                 >
                   My Purchases
                 </Link>
+                {user.role === 'super_admin' && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={theme.combine('block py-2 px-4 hover:opacity-80 rounded-md transition-colors', theme.text)}
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
                 {user.role === 'vendor_admin' && (
                   <Link
                     href="/vendor/dashboard"

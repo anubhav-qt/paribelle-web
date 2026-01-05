@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Plus, Trash2, Facebook, Twitter, Instagram, Linkedin, Youtube } from 'lucide-react';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 
 interface SocialLink {
   platform: 'facebook' | 'twitter' | 'instagram' | 'linkedin' | 'youtube' | 'tiktok';
@@ -199,7 +199,7 @@ export default function FooterSettingsPage() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-5xl mx-auto">
           {/* Sticky Save Button */}

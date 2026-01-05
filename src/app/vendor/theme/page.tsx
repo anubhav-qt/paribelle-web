@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import ThemeBuilder from '@/components/ThemeBuilder';
+import ThemeTemplateSelector from '@/components/ThemeTemplateSelector';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -17,6 +18,7 @@ interface ThemeConfig {
   fontFamily: string;
   headingFont: string;
   layout?: 'modern' | 'classic' | 'minimal' | 'bold';
+  templateId?: string;
   customCss?: string;
   showLogo?: boolean;
   showSearchBar?: boolean;
@@ -151,7 +153,7 @@ export default function VendorThemePage() {
 
   return (
     <>
-      <UnifiedHeader showLocationFilter={false} />
+      <ThemeRenderer component="header" showLocationFilter={false} />
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
           {/* <CategorySidebar /> */}
@@ -402,16 +404,38 @@ export default function VendorThemePage() {
           )}
         </div>
 
-      <ThemeBuilder
-        initialTheme={themeConfig}
-        onSave={handleSave}
-        saving={saving}
-        title="Theme Builder"
-        subtitle="Customize your store's appearance"
-        backLink="/vendor/dashboard"
-        backLinkText="Back to Dashboard"
-        isAdmin={false}
-      />
+      {/* Theme Template Selector */}
+      <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <ThemeTemplateSelector
+          currentThemeId={themeConfig.templateId}
+          onThemeSelect={async (templateId) => {
+            const updatedTheme = { ...themeConfig, templateId };
+            await handleSave(updatedTheme);
+          }}
+        />
+      </div>
+
+      {/* Divider */}
+      <div className="my-8 border-t border-gray-300"></div>
+
+      {/* Advanced Customization */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="mb-4">
+          <h3 className="text-xl font-bold text-gray-900">Advanced Customization</h3>
+          <p className="text-sm text-gray-600 mt-1">Fine-tune colors, fonts, and styling</p>
+        </div>
+        
+        <ThemeBuilder
+          initialTheme={themeConfig}
+          onSave={handleSave}
+          saving={saving}
+          title=""
+          subtitle=""
+          backLink="/vendor/dashboard"
+          backLinkText="Back to Dashboard"
+          isAdmin={false}
+        />
+      </div>
           </div>
         </div>
       </div>

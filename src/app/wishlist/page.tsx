@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Heart, ShoppingCart, Trash2, ExternalLink } from 'lucide-react';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import CategoryNav from '@/components/CategoryNav';
 import Footer from '@/components/Footer';
 import { useWishlist } from '@/contexts/WishlistContext';
@@ -49,7 +49,7 @@ export default function WishlistPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <CategoryNav mode="scroll" />
       
       <div className="container mx-auto px-4 py-8">

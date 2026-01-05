@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import { Package, XCircle } from 'lucide-react';
 import { useVendorPolicies, useUpdateVendorPolicies } from '@/hooks/useVendorPolicies';
@@ -109,7 +109,7 @@ export default function VendorPoliciesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <UnifiedHeader showLocationFilter={false} />
+      <ThemeRenderer component="header" showLocationFilter={false} />
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
           {/* <CategorySidebar /> */}

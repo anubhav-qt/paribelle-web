@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette, FileText, LayoutList, Shield, Receipt } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 
 export default function AdminDashboard() {
   const { isAuthenticated, loading } = useAdminAuth();
@@ -18,7 +18,7 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <AdminDashboardContent />
     </>
   );

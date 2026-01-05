@@ -11,6 +11,7 @@ interface ThemeConfig {
   fontFamily?: string;
   headingFont?: string;
   layout?: string;
+  templateId?: string;
   customCss?: string;
   showLogo?: boolean;
   showSearchBar?: boolean;
@@ -123,7 +124,11 @@ export function VendorProvider({ children, vendorSlug, initialData }: VendorProv
   // Apply theme immediately if we have initial data
   useEffect(() => {
     if (initialData?.themeConfig) {
-      console.log('🔵 Applying initial theme from server data');
+      console.log('🔵 Applying initial theme from server data:', {
+        templateId: initialData.themeConfig.templateId,
+        primaryColor: initialData.themeConfig.primaryColor,
+        fullConfig: initialData.themeConfig
+      });
       applyTheme(initialData.themeConfig);
     }
   }, []);

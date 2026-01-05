@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface MarketplacePage {
@@ -99,7 +99,7 @@ export default function AdminPagesPage() {
   if (loading) {
     return (
       <>
-        <UnifiedHeader />
+        <ThemeRenderer component="header" />
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
@@ -112,7 +112,7 @@ export default function AdminPagesPage() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           <div className="mb-8">

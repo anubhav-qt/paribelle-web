@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import { Plus, Edit2, Trash2, ChevronRight, Folder, Settings } from 'lucide-react';
 
@@ -277,7 +277,7 @@ export default function VendorCategoriesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <UnifiedHeader showLocationFilter={false} />
+      <ThemeRenderer component="header" showLocationFilter={false} />
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
           <CategorySidebar />

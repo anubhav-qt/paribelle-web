@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import Footer from '@/components/Footer';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 
@@ -183,7 +183,7 @@ export default function ResetPasswordPage() {
   
   return (
     <div className={theme.combine('min-h-screen flex flex-col', theme.bg)}>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <Suspense fallback={<div className="flex-1 flex items-center justify-center">Loading...</div>}>
         <ResetPasswordForm />
       </Suspense>

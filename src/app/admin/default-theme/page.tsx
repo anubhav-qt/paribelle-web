@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import ThemeBuilder from '@/components/ThemeBuilder';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
+import ThemeTemplateSelector from '@/components/ThemeTemplateSelector';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -17,6 +18,7 @@ interface ThemeConfig {
   fontFamily: string;
   headingFont: string;
   layout?: 'modern' | 'classic' | 'minimal' | 'bold';
+  templateId?: string;
   customCss?: string;
   showLogo?: boolean;
   showSearchBar?: boolean;
@@ -133,17 +135,51 @@ export default function AdminDefaultThemePage() {
 
   return (
     <>
-      <UnifiedHeader />
-      <ThemeBuilder
-      initialTheme={themeConfig}
-      onSave={handleSave}
-      saving={saving}
-      title="Edit Default Theme"
-      subtitle="Customize the main marketplace theme"
-      backLink="/admin"
-      backLinkText="Back to Dashboard"
-      isAdmin={true}
-    />
+      <ThemeRenderer component="header" />
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <a href="/admin" className="text-blue-600 hover:text-blue-800 mb-2 inline-block">
+              ← Back to Dashboard
+            </a>
+            <h1 className="text-3xl font-bold text-gray-900">Default Marketplace Theme</h1>
+            <p className="text-gray-600 mt-2">Choose a theme template for your marketplace</p>
+          </div>
+
+          {/* Theme Template Selector */}
+          <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <ThemeTemplateSelector
+              currentThemeId={themeConfig.templateId}
+              onThemeSelect={async (templateId) => {
+                const updatedTheme = { ...themeConfig, templateId };
+                await handleSave(updatedTheme);
+              }}
+            />
+          </div>
+
+          {/* Divider */}
+          <div className="my-8 border-t border-gray-300"></div>
+
+          {/* Advanced Customization */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Advanced Customization</h3>
+              <p className="text-sm text-gray-600 mt-1">Fine-tune colors, fonts, and styling</p>
+            </div>
+            
+            <ThemeBuilder
+              initialTheme={themeConfig}
+              onSave={handleSave}
+              saving={saving}
+              title=""
+              subtitle=""
+              backLink="/admin"
+              backLinkText="Back to Dashboard"
+              isAdmin={true}
+            />
+          </div>
+        </div>
+      </div>
     </>
   );
 }

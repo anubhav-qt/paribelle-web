@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import { Store, Package, TrendingUp, ShieldCheck, DollarSign, Users, CheckCircle } from 'lucide-react';
 
 export default function VendorRegistrationPage() {
@@ -87,7 +87,7 @@ export default function VendorRegistrationPage() {
   if (submitted) {
     return (
       <>
-        <UnifiedHeader />
+        <ThemeRenderer component="header" />
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="container mx-auto px-4 py-12 max-w-2xl">
             <div className="bg-white rounded-lg shadow-sm p-8 text-center">
@@ -120,7 +120,7 @@ export default function VendorRegistrationPage() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50">
         {/* Hero Section */}
         <div className="bg-gradient-to-r from-primary to-primary/80 text-white py-16">

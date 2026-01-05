@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 
 interface AnalyticsData {
@@ -110,7 +110,7 @@ export default function AdminAnalyticsPage() {
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="flex gap-6">
           {/* <CategorySidebar hideEmptyCategories={false} /> */}

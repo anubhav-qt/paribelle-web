@@ -17,7 +17,7 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import { usePolicies } from '@/contexts/PoliciesContext';
 import CartButton from '@/components/CartButton';
 import CategoryNav from '@/components/CategoryNav';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import Footer from '@/components/Footer';
 import RatingDisplay from '@/components/RatingDisplay';

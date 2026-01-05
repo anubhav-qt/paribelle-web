@@ -1,7 +1,7 @@
 'use client';
 
 import ThemeSelector from '@/components/ThemeSelector';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import HeroCarousel from '@/components/HeroCarousel';
 import Footer from '@/components/Footer';
 import HomepageContent from '@/components/HomepageContent';
@@ -41,7 +41,11 @@ export default function MainPageClient({
       <Suspense fallback={null}>
         <GoogleAuthHandler />
       </Suspense>
-      <UnifiedHeader showLocationFilter={settings.locationFilterEnabled} />
+      
+      <ThemeRenderer 
+        component="header" 
+        showLocationFilter={settings.locationFilterEnabled}
+      />
 
       <HeroCarousel />
 
@@ -54,7 +58,13 @@ export default function MainPageClient({
         locationFilterEnabled={settings.locationFilterEnabled}
       />
 
-      <Footer categories={categories} marketplaceName={settings.marketplaceName} />
+      <ThemeRenderer 
+        component="footer" 
+        fallback={<Footer categories={categories} marketplaceName={settings.marketplaceName} />}
+        categories={categories}
+        marketplaceName={settings.marketplaceName}
+      />
+      
       <ThemeSelector />
     </div>
   );
