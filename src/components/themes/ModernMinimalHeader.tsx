@@ -134,6 +134,7 @@ export default function ModernMinimalHeader() {
                   className={isVendorStore ? theme.combine('flex items-center space-x-1 transition-colors hover:opacity-70', theme.text) : 'flex items-center space-x-1 text-primary-foreground transition-colors hover:opacity-70'}
                 >
                   <User className="w-5 h-5" />
+                  <span className="text-sm">{user.firstName || user.email?.split('@')[0]}</span>
                   <ChevronDown className="w-4 h-4" />
                 </button>
                 {showDropdown && (

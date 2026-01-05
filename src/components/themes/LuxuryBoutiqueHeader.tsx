@@ -76,7 +76,7 @@ export default function LuxuryBoutiqueHeader() {
         <div className="container mx-auto px-4">
           <div className="flex justify-center items-center text-xs font-medium tracking-widest">
             <Crown className="w-3 h-3 mr-2" />
-            COMPLIMENTARY SHIPPING & RETURNS
+            Experience Luxury Like Never Before
             <Crown className="w-3 h-3 ml-2" />
           </div>
         </div>
@@ -174,6 +174,7 @@ export default function LuxuryBoutiqueHeader() {
                     className="flex items-center space-x-1 text-white hover:text-amber-500 transition-colors"
                   >
                     <User className="w-5 h-5" />
+                    <span className="text-sm font-light tracking-wide">{user.firstName || user.email?.split('@')[0]}</span>
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {showDropdown && (

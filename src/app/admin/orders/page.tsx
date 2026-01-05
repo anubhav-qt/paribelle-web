@@ -118,6 +118,30 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const handlePaymentStatusChange = async (orderId: string, newPaymentStatus: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/payment-status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ paymentStatus: newPaymentStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update payment status');
+      }
+
+      alert('Payment status updated successfully!');
+      fetchOrders();
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      alert('Failed to update payment status');
+    }
+  };
+
   const viewOrderDetails = (order: Order) => {
     setSelectedOrder(order);
     setShowDetailsModal(true);
@@ -350,6 +374,9 @@ export default function AdminOrdersPage() {
                       </button>
                     </th>
                     <th className="px-6 py-3 text-left">
+                      <span className="font-medium text-gray-700">Payment</span>
+                    </th>
+                    <th className="px-6 py-3 text-left">
                       <button
                         onClick={() => handleSort('total')}
                         className="flex items-center gap-1 font-medium text-gray-700 hover:text-gray-900"
@@ -401,6 +428,22 @@ export default function AdminOrdersPage() {
                           <option value="shipped">Shipped</option>
                           <option value="delivered">Delivered</option>
                           <option value="cancelled">Cancelled</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4">
+                        <select
+                          value={order.paymentStatus}
+                          onChange={(e) => handlePaymentStatusChange(order.id, e.target.value)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            order.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                            order.paymentStatus === 'failed' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          } border-0 cursor-pointer`}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="paid">Paid</option>
+                          <option value="failed">Failed</option>
+                          <option value="refunded">Refunded</option>
                         </select>
                       </td>
                       <td className="px-6 py-4">

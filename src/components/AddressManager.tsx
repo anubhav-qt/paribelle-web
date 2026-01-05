@@ -81,6 +81,7 @@ const PHONE_CODES = [
 export interface Address {
   id?: string;
   fullName: string;
+  email?: string;
   phone: string;
   addressLine1: string;
   addressLine2?: string;
@@ -115,6 +116,7 @@ export default function AddressManager({
   
   const [addressForm, setAddressForm] = useState<Address>({
     fullName: '',
+    email: '',
     phone: '',
     addressLine1: '',
     addressLine2: '',
@@ -205,9 +207,35 @@ export default function AddressManager({
   };
 
   const resetAddressForm = () => {
-    setAddressForm({
+    // Get user info to pre-fill
+    const userStr = localStorage.getItem('user');
+    let prefillData = {
       fullName: '',
+      email: '',
       phone: '',
+    };
+    
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.firstName || user.lastName) {
+          prefillData.fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        }
+        if (user.email) {
+          prefillData.email = user.email;
+        }
+        if (user.phone) {
+          prefillData.phone = user.phone;
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    setAddressForm({
+      fullName: prefillData.fullName,
+      email: prefillData.email,
+      phone: prefillData.phone,
       addressLine1: '',
       addressLine2: '',
       city: '',
@@ -414,6 +442,17 @@ export default function AddressManager({
                 className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
                 placeholder="John Doe"
                 required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+              <input
+                type="email"
+                value={addressForm.email || ''}
+                onChange={(e) => setAddressForm({ ...addressForm, email: e.target.value })}
+                className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
+                placeholder="john@example.com"
               />
             </div>
             

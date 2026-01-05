@@ -141,6 +141,7 @@ export default function MinimalSidebarHeader() {
                     className={isVendorStore ? theme.combine('flex items-center space-x-1 p-2 rounded-lg transition-colors', theme.hoverBg) : 'flex items-center space-x-1 p-2 rounded-lg transition-colors hover:opacity-80 text-primary-foreground'}
                   >
                     <User className="w-5 h-5" />
+                    <span className="text-sm">{user.firstName || user.email?.split('@')[0]}</span>
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {showDropdown && (

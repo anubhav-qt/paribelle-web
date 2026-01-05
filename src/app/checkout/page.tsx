@@ -38,6 +38,7 @@ export default function CheckoutPage() {
   // Address form
   const [address, setAddress] = useState<Address>({
     fullName: '',
+    email: '',
     phone: '',
     addressLine1: '',
     addressLine2: '',
@@ -102,6 +103,7 @@ export default function CheckoutPage() {
         setAddress(prev => ({
           ...prev,
           fullName: `${parsedUser.firstName} ${parsedUser.lastName}`,
+          email: parsedUser.email || '',
           phone: parsedUser.phone || '',
         }));
       }

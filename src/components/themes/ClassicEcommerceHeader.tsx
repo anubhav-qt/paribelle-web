@@ -143,6 +143,7 @@ export default function ClassicEcommerceHeader() {
                     className="flex items-center space-x-1 hover:opacity-70 transition-colors"
                   >
                     <User className="w-6 h-6" />
+                    <span className="text-sm">{user.firstName || user.email?.split('@')[0]}</span>
                     <ChevronDown className="w-4 h-4" />
                   </button>
                   {showDropdown && (

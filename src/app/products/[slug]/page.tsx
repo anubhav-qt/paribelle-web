@@ -692,7 +692,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <UnifiedHeader showLocationFilter={false} showBookingsLink={true} />
+      <ThemeRenderer component="header" showLocationFilter={false} showBookingsLink={true} />
 
       <CategoryNav mode="navigation" />
 

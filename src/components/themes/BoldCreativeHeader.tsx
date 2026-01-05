@@ -92,6 +92,7 @@ export default function BoldCreativeHeader() {
                 className="flex items-center space-x-1 hover:scale-125 transition-transform duration-300"
               >
                 <User className="w-6 h-6" />
+                <span className="text-sm font-medium">{user.firstName || user.email?.split('@')[0]}</span>
                 <ChevronDown className="w-4 h-4" />
               </button>
               {showDropdown && (
