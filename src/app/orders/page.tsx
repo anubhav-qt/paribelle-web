@@ -61,12 +61,30 @@ interface Order {
   };
 }
 
+interface ReturnDetails {
+  orderNumber: string;
+  returnAuthNumber: string;
+  returnReason: string;
+  qrCodeDataUrl: string;
+  returnAddress: {
+    name: string;
+    addressLine1: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    phone: string;
+  };
+  instructions: string[];
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   const theme = useThemeClasses();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [returnDetails, setReturnDetails] = useState<ReturnDetails | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showReturnConfirmation, setShowReturnConfirmation] = useState(false);
@@ -598,7 +616,38 @@ export default function OrdersPage() {
                   {/* Order Actions */}
                   <div className="border-t border-border mt-4 pt-4 flex flex-wrap gap-3">
                     <button
-                      onClick={() => setSelectedOrder(order)}
+                      onClick={async () => {
+                        setSelectedOrder(order);
+                        
+                        console.log('Order status:', order.status);
+                        
+                        // Fetch return details if order is return_approved or returned
+                        if (order.status === 'return_approved' || order.status === 'returned') {
+                          console.log('Fetching return details for order:', order.id);
+                          try {
+                            const token = localStorage.getItem('token');
+                            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${order.id}/return-details`, {
+                              headers: {
+                                'Authorization': `Bearer ${token}`,
+                              },
+                            });
+
+                            console.log('Return details response status:', response.status);
+                            if (response.ok) {
+                              const details = await response.json();
+                              console.log('Return details:', details);
+                              setReturnDetails(details);
+                            } else {
+                              console.error('Failed to fetch return details:', await response.text());
+                            }
+                          } catch (error) {
+                            console.error('Error fetching return details:', error);
+                          }
+                        } else {
+                          console.log('Order not eligible for return details display');
+                          setReturnDetails(null);
+                        }
+                      }}
                       className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/10 transition-colors font-medium flex items-center gap-2"
                     >
                       <Eye className="w-4 h-4" />
@@ -697,6 +746,59 @@ export default function OrdersPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Return QR Code and Instructions */}
+              {returnDetails && (selectedOrder.status === 'return_approved' || selectedOrder.status === 'returned') && (
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700 rounded-xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-2xl">📦</span>
+                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">Return Shipping Information</h3>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-4 border-2 border-dashed border-gray-300 dark:border-gray-600">
+                    <h4 className="font-semibold text-center text-gray-700 dark:text-gray-300 mb-3">📱 Return QR Code - Scan at Carrier</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-4">Show this code at UPS, FedEx, or USPS - No printing required!</p>
+                    
+                    <div className="flex justify-center mb-4">
+                      <div className="bg-white p-3 rounded-lg border-4 border-green-500">
+                        <img 
+                          src={returnDetails.qrCodeDataUrl} 
+                          alt="Return QR Code" 
+                          className="w-64 h-64"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="text-center space-y-1">
+                      <p className="font-bold text-lg text-gray-900 dark:text-gray-100">RMA: {returnDetails.returnAuthNumber}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Order: {returnDetails.orderNumber}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Return To:</h4>
+                    <div className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                      <p className="font-medium">{returnDetails.returnAddress.name}</p>
+                      <p>{returnDetails.returnAddress.addressLine1}</p>
+                      <p>{returnDetails.returnAddress.city}, {returnDetails.returnAddress.state} {returnDetails.returnAddress.postalCode}</p>
+                      <p>{returnDetails.returnAddress.country}</p>
+                      <p>Phone: {returnDetails.returnAddress.phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded">
+                    <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-2">📋 Return Instructions</h4>
+                    <ol className="text-sm text-amber-900 dark:text-amber-200 space-y-2 ml-4 list-decimal">
+                      {returnDetails.instructions.map((instruction, idx) => (
+                        <li key={idx}>{instruction}</li>
+                      ))}
+                    </ol>
+                    <p className="text-sm text-amber-800 dark:text-amber-300 mt-3 font-medium">
+                      ⚠️ Important: Refund will be processed within 3-5 business days after we receive and inspect the returned item.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Shipping Address */}
               {selectedOrder.shippingAddress && (
