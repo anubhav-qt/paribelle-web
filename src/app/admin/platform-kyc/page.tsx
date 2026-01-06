@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import ThemeRenderer from '@/components/ThemeRenderer';
 
 interface KYCDocument {
   type: 'pan' | 'tan' | 'gst_certificate' | 'incorporation_certificate' | 'bank_statement' | 'address_proof' | 'cancelled_cheque' | 'moa' | 'aoa';
@@ -241,8 +242,10 @@ export default function PlatformKYCPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-5xl mx-auto px-4">
+    <>
+      <ThemeRenderer component="header" />
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-5xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
@@ -630,5 +633,6 @@ export default function PlatformKYCPage() {
         </form>
       </div>
     </div>
+    </>
   );
 }

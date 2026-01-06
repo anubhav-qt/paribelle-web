@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
-import { Package, Clock, CheckCircle, XCircle, Truck, Eye, Download } from 'lucide-react';
+import { Package, Clock, CheckCircle, XCircle, Truck, Eye, Download, Printer } from 'lucide-react';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategoryNav from '@/components/CategoryNav';
 import CategorySidebar from '@/components/CategorySidebar';
@@ -249,6 +249,40 @@ export default function OrdersPage() {
     } catch (error) {
       console.error('Error downloading invoice:', error);
       showToast('Failed to download invoice. Please try again.', 'error');
+    }
+  };
+
+  const handlePrintInvoice = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderId}/invoice/download`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          showToast('Invoice not yet available. Invoices are generated after payment completion.', 'warning');
+          return;
+        }
+        throw new Error('Failed to load invoice');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+          // Clean up the blob URL after a delay
+          setTimeout(() => window.URL.revokeObjectURL(url), 100);
+        };
+      }
+    } catch (error) {
+      console.error('Error printing invoice:', error);
+      showToast('Failed to print invoice. Please try again.', 'error');
     }
   };
 
@@ -707,8 +741,8 @@ export default function OrdersPage() {
       {/* Order Details Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-border">
-            <div className="p-6 border-b border-border sticky top-0 bg-card">
+          <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-border">
+            <div className="p-6 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-foreground">Order Details</h2>
                 <button
@@ -720,7 +754,9 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-6">
               {/* Order Info */}
               <div>
                 <h3 className="font-semibold mb-3 text-foreground">Order Information</h3>
@@ -895,24 +931,21 @@ export default function OrdersPage() {
                 </div>
               </div>
 
-              {/* Invoice Download */}
-              {selectedOrder.invoice && (
-                <div className="border-t border-border pt-4">
-                  <button
-                    onClick={() => handleDownloadInvoice(selectedOrder.id, selectedOrder.orderNumber)}
-                    className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium flex items-center justify-center gap-2"
-                  >
-                    <Download className="w-5 h-5" />
-                    Download Invoice
-                  </button>
-                </div>
-              )}
+              </div>
             </div>
 
-            <div className="p-6 border-t border-border bg-muted">
+            {/* Sticky Buttons */}
+            <div className="p-6 border-t border-border bg-muted flex gap-3 flex-shrink-0">
+              <button
+                onClick={() => handlePrintInvoice(selectedOrder.id)}
+                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <Printer className="w-5 h-5" />
+                Print Invoice
+              </button>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
               >
                 Close
               </button>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowUpDown, Eye, Search, Filter, Download } from 'lucide-react';
+import { ArrowUpDown, Eye, Search, Filter, Download, Printer } from 'lucide-react';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
@@ -275,6 +275,40 @@ export default function AdminOrdersPage() {
     } else {
       console.log('Admin - Order not eligible for return details display');
       setReturnDetails(null);
+    }
+  };
+
+  const handlePrintInvoice = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/invoice/download`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          showToast('Invoice not yet available. Invoices are generated after payment completion.', 'warning');
+          return;
+        }
+        throw new Error('Failed to load invoice');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+          // Clean up the blob URL after a delay
+          setTimeout(() => window.URL.revokeObjectURL(url), 100);
+        };
+      }
+    } catch (error) {
+      console.error('Error printing invoice:', error);
+      showToast('Failed to print invoice. Please try again.', 'error');
     }
   };
 
@@ -674,8 +708,8 @@ export default function AdminOrdersPage() {
       {/* Order Details Modal */}
       {showDetailsModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b sticky top-0 bg-white">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b bg-white flex-shrink-0">
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">
@@ -692,7 +726,9 @@ export default function AdminOrdersPage() {
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-6">
               {/* Status */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Status</h3>
@@ -881,11 +917,20 @@ export default function AdminOrdersPage() {
                 </div>
               )}
             </div>
+            </div>
 
-            <div className="p-6 border-t bg-gray-50">
+            {/* Sticky Buttons */}
+            <div className="p-6 border-t bg-gray-50 flex gap-3 flex-shrink-0">
+              <button
+                onClick={() => handlePrintInvoice(selectedOrder.id)}
+                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <Printer className="w-5 h-5" />
+                Print Invoice
+              </button>
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
               >
                 Close
               </button>
