@@ -9,6 +9,9 @@ import ThemeRenderer from '@/components/ThemeRenderer';
 import CategoryNav from '@/components/CategoryNav';
 import CategorySidebar from '@/components/CategorySidebar';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
+import { useToast, useConfirm } from '@/hooks/useDialogs';
+import Toast from '@/components/Toast';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface OrderItem {
   id: string;
@@ -81,6 +84,8 @@ interface ReturnDetails {
 export default function OrdersPage() {
   const router = useRouter();
   const theme = useThemeClasses();
+  const { toast, showToast, hideToast } = useToast();
+  const { confirm, showConfirm, hideConfirm } = useConfirm();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -144,7 +149,7 @@ export default function OrdersPage() {
     }
 
     if (cancelReason === 'other' && !cancelReasonOther.trim()) {
-      alert('Please specify your cancellation reason');
+      showToast('Please specify your cancellation reason', 'warning');
       return;
     }
 
@@ -166,7 +171,7 @@ export default function OrdersPage() {
       );
 
       if (response.ok) {
-        alert('Order cancelled successfully');
+        showToast('Order cancelled successfully', 'success');
         setShowCancelModal(false);
         setCancelReason('');
         setCancelReasonOther('');
@@ -174,11 +179,11 @@ export default function OrdersPage() {
         fetchOrders();
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to cancel order');
+        showToast(error.message || 'Failed to cancel order', 'error');
       }
     } catch (error) {
       console.error('Error cancelling order:', error);
-      alert('Failed to cancel order. Please try again.');
+      showToast('Failed to cancel order. Please try again.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -243,18 +248,18 @@ export default function OrdersPage() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Error downloading invoice:', error);
-      alert('Failed to download invoice. Please try again.');
+      showToast('Failed to download invoice. Please try again.', 'error');
     }
   };
 
   const handleReturnOrder = async () => {
     if (!orderToAction || !returnReason) {
-      alert('Please select a return reason');
+      showToast('Please select a return reason', 'warning');
       return;
     }
 
     if (returnReason === 'other' && !returnReasonOther.trim()) {
-      alert('Please specify your return reason');
+      showToast('Please specify your return reason', 'warning');
       return;
     }
 
@@ -276,7 +281,7 @@ export default function OrdersPage() {
       );
 
       if (response.ok) {
-        alert('Return request submitted successfully');
+        showToast('Return request submitted successfully', 'success');
         setShowReturnModal(false);
         setReturnReason('');
         setReturnReasonOther('');
@@ -284,11 +289,11 @@ export default function OrdersPage() {
         fetchOrders();
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to submit return request');
+        showToast(error.message || 'Failed to submit return request', 'error');
       }
     } catch (error) {
       console.error('Error requesting return:', error);
-      alert('Failed to submit return request. Please try again.');
+      showToast('Failed to submit return request. Please try again.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -1104,6 +1109,23 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+        />
+      )}
+      
+      {/* Confirmation Dialog */}
+      {confirm && (
+        <ConfirmDialog
+          {...confirm}
+          onCancel={hideConfirm}
+        />
       )}
       </div>
       </div>

@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowUpDown, Eye, Search, Filter, Download } from 'lucide-react';
 import ThemeRenderer from '@/components/ThemeRenderer';
+import { useToast, useConfirm } from '@/hooks/useDialogs';
+import Toast from '@/components/Toast';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface Order {
   id: string;
@@ -67,6 +70,8 @@ interface ReturnDetails {
 }
 
 export default function AdminOrdersPage() {
+  const { toast, showToast, hideToast } = useToast();
+  const { confirm, showConfirm, hideConfirm } = useConfirm();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -133,93 +138,110 @@ export default function AdminOrdersPage() {
       fetchOrders();
     } catch (error) {
       console.error('Error updating order status:', error);
-      alert('Failed to update order status');
+      showToast('Failed to update order status', 'error');
     }
   };
 
   const handleApproveReturnRequest = async (orderId: string) => {
-    if (!confirm('Approve this return request? Customer will be notified to ship the item back. Refund will be processed after you receive and verify the item.')) {
-      return;
-    }
+    showConfirm({
+      title: 'Approve Return Request?',
+      message: 'Customer will be notified to ship the item back. Refund will be processed after you receive and verify the item.',
+      confirmText: 'Approve Return',
+      cancelText: 'Cancel',
+      confirmVariant: 'primary',
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/approve`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({}),
+          });
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({}),
-      });
+          if (!response.ok) {
+            throw new Error('Failed to approve return request');
+          }
 
-      if (!response.ok) {
-        throw new Error('Failed to approve return request');
+          showToast('Return request approved! Customer can now ship the item back.', 'success');
+          fetchOrders();
+        } catch (error) {
+          console.error('Error approving return request:', error);
+          showToast('Failed to approve return request', 'error');
+        }
       }
-
-      alert('Return request approved! Customer can now ship the item back.');
-      fetchOrders();
-    } catch (error) {
-      console.error('Error approving return request:', error);
-      alert('Failed to approve return request');
-    }
+    });
   };
 
   const handleConfirmItemReceived = async (orderId: string) => {
-    if (!confirm('Confirm that you have received and verified the returned item? This will process the refund and restock inventory.')) {
-      return;
-    }
+    showConfirm({
+      title: 'Confirm Item Received?',
+      message: 'Have you received and verified the returned item? This will process the refund and restock inventory.',
+      confirmText: 'Confirm & Refund',
+      cancelText: 'Cancel',
+      confirmVariant: 'success',
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/confirm-received`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({}),
+          });
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/confirm-received`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({}),
-      });
+          if (!response.ok) {
+            throw new Error('Failed to confirm item received');
+          }
 
-      if (!response.ok) {
-        throw new Error('Failed to confirm item received');
+          showToast('Item received confirmed! Refund processed and inventory restocked.', 'success');
+          fetchOrders();
+        } catch (error) {
+          console.error('Error confirming item received:', error);
+          showToast('Failed to confirm item received', 'error');
+        }
       }
-
-      alert('Item received confirmed! Refund processed and inventory restocked.');
-      fetchOrders();
-    } catch (error) {
-      console.error('Error confirming item received:', error);
-      alert('Failed to confirm item received');
-    }
+    });
   };
 
   const handleRejectReturn = async (orderId: string) => {
-    const reason = prompt('Please provide a reason for rejecting this return:');
-    if (!reason) {
-      return;
-    }
+    // For now, use a default rejection reason - could be enhanced with a custom input dialog
+    const reason = 'Return request does not meet return policy requirements';
+    
+    showConfirm({
+      title: 'Reject Return Request?',
+      message: `Are you sure you want to reject this return? The customer will be notified.`,
+      confirmText: 'Reject Return',
+      cancelText: 'Cancel',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/reject`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ reason }),
+          });
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ reason }),
-      });
+          if (!response.ok) {
+            throw new Error('Failed to reject return');
+          }
 
-      if (!response.ok) {
-        throw new Error('Failed to reject return');
+          showToast('Return rejected successfully!', 'success');
+          fetchOrders();
+        } catch (error) {
+          console.error('Error rejecting return:', error);
+          showToast('Failed to reject return', 'error');
+        }
       }
-
-      alert('Return rejected successfully!');
-      fetchOrders();
-    } catch (error) {
-      console.error('Error rejecting return:', error);
-      alert('Failed to reject return');
-    }
+    });
   };
 
   const viewOrderDetails = async (order: Order) => {
@@ -870,6 +892,23 @@ export default function AdminOrdersPage() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+        />
+      )}
+      
+      {/* Confirmation Dialog */}
+      {confirm && (
+        <ConfirmDialog
+          {...confirm}
+          onCancel={hideConfirm}
+        />
       )}
     </div>
     </>
