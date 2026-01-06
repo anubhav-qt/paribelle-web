@@ -30,6 +30,7 @@ interface Order {
   shippingCity: string;
   shippingState: string;
   createdAt: string;
+  returnReason?: string;
   vendor?: {
     businessName: string;
     storeName: string;
@@ -118,27 +119,88 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handlePaymentStatusChange = async (orderId: string, newPaymentStatus: string) => {
+  const handleApproveReturnRequest = async (orderId: string) => {
+    if (!confirm('Approve this return request? Customer will be notified to ship the item back. Refund will be processed after you receive and verify the item.')) {
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/payment-status`, {
-        method: 'PATCH',
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/approve`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ paymentStatus: newPaymentStatus }),
+        body: JSON.stringify({}),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update payment status');
+        throw new Error('Failed to approve return request');
       }
 
-      alert('Payment status updated successfully!');
+      alert('Return request approved! Customer can now ship the item back.');
       fetchOrders();
     } catch (error) {
-      console.error('Error updating payment status:', error);
-      alert('Failed to update payment status');
+      console.error('Error approving return request:', error);
+      alert('Failed to approve return request');
+    }
+  };
+
+  const handleConfirmItemReceived = async (orderId: string) => {
+    if (!confirm('Confirm that you have received and verified the returned item? This will process the refund and restock inventory.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/confirm-received`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to confirm item received');
+      }
+
+      alert('Item received confirmed! Refund processed and inventory restocked.');
+      fetchOrders();
+    } catch (error) {
+      console.error('Error confirming item received:', error);
+      alert('Failed to confirm item received');
+    }
+  };
+
+  const handleRejectReturn = async (orderId: string) => {
+    const reason = prompt('Please provide a reason for rejecting this return:');
+    if (!reason) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject return');
+      }
+
+      alert('Return rejected successfully!');
+      fetchOrders();
+    } catch (error) {
+      console.error('Error rejecting return:', error);
+      alert('Failed to reject return');
     }
   };
 
@@ -189,10 +251,29 @@ export default function AdminOrdersPage() {
       shipped: 'bg-purple-100 text-purple-800',
       delivered: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
+      return_requested: 'bg-amber-100 text-amber-800',
+      return_approved: 'bg-orange-100 text-orange-700',
       returned: 'bg-orange-100 text-orange-800',
       refunded: 'bg-gray-100 text-gray-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Get valid next statuses based on current status
+  const getValidNextStatuses = (currentStatus: string): string[] => {
+    const statusFlow: Record<string, string[]> = {
+      pending: ['pending', 'confirmed', 'cancelled'],
+      confirmed: ['confirmed', 'processing', 'cancelled'],
+      processing: ['processing', 'shipped', 'cancelled'],
+      shipped: ['shipped', 'delivered', 'cancelled'],
+      delivered: ['delivered'], // Only return requests via button, no dropdown change
+      cancelled: ['cancelled'], // Final state
+      return_requested: ['return_requested'], // Controlled by approve/reject buttons
+      return_approved: ['return_approved'], // Controlled by confirm received button
+      returned: ['returned'], // Final state
+      refunded: ['refunded'], // Final state
+    };
+    return statusFlow[currentStatus] || [currentStatus];
   };
 
   const formatCurrency = (amount: number) => {
@@ -282,6 +363,12 @@ export default function AdminOrdersPage() {
             <div className="text-sm text-gray-600 mt-1">Delivered</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="text-2xl font-bold text-amber-600">
+              {orders.filter(o => o.status === 'return_requested').length}
+            </div>
+            <div className="text-sm text-gray-600 mt-1">Return Requests</div>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="text-2xl font-bold text-orange-600">
               {orders.filter(o => o.status === 'returned').length}
             </div>
@@ -328,6 +415,8 @@ export default function AdminOrdersPage() {
                 <option value="shipped">Shipped</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="return_requested">Return Requested</option>
+                <option value="return_approved">Return Approved</option>
                 <option value="returned">Returned</option>
                 <option value="refunded">Refunded</option>
               </select>
@@ -430,34 +519,38 @@ export default function AdminOrdersPage() {
                         <select
                           value={order.status}
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                          disabled={order.status === 'delivered' || order.status === 'cancelled' || order.status === 'returned'}
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)} border-0 ${['delivered', 'cancelled', 'returned'].includes(order.status) ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
+                          disabled={
+                            order.status === 'delivered' || 
+                            order.status === 'cancelled' || 
+                            order.status === 'returned' || 
+                            order.status === 'refunded' ||
+                            order.status === 'return_requested' ||
+                            order.status === 'return_approved'
+                          }
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)} border-0 ${
+                            ['delivered', 'cancelled', 'returned', 'refunded', 'return_requested', 'return_approved'].includes(order.status) 
+                              ? 'cursor-not-allowed opacity-75' 
+                              : 'cursor-pointer'
+                          }`}
                         >
-                          <option value="pending">Pending</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="processing">Processing</option>
-                          <option value="shipped">Shipped</option>
-                          <option value="delivered">Delivered</option>
-                          <option value="cancelled">Cancelled</option>
-                          <option value="returned">Returned</option>
-                          <option value="refunded">Refunded</option>
+                          {getValidNextStatuses(order.status).map(status => (
+                            <option key={status} value={status}>
+                              {status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                            </option>
+                          ))}
                         </select>
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          value={order.paymentStatus}
-                          onChange={(e) => handlePaymentStatusChange(order.id, e.target.value)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium inline-block ${
                             order.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                            order.paymentStatus === 'refunded' ? 'bg-purple-100 text-purple-800' :
                             order.paymentStatus === 'failed' ? 'bg-red-100 text-red-800' :
                             'bg-yellow-100 text-yellow-800'
-                          } border-0 cursor-pointer`}
+                          }`}
                         >
-                          <option value="pending">Pending</option>
-                          <option value="paid">Paid</option>
-                          <option value="failed">Failed</option>
-                          <option value="refunded">Refunded</option>
-                        </select>
+                          {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-medium text-gray-900">{formatCurrency(order.total)}</div>
@@ -466,13 +559,37 @@ export default function AdminOrdersPage() {
                         {formatDate(order.createdAt)}
                       </td>
                       <td className="px-6 py-4">
-                        <button
-                          onClick={() => viewOrderDetails(order)}
-                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View
-                        </button>
+                        {order.status === 'return_requested' ? (
+                          <div className="flex flex-col gap-2">
+                            <button
+                              onClick={() => handleApproveReturnRequest(order.id)}
+                              className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                            >
+                              Approve Request
+                            </button>
+                            <button
+                              onClick={() => handleRejectReturn(order.id)}
+                              className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                            >
+                              Reject Return
+                            </button>
+                          </div>
+                        ) : order.status === 'return_approved' ? (
+                          <button
+                            onClick={() => handleConfirmItemReceived(order.id)}
+                            className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
+                          >
+                            Confirm Received
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => viewOrderDetails(order)}
+                            className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -512,6 +629,54 @@ export default function AdminOrdersPage() {
                   {selectedOrder.status}
                 </span>
               </div>
+
+              {/* Return Reason (if return requested) */}
+              {(selectedOrder.status === 'return_requested' || selectedOrder.status === 'return_approved' || selectedOrder.status === 'returned') && selectedOrder.returnReason && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Return Reason</h3>
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                    <p className="text-gray-900">{selectedOrder.returnReason}</p>
+                  </div>
+                  {selectedOrder.status === 'return_requested' && (
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => {
+                          handleApproveReturnRequest(selectedOrder.id);
+                          setShowDetailsModal(false);
+                        }}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        Approve Return Request
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleRejectReturn(selectedOrder.id);
+                          setShowDetailsModal(false);
+                        }}
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        Reject Return
+                      </button>
+                    </div>
+                  )}
+                  {selectedOrder.status === 'return_approved' && (
+                    <div className="mt-3">
+                      <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-3">
+                        <p className="text-sm text-blue-800">⏳ Waiting for customer to ship the item back</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          handleConfirmItemReceived(selectedOrder.id);
+                          setShowDetailsModal(false);
+                        }}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Confirm Item Received & Process Refund
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Customer Info */}
               <div>

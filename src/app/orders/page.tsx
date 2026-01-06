@@ -71,7 +71,9 @@ export default function OrdersPage() {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showReturnConfirmation, setShowReturnConfirmation] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [cancelReasonOther, setCancelReasonOther] = useState('');
   const [returnReason, setReturnReason] = useState('');
+  const [returnReasonOther, setReturnReasonOther] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [orderToAction, setOrderToAction] = useState<Order | null>(null);
   
@@ -118,10 +120,17 @@ export default function OrdersPage() {
   };
 
   const handleCancelOrder = async () => {
-    if (!orderToAction || !cancelReason.trim()) {
-      alert('Please provide a cancellation reason');
+    if (!orderToAction || !cancelReason) {
+      alert('Please select a cancellation reason');
       return;
     }
+
+    if (cancelReason === 'other' && !cancelReasonOther.trim()) {
+      alert('Please specify your cancellation reason');
+      return;
+    }
+
+    const finalReason = cancelReason === 'other' ? cancelReasonOther : cancelReason;
 
     setActionLoading(true);
     try {
@@ -134,7 +143,7 @@ export default function OrdersPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ reason: cancelReason }),
+          body: JSON.stringify({ reason: finalReason }),
         }
       );
 
@@ -142,6 +151,7 @@ export default function OrdersPage() {
         alert('Order cancelled successfully');
         setShowCancelModal(false);
         setCancelReason('');
+        setCancelReasonOther('');
         setOrderToAction(null);
         fetchOrders();
       } else {
@@ -220,10 +230,17 @@ export default function OrdersPage() {
   };
 
   const handleReturnOrder = async () => {
-    if (!orderToAction || !returnReason.trim()) {
-      alert('Please provide a return reason');
+    if (!orderToAction || !returnReason) {
+      alert('Please select a return reason');
       return;
     }
+
+    if (returnReason === 'other' && !returnReasonOther.trim()) {
+      alert('Please specify your return reason');
+      return;
+    }
+
+    const finalReason = returnReason === 'other' ? returnReasonOther : returnReason;
 
     setActionLoading(true);
     try {
@@ -236,7 +253,7 @@ export default function OrdersPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ reason: returnReason }),
+          body: JSON.stringify({ reason: finalReason }),
         }
       );
 
@@ -244,6 +261,7 @@ export default function OrdersPage() {
         alert('Return request submitted successfully');
         setShowReturnModal(false);
         setReturnReason('');
+        setReturnReasonOther('');
         setOrderToAction(null);
         fetchOrders();
       } else {
@@ -810,20 +828,41 @@ export default function OrdersPage() {
               <label className="block mb-2 text-sm font-medium text-foreground">
                 Cancellation Reason <span className="text-red-600">*</span>
               </label>
-              <textarea
+              <select
                 value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Please provide a reason for cancellation..."
+                onChange={(e) => {
+                  setCancelReason(e.target.value);
+                  if (e.target.value !== 'other') setCancelReasonOther('');
+                }}
                 className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground"
-                rows={4}
                 required
-              />
+              >
+                <option value="">Select a reason</option>
+                <option value="Changed my mind">Changed my mind</option>
+                <option value="Found a better price elsewhere">Found a better price elsewhere</option>
+                <option value="Ordered by mistake">Ordered by mistake</option>
+                <option value="Delivery taking too long">Delivery taking too long</option>
+                <option value="Need to change delivery address">Need to change delivery address</option>
+                <option value="Financial reasons">Financial reasons</option>
+                <option value="other">Other (please specify)</option>
+              </select>
+              {cancelReason === 'other' && (
+                <textarea
+                  value={cancelReasonOther}
+                  onChange={(e) => setCancelReasonOther(e.target.value)}
+                  placeholder="Please specify your reason..."
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground mt-3"
+                  rows={3}
+                  required
+                />
+              )}
             </div>
             <div className="p-6 border-t border-border flex gap-3">
               <button
                 onClick={() => {
                   setShowCancelModal(false);
                   setCancelReason('');
+                  setCancelReasonOther('');
                   setOrderToAction(null);
                 }}
                 disabled={actionLoading}
@@ -833,7 +872,7 @@ export default function OrdersPage() {
               </button>
               <button
                 onClick={handleCancelOrder}
-                disabled={actionLoading || !cancelReason.trim()}
+                disabled={actionLoading || !cancelReason || (cancelReason === 'other' && !cancelReasonOther.trim())}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {actionLoading ? 'Cancelling...' : 'Cancel Order'}
@@ -860,20 +899,42 @@ export default function OrdersPage() {
               <label className="block mb-2 text-sm font-medium text-foreground">
                 Return Reason <span className="text-red-600">*</span>
               </label>
-              <textarea
+              <select
                 value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
-                placeholder="Please describe the reason for return..."
+                onChange={(e) => {
+                  setReturnReason(e.target.value);
+                  if (e.target.value !== 'other') setReturnReasonOther('');
+                }}
                 className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground"
-                rows={4}
                 required
-              />
+              >
+                <option value="">Select a reason</option>
+                <option value="Product damaged or defective">Product damaged or defective</option>
+                <option value="Wrong item received">Wrong item received</option>
+                <option value="Product not as described">Product not as described</option>
+                <option value="Size or fit issue">Size or fit issue</option>
+                <option value="Quality not satisfactory">Quality not satisfactory</option>
+                <option value="Missing parts or accessories">Missing parts or accessories</option>
+                <option value="Changed my mind">Changed my mind</option>
+                <option value="other">Other (please specify)</option>
+              </select>
+              {returnReason === 'other' && (
+                <textarea
+                  value={returnReasonOther}
+                  onChange={(e) => setReturnReasonOther(e.target.value)}
+                  placeholder="Please specify your reason..."
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground mt-3"
+                  rows={3}
+                  required
+                />
+              )}
             </div>
             <div className="p-6 border-t border-border flex gap-3">
               <button
                 onClick={() => {
                   setShowReturnModal(false);
                   setReturnReason('');
+                  setReturnReasonOther('');
                   setOrderToAction(null);
                 }}
                 disabled={actionLoading}
@@ -883,7 +944,7 @@ export default function OrdersPage() {
               </button>
               <button
                 onClick={handleReturnOrder}
-                disabled={actionLoading || !returnReason.trim()}
+                disabled={actionLoading || !returnReason || (returnReason === 'other' && !returnReasonOther.trim())}
                 className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
               >
                 {actionLoading ? 'Processing...' : 'Submit Return Request'}
