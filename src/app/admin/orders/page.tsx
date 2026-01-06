@@ -606,37 +606,39 @@ export default function AdminOrdersPage() {
                         {formatDate(order.createdAt)}
                       </td>
                       <td className="px-6 py-4">
-                        {order.status === 'return_requested' ? (
-                          <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-2">
+                          {order.status === 'return_requested' ? (
+                            <>
+                              <button
+                                onClick={() => handleApproveReturnRequest(order.id)}
+                                className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                              >
+                                Approve Request
+                              </button>
+                              <button
+                                onClick={() => handleRejectReturn(order.id)}
+                                className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                              >
+                                Reject Return
+                              </button>
+                            </>
+                          ) : order.status === 'return_approved' ? (
                             <button
-                              onClick={() => handleApproveReturnRequest(order.id)}
-                              className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                              onClick={() => handleConfirmItemReceived(order.id)}
+                              className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
                             >
-                              Approve Request
+                              Confirm Received
                             </button>
-                            <button
-                              onClick={() => handleRejectReturn(order.id)}
-                              className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                            >
-                              Reject Return
-                            </button>
-                          </div>
-                        ) : order.status === 'return_approved' ? (
-                          <button
-                            onClick={() => handleConfirmItemReceived(order.id)}
-                            className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
-                          >
-                            Confirm Received
-                          </button>
-                        ) : (
+                          ) : null}
+                          
                           <button
                             onClick={() => viewOrderDetails(order)}
-                            className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                            className="text-blue-600 hover:text-blue-800 flex items-center justify-center gap-1 px-3 py-1"
                           >
                             <Eye className="w-4 h-4" />
-                            View
+                            View Details
                           </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   ))}
