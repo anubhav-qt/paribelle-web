@@ -54,6 +54,11 @@ interface Order {
     invoiceNumber: string;
     status: string;
   };
+  returnPolicy?: {
+    allowReturns: boolean;
+    returnPolicyDays: number;
+    vendorName?: string;
+  };
 }
 
 export default function OrdersPage() {
@@ -64,6 +69,7 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showReturnConfirmation, setShowReturnConfirmation] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -150,13 +156,39 @@ export default function OrdersPage() {
     }
   };
 
-  // Check if order can be returned (within 7 days of delivery)
+  // Check if order can be returned based on vendor's return policy
   const canReturnOrder = (order: Order): boolean => {
     if (!order.deliveredAt) return false;
+    
+    // Default to allowing returns if returnPolicy is not present (backward compatibility)
+    const allowReturns = order.returnPolicy?.allowReturns ?? true;
+    const returnPolicyDays = order.returnPolicy?.returnPolicyDays ?? 7;
+    
+    if (!allowReturns || returnPolicyDays === 0) return false;
+    
     const deliveryDate = new Date(order.deliveredAt);
     const currentDate = new Date();
     const daysSinceDelivery = Math.floor((currentDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysSinceDelivery <= 7;
+    return daysSinceDelivery <= returnPolicyDays;
+  };
+
+  const getReturnPolicyMessage = (order: Order): string => {
+    const allowReturns = order.returnPolicy?.allowReturns ?? true;
+    const returnPolicyDays = order.returnPolicy?.returnPolicyDays ?? 7;
+    
+    if (!allowReturns) return 'Vendor does not accept returns';
+    if (returnPolicyDays === 0) return 'Returns not allowed';
+    if (!order.deliveredAt) return 'Order not yet delivered';
+    
+    const deliveryDate = new Date(order.deliveredAt);
+    const currentDate = new Date();
+    const daysSinceDelivery = Math.floor((currentDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
+    const remainingDays = returnPolicyDays - daysSinceDelivery;
+    
+    if (remainingDays <= 0) {
+      return `Return period has expired (${returnPolicyDays} days from delivery)`;
+    }
+    return `Return within ${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
   };
 
   const handleDownloadInvoice = async (orderId: string, orderNumber: string) => {
@@ -566,8 +598,9 @@ export default function OrdersPage() {
                     {order.status.toLowerCase() === 'delivered' && (
                       <button 
                         onClick={() => {
+                          if (!canReturnOrder(order)) return;
                           setOrderToAction(order);
-                          setShowReturnModal(true);
+                          setShowReturnConfirmation(true);
                         }}
                         disabled={!canReturnOrder(order)}
                         className={`px-4 py-2 border rounded-lg transition-colors font-medium ${
@@ -575,12 +608,12 @@ export default function OrdersPage() {
                             ? 'border-border text-foreground hover:bg-muted cursor-pointer'
                             : 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                         }`}
-                        title={!canReturnOrder(order) ? 'Return period has expired (7 days from delivery)' : 'Request return'}
+                        title={getReturnPolicyMessage(order)}
                       >
                         Return Order
                       </button>
                     )}
-                    {['pending', 'confirmed', 'processing'].includes(order.status.toLowerCase()) && (
+                    {['pending', 'confirmed', 'processing', 'shipped'].includes(order.status.toLowerCase()) && (
                       <button 
                         onClick={() => {
                           setOrderToAction(order);
@@ -851,16 +884,66 @@ export default function OrdersPage() {
               <button
                 onClick={handleReturnOrder}
                 disabled={actionLoading || !returnReason.trim()}
-                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
               >
-                {actionLoading ? 'Submitting...' : 'Submit Return'}
+                {actionLoading ? 'Processing...' : 'Submit Return Request'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Return Confirmation Dialog */}
+      {showReturnConfirmation && orderToAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-lg shadow-xl max-w-md w-full border border-border">
+            <div className="p-6 border-b border-border">
+              <h2 className="text-xl font-bold text-foreground">Confirm Return Request</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-muted-foreground mb-4">
+                Are you sure you want to request a return for order <strong>#{orderToAction.orderNumber}</strong>?
+              </p>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>⚠️ Important:</strong>
+                </p>
+                <ul className="text-sm text-yellow-700 dark:text-yellow-300 mt-2 list-disc list-inside space-y-1">
+                  <li>Returns are accepted within {orderToAction.returnPolicy?.returnPolicyDays || 7} days of delivery</li>
+                  <li>Items must be unused and in original packaging</li>
+                  <li>Refund will be processed after inspection</li>
+                  <li>You cannot cancel a return request once submitted</li>
+                  {orderToAction.returnPolicy?.vendorName && (
+                    <li className="font-semibold">Vendor: {orderToAction.returnPolicy.vendorName}</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border flex gap-3">
+              <button
+                onClick={() => {
+                  setShowReturnConfirmation(false);
+                  setOrderToAction(null);
+                }}
+                className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowReturnConfirmation(false);
+                  setShowReturnModal(true);
+                }}
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
           </div>
         </div>
+      )}
       </div>
+      </div>
+    </div>
   );
 }

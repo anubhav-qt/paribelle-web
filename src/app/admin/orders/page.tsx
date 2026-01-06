@@ -189,6 +189,8 @@ export default function AdminOrdersPage() {
       shipped: 'bg-purple-100 text-purple-800',
       delivered: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
+      returned: 'bg-orange-100 text-orange-800',
+      refunded: 'bg-gray-100 text-gray-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -262,7 +264,7 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="text-2xl font-bold text-gray-900">{orders.length}</div>
             <div className="text-sm text-gray-600 mt-1">Total Orders</div>
@@ -278,6 +280,12 @@ export default function AdminOrdersPage() {
               {orders.filter(o => o.status === 'delivered').length}
             </div>
             <div className="text-sm text-gray-600 mt-1">Delivered</div>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="text-2xl font-bold text-orange-600">
+              {orders.filter(o => o.status === 'returned').length}
+            </div>
+            <div className="text-sm text-gray-600 mt-1">Returned</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="text-2xl font-bold text-blue-600">
@@ -320,6 +328,8 @@ export default function AdminOrdersPage() {
                 <option value="shipped">Shipped</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="returned">Returned</option>
+                <option value="refunded">Refunded</option>
               </select>
             </div>
             <div>
@@ -420,7 +430,8 @@ export default function AdminOrdersPage() {
                         <select
                           value={order.status}
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)} border-0 cursor-pointer`}
+                          disabled={order.status === 'delivered' || order.status === 'cancelled' || order.status === 'returned'}
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)} border-0 ${['delivered', 'cancelled', 'returned'].includes(order.status) ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
                         >
                           <option value="pending">Pending</option>
                           <option value="confirmed">Confirmed</option>
@@ -428,6 +439,8 @@ export default function AdminOrdersPage() {
                           <option value="shipped">Shipped</option>
                           <option value="delivered">Delivered</option>
                           <option value="cancelled">Cancelled</option>
+                          <option value="returned">Returned</option>
+                          <option value="refunded">Refunded</option>
                         </select>
                       </td>
                       <td className="px-6 py-4">
