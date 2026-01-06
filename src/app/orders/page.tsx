@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
-import { Package, Clock, CheckCircle, XCircle, Truck, Eye } from 'lucide-react';
+import { Package, Clock, CheckCircle, XCircle, Truck, Eye, Download } from 'lucide-react';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategoryNav from '@/components/CategoryNav';
 import CategorySidebar from '@/components/CategorySidebar';
@@ -35,7 +35,11 @@ interface Order {
   orderNumber: string;
   status: string;
   total: number;  // Backend uses 'total' not 'totalAmount'
+  subtotal?: number;
+  tax?: number;
+  shippingCost?: number;
   createdAt: string;
+  deliveredAt?: string;
   items: OrderItem[];
   shippingAddress?: {
     fullName: string;
@@ -45,6 +49,11 @@ interface Order {
     postalCode: string;
   };
   paymentMethod?: string;
+  invoice?: {
+    id: string;
+    invoiceNumber: string;
+    status: string;
+  };
 }
 
 export default function OrdersPage() {
@@ -138,6 +147,43 @@ export default function OrdersPage() {
       alert('Failed to cancel order. Please try again.');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // Check if order can be returned (within 7 days of delivery)
+  const canReturnOrder = (order: Order): boolean => {
+    if (!order.deliveredAt) return false;
+    const deliveryDate = new Date(order.deliveredAt);
+    const currentDate = new Date();
+    const daysSinceDelivery = Math.floor((currentDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceDelivery <= 7;
+  };
+
+  const handleDownloadInvoice = async (orderId: string, orderNumber: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderId}/invoice/download`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download invoice');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${orderNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      alert('Failed to download invoice. Please try again.');
     }
   };
 
@@ -508,24 +554,31 @@ export default function OrdersPage() {
                       <Eye className="w-4 h-4" />
                       View Details
                     </button>
+                    {order.invoice && (
+                      <button
+                        onClick={() => handleDownloadInvoice(order.id, order.orderNumber)}
+                        className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium flex items-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download Invoice
+                      </button>
+                    )}
                     {order.status.toLowerCase() === 'delivered' && (
-                      <>
-                        <button 
-                          onClick={() => {
-                            setOrderToAction(order);
-                            setShowReturnModal(true);
-                          }}
-                          className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium"
-                        >
-                          Return Order
-                        </button>
-                        <Link
-                          href={`/orders/${order.id}/review`}
-                          className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium text-center"
-                        >
-                          Review Order
-                        </Link>
-                      </>
+                      <button 
+                        onClick={() => {
+                          setOrderToAction(order);
+                          setShowReturnModal(true);
+                        }}
+                        disabled={!canReturnOrder(order)}
+                        className={`px-4 py-2 border rounded-lg transition-colors font-medium ${
+                          canReturnOrder(order)
+                            ? 'border-border text-foreground hover:bg-muted cursor-pointer'
+                            : 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
+                        }`}
+                        title={!canReturnOrder(order) ? 'Return period has expired (7 days from delivery)' : 'Request return'}
+                      >
+                        Return Order
+                      </button>
                     )}
                     {['pending', 'confirmed', 'processing'].includes(order.status.toLowerCase()) && (
                       <button 
@@ -660,11 +713,42 @@ export default function OrdersPage() {
 
               {/* Order Total */}
               <div className="border-t border-border pt-4">
-                <div className="flex justify-between text-lg font-bold text-foreground">
+                <div className="space-y-2 mb-3">
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span>{formatPrice(selectedOrder.subtotal || 0, 'INR')}</span>
+                  </div>
+                  {selectedOrder.shippingCost ? (
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Shipping</span>
+                      <span>{formatPrice(selectedOrder.shippingCost, 'INR')}</span>
+                    </div>
+                  ) : null}
+                  {selectedOrder.tax ? (
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Tax</span>
+                      <span>{formatPrice(selectedOrder.tax, 'INR')}</span>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex justify-between text-lg font-bold text-foreground border-t border-border pt-2">
                   <span>Total Amount</span>
                   <span>{formatPrice(selectedOrder.total, 'INR')}</span>
                 </div>
               </div>
+
+              {/* Invoice Download */}
+              {selectedOrder.invoice && (
+                <div className="border-t border-border pt-4">
+                  <button
+                    onClick={() => handleDownloadInvoice(selectedOrder.id, selectedOrder.orderNumber)}
+                    className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-5 h-5" />
+                    Download Invoice
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="p-6 border-t border-border bg-muted">

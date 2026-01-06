@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import ThemeRenderer from '@/components/ThemeRenderer';
 
 interface Invoice {
   id: string;
@@ -338,19 +339,42 @@ export default function AdminInvoicesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Invoice Management</h1>
-          <p className="text-gray-600 mt-2">Manage customer invoices, vendor payouts, and commission statements</p>
+    <>
+      <ThemeRenderer component="header" />
+      <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/admin')}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Invoice Management</h1>
+                <p className="text-sm text-gray-600">Manage customer invoices, vendor payouts, and commission statements</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAutoGenerate(true)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Auto-Generate Invoices</span>
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowAutoGenerate(true)}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-        >
-          Auto-Generate Invoices
-        </button>
-      </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-8">
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -552,13 +576,13 @@ export default function AdminInvoicesPage() {
             <p className="text-gray-600 mb-6">
               This will automatically generate invoices for all completed and paid orders that don't have invoices yet.
             </p>
-            <p className="text-sm text-gray-500 mb-6">
+            <div className="text-sm text-gray-500 mb-6">
               This includes:
               <ul className="list-disc list-inside mt-2">
                 <li>Customer invoices</li>
                 <li>Vendor payout statements</li>
               </ul>
-            </p>
+            </div>
             <div className="flex justify-end space-x-4">
               <button
                 onClick={() => setShowAutoGenerate(false)}
@@ -578,6 +602,8 @@ export default function AdminInvoicesPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
+    </>
   );
 }

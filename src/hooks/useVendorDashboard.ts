@@ -79,7 +79,10 @@ async function fetchVendorDashboard(): Promise<VendorDashboardData> {
   const vendorId = getVendorIdFromToken();
   
   if (!vendorId) {
-    throw new Error('No vendor account found for this user. Please contact support.');
+    console.error('Vendor ID not found in token or localStorage');
+    console.log('User object:', user);
+    console.log('Token parts available:', !!token);
+    throw new Error('Your vendor account is not properly linked. Please log out and log in again. If the issue persists, contact support.');
   }
 
   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
