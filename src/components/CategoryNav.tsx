@@ -330,7 +330,7 @@ export default function CategoryNav({
   });
 
   const navBarClassName = theme.combine(
-    "border-b sticky top-[76px] z-30",
+    "border-b sticky top-0 z-30",
     isVendorStore ? 'vendor-nav-bg vendor-border-primary vendor-text' : 'bg-secondary border-secondary-foreground/20'
   );
 
