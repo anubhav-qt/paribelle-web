@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
-import UnifiedHeader from '@/components/UnifiedHeader';
+import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import HeroCarousel from '@/components/HeroCarousel';
 import CategoryNav from '@/components/CategoryNav';
@@ -115,7 +115,7 @@ export default function CustomPage({ params }: { params: { pageSlug: string } })
   if (isLoading) {
     return (
       <>
-        <UnifiedHeader />
+        <ThemeRenderer component="header" />
         <HeroCarousel />
         <CategoryNav mode="scroll" />
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -152,7 +152,7 @@ export default function CustomPage({ params }: { params: { pageSlug: string } })
 
   return (
     <>
-      <UnifiedHeader />
+      <ThemeRenderer component="header" />
       <HeroCarousel />
       <CategoryNav mode="scroll" />
       <main className="min-h-screen bg-gray-50">

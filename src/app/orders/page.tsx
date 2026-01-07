@@ -12,6 +12,7 @@ import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import ReturnRequestModal from '@/components/ReturnRequestModal';
 
 interface OrderItem {
   id: string;
@@ -95,8 +96,6 @@ export default function OrdersPage() {
   const [showReturnConfirmation, setShowReturnConfirmation] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelReasonOther, setCancelReasonOther] = useState('');
-  const [returnReason, setReturnReason] = useState('');
-  const [returnReasonOther, setReturnReasonOther] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [orderToAction, setOrderToAction] = useState<Order | null>(null);
   
@@ -286,31 +285,35 @@ export default function OrdersPage() {
     }
   };
 
-  const handleReturnOrder = async () => {
-    if (!orderToAction || !returnReason) {
-      showToast('Please select a return reason', 'warning');
+  const handleReturnOrder = async (returnData: {
+    orderItemId: string;
+    quantity: number;
+    reason: string;
+    customerNotes?: string;
+    images?: string[];
+  }) => {
+    if (!orderToAction) {
+      showToast('No order selected', 'error');
       return;
     }
-
-    if (returnReason === 'other' && !returnReasonOther.trim()) {
-      showToast('Please specify your return reason', 'warning');
-      return;
-    }
-
-    const finalReason = returnReason === 'other' ? returnReasonOther : returnReason;
 
     setActionLoading(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderToAction.id}/return`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderToAction.id}/items/${returnData.orderItemId}/return`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ reason: finalReason }),
+          body: JSON.stringify({
+            quantity: returnData.quantity,
+            reason: returnData.reason,
+            customerNotes: returnData.customerNotes,
+            images: returnData.images
+          }),
         }
       );
 
@@ -318,8 +321,6 @@ export default function OrdersPage() {
         hideConfirm();
         showToast('Return request submitted successfully', 'success');
         setShowReturnModal(false);
-        setReturnReason('');
-        setReturnReasonOther('');
         setOrderToAction(null);
         fetchOrders();
       } else {
@@ -1025,76 +1026,19 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Return Order Modal */}
+      {/* Return Request Modal - Item-based returns */}
       {showReturnModal && orderToAction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-lg shadow-xl max-w-md w-full border border-border">
-            <div className="p-6 border-b border-border">
-              <h2 className="text-xl font-bold text-foreground">Return Order</h2>
-            </div>
-            <div className="p-6">
-              <p className="text-muted-foreground mb-2">
-                Request return for order #{orderToAction.orderNumber}
-              </p>
-              <p className="text-sm text-muted-foreground mb-4">
-                Returns are accepted within 7 days of delivery.
-              </p>
-              <label className="block mb-2 text-sm font-medium text-foreground">
-                Return Reason <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={returnReason}
-                onChange={(e) => {
-                  setReturnReason(e.target.value);
-                  if (e.target.value !== 'other') setReturnReasonOther('');
-                }}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground"
-                required
-              >
-                <option value="">Select a reason</option>
-                <option value="Product damaged or defective">Product damaged or defective</option>
-                <option value="Wrong item received">Wrong item received</option>
-                <option value="Product not as described">Product not as described</option>
-                <option value="Size or fit issue">Size or fit issue</option>
-                <option value="Quality not satisfactory">Quality not satisfactory</option>
-                <option value="Missing parts or accessories">Missing parts or accessories</option>
-                <option value="Changed my mind">Changed my mind</option>
-                <option value="other">Other (please specify)</option>
-              </select>
-              {returnReason === 'other' && (
-                <textarea
-                  value={returnReasonOther}
-                  onChange={(e) => setReturnReasonOther(e.target.value)}
-                  placeholder="Please specify your reason..."
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground mt-3"
-                  rows={3}
-                  required
-                />
-              )}
-            </div>
-            <div className="p-6 border-t border-border flex gap-3">
-              <button
-                onClick={() => {
-                  setShowReturnModal(false);
-                  setReturnReason('');
-                  setReturnReasonOther('');
-                  setOrderToAction(null);
-                }}
-                disabled={actionLoading}
-                className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReturnOrder}
-                disabled={actionLoading || !returnReason || (returnReason === 'other' && !returnReasonOther.trim())}
-                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
-              >
-                {actionLoading ? 'Processing...' : 'Return'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReturnRequestModal
+          isOpen={showReturnModal}
+          onClose={() => {
+            setShowReturnModal(false);
+            setOrderToAction(null);
+          }}
+          orderId={orderToAction.id}
+          orderNumber={orderToAction.orderNumber}
+          items={orderToAction.items}
+          onSubmit={handleReturnOrder}
+        />
       )}
 
       {/* Return Confirmation Dialog */}

@@ -305,7 +305,8 @@ export default function CategoryPage() {
 
   return (
     <div className={theme.combine('min-h-screen', theme.bg)}>
-      <UnifiedHeader 
+      <ThemeRenderer 
+        component="header"
         showLocationFilter={locationFilterEnabled}
         showBookingsLink={true}
       />

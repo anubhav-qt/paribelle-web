@@ -7,6 +7,7 @@ import { Star, Package, Calendar, ChevronDown } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getProductImageUrl } from '@/lib/image-url';
 import ThemeRenderer from '@/components/ThemeRenderer';
+import CategoryNav from '@/components/CategoryNav';
 import Footer from '@/components/Footer';
 import { useSettings } from '@/hooks/useSettings';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
@@ -200,7 +201,8 @@ function SearchContent() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <UnifiedHeader 
+      <ThemeRenderer 
+        component="header"
         showLocationFilter={false}
         showBookingsLink={productType !== 'booking'}
         onSearch={(query) => {
@@ -211,85 +213,8 @@ function SearchContent() {
         initialSearchQuery={searchQuery}
       />
 
-      {/* Categories Toolbar - Flipkart Style */}
-      {categoryDisplayMode === 'top' && (
-        <div className={theme.combine('border-t shadow-sm mb-6', theme.cardBg, isVendorStore ? 'vendor-border-primary' : 'border-border')}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-0 overflow-visible">
-              {/* All Categories - First Item */}
-              <button
-                onClick={() => handleCategoryFilter('')}
-                className={theme.combine('flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2',
-                  selectedCategory === ''
-                    ? isVendorStore ? 'vendor-primary vendor-border-primary font-semibold' : 'text-primary border-primary bg-accent font-semibold'
-                    : isVendorStore ? 'vendor-text border-transparent hover:vendor-primary' : 'text-foreground border-transparent hover:text-primary hover:bg-accent'
-                )}
-              >
-                All Categories
-              </button>
-            
-              {/* Quick Category Links with Click Dropdowns */}
-              {categories.map((category) => (
-                <div
-                  key={category.id}
-                  className="relative"
-                >
-                  <button
-                    onClick={() => {
-                      if (category.children && category.children.length > 0) {
-                        setActiveDropdown(activeDropdown === category.id ? null : category.id);
-                      } else {
-                        handleCategoryNavigation(category.slug);
-                      }
-                    }}
-                    className={theme.combine('flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2',
-                      selectedCategory === category.id
-                        ? isVendorStore ? 'vendor-primary vendor-border-primary font-semibold' : 'text-primary border-primary bg-accent font-semibold'
-                        : isVendorStore ? 'vendor-text border-transparent hover:vendor-primary' : 'text-foreground border-transparent hover:text-primary hover:bg-accent'
-                    )}
-                  >
-                    {category.name}
-                    {category.children && category.children.length > 0 && (
-                      <ChevronDown className={`w-3 h-3 transition-transform ${activeDropdown === category.id ? 'rotate-180' : ''}`} />
-                    )}
-                  </button>
-                  
-                  {/* Subcategories Dropdown */}
-                  {category.children && category.children.length > 0 && activeDropdown === category.id && (
-                    <div className={theme.combine('absolute top-full left-0 mt-0 shadow-xl rounded-b-lg min-w-[200px] z-[9999] border border-t-0 py-2', theme.cardBg, isVendorStore ? 'vendor-border-primary' : 'border-border')}>
-                      <button
-                        onClick={() => {
-                          setActiveDropdown(null);
-                          handleCategoryNavigation(category.slug);
-                        }}
-                        className={theme.combine('block w-full text-left px-4 py-2 text-sm font-semibold transition-colors border-b',
-                          isVendorStore ? 'vendor-text hover:vendor-primary vendor-border-primary-30' : 'text-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 border-border'
-                        )}
-                      >
-                        All {category.name}
-                      </button>
-                      {category.children.map((subcat: any) => (
-                        <button
-                          key={subcat.id}
-                          onClick={() => {
-                            setActiveDropdown(null);
-                            handleCategoryNavigation(subcat.slug);
-                          }}
-                          className={theme.combine('block w-full text-left px-4 py-2 text-sm transition-colors',
-                            isVendorStore ? 'vendor-text-80 hover:vendor-primary' : 'text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950'
-                          )}
-                        >
-                          {subcat.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Category Navigation - Same as Homepage */}
+      <ThemeRenderer component="nav" fallback={<CategoryNav mode="scroll" />} />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
