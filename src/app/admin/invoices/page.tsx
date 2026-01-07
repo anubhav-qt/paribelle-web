@@ -12,6 +12,8 @@ interface Invoice {
   invoiceDate: string;
   dueDate: string;
   total: number;
+  payoutAmount?: number;
+  commissionAmount?: number;
   billingName: string;
   billingEmail: string;
   order: {
@@ -484,8 +486,30 @@ export default function AdminInvoicesPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   {invoice.order?.orderNumber}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  {formatCurrency(invoice.total)}
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {invoice.type === 'vendor' ? (
+                    <>
+                      <div className="font-medium text-gray-900">
+                        {formatCurrency(invoice.payoutAmount || invoice.total)}
+                      </div>
+                      {invoice.commissionAmount && invoice.commissionAmount !== 0 && (
+                        <div className={`text-xs ${
+                          invoice.invoiceNumber?.startsWith('CN-') && invoice.commissionAmount < 0
+                            ? 'text-green-600'
+                            : 'text-gray-500'
+                        }`}>
+                          {invoice.invoiceNumber?.startsWith('CN-') && invoice.commissionAmount < 0
+                            ? `Commission Refund: ${formatCurrency(Math.abs(invoice.commissionAmount))}`
+                            : `Commission: ${formatCurrency(Math.abs(invoice.commissionAmount))}`
+                          }
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="font-medium text-gray-900">
+                      {formatCurrency(invoice.total)}
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(invoice.status)}`}>

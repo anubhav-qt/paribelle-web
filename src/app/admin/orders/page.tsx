@@ -20,6 +20,9 @@ interface Order {
   subtotal: number;
   tax: number;
   shippingCost: number;
+  vendorPayout?: number;
+  commissionAmount?: number;
+  commissionRate?: number;
   shippingName: string;
   shippingEmail: string;
   shippingPhone: string;
@@ -47,9 +50,17 @@ interface Order {
     name: string;
   };
   items?: Array<{
+    id: string;
+    productId: string;
     productName: string;
     quantity: number;
     price: number;
+  }>;
+  invoices?: Array<{
+    id: string;
+    invoiceNumber: string;
+    type: string;
+    payoutAmount?: number;
   }>;
 }
 
@@ -612,7 +623,7 @@ export default function AdminOrdersPage() {
                         onClick={() => handleSort('total')}
                         className="flex items-center gap-1 font-medium text-gray-700 hover:text-gray-900"
                       >
-                        Total
+                        Vendor Payout
                         <ArrowUpDown className="w-4 h-4" />
                       </button>
                     </th>
@@ -685,7 +696,33 @@ export default function AdminOrdersPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{formatCurrency(order.total)}</div>
+                        {(() => {
+                          const originalPayout = order.vendorPayout || 0;
+                          // Find vendor credit note (payout reversal)
+                          const vendorCreditNote = order.invoices?.find(
+                            inv => inv.type === 'vendor' && inv.invoiceNumber?.startsWith('CN-')
+                          );
+                          const payoutReversal = vendorCreditNote?.payoutAmount || 0;
+                          const netPayout = originalPayout + payoutReversal; // payoutReversal is negative
+                          
+                          return (
+                            <>
+                              <div className="font-medium text-gray-900">
+                                {formatCurrency(netPayout)}
+                              </div>
+                              {order.commissionAmount && order.commissionAmount > 0 && (
+                                <div className="text-xs text-gray-500">
+                                  Commission: {formatCurrency(order.commissionAmount)}
+                                </div>
+                              )}
+                              {payoutReversal !== 0 && (
+                                <div className="text-xs text-red-600">
+                                  Reversal: {formatCurrency(Math.abs(payoutReversal))}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {formatDate(order.createdAt)}

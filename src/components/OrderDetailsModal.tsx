@@ -301,14 +301,6 @@ export default function OrderDetailsModal({
                       </div>
                     )}
 
-                    {/* Item-Level Return Requests */}
-                    {order.returns && order.returns.length > 0 && (
-                      <div>
-                        <h4 className="font-medium text-foreground mb-3">Item Return Requests</h4>
-                        <OrderReturnsDisplay returns={order.returns} />
-                      </div>
-                    )}
-
                     {/* Return Rejection Information */}
                     {order.returnRejectedAt && order.returnRejectionReason && (
                       <div className="space-y-3">

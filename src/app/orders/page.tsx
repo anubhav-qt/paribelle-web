@@ -613,6 +613,20 @@ export default function OrdersPage() {
                           {getStatusIcon(order.status)}
                           {order.status}
                         </span>
+                        
+                        {/* Return Status Badges */}
+                        {order.returnApprovedAt && (
+                          <span className="px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                            <CheckCircle className="w-4 h-4" />
+                            Return Approved
+                          </span>
+                        )}
+                        {order.returnRejectedAt && (
+                          <span className="px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                            <XCircle className="w-4 h-4" />
+                            Return Rejected
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', {
