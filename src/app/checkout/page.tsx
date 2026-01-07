@@ -25,7 +25,7 @@ type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, totalPrice, totalItems, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { items, totalItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const { createOrder: createRazorpayOrder, verifyPayment, openCheckout } = useRazorpay();
   const theme = useThemeClasses();
   
@@ -35,8 +35,8 @@ export default function CheckoutPage() {
   const [marketplaceLogo, setMarketplaceLogo] = useState('');
   const [marketplaceName, setMarketplaceName] = useState('GaliCart');
   
-  // Address form
-  const [address, setAddress] = useState<Address>({
+  // Shipping Address form
+  const [shippingAddress, setShippingAddress] = useState<Address>({
     fullName: '',
     email: '',
     phone: '',
@@ -47,12 +47,33 @@ export default function CheckoutPage() {
     postalCode: '',
     country: 'India',
   });
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState<string | null>(null);
+  
+  // Billing Address form
+  const [billingAddress, setBillingAddress] = useState<Address>({
+    fullName: '',
+    email: '',
+    phone: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'India',
+  });
+  const [selectedBillingAddressId, setSelectedBillingAddressId] = useState<string | null>(null);
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
   
   // Payment details
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [orderId, setOrderId] = useState<string>('');
   const [authInitialized, setAuthInitialized] = useState(false);
+  
+  // Store order totals for confirmation page (before cart is cleared)
+  const [confirmedOrderTotal, setConfirmedOrderTotal] = useState(0);
+  const [confirmedSubtotal, setConfirmedSubtotal] = useState(0);
+  const [confirmedTax, setConfirmedTax] = useState(0);
+  const [confirmedShipping, setConfirmedShipping] = useState(0);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -98,9 +119,16 @@ export default function CheckoutPage() {
       const parsedUser = JSON.parse(userStr);
       setUser(parsedUser);
       
-      // Pre-fill address name if available
+      // Pre-fill shipping address name if available
       if (parsedUser.firstName && parsedUser.lastName) {
-        setAddress(prev => ({
+        setShippingAddress(prev => ({
+          ...prev,
+          fullName: `${parsedUser.firstName} ${parsedUser.lastName}`,
+          email: parsedUser.email || '',
+          phone: parsedUser.phone || '',
+        }));
+        // Also pre-fill billing address since it defaults to same as shipping
+        setBillingAddress(prev => ({
           ...prev,
           fullName: `${parsedUser.firstName} ${parsedUser.lastName}`,
           email: parsedUser.email || '',
@@ -112,6 +140,14 @@ export default function CheckoutPage() {
     }
   }, [authInitialized]);
 
+  // Sync billing address with shipping address when checkbox is checked
+  useEffect(() => {
+    if (billingSameAsShipping) {
+      setBillingAddress(shippingAddress);
+      setSelectedBillingAddressId(selectedShippingAddressId);
+    }
+  }, [billingSameAsShipping, shippingAddress, selectedShippingAddressId]);
+
   useEffect(() => {
     // Redirect if cart is empty
     if (items.length === 0 && currentStep !== 'confirmation') {
@@ -119,24 +155,73 @@ export default function CheckoutPage() {
     }
   }, [items.length, currentStep]);
 
-  const shippingCost = totalPrice > 500 ? 0 : 50;
-  const tax = totalPrice * 0.18; // 18% GST
-  const finalTotal = totalPrice + shippingCost + tax;
+  // Calculate tax by extracting GST from inclusive prices
+  const calculateTaxBreakdown = () => {
+    let totalBasePrice = 0;
+    let totalTax = 0;
+    let totalWithTax = 0; // Track the actual total including tax
+    
+    items.forEach(item => {
+      const itemTotal = item.price * item.quantity;
+      // Default to 18% GST if not specified
+      const gstRate = (item.gstRate !== undefined && item.gstRate !== null) ? item.gstRate : 18;
+      // Default to tax-inclusive if not specified
+      const priceType = item.priceType || 'mrp_with_gst';
+      
+      if (priceType === 'mrp_with_gst') {
+        // Price includes GST - extract the tax component
+        // Prevent division by zero or invalid calculations
+        if (gstRate > 0) {
+          const basePrice = itemTotal / (1 + gstRate / 100);
+          const taxAmount = itemTotal - basePrice;
+          totalBasePrice += basePrice;
+          totalTax += taxAmount;
+          totalWithTax += itemTotal; // Price already includes tax
+        } else {
+          // If GST rate is 0, entire amount is base price
+          totalBasePrice += itemTotal;
+          totalWithTax += itemTotal;
+        }
+      } else {
+        // Price excludes GST - add tax on top
+        const taxAmount = itemTotal * (gstRate / 100);
+        totalBasePrice += itemTotal;
+        totalTax += taxAmount;
+        totalWithTax += itemTotal + taxAmount; // Add tax to get total
+      }
+    });
+    
+    return { basePrice: totalBasePrice, tax: totalTax, totalWithTax };
+  };
+  
+  const { basePrice: subtotalBeforeTax, tax: extractedTax, totalWithTax: subtotalWithTax } = calculateTaxBreakdown();
+  const shippingCost = subtotalWithTax > 500 ? 0 : 50;
+  const tax = extractedTax; // Use extracted tax from inclusive prices
+  const finalTotal = subtotalWithTax + shippingCost; // Use calculated total that includes tax
 
   const handleContinueToAddress = () => {
     setCurrentStep('address');
   };
 
   const handleContinueToPayment = useCallback(() => {
-    // Basic address validation (AddressManager handles detailed validation)
-    if (!address.fullName || !address.phone || !address.addressLine1 || 
-        !address.city || !address.state || !address.postalCode) {
-      alert('Please fill in all required address fields');
+    // Validate shipping address (AddressManager handles detailed validation)
+    if (!shippingAddress.fullName || !shippingAddress.phone || !shippingAddress.addressLine1 || 
+        !shippingAddress.city || !shippingAddress.state || !shippingAddress.postalCode) {
+      alert('Please fill in all required shipping address fields');
       return;
     }
     
+    // Validate billing address if different from shipping
+    if (!billingSameAsShipping) {
+      if (!billingAddress.fullName || !billingAddress.phone || !billingAddress.addressLine1 || 
+          !billingAddress.city || !billingAddress.state || !billingAddress.postalCode) {
+        alert('Please fill in all required billing address fields');
+        return;
+      }
+    }
+    
     setCurrentStep('payment');
-  }, [address]);
+  }, [shippingAddress, billingAddress, billingSameAsShipping]);
 
   const handlePlaceOrder = async () => {
     setLoading(true);
@@ -171,18 +256,19 @@ export default function CheckoutPage() {
         items: items.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
-          price: item.price,
+          price: item.price, // Keep the inclusive price
         })),
-        shippingAddress: address,
+        shippingAddress: shippingAddress,
+        billingAddress: billingSameAsShipping ? shippingAddress : billingAddress,
         paymentMethod,
-        subtotal: totalPrice,
+        subtotal: subtotalBeforeTax, // Send base price (without tax)
         shippingCost,
-        tax,
+        tax, // Send extracted tax amount
         totalAmount: finalTotal,
       };
 
       console.log('Order data being sent:', orderData);
-      console.log('Total calculations:', { totalPrice, shippingCost, tax, finalTotal });
+      console.log('Total calculations:', { subtotalWithTax, subtotalBeforeTax, shippingCost, tax, finalTotal });
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders`, {
         method: 'POST',
@@ -228,6 +314,12 @@ export default function CheckoutPage() {
       // Store order numbers for confirmation page
       const orderNumbers = ordersArray.map(o => o.orderNumber || o.id).join(', ');
       setOrderId(orderNumbers);
+      
+      // Store order totals before clearing cart
+      setConfirmedOrderTotal(finalTotal);
+      setConfirmedSubtotal(subtotalBeforeTax); // Base price without tax
+      setConfirmedTax(tax);
+      setConfirmedShipping(shippingCost);
 
       // If Razorpay, check if configured and initiate payment
       if (paymentMethod === 'razorpay') {
@@ -393,7 +485,7 @@ export default function CheckoutPage() {
   const AddressStepContent = useMemo(() => (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-foreground">Shipping Address</h2>
+        <h2 className="text-2xl font-bold text-foreground">Delivery Address</h2>
         <button
           onClick={() => setCurrentStep('cart')}
           className="text-primary hover:underline flex items-center gap-2"
@@ -405,17 +497,50 @@ export default function CheckoutPage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Address Selection/Form */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Shipping Address */}
           <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+            <h3 className="text-lg font-semibold mb-4 text-foreground">Shipping Address</h3>
             <AddressManager
               onAddressSelect={(addr) => {
-                setAddress(addr);
-                setSelectedAddressId(addr.id || null);
+                setShippingAddress(addr);
+                setSelectedShippingAddressId(addr.id || null);
               }}
-              selectedAddressId={selectedAddressId}
+              selectedAddressId={selectedShippingAddressId}
               showSelection={true}
               compact={true}
             />
+          </div>
+
+          {/* Billing Address Section */}
+          <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <input
+                type="checkbox"
+                id="billingSameAsShipping"
+                checked={billingSameAsShipping}
+                onChange={(e) => setBillingSameAsShipping(e.target.checked)}
+                className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary focus:ring-2"
+              />
+              <label htmlFor="billingSameAsShipping" className="text-sm font-medium text-foreground cursor-pointer">
+                Billing address is same as shipping address
+              </label>
+            </div>
+
+            {!billingSameAsShipping && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <h3 className="text-lg font-semibold mb-4 text-foreground">Billing Address</h3>
+                <AddressManager
+                  onAddressSelect={(addr) => {
+                    setBillingAddress(addr);
+                    setSelectedBillingAddressId(addr.id || null);
+                  }}
+                  selectedAddressId={selectedBillingAddressId}
+                  showSelection={true}
+                  compact={true}
+                />
+              </div>
+            )}
           </div>
         </div>
       
@@ -427,15 +552,19 @@ export default function CheckoutPage() {
             <div className="space-y-3 mb-4">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
-                <span>{formatPrice(totalPrice, 'INR')}</span>
+                <span>{formatPrice(subtotalWithTax, 'INR')}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground/70 -mt-1">
+                <span className="pl-4">• Base Price</span>
+                <span>{formatPrice(subtotalBeforeTax, 'INR')}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground/70">
+                <span className="pl-4">• GST (included)</span>
+                <span>{formatPrice(tax, 'INR')}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Shipping</span>
                 <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Tax</span>
-                <span>{formatPrice(tax, 'INR')}</span>
               </div>
               <div className="border-t border-border pt-3 flex justify-between font-bold text-lg text-foreground">
                 <span>Total</span>
@@ -453,7 +582,7 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
-  ), [address, selectedAddressId, totalPrice, shippingCost, tax, finalTotal, handleContinueToPayment]);
+  ), [shippingAddress, billingAddress, billingSameAsShipping, selectedShippingAddressId, selectedBillingAddressId, subtotalWithTax, subtotalBeforeTax, shippingCost, tax, finalTotal, handleContinueToPayment]);
 
   const CartStep = () => (
     <div className="max-w-6xl mx-auto">
@@ -543,7 +672,15 @@ export default function CheckoutPage() {
             <div className="space-y-3 mb-4">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal ({totalItems} items)</span>
-                <span>{formatPrice(totalPrice, 'INR')}</span>
+                <span>{formatPrice(subtotalWithTax, 'INR')}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground/70 -mt-1">
+                <span className="pl-4">• Base Price</span>
+                <span>{formatPrice(subtotalBeforeTax, 'INR')}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground/70">
+                <span className="pl-4">• GST</span>
+                <span>{formatPrice(tax, 'INR')}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Shipping</span>
@@ -551,19 +688,15 @@ export default function CheckoutPage() {
                   {shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}
                 </span>
               </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Tax (GST 18%)</span>
-                <span>{formatPrice(tax, 'INR')}</span>
-              </div>
               <div className="border-t border-border pt-3 flex justify-between font-bold text-lg text-foreground">
                 <span>Total</span>
                 <span>{formatPrice(finalTotal, 'INR')}</span>
               </div>
             </div>
             
-            {totalPrice < 500 && (
+            {subtotalWithTax < 500 && (
               <p className="text-sm text-muted-foreground mb-4 p-3 bg-primary/10 rounded">
-                Add {formatPrice(500 - totalPrice, 'INR')} more for FREE shipping!
+                Add {formatPrice(500 - subtotalWithTax, 'INR')} more for FREE shipping!
               </p>
             )}
             
@@ -615,12 +748,12 @@ export default function CheckoutPage() {
               </button>
             </div>
             <div className="text-muted-foreground">
-              <p className="font-medium text-foreground">{address.fullName}</p>
-              <p>{address.addressLine1}</p>
-              {address.addressLine2 && <p>{address.addressLine2}</p>}
-              <p>{address.city}, {address.state} {address.postalCode}</p>
-              <p>{address.country}</p>
-              <p className="mt-2">Phone: {address.phone}</p>
+              <p className="font-medium text-foreground">{shippingAddress.fullName}</p>
+              <p>{shippingAddress.addressLine1}</p>
+              {shippingAddress.addressLine2 && <p>{shippingAddress.addressLine2}</p>}
+              <p>{shippingAddress.city}, {shippingAddress.state} {shippingAddress.postalCode}</p>
+              <p>{shippingAddress.country}</p>
+              <p className="mt-2">Phone: {shippingAddress.phone}</p>
             </div>
           </div>
           
@@ -709,15 +842,19 @@ export default function CheckoutPage() {
             <div className="border-t border-border pt-3 space-y-2 mb-4">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
-                <span>{formatPrice(totalPrice, 'INR')}</span>
+                <span>{formatPrice(subtotalWithTax, 'INR')}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground/70 -mt-1">
+                <span className="pl-4">• Base Price</span>
+                <span>{formatPrice(subtotalBeforeTax, 'INR')}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground/70">
+                <span className="pl-4">• GST (included)</span>
+                <span>{formatPrice(tax, 'INR')}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Shipping</span>
                 <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Tax</span>
-                <span>{formatPrice(tax, 'INR')}</span>
               </div>
               <div className="border-t border-border pt-3 flex justify-between font-bold text-lg text-foreground">
                 <span>Total</span>
@@ -792,8 +929,20 @@ export default function CheckoutPage() {
           <h3 className="font-semibold mb-3 text-foreground">Order Details</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Amount</span>
-              <span className="font-semibold text-foreground">{formatPrice(finalTotal, 'INR')}</span>
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-semibold text-foreground">{formatPrice(confirmedSubtotal, 'INR')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Shipping</span>
+              <span className="font-semibold text-foreground">{formatPrice(confirmedShipping, 'INR')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Tax</span>
+              <span className="font-semibold text-foreground">{formatPrice(confirmedTax, 'INR')}</span>
+            </div>
+            <div className="flex justify-between border-t border-border pt-2 mt-2">
+              <span className="text-muted-foreground font-semibold">Total Amount</span>
+              <span className="font-bold text-foreground">{formatPrice(confirmedOrderTotal, 'INR')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Payment Method</span>
@@ -803,7 +952,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Delivery Address</span>
-              <span className="font-semibold text-right text-foreground">{address.city}, {address.state}</span>
+              <span className="font-semibold text-right text-foreground">{shippingAddress.city}, {shippingAddress.state}</span>
             </div>
           </div>
         </div>

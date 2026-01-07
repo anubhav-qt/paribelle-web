@@ -67,6 +67,8 @@ interface Product {
   productType: 'physical' | 'booking';
   stockQuantity?: number;
   vendorId?: string;
+  priceType?: string; // 'mrp_with_gst' | 'selling_price_without_gst'
+  gstRate?: number; // GST rate in percentage
   // Variation support (legacy)
   isParent?: boolean;
   variations?: any[];
@@ -518,6 +520,8 @@ export default function ProductDetailPage() {
         stockQuantity: stockQuantity,
         maxQuantity: stockQuantity,
         variationAttributes: selectedVariation?.variationAttributes,
+        priceType: product.priceType || 'mrp_with_gst', // Default to tax-inclusive
+        gstRate: product.gstRate || 18, // Default to 18% GST
       });
 
       // Reset quantity after adding to cart

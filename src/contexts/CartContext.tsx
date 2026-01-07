@@ -121,7 +121,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const toggleCart = () => setIsOpen((prev) => !prev);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  
+  // Calculate total price accounting for tax-inclusive and tax-exclusive products
+  const totalPrice = items.reduce((sum, item) => {
+    const itemTotal = item.price * item.quantity;
+    const priceType = item.priceType || 'mrp_with_gst';
+    
+    if (priceType === 'mrp_with_gst') {
+      // Price already includes tax
+      return sum + itemTotal;
+    } else {
+      // Price excludes tax - add GST on top
+      const gstRate = (item.gstRate !== undefined && item.gstRate !== null) ? item.gstRate : 18;
+      const taxAmount = itemTotal * (gstRate / 100);
+      return sum + itemTotal + taxAmount;
+    }
+  }, 0);
 
   return (
     <CartContext.Provider

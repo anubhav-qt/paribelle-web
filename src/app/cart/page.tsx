@@ -135,12 +135,12 @@ export default function CartPage() {
                   <span>Subtotal ({totalItems} items)</span>
                   <span className="font-medium">{formatPrice(totalPrice, 'INR')}</span>
                 </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Shipping</span>
-                  <span className="font-medium">Calculated at checkout</span>
+                <div className="flex justify-between text-xs text-muted-foreground/70">
+                  <span>  (Inclusive of all taxes)</span>
+                  <span></span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Tax</span>
+                  <span>Shipping</span>
                   <span className="font-medium">Calculated at checkout</span>
                 </div>
               </div>
@@ -150,6 +150,7 @@ export default function CartPage() {
                   <span className="text-foreground">Estimated Total</span>
                   <span className="text-primary">{formatPrice(totalPrice, 'INR')}</span>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">Prices are inclusive of GST</p>
               </div>
 
               <Link

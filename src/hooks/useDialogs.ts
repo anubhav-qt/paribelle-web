@@ -24,7 +24,7 @@ export function useConfirm() {
     message: string;
     confirmText?: string;
     cancelText?: string;
-    confirmVariant?: 'danger' | 'primary' | 'success';
+    confirmVariant?: 'danger' | 'primary' | 'success' | 'warning';
     onConfirm: () => void;
   } | null>(null);
 
@@ -33,7 +33,7 @@ export function useConfirm() {
     message: string;
     confirmText?: string;
     cancelText?: string;
-    confirmVariant?: 'danger' | 'primary' | 'success';
+    confirmVariant?: 'danger' | 'primary' | 'success' | 'warning';
     onConfirm: () => void;
   }) => {
     setConfirm(options);

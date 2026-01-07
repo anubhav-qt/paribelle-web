@@ -3,7 +3,7 @@ export interface CartItem {
   productId: string;
   name: string;
   slug: string;
-  price: number;
+  price: number; // Tax-inclusive price
   quantity: number;
   image: string;
   vendorId: string;
@@ -13,6 +13,8 @@ export interface CartItem {
   stockQuantity?: number;
   maxQuantity?: number;
   variationAttributes?: Record<string, string>;
+  priceType?: string; // 'mrp_with_gst' | 'selling_price_without_gst'
+  gstRate?: number; // GST rate (e.g., 18 for 18%)
 }
 
 export interface CartContextType {

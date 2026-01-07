@@ -146,7 +146,7 @@ export default function AdminOrdersPage() {
     showConfirm({
       title: 'Approve Return Request?',
       message: 'Customer will be notified to ship the item back. Refund will be processed after you receive and verify the item.',
-      confirmText: 'Approve Return',
+      confirmText: 'Approve',
       cancelText: 'Cancel',
       confirmVariant: 'primary',
       onConfirm: async () => {
@@ -165,10 +165,13 @@ export default function AdminOrdersPage() {
             throw new Error('Failed to approve return request');
           }
 
+          hideConfirm();
           showToast('Return request approved! Customer can now ship the item back.', 'success');
+          setShowDetailsModal(false);
           fetchOrders();
         } catch (error) {
           console.error('Error approving return request:', error);
+          hideConfirm();
           showToast('Failed to approve return request', 'error');
         }
       }
@@ -198,10 +201,13 @@ export default function AdminOrdersPage() {
             throw new Error('Failed to confirm item received');
           }
 
+          hideConfirm();
           showToast('Item received confirmed! Refund processed and inventory restocked.', 'success');
           fetchOrders();
+          setShowDetailsModal(false);
         } catch (error) {
           console.error('Error confirming item received:', error);
+          hideConfirm();
           showToast('Failed to confirm item received', 'error');
         }
       }
@@ -234,10 +240,13 @@ export default function AdminOrdersPage() {
             throw new Error('Failed to reject return');
           }
 
+          hideConfirm();
           showToast('Return rejected successfully!', 'success');
           fetchOrders();
+          setShowDetailsModal(false);
         } catch (error) {
           console.error('Error rejecting return:', error);
+          hideConfirm();
           showToast('Failed to reject return', 'error');
         }
       }
@@ -749,11 +758,10 @@ export default function AdminOrdersPage() {
                       <button
                         onClick={() => {
                           handleApproveReturnRequest(selectedOrder.id);
-                          setShowDetailsModal(false);
                         }}
                         className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
-                        Approve Return Request
+                        Approve
                       </button>
                       <button
                         onClick={() => {

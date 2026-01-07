@@ -7,7 +7,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  confirmVariant?: 'danger' | 'primary' | 'success';
+  confirmVariant?: 'danger' | 'primary' | 'success' | 'warning';
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -22,9 +22,10 @@ export default function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const confirmStyles = {
-    danger: 'bg-red-600 hover:bg-red-700 text-white',
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
-    success: 'bg-green-600 hover:bg-green-700 text-white',
+    danger: 'bg-destructive hover:bg-destructive/90 text-destructive-foreground',
+    primary: 'bg-primary hover:bg-primary/90 text-primary-foreground',
+    success: 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white',
+    warning: 'bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-600 text-white',
   };
 
   return (

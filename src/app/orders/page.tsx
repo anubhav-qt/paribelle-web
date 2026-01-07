@@ -315,6 +315,7 @@ export default function OrdersPage() {
       );
 
       if (response.ok) {
+        hideConfirm();
         showToast('Return request submitted successfully', 'success');
         setShowReturnModal(false);
         setReturnReason('');
@@ -323,10 +324,12 @@ export default function OrdersPage() {
         fetchOrders();
       } else {
         const error = await response.json();
+        hideConfirm();
         showToast(error.message || 'Failed to submit return request', 'error');
       }
     } catch (error) {
       console.error('Error requesting return:', error);
+      hideConfirm();
       showToast('Failed to submit return request. Please try again.', 'error');
     } finally {
       setActionLoading(false);
@@ -1087,7 +1090,7 @@ export default function OrdersPage() {
                 disabled={actionLoading || !returnReason || (returnReason === 'other' && !returnReasonOther.trim())}
                 className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
               >
-                {actionLoading ? 'Processing...' : 'Submit Return Request'}
+                {actionLoading ? 'Processing...' : 'Return'}
               </button>
             </div>
           </div>
@@ -1096,52 +1099,21 @@ export default function OrdersPage() {
 
       {/* Return Confirmation Dialog */}
       {showReturnConfirmation && orderToAction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-lg shadow-xl max-w-md w-full border border-border">
-            <div className="p-6 border-b border-border">
-              <h2 className="text-xl font-bold text-foreground">Confirm Return Request</h2>
-            </div>
-            <div className="p-6">
-              <p className="text-muted-foreground mb-4">
-                Are you sure you want to request a return for order <strong>#{orderToAction.orderNumber}</strong>?
-              </p>
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>⚠️ Important:</strong>
-                </p>
-                <ul className="text-sm text-yellow-700 dark:text-yellow-300 mt-2 list-disc list-inside space-y-1">
-                  <li>Returns are accepted within {orderToAction.returnPolicy?.returnPolicyDays || 7} days of delivery</li>
-                  <li>Items must be unused and in original packaging</li>
-                  <li>Refund will be processed after inspection</li>
-                  <li>You cannot cancel a return request once submitted</li>
-                  {orderToAction.returnPolicy?.vendorName && (
-                    <li className="font-semibold">Vendor: {orderToAction.returnPolicy.vendorName}</li>
-                  )}
-                </ul>
-              </div>
-            </div>
-            <div className="p-6 border-t border-border flex gap-3">
-              <button
-                onClick={() => {
-                  setShowReturnConfirmation(false);
-                  setOrderToAction(null);
-                }}
-                className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowReturnConfirmation(false);
-                  setShowReturnModal(true);
-                }}
-                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Confirm Return Request"
+          message={`Are you sure you want to request a return for order #${orderToAction.orderNumber}? Returns are accepted within ${orderToAction.returnPolicy?.returnPolicyDays || 7} days of delivery. Items must be unused and in original packaging. You cannot cancel a return request once submitted.`}
+          confirmText="Continue"
+          cancelText="Cancel"
+          confirmVariant="warning"
+          onConfirm={() => {
+            setShowReturnConfirmation(false);
+            setShowReturnModal(true);
+          }}
+          onCancel={() => {
+            setShowReturnConfirmation(false);
+            setOrderToAction(null);
+          }}
+        />
       )}
       
       {/* Toast Notification */}
