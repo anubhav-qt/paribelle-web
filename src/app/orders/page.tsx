@@ -13,6 +13,9 @@ import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ReturnRequestModal from '@/components/ReturnRequestModal';
+import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
+import OrderDetailsModal from '@/components/OrderDetailsModal';
+import { useMarketplaceWebSocket } from '@/contexts/StockWebSocketContext';
 
 interface OrderItem {
   id: string;
@@ -21,6 +24,8 @@ interface OrderItem {
   quantity: number;
   price: number;
   productImage?: string;
+  returnedQuantity?: number;
+  returnStatus?: 'none' | 'partial' | 'full';
   product?: {
     id: string;
     slug: string;
@@ -45,6 +50,11 @@ interface Order {
   createdAt: string;
   deliveredAt?: string;
   items: OrderItem[];
+  returns?: any[];  // Array of return items
+  returnReason?: string;
+  returnApprovedAt?: string;
+  returnRejectedAt?: string;
+  returnRejectionReason?: string;
   shippingAddress?: {
     fullName: string;
     addressLine1: string;
@@ -87,6 +97,7 @@ export default function OrdersPage() {
   const theme = useThemeClasses();
   const { toast, showToast, hideToast } = useToast();
   const { confirm, showConfirm, hideConfirm } = useConfirm();
+  const { subscribeToOrderStatusUpdates } = useMarketplaceWebSocket();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -118,6 +129,22 @@ export default function OrdersPage() {
 
     fetchOrders();
   }, [router]);
+
+  // Subscribe to order status updates via WebSocket
+  useEffect(() => {
+    const unsubscribe = subscribeToOrderStatusUpdates((update) => {
+      console.log('Order status updated via WebSocket:', update);
+      // Refresh orders when any order status changes
+      fetchOrders();
+      
+      // Show toast notification
+      showToast(`Order status updated to: ${update.status}`, 'info');
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [subscribeToOrderStatusUpdates]);
 
   const fetchOrders = async () => {
     try {
@@ -744,218 +771,14 @@ export default function OrdersPage() {
 
       {/* Order Details Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-border">
-            <div className="p-6 border-b border-border flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-foreground">Order Details</h2>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-6 space-y-6">
-              {/* Order Info */}
-              <div>
-                <h3 className="font-semibold mb-3 text-foreground">Order Information</h3>
-                <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Order Number:</span>
-                    <span className="font-medium text-foreground">
-                      {selectedOrder.orderNumber || selectedOrder.id.slice(0, 8)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Status:</span>
-                    <span className={`px-2 py-1 rounded ${getStatusColor(selectedOrder.status)}`}>
-                      {selectedOrder.status}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Order Date:</span>
-                    <span className="font-medium text-foreground">
-                      {new Date(selectedOrder.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Payment Method:</span>
-                    <span className="font-medium text-foreground">
-                      {selectedOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Return QR Code and Instructions */}
-              {returnDetails && (selectedOrder.status === 'return_approved' || selectedOrder.status === 'returned') && (
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700 rounded-xl p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-2xl">📦</span>
-                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">Return Shipping Information</h3>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-4 border-2 border-dashed border-gray-300 dark:border-gray-600">
-                    <h4 className="font-semibold text-center text-gray-700 dark:text-gray-300 mb-3">📱 Return QR Code - Scan at Carrier</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-4">Show this code at UPS, FedEx, or USPS - No printing required!</p>
-                    
-                    <div className="flex justify-center mb-4">
-                      <div className="bg-white p-3 rounded-lg border-4 border-green-500">
-                        <img 
-                          src={returnDetails.qrCodeDataUrl} 
-                          alt="Return QR Code" 
-                          className="w-64 h-64"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="text-center space-y-1">
-                      <p className="font-bold text-lg text-gray-900 dark:text-gray-100">RMA: {returnDetails.returnAuthNumber}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Order: {returnDetails.orderNumber}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700">
-                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Return To:</h4>
-                    <div className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
-                      <p className="font-medium">{returnDetails.returnAddress.name}</p>
-                      <p>{returnDetails.returnAddress.addressLine1}</p>
-                      <p>{returnDetails.returnAddress.city}, {returnDetails.returnAddress.state} {returnDetails.returnAddress.postalCode}</p>
-                      <p>{returnDetails.returnAddress.country}</p>
-                      <p>Phone: {returnDetails.returnAddress.phone}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded">
-                    <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-2">📋 Return Instructions</h4>
-                    <ol className="text-sm text-amber-900 dark:text-amber-200 space-y-2 ml-4 list-decimal">
-                      {returnDetails.instructions.map((instruction, idx) => (
-                        <li key={idx}>{instruction}</li>
-                      ))}
-                    </ol>
-                    <p className="text-sm text-amber-800 dark:text-amber-300 mt-3 font-medium">
-                      ⚠️ Important: Refund will be processed within 3-5 business days after we receive and inspect the returned item.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Shipping Address */}
-              {selectedOrder.shippingAddress && (
-                <div>
-                  <h3 className="font-semibold mb-3 text-foreground">Shipping Address</h3>
-                  <div className="bg-muted rounded-lg p-4 text-sm">
-                    <p className="font-medium text-foreground">{selectedOrder.shippingAddress.fullName}</p>
-                    <p className="text-muted-foreground">{selectedOrder.shippingAddress.addressLine1}</p>
-                    <p className="text-muted-foreground">
-                      {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}{' '}
-                      {selectedOrder.shippingAddress.postalCode}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Order Items */}
-              <div>
-                <h3 className="font-semibold mb-3 text-foreground">Items Ordered</h3>
-                <div className="space-y-3">
-                  {selectedOrder.items?.map((item) => {
-                    const productImage = item.productImage || item.product?.featuredImage;
-                    const productSlug = item.product?.slug;
-                    const vendorSlug = item.product?.vendor?.slug;
-                    const vendorName = item.product?.vendor?.businessName;
-                    
-                    return (
-                      <div key={item.id} className="flex items-center gap-4 p-3 bg-muted rounded-lg">
-                        {productImage && (
-                          <Link href={`/products/${productSlug}`} className="flex-shrink-0">
-                            <img
-                              src={productImage.startsWith('http') ? productImage : `${process.env.NEXT_PUBLIC_API_URL}${productImage}`}
-                              alt={item.productName}
-                              className="w-20 h-20 object-cover rounded hover:opacity-80 transition-opacity"
-                            />
-                          </Link>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <Link 
-                            href={`/products/${productSlug}`}
-                            className="font-medium text-foreground hover:text-primary block mb-1"
-                          >
-                            {item.productName}
-                          </Link>
-                          <p className="text-sm text-muted-foreground">
-                            Qty: {item.quantity} × {formatPrice(item.price, 'INR')}
-                          </p>
-                          {vendorName && (
-                            <Link 
-                              href={`/vendors/${vendorSlug}`}
-                              className="text-sm text-primary hover:underline mt-1 inline-block"
-                            >
-                              Sold by {vendorName}
-                            </Link>
-                          )}
-                        </div>
-                        <p className="font-semibold flex-shrink-0 text-foreground">
-                          {formatPrice(item.price * item.quantity, 'INR')}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Order Total */}
-              <div className="border-t border-border pt-4">
-                <div className="space-y-2 mb-3">
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Subtotal</span>
-                    <span>{formatPrice(selectedOrder.subtotal || 0, 'INR')}</span>
-                  </div>
-                  {selectedOrder.shippingCost ? (
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Shipping</span>
-                      <span>{formatPrice(selectedOrder.shippingCost, 'INR')}</span>
-                    </div>
-                  ) : null}
-                  {selectedOrder.tax ? (
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Tax</span>
-                      <span>{formatPrice(selectedOrder.tax, 'INR')}</span>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="flex justify-between text-lg font-bold text-foreground border-t border-border pt-2">
-                  <span>Total Amount</span>
-                  <span>{formatPrice(selectedOrder.total, 'INR')}</span>
-                </div>
-              </div>
-
-              </div>
-            </div>
-
-            {/* Sticky Buttons */}
-            <div className="p-6 border-t border-border bg-muted flex gap-3 flex-shrink-0">
-              <button
-                onClick={() => handlePrintInvoice(selectedOrder.id)}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
-              >
-                <Printer className="w-5 h-5" />
-                Print Invoice
-              </button>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <OrderDetailsModal
+          order={selectedOrder}
+          isAdmin={false}
+          returnDetails={returnDetails}
+          onClose={() => setSelectedOrder(null)}
+          onPrintInvoice={handlePrintInvoice}
+          getStatusColor={getStatusColor}
+        />
       )}
 
       {/* Cancel Order Modal */}

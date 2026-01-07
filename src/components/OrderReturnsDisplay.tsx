@@ -32,32 +32,32 @@ const getStatusConfig = (theme: any) => ({
   requested: {
     icon: Clock,
     label: 'Pending Review',
-    className: theme.combine('px-3 py-1 rounded-full text-sm font-medium', theme.secondaryBg)
+    className: 'px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
   },
   approved: {
     icon: CheckCircle,
     label: 'Approved',
-    className: 'px-3 py-1 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-600'
+    className: 'px-3 py-1 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
   },
   rejected: {
     icon: XCircle,
     label: 'Rejected',
-    className: 'px-3 py-1 rounded-full text-sm font-medium bg-red-100 dark:bg-red-900/30 text-red-600'
+    className: 'px-3 py-1 rounded-full text-sm font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
   },
   received: {
     icon: Package,
     label: 'Item Received',
-    className: theme.combine('px-3 py-1 rounded-full text-sm font-medium', theme.primaryBg)
+    className: 'px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
   },
   refunded: {
     icon: DollarSign,
     label: 'Refunded',
-    className: 'px-3 py-1 rounded-full text-sm font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-600'
+    className: 'px-3 py-1 rounded-full text-sm font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
   },
   cancelled: {
     icon: XCircle,
     label: 'Cancelled',
-    className: theme.combine('px-3 py-1 rounded-full text-sm font-medium', theme.textMuted)
+    className: 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
   }
 });
 

@@ -7,6 +7,7 @@ import ThemeRenderer from '@/components/ThemeRenderer';
 import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import OrderDetailsModal from '@/components/OrderDetailsModal';
 
 interface Order {
   id: string;
@@ -34,6 +35,9 @@ interface Order {
   shippingState: string;
   createdAt: string;
   returnReason?: string;
+  returnApprovedAt?: string;
+  returnRejectedAt?: string;
+  returnRejectionReason?: string;
   vendor?: {
     businessName: string;
     storeName: string;
@@ -165,10 +169,16 @@ export default function AdminOrdersPage() {
             throw new Error('Failed to approve return request');
           }
 
+          const updatedOrder = await response.json();
+          
           hideConfirm();
           showToast('Return request approved! Customer can now ship the item back.', 'success');
-          setShowDetailsModal(false);
-          fetchOrders();
+          
+          // Update the orders list
+          await fetchOrders();
+          
+          // Update the selected order with the new data
+          setSelectedOrder(updatedOrder);
         } catch (error) {
           console.error('Error approving return request:', error);
           hideConfirm();
@@ -215,12 +225,16 @@ export default function AdminOrdersPage() {
   };
 
   const handleRejectReturn = async (orderId: string) => {
-    // For now, use a default rejection reason - could be enhanced with a custom input dialog
-    const reason = 'Return request does not meet return policy requirements';
+    const reason = prompt('Please provide a reason for rejecting this return request:');
+    
+    if (!reason || !reason.trim()) {
+      showToast('Rejection reason is required', 'error');
+      return;
+    }
     
     showConfirm({
       title: 'Reject Return Request?',
-      message: `Are you sure you want to reject this return? The customer will be notified.`,
+      message: `Are you sure you want to reject this return? The customer will be notified with your reason.`,
       confirmText: 'Reject Return',
       cancelText: 'Cancel',
       confirmVariant: 'danger',
@@ -233,17 +247,23 @@ export default function AdminOrdersPage() {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
             },
-            body: JSON.stringify({ reason }),
+            body: JSON.stringify({ reason: reason.trim() }),
           });
 
           if (!response.ok) {
             throw new Error('Failed to reject return');
           }
 
+          const updatedOrder = await response.json();
+          
           hideConfirm();
           showToast('Return rejected successfully!', 'success');
-          fetchOrders();
-          setShowDetailsModal(false);
+          
+          // Update the orders list
+          await fetchOrders();
+          
+          // Update the selected order with the new data to show rejection info
+          setSelectedOrder(updatedOrder);
         } catch (error) {
           console.error('Error rejecting return:', error);
           hideConfirm();
@@ -716,235 +736,19 @@ export default function AdminOrdersPage() {
 
       {/* Order Details Modal */}
       {showDetailsModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b bg-white flex-shrink-0">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Order {selectedOrder.orderNumber}
-                  </h2>
-                  <p className="text-gray-600 mt-1">{formatDate(selectedOrder.createdAt)}</p>
-                </div>
-                <button
-                  onClick={() => setShowDetailsModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-6 space-y-6">
-              {/* Status */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Status</h3>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedOrder.status)}`}>
-                  {selectedOrder.status}
-                </span>
-              </div>
-
-              {/* Return Reason (if return requested) */}
-              {(selectedOrder.status === 'return_requested' || selectedOrder.status === 'return_approved' || selectedOrder.status === 'returned') && selectedOrder.returnReason && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Return Reason</h3>
-                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
-                    <p className="text-gray-900">{selectedOrder.returnReason}</p>
-                  </div>
-                  {selectedOrder.status === 'return_requested' && (
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        onClick={() => {
-                          handleApproveReturnRequest(selectedOrder.id);
-                        }}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleRejectReturn(selectedOrder.id);
-                          setShowDetailsModal(false);
-                        }}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                      >
-                        Reject Return
-                      </button>
-                    </div>
-                  )}
-                  {selectedOrder.status === 'return_approved' && (
-                    <div className="mt-3">
-                      <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-3">
-                        <p className="text-sm text-blue-800">⏳ Waiting for customer to ship the item back</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          handleConfirmItemReceived(selectedOrder.id);
-                          setShowDetailsModal(false);
-                        }}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Confirm Item Received & Process Refund
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Return QR Code and Instructions */}
-              {returnDetails && (selectedOrder.status === 'return_approved' || selectedOrder.status === 'returned') && (
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-2xl">📦</span>
-                    <h3 className="font-bold text-gray-900 text-lg">Return Shipping Information</h3>
-                  </div>
-
-                  <div className="bg-white rounded-lg p-6 mb-4 border-2 border-dashed border-gray-300">
-                    <h4 className="font-semibold text-center text-gray-700 mb-3">📱 Return QR Code - Scan at Carrier</h4>
-                    <p className="text-sm text-gray-600 text-center mb-4">Show this code at UPS, FedEx, or USPS - No printing required!</p>
-                    
-                    <div className="flex justify-center mb-4">
-                      <div className="bg-white p-3 rounded-lg border-4 border-green-500">
-                        <img 
-                          src={returnDetails.qrCodeDataUrl} 
-                          alt="Return QR Code" 
-                          className="w-64 h-64"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="text-center space-y-1">
-                      <p className="font-bold text-lg text-gray-900">RMA: {returnDetails.returnAuthNumber}</p>
-                      <p className="text-sm text-gray-600">Order: {returnDetails.orderNumber}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-                    <h4 className="font-semibold text-gray-900 mb-2">Return To:</h4>
-                    <div className="text-sm text-gray-700 space-y-1">
-                      <p className="font-medium">{returnDetails.returnAddress.name}</p>
-                      <p>{returnDetails.returnAddress.addressLine1}</p>
-                      <p>{returnDetails.returnAddress.city}, {returnDetails.returnAddress.state} {returnDetails.returnAddress.postalCode}</p>
-                      <p>{returnDetails.returnAddress.country}</p>
-                      <p>Phone: {returnDetails.returnAddress.phone}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded">
-                    <h4 className="font-semibold text-amber-900 mb-2">📋 Return Instructions</h4>
-                    <ol className="text-sm text-amber-900 space-y-2 ml-4 list-decimal">
-                      {returnDetails.instructions.map((instruction, idx) => (
-                        <li key={idx}>{instruction}</li>
-                      ))}
-                    </ol>
-                    <p className="text-sm text-amber-800 mt-3 font-medium">
-                      ⚠️ Important: Refund will be processed within 3-5 business days after we receive and inspect the returned item.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Customer Info */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Customer Information</h3>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-1">
-                  <p><span className="font-medium">Name:</span> {selectedOrder.shippingName}</p>
-                  <p><span className="font-medium">Email:</span> {selectedOrder.shippingEmail || 'N/A'}</p>
-                  <p><span className="font-medium">Phone:</span> {selectedOrder.shippingPhone}</p>
-                </div>
-              </div>
-
-              {/* Shipping Address */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Shipping Address</h3>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  {typeof selectedOrder.shippingAddress === 'string' ? (
-                    <>
-                      <p>{selectedOrder.shippingAddress}</p>
-                      <p>{selectedOrder.shippingCity}, {selectedOrder.shippingState}</p>
-                    </>
-                  ) : typeof selectedOrder.shippingAddress === 'object' && selectedOrder.shippingAddress ? (
-                    <>
-                      <p>{selectedOrder.shippingAddress.addressLine1}</p>
-                      {selectedOrder.shippingAddress.addressLine2 && <p>{selectedOrder.shippingAddress.addressLine2}</p>}
-                      <p>{selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}</p>
-                      {selectedOrder.shippingAddress.country && <p>{selectedOrder.shippingAddress.country}</p>}
-                    </>
-                  ) : (
-                    <p>No address provided</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Order Items */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Order Items</h3>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                  {selectedOrder.items?.map((item, idx) => (
-                    <div key={idx} className="flex justify-between">
-                      <span>{item.productName} x {item.quantity}</span>
-                      <span className="font-medium">{formatCurrency(item.price * item.quantity)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Order Summary */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Order Summary</h3>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(selectedOrder.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Shipping:</span>
-                    <span>{formatCurrency(selectedOrder.shippingCost)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tax:</span>
-                    <span>{formatCurrency(selectedOrder.tax)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-lg border-t pt-2">
-                    <span>Total:</span>
-                    <span>{formatCurrency(selectedOrder.total)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Vendor Info */}
-              {selectedOrder.vendor && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Vendor</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="font-medium">{selectedOrder.vendor.businessName}</p>
-                    <p className="text-sm text-gray-600">{selectedOrder.vendor.storeName}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-            </div>
-
-            {/* Sticky Buttons */}
-            <div className="p-6 border-t bg-gray-50 flex gap-3 flex-shrink-0">
-              <button
-                onClick={() => handlePrintInvoice(selectedOrder.id)}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
-              >
-                <Printer className="w-5 h-5" />
-                Print Invoice
-              </button>
-              <button
-                onClick={() => setShowDetailsModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <OrderDetailsModal
+          order={selectedOrder}
+          isAdmin={true}
+          returnDetails={returnDetails}
+          onClose={() => setShowDetailsModal(false)}
+          onApproveReturn={handleApproveReturnRequest}
+          onRejectReturn={handleRejectReturn}
+          onConfirmReceived={handleConfirmItemReceived}
+          onPrintInvoice={handlePrintInvoice}
+          formatCurrency={formatCurrency}
+          formatDate={formatDate}
+          getStatusColor={getStatusColor}
+        />
       )}
       
       {/* Toast Notification */}
