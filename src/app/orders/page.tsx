@@ -43,6 +43,7 @@ interface Order {
   id: string;
   orderNumber: string;
   status: string;
+  paymentStatus?: string;
   total: number;  // Backend uses 'total' not 'totalAmount'
   subtotal?: number;
   tax?: number;
