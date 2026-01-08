@@ -106,9 +106,6 @@ interface OrderDetailsModalProps {
   isAdmin: boolean;
   returnDetails?: ReturnDetails | null;
   onClose: () => void;
-  onApproveReturn?: (returnId: string, productName: string, quantity: number) => void;
-  onRejectReturn?: (returnId: string, productName: string) => void;
-  onConfirmReceived?: (returnId: string, productName: string, quantity: number) => void;
   onPrintInvoice: (orderId: string) => void;
   formatCurrency?: (amount: number) => string;
   formatDate?: (dateString: string) => string;
@@ -120,9 +117,6 @@ export default function OrderDetailsModal({
   isAdmin,
   returnDetails,
   onClose,
-  onApproveReturn,
-  onRejectReturn,
-  onConfirmReceived,
   onPrintInvoice,
   formatCurrency,
   formatDate,
@@ -266,16 +260,7 @@ export default function OrderDetailsModal({
                       <div className="space-y-3">
                         <h4 className="font-medium text-foreground">Returned Items</h4>
                         <div className="space-y-2">
-                          {order.returns.map((returnItem: any, idx: number) => {
-                            console.log('Return Item:', {
-                              id: returnItem.id,
-                              status: returnItem.status,
-                              isAdmin,
-                              hasApproveHandler: !!onApproveReturn,
-                              hasRejectHandler: !!onRejectReturn,
-                              hasConfirmHandler: !!onConfirmReceived
-                            });
-                            return (
+                          {order.returns.map((returnItem: any, idx: number) => (
                             <div key={idx} className="bg-accent/30 border border-border rounded-lg p-3">
                               <div className="flex justify-between items-start mb-2">
                                 <div className="flex-1">
@@ -378,22 +363,16 @@ export default function OrderDetailsModal({
                                 </div>
                               )}
 
-                              {/* Admin Action Button - Only Confirm Received for Approved Items */}
-                              {isAdmin && returnItem.status === 'approved' && onConfirmReceived && (
-                                <div className="mt-3">
-                                  <div className="bg-primary/10 border border-primary/30 p-2 rounded-lg mb-2">
-                                    <p className="text-xs text-primary">⏳ Waiting for customer to ship back</p>
-                                  </div>
-                                  <button
-                                    onClick={() => onConfirmReceived(String(returnItem.id), returnItem.product_name, returnItem.quantity)}
-                                    className="w-full px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
-                                  >
-                                    Confirm Received & Process Refund
-                                  </button>
+                              {/* Customer Message for Approved Returns */}
+                              {!isAdmin && returnItem.status === 'approved' && (
+                                <div className="mt-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 p-3 rounded-lg">
+                                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                                    ✓ Return approved! Please ship the item back. You'll receive your refund once we receive and verify the item.
+                                  </p>
                                 </div>
                               )}
                             </div>
-                          )})}
+                          ))}
                         </div>
                       </div>
                     )}

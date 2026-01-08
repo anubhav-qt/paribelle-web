@@ -232,31 +232,31 @@ export default function AdminOrdersPage() {
     });
   };
 
-  const handleConfirmItemReceived = async (returnId: string, productName: string, quantity: number) => {
+  const handleConfirmItemReceived = async (orderId: string) => {
     showConfirm({
-      title: 'Confirm Item Received?',
-      message: `Have you received and verified ${quantity} unit(s) of "${productName}"? This will process the refund and restock inventory.`,
-      confirmText: 'Confirm & Refund',
+      title: 'Confirm All Items Received?',
+      message: 'Have you received and verified all returned items? This will process the refund and restock inventory.',
+      confirmText: 'Confirm All & Refund',
       cancelText: 'Cancel',
       confirmVariant: 'success',
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/returns/${returnId}/received`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/returns/confirm-all`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
             },
-            body: JSON.stringify({ refundNow: true }),
+            body: JSON.stringify({}),
           });
 
           if (!response.ok) {
-            throw new Error('Failed to confirm item received');
+            throw new Error('Failed to confirm items received');
           }
 
           hideConfirm();
-          showToast('Item received confirmed! Refund processed and inventory restocked.', 'success');
+          showToast('All items received confirmed! Refund processed and inventory restocked.', 'success');
           
           // Refresh orders
           await fetchOrders();
@@ -274,9 +274,9 @@ export default function AdminOrdersPage() {
             }
           }
         } catch (error) {
-          console.error('Error confirming item received:', error);
+          console.error('Error confirming items received:', error);
           hideConfirm();
-          showToast('Failed to confirm item received', 'error');
+          showToast('Failed to confirm items received', 'error');
         }
       }
     });
@@ -812,10 +812,10 @@ export default function AdminOrdersPage() {
                             </>
                           ) : order.status === 'return_approved' ? (
                             <button
-                              onClick={() => viewOrderDetails(order)}
+                              onClick={() => handleConfirmItemReceived(order.id)}
                               className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
                             >
-                              Confirm Items Received
+                              Confirm All Received
                             </button>
                           ) : null}
                           
@@ -844,9 +844,6 @@ export default function AdminOrdersPage() {
           isAdmin={true}
           returnDetails={returnDetails}
           onClose={() => setShowDetailsModal(false)}
-          onApproveReturn={handleApproveReturnRequest}
-          onRejectReturn={handleRejectReturn}
-          onConfirmReceived={handleConfirmItemReceived}
           onPrintInvoice={handlePrintInvoice}
           formatCurrency={formatCurrency}
           formatDate={formatDate}
