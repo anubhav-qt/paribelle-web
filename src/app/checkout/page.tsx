@@ -69,6 +69,11 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<string>('');
   const [authInitialized, setAuthInitialized] = useState(false);
   
+  // Wallet balance
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWalletBalance, setUseWalletBalance] = useState(false);
+  const [loadingWallet, setLoadingWallet] = useState(false);
+  
   // Store order totals for confirmation page (before cart is cleared)
   const [confirmedOrderTotal, setConfirmedOrderTotal] = useState(0);
   const [confirmedSubtotal, setConfirmedSubtotal] = useState(0);
@@ -81,6 +86,11 @@ export default function CheckoutPage() {
         const token = await initAuthFromCookie();
         console.log('Checkout: Auth initialized, token:', token ? 'Found' : 'Not found');
         setAuthInitialized(true);
+        
+        // Fetch wallet balance
+        if (token) {
+          fetchWalletBalance(token);
+        }
       } catch (error) {
         console.error('Checkout: Error initializing auth:', error);
         setAuthInitialized(true);
@@ -88,6 +98,29 @@ export default function CheckoutPage() {
     };
     initAuth();
   }, []);
+
+  const fetchWalletBalance = async (token: string) => {
+    setLoadingWallet(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/wallet-balance`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setWalletBalance(data.balance || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching wallet balance:', error);
+    } finally {
+      setLoadingWallet(false);
+    }
+  };
 
   useEffect((): void => {
     if (!authInitialized) {
@@ -197,7 +230,9 @@ export default function CheckoutPage() {
   const { basePrice: subtotalBeforeTax, tax: extractedTax, totalWithTax: subtotalWithTax } = calculateTaxBreakdown();
   const shippingCost = subtotalWithTax > 500 ? 0 : 50;
   const tax = extractedTax; // Use extracted tax from inclusive prices
-  const finalTotal = subtotalWithTax + shippingCost; // Use calculated total that includes tax
+  const totalBeforeWallet = subtotalWithTax + shippingCost; // Total before wallet discount
+  const walletDiscount = useWalletBalance ? Math.min(walletBalance, totalBeforeWallet) : 0;
+  const finalTotal = totalBeforeWallet - walletDiscount; // Final total after wallet discount
 
   const handleContinueToAddress = () => {
     setCurrentStep('address');
@@ -264,7 +299,8 @@ export default function CheckoutPage() {
         subtotal: subtotalBeforeTax, // Send base price (without tax)
         shippingCost,
         tax, // Send extracted tax amount
-        totalAmount: finalTotal,
+        totalAmount: totalBeforeWallet,
+        useWalletBalance,
       };
 
       console.log('Order data being sent:', orderData);
@@ -566,6 +602,15 @@ export default function CheckoutPage() {
                 <span>Shipping</span>
                 <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}</span>
               </div>
+              
+              {/* Wallet Balance Section */}
+              {walletBalance > 0 && useWalletBalance && walletDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Wallet Discount</span>
+                  <span>-{formatPrice(walletDiscount, 'INR')}</span>
+                </div>
+              )}
+              
               <div className="border-t border-border pt-3 flex justify-between font-bold text-lg text-foreground">
                 <span>Total</span>
                 <span>{formatPrice(finalTotal, 'INR')}</span>
@@ -582,7 +627,7 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
-  ), [shippingAddress, billingAddress, billingSameAsShipping, selectedShippingAddressId, selectedBillingAddressId, subtotalWithTax, subtotalBeforeTax, shippingCost, tax, finalTotal, handleContinueToPayment]);
+  ), [shippingAddress, billingAddress, billingSameAsShipping, selectedShippingAddressId, selectedBillingAddressId, subtotalWithTax, subtotalBeforeTax, shippingCost, tax, finalTotal, walletBalance, useWalletBalance, walletDiscount, handleContinueToPayment]);
 
   const CartStep = () => (
     <div className="max-w-6xl mx-auto">
@@ -688,6 +733,33 @@ export default function CheckoutPage() {
                   {shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}
                 </span>
               </div>
+              
+              {/* Wallet Balance Section */}
+              {walletBalance > 0 && (
+                <div className="border-t border-border pt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useWalletBalance}
+                        onChange={(e) => setUseWalletBalance(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm font-medium">Use Wallet Balance</span>
+                    </label>
+                    <span className="text-sm text-green-600 font-semibold">
+                      ₹{walletBalance.toFixed(2)}
+                    </span>
+                  </div>
+                  {useWalletBalance && walletDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span className="pl-6">Wallet Discount</span>
+                      <span>-{formatPrice(walletDiscount, 'INR')}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <div className="border-t border-border pt-3 flex justify-between font-bold text-lg text-foreground">
                 <span>Total</span>
                 <span>{formatPrice(finalTotal, 'INR')}</span>

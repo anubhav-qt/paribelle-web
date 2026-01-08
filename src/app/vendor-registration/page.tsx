@@ -22,6 +22,7 @@ export default function VendorRegistrationPage() {
     state: '',
     country: '',
     postalCode: '',
+    referralCode: '',
     agreeToTerms: false,
   });
 
@@ -59,6 +60,7 @@ export default function VendorRegistrationPage() {
           state: formData.state,
           country: formData.country,
           postalCode: formData.postalCode,
+          referralCode: formData.referralCode || undefined,
         }),
       });
 
@@ -296,6 +298,23 @@ export default function VendorRegistrationPage() {
                       className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
                       placeholder="your@email.com"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Referral Code <span className="text-gray-500">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="referralCode"
+                      value={formData.referralCode}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="REF-XXXXXX"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Have a referral code? Get 20% discount on registration fee!
+                    </p>
                   </div>
 
                   <div>
