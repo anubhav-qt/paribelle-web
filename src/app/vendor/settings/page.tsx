@@ -59,7 +59,7 @@ export default function VendorSettingsPage() {
         pincode: vendor.pincode || '',
         shippingCost: vendor.shippingCost || '50',
         freeShippingThreshold: vendor.freeShippingThreshold || '',
-        commissionRate: vendor.commissionRate || '10',
+        commissionRate: (vendor as any).commissionRate || '10',
         logo: vendor.logo || '',
         categoryDisplayMode: (vendor as any).categoryDisplayMode || 'sidebar',
         invoiceFrequency: (vendor as any).invoiceFrequency || 'per_order',

@@ -415,8 +415,8 @@ export default function CheckoutPage() {
           name: 'Marketplace',
           description: `Order #${orderNumber}`,
           prefill: {
-            name: address.fullName,
-            contact: address.phone,
+            name: shippingAddress.fullName,
+            contact: shippingAddress.phone,
           },
           theme: {
             color: getComputedStyle(document.documentElement).getPropertyValue('--marketplace-primary').trim() || '#FF9900',

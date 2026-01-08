@@ -33,6 +33,11 @@ export function useThemeClasses() {
     // Borders
     border: isVendorStore ? 'vendor-border-primary' : 'border-border',
     borderLight: isVendorStore ? 'vendor-border-primary-30' : 'border-border',
+    borderColor: isVendorStore ? 'vendor-border-primary' : 'border-border', // alias
+    
+    // Hover states
+    hoverBg: isVendorStore ? 'hover:opacity-90' : 'hover:bg-muted',
+    linkHover: isVendorStore ? 'hover:opacity-90' : 'hover:underline',
     
     // Special classes
     heading: isVendorStore ? 'vendor-themed-heading' : 'text-foreground font-bold',

@@ -116,7 +116,7 @@ export default function MinimalSidebarHeader() {
 
             {/* Right - Actions */}
             <div className="flex items-center space-x-4">
-              <Link href="/wishlist" className={isVendorStore ? theme.combine('relative p-2 rounded-lg transition-colors', theme.hoverBg) : 'relative p-2 rounded-lg transition-colors hover:opacity-80'}>
+              <Link href="/wishlist" className={isVendorStore ? theme.combine('relative p-2 rounded-lg transition-colors hover:opacity-90') : 'relative p-2 rounded-lg transition-colors hover:opacity-80'}>
                 <Heart className={isVendorStore ? theme.combine('w-5 h-5', theme.text) : 'w-5 h-5 text-primary-foreground'} />
                 {wishlistCount > 0 && (
                   <span className={isVendorStore ? theme.combine('absolute top-0 right-0 text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-medium', theme.primaryBg, 'text-white') : 'absolute top-0 right-0 text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-medium bg-secondary text-secondary-foreground'}>
@@ -125,7 +125,7 @@ export default function MinimalSidebarHeader() {
                 )}
               </Link>
 
-              <Link href="/cart" className={isVendorStore ? theme.combine('relative p-2 rounded-lg transition-colors', theme.hoverBg) : 'relative p-2 rounded-lg transition-colors hover:opacity-80'}>
+              <Link href="/cart" className={isVendorStore ? theme.combine('relative p-2 rounded-lg transition-colors hover:opacity-90') : 'relative p-2 rounded-lg transition-colors hover:opacity-80'}>
                 <ShoppingCart className={isVendorStore ? theme.combine('w-5 h-5', theme.text) : 'w-5 h-5 text-primary-foreground'} />
                 {totalItems > 0 && (
                   <span className={isVendorStore ? theme.combine('absolute top-0 right-0 text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-medium', theme.primaryBg, 'text-white') : 'absolute top-0 right-0 text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-medium bg-secondary text-secondary-foreground'}>
@@ -138,33 +138,33 @@ export default function MinimalSidebarHeader() {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setShowDropdown(!showDropdown)}
-                    className={isVendorStore ? theme.combine('flex items-center space-x-1 p-2 rounded-lg transition-colors', theme.hoverBg) : 'flex items-center space-x-1 p-2 rounded-lg transition-colors hover:opacity-80 text-primary-foreground'}
+                    className={isVendorStore ? theme.combine('flex items-center space-x-1 p-2 rounded-lg transition-colors hover:opacity-90') : 'flex items-center space-x-1 p-2 rounded-lg transition-colors hover:opacity-80 text-primary-foreground'}
                   >
                     <User className="w-5 h-5" />
                     <span className="text-sm">{user.firstName || user.email?.split('@')[0]}</span>
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {showDropdown && (
-                    <div className={theme.combine('absolute right-0 mt-2 w-48 rounded-lg shadow-lg py-2 z-50 border', theme.bg, theme.borderColor)}>
+                    <div className={theme.combine('absolute right-0 mt-2 w-48 rounded-lg shadow-lg py-2 z-50 border', theme.bg, theme.border)}>
                       {user?.role === 'super_admin' && (
-                        <Link href="/admin" className={theme.combine('block px-4 py-2 text-sm font-medium', theme.text, theme.hoverBg)}>
+                        <Link href="/admin" className={theme.combine('block px-4 py-2 text-sm font-medium hover:opacity-90', theme.text)}>
                           Admin Dashboard
                         </Link>
                       )}
                       {user?.role === 'vendor_admin' && (
-                        <Link href="/vendor/dashboard" className={theme.combine('block px-4 py-2 text-sm font-medium', theme.text, theme.hoverBg)}>
+                        <Link href="/vendor/dashboard" className={theme.combine('block px-4 py-2 text-sm font-medium hover:opacity-90', theme.text)}>
                           Vendor Dashboard
                         </Link>
                       )}
-                      <Link href="/profile" className={theme.combine('block px-4 py-2 text-sm', theme.text, theme.hoverBg)}>
+                      <Link href="/profile" className={theme.combine('block px-4 py-2 text-sm hover:opacity-90', theme.text)}>
                         My Profile
                       </Link>
-                      <Link href="/orders" className={theme.combine('block px-4 py-2 text-sm', theme.text, theme.hoverBg)}>
+                      <Link href="/orders" className={theme.combine('block px-4 py-2 text-sm hover:opacity-90', theme.text)}>
                         My Orders
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className={theme.combine('w-full text-left block px-4 py-2 text-sm text-red-600', theme.hoverBg)}
+                        className={theme.combine('w-full text-left block px-4 py-2 text-sm text-red-600 hover:opacity-90')}
                       >
                         Logout
                       </button>
@@ -197,11 +197,11 @@ export default function MinimalSidebarHeader() {
       >
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
-          <div className={theme.combine('flex items-center justify-between p-6 border-b', theme.borderColor)}>
+          <div className={theme.combine('flex items-center justify-between p-6 border-b', theme.border)}>
             <h2 className={theme.combine('text-xl font-semibold', theme.text)}>Menu</h2>
             <button
               onClick={() => setSidebarOpen(false)}
-              className={theme.combine('p-2 rounded-lg transition-colors', theme.hoverBg)}
+              className={theme.combine('p-2 rounded-lg transition-colors hover:opacity-90')}
             >
               <X className={theme.combine('w-5 h-5', theme.text)} />
             </button>
@@ -228,7 +228,7 @@ export default function MinimalSidebarHeader() {
                       }
                     }
                   }}
-                  className={theme.combine('w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors group', theme.text, theme.hoverBg)}
+                  className={theme.combine('w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors group hover:opacity-90', theme.text)}
                 >
                   <span>{category.name}</span>
                   <ChevronRight className={theme.combine('w-4 h-4 group-hover:opacity-100', theme.textMuted)} />
@@ -238,11 +238,11 @@ export default function MinimalSidebarHeader() {
 
             {/* User Section in Sidebar */}
             {user && (
-              <div className={theme.combine('mt-8 pt-6 border-t', theme.borderColor)}>
+              <div className={theme.combine('mt-8 pt-6 border-t', theme.border)}>
                 <div className="space-y-1">
                   <Link 
                     href="/profile" 
-                    className={theme.combine('flex items-center justify-between px-4 py-3 rounded-lg transition-colors', theme.text, theme.hoverBg)}
+                    className={theme.combine('flex items-center justify-between px-4 py-3 rounded-lg transition-colors hover:opacity-90', theme.text)}
                     onClick={() => setSidebarOpen(false)}
                   >
                     <span>My Profile</span>
@@ -250,7 +250,7 @@ export default function MinimalSidebarHeader() {
                   </Link>
                   <Link 
                     href="/orders" 
-                    className={theme.combine('flex items-center justify-between px-4 py-3 rounded-lg transition-colors', theme.text, theme.hoverBg)}
+                    className={theme.combine('flex items-center justify-between px-4 py-3 rounded-lg transition-colors hover:opacity-90', theme.text)}
                     onClick={() => setSidebarOpen(false)}
                   >
                     <span>My Orders</span>
@@ -263,7 +263,7 @@ export default function MinimalSidebarHeader() {
 
           {/* Sidebar Footer */}
           {user && (
-            <div className={theme.combine('p-6 border-t', theme.borderColor)}>
+            <div className={theme.combine('p-6 border-t', theme.border)}>
               <button
                 onClick={() => {
                   handleLogout();

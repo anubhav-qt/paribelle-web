@@ -152,7 +152,7 @@ export async function initAuthFromCookie(): Promise<string | null> {
       // Fetch and store user data from API if not in cookie
       try {
         console.log('Fetching user data with cookie token...');
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         console.log('API URL:', apiUrl);
         
         const response = await fetch(`${apiUrl}/api/v1/auth/me`, {

@@ -205,7 +205,7 @@ function SearchContent() {
         component="header"
         showLocationFilter={false}
         showBookingsLink={productType !== 'booking'}
-        onSearch={(query) => {
+        onSearch={(query: string) => {
           setSearchQuery(query);
           searchProducts(query, selectedCategory, 1, false, productType);
         }}
