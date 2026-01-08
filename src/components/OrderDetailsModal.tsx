@@ -378,40 +378,19 @@ export default function OrderDetailsModal({
                                 </div>
                               )}
 
-                              {/* Admin Action Buttons for Individual Return Items */}
-                              {isAdmin && (
-                                <>
-                                  {returnItem.status === 'requested' && onApproveReturn && onRejectReturn && (
-                                    <div className="mt-3 flex gap-2">
-                                      <button
-                                        onClick={() => onApproveReturn(String(returnItem.id), returnItem.product_name, returnItem.quantity)}
-                                        className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                                      >
-                                        Approve Return
-                                      </button>
-                                      <button
-                                        onClick={() => onRejectReturn(String(returnItem.id), returnItem.product_name)}
-                                        className="flex-1 px-3 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors text-sm"
-                                      >
-                                        Reject
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  {returnItem.status === 'approved' && onConfirmReceived && (
-                                    <div className="mt-3">
-                                      <div className="bg-primary/10 border border-primary/30 p-2 rounded-lg mb-2">
-                                        <p className="text-xs text-primary">⏳ Waiting for customer to ship back</p>
-                                      </div>
-                                      <button
-                                        onClick={() => onConfirmReceived(String(returnItem.id), returnItem.product_name, returnItem.quantity)}
-                                        className="w-full px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
-                                      >
-                                        Confirm Received & Process Refund
-                                      </button>
-                                    </div>
-                                  )}
-                                </>
+                              {/* Admin Action Button - Only Confirm Received for Approved Items */}
+                              {isAdmin && returnItem.status === 'approved' && onConfirmReceived && (
+                                <div className="mt-3">
+                                  <div className="bg-primary/10 border border-primary/30 p-2 rounded-lg mb-2">
+                                    <p className="text-xs text-primary">⏳ Waiting for customer to ship back</p>
+                                  </div>
+                                  <button
+                                    onClick={() => onConfirmReceived(String(returnItem.id), returnItem.product_name, returnItem.quantity)}
+                                    className="w-full px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                                  >
+                                    Confirm Received & Process Refund
+                                  </button>
+                                </div>
                               )}
                             </div>
                           )})}

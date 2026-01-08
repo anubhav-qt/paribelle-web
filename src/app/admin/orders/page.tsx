@@ -182,17 +182,17 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handleApproveReturnRequest = async (returnId: string, productName: string, quantity: number) => {
+  const handleApproveReturnRequest = async (orderId: string) => {
     showConfirm({
-      title: 'Approve Return Request?',
-      message: `Approve return of ${quantity} unit(s) of "${productName}"? Customer will be able to ship the item back.`,
-      confirmText: 'Approve',
+      title: 'Approve All Return Requests?',
+      message: 'Approve all pending return requests for this order? Customer will be able to ship items back.',
+      confirmText: 'Approve All',
       cancelText: 'Cancel',
       confirmVariant: 'primary',
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/returns/${returnId}/approve`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/returns/approve-all`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -202,11 +202,11 @@ export default function AdminOrdersPage() {
           });
 
           if (!response.ok) {
-            throw new Error('Failed to approve return request');
+            throw new Error('Failed to approve return requests');
           }
           
           hideConfirm();
-          showToast('Return request approved! Customer can now ship the item back.', 'success');
+          showToast('All return requests approved! Customer can now ship items back.', 'success');
           
           // Refresh orders list
           await fetchOrders();
@@ -224,9 +224,9 @@ export default function AdminOrdersPage() {
             }
           }
         } catch (error) {
-          console.error('Error approving return request:', error);
+          console.error('Error approving return requests:', error);
           hideConfirm();
-          showToast('Failed to approve return request', 'error');
+          showToast('Failed to approve return requests', 'error');
         }
       }
     });
@@ -282,8 +282,8 @@ export default function AdminOrdersPage() {
     });
   };
 
-  const handleRejectReturn = async (returnId: string, productName: string) => {
-    const reason = prompt(`Please provide a reason for rejecting the return of "${productName}":`);
+  const handleRejectReturn = async (orderId: string) => {
+    const reason = prompt('Please provide a reason for rejecting all return requests:');
     
     if (!reason || !reason.trim()) {
       showToast('Rejection reason is required', 'error');
@@ -291,15 +291,15 @@ export default function AdminOrdersPage() {
     }
     
     showConfirm({
-      title: 'Reject Return Request?',
-      message: `Are you sure you want to reject this return? The customer will be notified with your reason.`,
-      confirmText: 'Reject Return',
+      title: 'Reject All Return Requests?',
+      message: 'Are you sure you want to reject all return requests for this order? The customer will be notified.',
+      confirmText: 'Reject All',
       cancelText: 'Cancel',
       confirmVariant: 'danger',
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/returns/${returnId}/reject`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/returns/reject-all`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -309,11 +309,11 @@ export default function AdminOrdersPage() {
           });
 
           if (!response.ok) {
-            throw new Error('Failed to reject return');
+            throw new Error('Failed to reject returns');
           }
           
           hideConfirm();
-          showToast('Return rejected successfully!', 'success');
+          showToast('All return requests rejected!', 'success');
           
           // Refresh orders
           await fetchOrders();
@@ -795,51 +795,29 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-2">
-                          {/* Quick actions for first pending return item */}
-                          {order.returns && order.returns.length > 0 && (() => {
-                            const firstRequestedReturn = order.returns.find((r: any) => r.status === 'requested');
-                            const firstApprovedReturn = order.returns.find((r: any) => r.status === 'approved');
-                            
-                            if (firstRequestedReturn) {
-                              return (
-                                <>
-                                  <button
-                                    onClick={() => handleApproveReturnRequest(
-                                      String(firstRequestedReturn.id), 
-                                      firstRequestedReturn.product_name, 
-                                      firstRequestedReturn.quantity
-                                    )}
-                                    className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                                  >
-                                    Approve Request
-                                  </button>
-                                  <button
-                                    onClick={() => handleRejectReturn(
-                                      String(firstRequestedReturn.id), 
-                                      firstRequestedReturn.product_name
-                                    )}
-                                    className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              );
-                            } else if (firstApprovedReturn) {
-                              return (
-                                <button
-                                  onClick={() => handleConfirmItemReceived(
-                                    String(firstApprovedReturn.id), 
-                                    firstApprovedReturn.product_name, 
-                                    firstApprovedReturn.quantity
-                                  )}
-                                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
-                                >
-                                  Confirm Received
-                                </button>
-                              );
-                            }
-                            return null;
-                          })()}
+                          {order.status === 'return_requested' ? (
+                            <>
+                              <button
+                                onClick={() => handleApproveReturnRequest(order.id)}
+                                className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                              >
+                                Approve Returns
+                              </button>
+                              <button
+                                onClick={() => handleRejectReturn(order.id)}
+                                className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                              >
+                                Reject Returns
+                              </button>
+                            </>
+                          ) : order.status === 'return_approved' ? (
+                            <button
+                              onClick={() => viewOrderDetails(order)}
+                              className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                            >
+                              Confirm Items Received
+                            </button>
+                          ) : null}
                           
                           <button
                             onClick={() => viewOrderDetails(order)}
