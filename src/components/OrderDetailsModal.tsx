@@ -247,8 +247,121 @@ export default function OrderDetailsModal({
                 {/* Collapsible Content */}
                 {isReturnSectionExpanded && (
                   <div className="p-4 space-y-4 border-t border-border">
-                    {/* Return Reason */}
-                    {order.returnReason && (
+                    {/* Return Items Details */}
+                    {order.returns && order.returns.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-foreground">Returned Items</h4>
+                        <div className="space-y-2">
+                          {order.returns.map((returnItem: any, idx: number) => (
+                            <div key={idx} className="bg-accent/30 border border-border rounded-lg p-3">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <p className="font-medium text-foreground">{returnItem.product_name || returnItem.productName}</p>
+                                  {returnItem.product_sku && (
+                                    <p className="text-xs text-muted-foreground">SKU: {returnItem.product_sku}</p>
+                                  )}
+                                </div>
+                                <span className={`px-2 py-1 rounded text-xs font-medium ml-2 ${
+                                  returnItem.status === 'requested' ? 'bg-yellow-100 text-yellow-800' :
+                                  returnItem.status === 'approved' ? 'bg-blue-100 text-blue-800' :
+                                  returnItem.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                  returnItem.status === 'received' ? 'bg-green-100 text-green-800' :
+                                  returnItem.status === 'refunded' ? 'bg-green-100 text-green-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {returnItem.status?.toUpperCase()}
+                                </span>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                                <div>
+                                  <span className="text-muted-foreground">Quantity:</span>
+                                  <span className="ml-2 font-medium text-foreground">{returnItem.quantity}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Refund:</span>
+                                  <span className="ml-2 font-medium text-foreground">
+                                    {formatCurrency ? formatCurrency(returnItem.refund_total || returnItem.refundTotal || 0) : `$${returnItem.refund_total || returnItem.refundTotal || 0}`}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="text-sm">
+                                <p className="text-muted-foreground mb-1">Reason:</p>
+                                <p className="text-foreground bg-background/50 p-2 rounded">{returnItem.reason}</p>
+                              </div>
+                              
+                              {returnItem.customer_notes && (
+                                <div className="text-sm mt-2">
+                                  <p className="text-muted-foreground mb-1">Customer Notes:</p>
+                                  <p className="text-foreground bg-background/50 p-2 rounded">{returnItem.customer_notes}</p>
+                                </div>
+                              )}
+                              
+                              {/* Return History Timeline */}
+                              <div className="mt-3 pt-3 border-t border-border">
+                                <p className="text-xs font-medium text-muted-foreground mb-2">Return Timeline:</p>
+                                <div className="space-y-1 text-xs">
+                                  {returnItem.requested_at && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                                      <span>Requested: {new Date(returnItem.requested_at).toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                  {returnItem.approved_at && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                      <span>Approved: {new Date(returnItem.approved_at).toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                  {returnItem.rejected_at && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                      <span>Rejected: {new Date(returnItem.rejected_at).toLocaleString()}</span>
+                                      {returnItem.rejection_reason && (
+                                        <span className="text-red-600">- {returnItem.rejection_reason}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {returnItem.received_at && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                      <span>Received: {new Date(returnItem.received_at).toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                  {returnItem.refunded_at && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span>
+                                      <span>Refunded: {new Date(returnItem.refunded_at).toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {isAdmin && (returnItem.admin_notes || returnItem.vendor_notes) && (
+                                <div className="mt-2 pt-2 border-t border-border text-sm">
+                                  {returnItem.admin_notes && (
+                                    <div className="mb-2">
+                                      <p className="text-xs font-medium text-muted-foreground">Admin Notes:</p>
+                                      <p className="text-foreground bg-blue-50 dark:bg-blue-900/20 p-2 rounded">{returnItem.admin_notes}</p>
+                                    </div>
+                                  )}
+                                  {returnItem.vendor_notes && (
+                                    <div>
+                                      <p className="text-xs font-medium text-muted-foreground">Vendor Notes:</p>
+                                      <p className="text-foreground bg-purple-50 dark:bg-purple-900/20 p-2 rounded">{returnItem.vendor_notes}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Legacy Return Reason (for old full-order returns) */}
+                    {order.returnReason && (!order.returns || order.returns.length === 0) && (
                       <div>
                         <h4 className="font-medium text-foreground mb-2">
                           {isAdmin ? 'Customer Return Request' : 'Your Return Request'}

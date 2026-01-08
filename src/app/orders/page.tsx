@@ -217,7 +217,10 @@ export default function OrdersPage() {
 
   // Check if order can be returned based on vendor's return policy
   const canReturnOrder = (order: Order): boolean => {
-    if (!order.deliveredAt) return false;
+    // For COD orders, allow returns once payment is marked as paid (even if status not yet "delivered")
+    const isDeliveredOrPaidCOD = order.deliveredAt || (order.paymentStatus === 'paid');
+    
+    if (!isDeliveredOrPaidCOD) return false;
     
     // Default to allowing returns if returnPolicy is not present (backward compatibility)
     const allowReturns = order.returnPolicy?.allowReturns ?? true;
@@ -225,7 +228,8 @@ export default function OrdersPage() {
     
     if (!allowReturns || returnPolicyDays === 0) return false;
     
-    const deliveryDate = new Date(order.deliveredAt);
+    // Use deliveredAt if available, otherwise use current time for COD paid orders
+    const deliveryDate = order.deliveredAt ? new Date(order.deliveredAt) : new Date();
     const currentDate = new Date();
     const daysSinceDelivery = Math.floor((currentDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
     return daysSinceDelivery <= returnPolicyDays;
@@ -237,9 +241,11 @@ export default function OrdersPage() {
     
     if (!allowReturns) return 'Vendor does not accept returns';
     if (returnPolicyDays === 0) return 'Returns not allowed';
-    if (!order.deliveredAt) return 'Order not yet delivered';
     
-    const deliveryDate = new Date(order.deliveredAt);
+    const isDeliveredOrPaidCOD = order.deliveredAt || (order.paymentStatus === 'paid');
+    if (!isDeliveredOrPaidCOD) return 'Order not yet delivered';
+    
+    const deliveryDate = order.deliveredAt ? new Date(order.deliveredAt) : new Date();
     const currentDate = new Date();
     const daysSinceDelivery = Math.floor((currentDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
     const remainingDays = returnPolicyDays - daysSinceDelivery;
@@ -605,6 +611,7 @@ export default function OrdersPage() {
                         <h3 className="text-lg font-semibold text-foreground">
                           Order #{order.orderNumber || order.id.slice(0, 8)}
                         </h3>
+                        {/* Current Order Status */}
                         <span
                           className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${getStatusColor(
                             order.status
@@ -614,7 +621,7 @@ export default function OrdersPage() {
                           {order.status}
                         </span>
                         
-                        {/* Return Status Badges */}
+                        {/* Additional Return Status Indicators (if applicable) */}
                         {order.returnApprovedAt && (
                           <span className="px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
                             <CheckCircle className="w-4 h-4" />
@@ -764,7 +771,21 @@ export default function OrdersPage() {
                         Return Order
                       </button>
                     )}
-                    {['pending', 'confirmed', 'processing', 'shipped'].includes(order.status.toLowerCase()) && (
+                    {/* Show Return button for paid COD orders even if status not yet "delivered" */}
+                    {order.status.toLowerCase() !== 'delivered' && order.paymentStatus === 'paid' && canReturnOrder(order) && (
+                      <button 
+                        onClick={() => {
+                          setOrderToAction(order);
+                          setShowReturnConfirmation(true);
+                        }}
+                        className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium"
+                        title={getReturnPolicyMessage(order)}
+                      >
+                        Return Order
+                      </button>
+                    )}
+                    {/* Hide Cancel button if order is paid (COD payment received) */}
+                    {['pending', 'confirmed', 'processing', 'shipped'].includes(order.status.toLowerCase()) && order.paymentStatus !== 'paid' && (
                       <button 
                         onClick={() => {
                           setOrderToAction(order);

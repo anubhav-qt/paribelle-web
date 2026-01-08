@@ -470,53 +470,99 @@ export default function CheckoutPage() {
     }
   };
 
-  const StepIndicator = () => (
-    <div className="mb-8">
-      <div className="flex items-center justify-between max-w-3xl mx-auto">
-        {[
-          { step: 'cart', label: 'Cart', icon: ShoppingBag },
-          { step: 'address', label: 'Address', icon: MapPin },
-          { step: 'payment', label: 'Payment', icon: CreditCard },
-          { step: 'confirmation', label: 'Confirmation', icon: CheckCircle },
-        ].map((s, index) => {
-          const Icon = s.icon;
-          const isActive = currentStep === s.step;
-          const isCompleted = 
-            (s.step === 'cart' && ['address', 'payment', 'confirmation'].includes(currentStep)) ||
-            (s.step === 'address' && ['payment', 'confirmation'].includes(currentStep)) ||
-            (s.step === 'payment' && currentStep === 'confirmation');
-          
-          return (
-            <div key={s.step} className="flex items-center flex-1">
-              <div className="flex flex-col items-center flex-1">
-                <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : isCompleted
-                      ? 'bg-green-600 text-white'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="w-6 h-6" />
+  const StepIndicator = () => {
+    const canNavigateToStep = (step: CheckoutStep): boolean => {
+      // Can always go back to cart
+      if (step === 'cart') return true;
+      
+      // Can go to address if cart has items
+      if (step === 'address') return items.length > 0;
+      
+      // Can go to payment if address is filled
+      if (step === 'payment') {
+        return items.length > 0 && Boolean(
+          shippingAddress.fullName && 
+          shippingAddress.phone && 
+          shippingAddress.addressLine1 && 
+          shippingAddress.city
+        );
+      }
+      
+      // Cannot manually navigate to confirmation (only through payment)
+      if (step === 'confirmation') return false;
+      
+      return false;
+    };
+
+    const handleStepClick = (step: CheckoutStep) => {
+      if (canNavigateToStep(step) && currentStep !== step) {
+        setCurrentStep(step);
+      }
+    };
+
+    return (
+      <div className="mb-8">
+        <div className="flex items-center justify-between max-w-3xl mx-auto">
+          {[
+            { step: 'cart', label: 'Cart', icon: ShoppingBag },
+            { step: 'address', label: 'Address', icon: MapPin },
+            { step: 'payment', label: 'Payment', icon: CreditCard },
+            { step: 'confirmation', label: 'Confirmation', icon: CheckCircle },
+          ].map((s, index) => {
+            const Icon = s.icon;
+            const isActive = currentStep === s.step;
+            const isCompleted = 
+              (s.step === 'cart' && ['address', 'payment', 'confirmation'].includes(currentStep)) ||
+              (s.step === 'address' && ['payment', 'confirmation'].includes(currentStep)) ||
+              (s.step === 'payment' && currentStep === 'confirmation');
+            const isClickable = canNavigateToStep(s.step as CheckoutStep);
+            
+            return (
+              <div key={s.step} className="flex items-center flex-1">
+                <div className="flex flex-col items-center flex-1">
+                  <button
+                    onClick={() => handleStepClick(s.step as CheckoutStep)}
+                    disabled={!isClickable}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : isCompleted
+                        ? 'bg-green-600 text-white'
+                        : 'bg-muted text-muted-foreground'
+                    } ${
+                      isClickable && !isActive 
+                        ? 'cursor-pointer hover:opacity-80 hover:scale-105' 
+                        : isClickable && isActive
+                        ? 'cursor-default'
+                        : 'cursor-not-allowed opacity-50'
+                    }`}
+                    title={isClickable ? `Go to ${s.label}` : `Complete previous steps to access ${s.label}`}
+                  >
+                    <Icon className="w-6 h-6" />
+                  </button>
+                  <span 
+                    className={`text-sm font-medium ${
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    } ${isClickable && !isActive ? 'cursor-pointer' : ''}`}
+                    onClick={() => isClickable && handleStepClick(s.step as CheckoutStep)}
+                  >
+                    {s.label}
+                  </span>
                 </div>
-                <span className={`text-sm font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
-                  {s.label}
-                </span>
+                {index < 3 && (
+                  <ChevronRight
+                    className={`w-6 h-6 mx-2 ${
+                      isCompleted ? 'text-green-600' : 'text-muted-foreground'
+                    }`}
+                  />
+                )}
               </div>
-              {index < 3 && (
-                <ChevronRight
-                  className={`w-6 h-6 mx-2 ${
-                    isCompleted ? 'text-green-600' : 'text-muted-foreground'
-                  }`}
-                />
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const AddressStepContent = useMemo(() => (
     <div className="max-w-4xl mx-auto">

@@ -594,7 +594,7 @@ export default function VendorOrdersPage() {
               <div className="p-6 space-y-6">
                 {/* Status */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Status</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">Order Status</h3>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                     selectedOrder.status === 'completed' ? 'bg-green-100 text-green-800' :
                     selectedOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -603,6 +603,20 @@ export default function VendorOrdersPage() {
                   }`}>
                     {selectedOrder.status}
                   </span>
+                </div>
+
+                {/* Payment Status */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Payment Status</h3>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium inline-block ${
+                    (selectedOrder.paymentStatus || 'pending') === 'paid' ? 'bg-green-100 text-green-800' :
+                    (selectedOrder.paymentStatus || 'pending') === 'refunded' ? 'bg-purple-100 text-purple-800' :
+                    (selectedOrder.paymentStatus || 'pending') === 'failed' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {(selectedOrder.paymentStatus || 'pending').charAt(0).toUpperCase() + (selectedOrder.paymentStatus || 'pending').slice(1)}
+                  </span>
+                  <p className="text-sm text-gray-500 mt-1">Payment status is managed by the marketplace</p>
                 </div>
 
                 {/* Customer Info */}

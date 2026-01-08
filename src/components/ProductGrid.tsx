@@ -172,6 +172,25 @@ export default function ProductGrid({
             )}
           </div>
           
+          {/* Stock Status */}
+          {product.productType === 'physical' && product.stockQuantity !== undefined && (
+            <div className="mt-2">
+              {product.stockQuantity === 0 ? (
+                <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                  Out of Stock
+                </span>
+              ) : product.stockQuantity <= 5 ? (
+                <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
+                  Only {product.stockQuantity} left!
+                </span>
+              ) : (
+                <span className="text-xs text-green-600 dark:text-green-400">
+                  {product.stockQuantity} in stock
+                </span>
+              )}
+            </div>
+          )}
+          
           {/* Variation indicator */}
           {product.isParent && product.variations && product.variations.length > 0 && (
             <div className="mt-2 text-xs text-muted-foreground">

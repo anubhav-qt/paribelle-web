@@ -157,6 +157,30 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const handlePaymentStatusChange = async (orderId: string, newPaymentStatus: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/payment-status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ paymentStatus: newPaymentStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update payment status');
+      }
+
+      showToast('Payment status updated successfully', 'success');
+      fetchOrders();
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      showToast('Failed to update payment status', 'error');
+    }
+  };
+
   const handleApproveReturnRequest = async (orderId: string) => {
     showConfirm({
       title: 'Approve Return Request?',
@@ -684,16 +708,27 @@ export default function AdminOrdersPage() {
                         </select>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium inline-block ${
+                        <select
+                          value={order.paymentStatus}
+                          onChange={(e) => handlePaymentStatusChange(order.id, e.target.value)}
+                          disabled={order.status === 'refunded' || order.paymentStatus === 'paid'}
+                          title={order.paymentStatus === 'paid' ? 'Online payments cannot be changed' : ''}
+                          className={`px-3 py-1 rounded-full text-xs font-medium border-0 ${
                             order.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
                             order.paymentStatus === 'refunded' ? 'bg-purple-100 text-purple-800' :
                             order.paymentStatus === 'failed' ? 'bg-red-100 text-red-800' :
                             'bg-yellow-100 text-yellow-800'
+                          } ${
+                            order.status === 'refunded' || order.paymentStatus === 'paid'
+                              ? 'cursor-not-allowed opacity-75' 
+                              : 'cursor-pointer'
                           }`}
                         >
-                          {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
-                        </span>
+                          <option value="pending">Pending (COD)</option>
+                          <option value="paid">Paid</option>
+                          <option value="failed">Failed</option>
+                          <option value="refunded">Refunded</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4">
                         {(() => {
