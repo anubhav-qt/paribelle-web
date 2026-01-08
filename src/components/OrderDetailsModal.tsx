@@ -106,9 +106,9 @@ interface OrderDetailsModalProps {
   isAdmin: boolean;
   returnDetails?: ReturnDetails | null;
   onClose: () => void;
-  onApproveReturn?: (orderId: string) => void;
-  onRejectReturn?: (orderId: string) => void;
-  onConfirmReceived?: (orderId: string) => void;
+  onApproveReturn?: (returnId: string, productName: string, quantity: number) => void;
+  onRejectReturn?: (returnId: string, productName: string) => void;
+  onConfirmReceived?: (returnId: string, productName: string, quantity: number) => void;
   onPrintInvoice: (orderId: string) => void;
   formatCurrency?: (amount: number) => string;
   formatDate?: (dateString: string) => string;
@@ -266,7 +266,16 @@ export default function OrderDetailsModal({
                       <div className="space-y-3">
                         <h4 className="font-medium text-foreground">Returned Items</h4>
                         <div className="space-y-2">
-                          {order.returns.map((returnItem: any, idx: number) => (
+                          {order.returns.map((returnItem: any, idx: number) => {
+                            console.log('Return Item:', {
+                              id: returnItem.id,
+                              status: returnItem.status,
+                              isAdmin,
+                              hasApproveHandler: !!onApproveReturn,
+                              hasRejectHandler: !!onRejectReturn,
+                              hasConfirmHandler: !!onConfirmReceived
+                            });
+                            return (
                             <div key={idx} className="bg-accent/30 border border-border rounded-lg p-3">
                               <div className="flex justify-between items-start mb-2">
                                 <div className="flex-1">
@@ -368,13 +377,49 @@ export default function OrderDetailsModal({
                                   )}
                                 </div>
                               )}
+
+                              {/* Admin Action Buttons for Individual Return Items */}
+                              {isAdmin && (
+                                <>
+                                  {returnItem.status === 'requested' && onApproveReturn && onRejectReturn && (
+                                    <div className="mt-3 flex gap-2">
+                                      <button
+                                        onClick={() => onApproveReturn(String(returnItem.id), returnItem.product_name, returnItem.quantity)}
+                                        className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                                      >
+                                        Approve Return
+                                      </button>
+                                      <button
+                                        onClick={() => onRejectReturn(String(returnItem.id), returnItem.product_name)}
+                                        className="flex-1 px-3 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors text-sm"
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {returnItem.status === 'approved' && onConfirmReceived && (
+                                    <div className="mt-3">
+                                      <div className="bg-primary/10 border border-primary/30 p-2 rounded-lg mb-2">
+                                        <p className="text-xs text-primary">⏳ Waiting for customer to ship back</p>
+                                      </div>
+                                      <button
+                                        onClick={() => onConfirmReceived(String(returnItem.id), returnItem.product_name, returnItem.quantity)}
+                                        className="w-full px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                                      >
+                                        Confirm Received & Process Refund
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              )}
                             </div>
-                          ))}
+                          )})}
                         </div>
                       </div>
                     )}
                     
-                    {/* Legacy Return Reason (for old full-order returns) */}
+                    {/* Legacy Return Reason (for old full-order returns without individual items) */}
                     {order.returnReason && (!order.returns || order.returns.length === 0) && (
                       <div>
                         <h4 className="font-medium text-foreground mb-2">
@@ -384,38 +429,8 @@ export default function OrderDetailsModal({
                           <p className="text-sm text-foreground">{order.returnReason}</p>
                         </div>
                         
-                        {/* Admin Actions for Return Request */}
-                        {isAdmin && order.status === 'return_requested' && onApproveReturn && onRejectReturn && (
-                          <div className="mt-3 flex gap-2">
-                            <button
-                              onClick={() => onApproveReturn(order.id)}
-                              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => onRejectReturn(order.id)}
-                              className="flex-1 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
-                            >
-                              Reject Return
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Admin Actions for Approved Return */}
-                        {isAdmin && order.status === 'return_approved' && onConfirmReceived && (
-                          <div className="mt-3">
-                            <div className="bg-primary/10 border border-primary/30 p-3 rounded-lg mb-3">
-                              <p className="text-sm text-primary">⏳ Waiting for customer to ship the item back</p>
-                            </div>
-                            <button
-                              onClick={() => onConfirmReceived(order.id)}
-                              className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                            >
-                              Confirm Item Received & Process Refund
-                            </button>
-                          </div>
-                        )}
+                        {/* Note: Legacy full-order returns are no longer supported via admin panel */}
+                        {/* Admin actions are now handled per individual return item above */}
 
                         {/* Customer Status Message */}
                         {!isAdmin && order.status === 'return_requested' && (

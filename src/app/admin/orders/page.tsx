@@ -49,6 +49,7 @@ interface Order {
     email: string;
     name: string;
   };
+  returns?: any[];
   items?: Array<{
     id: string;
     productId: string;
@@ -181,17 +182,17 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handleApproveReturnRequest = async (orderId: string) => {
+  const handleApproveReturnRequest = async (returnId: string, productName: string, quantity: number) => {
     showConfirm({
       title: 'Approve Return Request?',
-      message: 'Customer will be notified to ship the item back. Refund will be processed after you receive and verify the item.',
+      message: `Approve return of ${quantity} unit(s) of "${productName}"? Customer will be able to ship the item back.`,
       confirmText: 'Approve',
       cancelText: 'Cancel',
       confirmVariant: 'primary',
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/approve`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/returns/${returnId}/approve`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -203,17 +204,25 @@ export default function AdminOrdersPage() {
           if (!response.ok) {
             throw new Error('Failed to approve return request');
           }
-
-          const updatedOrder = await response.json();
           
           hideConfirm();
           showToast('Return request approved! Customer can now ship the item back.', 'success');
           
-          // Update the orders list
+          // Refresh orders list
           await fetchOrders();
           
-          // Update the selected order with the new data
-          setSelectedOrder(updatedOrder);
+          // Refresh selected order details
+          if (selectedOrder) {
+            const token = localStorage.getItem('token');
+            const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/admin`, {
+              headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (orderResponse.ok) {
+              const allOrders = await orderResponse.json();
+              const updated = allOrders.find((o: any) => o.id === selectedOrder.id);
+              if (updated) setSelectedOrder(updated);
+            }
+          }
         } catch (error) {
           console.error('Error approving return request:', error);
           hideConfirm();
@@ -223,23 +232,23 @@ export default function AdminOrdersPage() {
     });
   };
 
-  const handleConfirmItemReceived = async (orderId: string) => {
+  const handleConfirmItemReceived = async (returnId: string, productName: string, quantity: number) => {
     showConfirm({
       title: 'Confirm Item Received?',
-      message: 'Have you received and verified the returned item? This will process the refund and restock inventory.',
+      message: `Have you received and verified ${quantity} unit(s) of "${productName}"? This will process the refund and restock inventory.`,
       confirmText: 'Confirm & Refund',
       cancelText: 'Cancel',
       confirmVariant: 'success',
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/confirm-received`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/returns/${returnId}/received`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
             },
-            body: JSON.stringify({}),
+            body: JSON.stringify({ refundNow: true }),
           });
 
           if (!response.ok) {
@@ -248,8 +257,22 @@ export default function AdminOrdersPage() {
 
           hideConfirm();
           showToast('Item received confirmed! Refund processed and inventory restocked.', 'success');
-          fetchOrders();
-          setShowDetailsModal(false);
+          
+          // Refresh orders
+          await fetchOrders();
+          
+          // Refresh selected order details
+          if (selectedOrder) {
+            const token = localStorage.getItem('token');
+            const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/admin`, {
+              headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (orderResponse.ok) {
+              const allOrders = await orderResponse.json();
+              const updated = allOrders.find((o: any) => o.id === selectedOrder.id);
+              if (updated) setSelectedOrder(updated);
+            }
+          }
         } catch (error) {
           console.error('Error confirming item received:', error);
           hideConfirm();
@@ -259,8 +282,8 @@ export default function AdminOrdersPage() {
     });
   };
 
-  const handleRejectReturn = async (orderId: string) => {
-    const reason = prompt('Please provide a reason for rejecting this return request:');
+  const handleRejectReturn = async (returnId: string, productName: string) => {
+    const reason = prompt(`Please provide a reason for rejecting the return of "${productName}":`);
     
     if (!reason || !reason.trim()) {
       showToast('Rejection reason is required', 'error');
@@ -276,7 +299,7 @@ export default function AdminOrdersPage() {
       onConfirm: async () => {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/${orderId}/return/reject`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/returns/${returnId}/reject`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -288,17 +311,25 @@ export default function AdminOrdersPage() {
           if (!response.ok) {
             throw new Error('Failed to reject return');
           }
-
-          const updatedOrder = await response.json();
           
           hideConfirm();
           showToast('Return rejected successfully!', 'success');
           
-          // Update the orders list
+          // Refresh orders
           await fetchOrders();
           
-          // Update the selected order with the new data to show rejection info
-          setSelectedOrder(updatedOrder);
+          // Refresh selected order details
+          if (selectedOrder) {
+            const token = localStorage.getItem('token');
+            const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/admin`, {
+              headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (orderResponse.ok) {
+              const allOrders = await orderResponse.json();
+              const updated = allOrders.find((o: any) => o.id === selectedOrder.id);
+              if (updated) setSelectedOrder(updated);
+            }
+          }
         } catch (error) {
           console.error('Error rejecting return:', error);
           hideConfirm();
@@ -764,29 +795,51 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-2">
-                          {order.status === 'return_requested' ? (
-                            <>
-                              <button
-                                onClick={() => handleApproveReturnRequest(order.id)}
-                                className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                              >
-                                Approve Request
-                              </button>
-                              <button
-                                onClick={() => handleRejectReturn(order.id)}
-                                className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                              >
-                                Reject Return
-                              </button>
-                            </>
-                          ) : order.status === 'return_approved' ? (
-                            <button
-                              onClick={() => handleConfirmItemReceived(order.id)}
-                              className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
-                            >
-                              Confirm Received
-                            </button>
-                          ) : null}
+                          {/* Quick actions for first pending return item */}
+                          {order.returns && order.returns.length > 0 && (() => {
+                            const firstRequestedReturn = order.returns.find((r: any) => r.status === 'requested');
+                            const firstApprovedReturn = order.returns.find((r: any) => r.status === 'approved');
+                            
+                            if (firstRequestedReturn) {
+                              return (
+                                <>
+                                  <button
+                                    onClick={() => handleApproveReturnRequest(
+                                      String(firstRequestedReturn.id), 
+                                      firstRequestedReturn.product_name, 
+                                      firstRequestedReturn.quantity
+                                    )}
+                                    className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                                  >
+                                    Approve Request
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectReturn(
+                                      String(firstRequestedReturn.id), 
+                                      firstRequestedReturn.product_name
+                                    )}
+                                    className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              );
+                            } else if (firstApprovedReturn) {
+                              return (
+                                <button
+                                  onClick={() => handleConfirmItemReceived(
+                                    String(firstApprovedReturn.id), 
+                                    firstApprovedReturn.product_name, 
+                                    firstApprovedReturn.quantity
+                                  )}
+                                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
+                                >
+                                  Confirm Received
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
                           
                           <button
                             onClick={() => viewOrderDetails(order)}
