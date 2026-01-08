@@ -139,11 +139,11 @@ export default function OrderDetailsModal({
   const dateFormatter = formatDate || defaultFormatDate;
 
   // Determine if return section should be displayed
+  // Only show if there are actual returns or return requests for this order
   const showReturnSection = 
-    (((order.status === 'return_requested' || order.status === 'return_approved' || order.status === 'returned') && order.returnReason) || 
-    (order.returnRejectedAt && order.returnRejectionReason) ||
-    (order.returnReason && order.status === 'delivered') ||
-    (order.returns && order.returns.length > 0));
+    (order.returns && order.returns.length > 0) ||
+    (order.returnReason) ||
+    (order.returnRejectedAt && order.returnRejectionReason);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

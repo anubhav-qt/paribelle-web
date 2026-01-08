@@ -218,10 +218,13 @@ export default function OrdersPage() {
 
   // Check if order can be returned based on vendor's return policy
   const canReturnOrder = (order: Order): boolean => {
-    // For COD orders, allow returns once payment is marked as paid (even if status not yet "delivered")
-    const isDeliveredOrPaidCOD = order.deliveredAt || (order.paymentStatus === 'paid');
+    // Only allow returns for delivered orders
+    const isDelivered = order.status.toLowerCase() === 'delivered';
     
-    if (!isDeliveredOrPaidCOD) return false;
+    if (!isDelivered) return false;
+    
+    // Ensure deliveredAt date exists
+    if (!order.deliveredAt) return false;
     
     // Default to allowing returns if returnPolicy is not present (backward compatibility)
     const allowReturns = order.returnPolicy?.allowReturns ?? true;
@@ -229,8 +232,8 @@ export default function OrdersPage() {
     
     if (!allowReturns || returnPolicyDays === 0) return false;
     
-    // Use deliveredAt if available, otherwise use current time for COD paid orders
-    const deliveryDate = order.deliveredAt ? new Date(order.deliveredAt) : new Date();
+    // Check if within return window
+    const deliveryDate = new Date(order.deliveredAt);
     const currentDate = new Date();
     const daysSinceDelivery = Math.floor((currentDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
     return daysSinceDelivery <= returnPolicyDays;
@@ -754,26 +757,7 @@ export default function OrdersPage() {
                         Download Invoice
                       </button>
                     )}
-                    {order.status.toLowerCase() === 'delivered' && (
-                      <button 
-                        onClick={() => {
-                          if (!canReturnOrder(order)) return;
-                          setOrderToAction(order);
-                          setShowReturnConfirmation(true);
-                        }}
-                        disabled={!canReturnOrder(order)}
-                        className={`px-4 py-2 border rounded-lg transition-colors font-medium ${
-                          canReturnOrder(order)
-                            ? 'border-border text-foreground hover:bg-muted cursor-pointer'
-                            : 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
-                        }`}
-                        title={getReturnPolicyMessage(order)}
-                      >
-                        Return Order
-                      </button>
-                    )}
-                    {/* Show Return button for paid COD orders even if status not yet "delivered" */}
-                    {order.status.toLowerCase() !== 'delivered' && order.paymentStatus === 'paid' && canReturnOrder(order) && (
+                    {order.status.toLowerCase() === 'delivered' && canReturnOrder(order) && (
                       <button 
                         onClick={() => {
                           setOrderToAction(order);
@@ -785,8 +769,9 @@ export default function OrdersPage() {
                         Return Order
                       </button>
                     )}
-                    {/* Hide Cancel button if order is paid (COD payment received) */}
-                    {['pending', 'confirmed', 'processing', 'shipped'].includes(order.status.toLowerCase()) && order.paymentStatus !== 'paid' && (
+                    {/* Cancel order only allowed before shipping (allows cancellation even if paid - refund will be processed) */}
+                    {['pending', 'confirmed', 'processing'].includes(order.status.toLowerCase()) && 
+                     order.paymentStatus !== 'refunded' && (
                       <button 
                         onClick={() => {
                           setOrderToAction(order);
