@@ -6,6 +6,20 @@ import { Printer } from 'lucide-react';
 import { formatPrice } from '@/lib/currency';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 
+// Format return reason from key to human-readable label
+const formatReturnReason = (reason: string): string => {
+  const reasons: Record<string, string> = {
+    'defective': 'Defective or damaged item',
+    'wrong_item': 'Wrong item received',
+    'not_as_described': 'Item not as described',
+    'size_fit': 'Size/fit issue',
+    'quality': 'Poor quality',
+    'changed_mind': 'Changed my mind',
+    'other': 'Other reason'
+  };
+  return reasons[reason] || reason;
+};
+
 interface OrderItem {
   id: string;
   productId: string;
@@ -288,7 +302,7 @@ export default function OrderDetailsModal({
                               
                               <div className="text-sm">
                                 <p className="text-muted-foreground mb-1">Reason:</p>
-                                <p className="text-foreground bg-background/50 p-2 rounded">{returnItem.reason}</p>
+                                <p className="text-foreground bg-background/50 p-2 rounded">{formatReturnReason(returnItem.reason)}</p>
                               </div>
                               
                               {returnItem.customer_notes && (

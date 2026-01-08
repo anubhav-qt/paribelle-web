@@ -3,6 +3,20 @@
 import { Package, Clock, CheckCircle, XCircle, AlertCircle, DollarSign } from 'lucide-react';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 
+// Format return reason from key to human-readable label
+const formatReturnReason = (reason: string): string => {
+  const reasons: Record<string, string> = {
+    'defective': 'Defective or damaged item',
+    'wrong_item': 'Wrong item received',
+    'not_as_described': 'Item not as described',
+    'size_fit': 'Size/fit issue',
+    'quality': 'Poor quality',
+    'changed_mind': 'Changed my mind',
+    'other': 'Other reason'
+  };
+  return reasons[reason] || reason;
+};
+
 interface ReturnItem {
   id: string;
   returnNumber: string;
@@ -137,7 +151,7 @@ export default function OrderReturnsDisplay({ returns }: OrderReturnsDisplayProp
               'bg-gray-50 dark:bg-gray-900/50'
             )}>
               <span className={theme.textMuted}>Reason: </span>
-              <span className={theme.text}>{returnItem.reason}</span>
+              <span className={theme.text}>{formatReturnReason(returnItem.reason)}</span>
             </div>
 
             {/* Images */}
