@@ -12,6 +12,7 @@ import LocationFilter from '@/components/LocationFilter';
 import { useSettings } from '@/hooks/useSettings';
 import SearchWithSuggestions from '@/components/SearchWithSuggestions';
 import { initAuthFromCookie, removeAuthCookie } from '@/lib/cross-domain-auth';
+import { clearAuth } from '@/lib/auth';
 
 interface UnifiedHeaderProps {
   showLocationFilter?: boolean;
