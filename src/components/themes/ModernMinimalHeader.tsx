@@ -60,8 +60,7 @@ export default function ModernMinimalHeader() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuth(); // Use centralized auth clearing
     setUser(null);
     setShowDropdown(false);
     router.push('/login');

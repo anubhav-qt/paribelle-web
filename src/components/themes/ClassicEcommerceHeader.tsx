@@ -8,6 +8,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
+import { clearAuth } from '@/lib/auth';
 import SearchWithSuggestions from '@/components/SearchWithSuggestions';
 
 export default function ClassicEcommerceHeader() {
@@ -52,8 +53,7 @@ export default function ClassicEcommerceHeader() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuth(); // Use centralized auth clearing
     setUser(null);
     setShowDropdown(false);
     router.push('/login');

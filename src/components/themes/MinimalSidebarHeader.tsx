@@ -8,6 +8,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useCategories } from '@/hooks/useCategories';
+import { clearAuth } from '@/lib/auth';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import SearchWithSuggestions from '@/components/SearchWithSuggestions';
 
@@ -63,8 +64,7 @@ export default function MinimalSidebarHeader() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuth(); // Use centralized auth clearing
     setUser(null);
     setShowDropdown(false);
     router.push('/login');

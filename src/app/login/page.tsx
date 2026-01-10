@@ -9,6 +9,8 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get('returnUrl');
+  const urlError = searchParams.get('error');
+  const urlMessage = searchParams.get('message');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -17,8 +19,19 @@ function LoginContent() {
     password: '',
   });
 
-  // Load saved credentials on mount
+  // Load saved credentials on mount and handle URL errors
   useEffect(() => {
+    // Display error message from URL if present
+    if (urlError && urlMessage) {
+      if (urlError === 'email_not_verified') {
+        setError('⚠️ ' + decodeURIComponent(urlMessage));
+      } else if (urlError === 'session_expired') {
+        setError('🔒 ' + decodeURIComponent(urlMessage));
+      } else {
+        setError(decodeURIComponent(urlMessage));
+      }
+    }
+    
     // Check if user is already logged in
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
@@ -56,7 +69,7 @@ function LoginContent() {
       setFormData({ email: savedEmail, password: savedPassword });
       setRememberMe(true);
     }
-  }, [returnUrl, router]);
+  }, [returnUrl, router, urlError, urlMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -167,8 +167,7 @@ export default function UnifiedHeader({
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuth(); // Use centralized auth clearing
     removeAuthCookie('token');
     removeAuthCookie('user');
     setUser(null);
