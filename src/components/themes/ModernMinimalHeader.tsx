@@ -9,6 +9,7 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import SearchWithSuggestions from '@/components/SearchWithSuggestions';
+import { clearAuth } from '@/lib/auth';
 
 export default function ModernMinimalHeader() {
   const router = useRouter();

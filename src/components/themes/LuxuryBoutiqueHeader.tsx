@@ -10,6 +10,7 @@ import { useVendorContext } from '@/contexts/VendorContext';
 import { useCategories } from '@/hooks/useCategories';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import SearchWithSuggestions from '@/components/SearchWithSuggestions';
+import { clearAuth } from '@/lib/auth';
 
 export default function LuxuryBoutiqueHeader() {
   const router = useRouter();
