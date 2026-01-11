@@ -31,11 +31,6 @@ export default function VendorDashboardPage() {
   const adminUser = data?.adminUser || null;
   const error = queryError?.message || '';
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    router.push('/vendor/register');
-  };
-
   const getStatusBadge = (status: string) => {
     const styles = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -81,38 +76,18 @@ export default function VendorDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* <ThemeRenderer component="header" /> */}
+      <ThemeRenderer component="header" />
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
           {/* <CategorySidebar /> */}
           <div className="flex-1">
       
-      {/* Dashboard Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Home
-              </Link>
-              <div className="h-6 w-px bg-gray-300"></div>
-              <h1 className="text-2xl font-bold text-gray-900">Vendor Dashboard</h1>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              Logout
-            </button>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <div className="flex items-center gap-4 mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">Vendor Dashboard</h1>
           </div>
         </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {vendor?.status === 'pending' && (
           <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
             <div className="flex">

@@ -55,6 +55,7 @@ export default function BoldCreativeHeader() {
 
   const handleLogout = () => {
     clearAuth(); // Use centralized auth clearing
+    localStorage.removeItem('marketplace_cart'); // Clear cart from local storage
     setUser(null);
     setShowDropdown(false);
     router.push('/login');

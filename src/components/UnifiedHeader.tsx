@@ -169,6 +169,7 @@ export default function UnifiedHeader({
 
   const handleLogout = () => {
     clearAuth(); // Use centralized auth clearing
+    localStorage.removeItem('marketplace_cart'); // Clear cart from local storage
     removeAuthCookie('token');
     removeAuthCookie('user');
     setUser(null);
