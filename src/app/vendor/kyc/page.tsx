@@ -91,11 +91,28 @@ export default function VendorKYCPage() {
   const fetchKYCStatus = async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        console.error('No auth token found');
+        alert('Please login to access this page');
+        router.push('/login');
+        return;
+      }
+      
       const response = await fetch(`${API_URL}/api/v1/vendors/kyc/status`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${token}`,
         },
       });
+
+      if (response.status === 401) {
+        console.error('Authentication failed - token expired or invalid');
+        alert('Your session has expired. Please login again.');
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
+      }
 
       if (response.ok) {
         const result = await response.json();
@@ -139,9 +156,26 @@ export default function VendorKYCPage() {
         }
 
         setDocuments(initialDocs);
+      } else {
+        // Initialize empty documents if API fails
+        const initialDocs = DOCUMENT_TYPES.map(docType => ({
+          ...docType,
+          file: null,
+          url: null,
+          documentNumber: '',
+        }));
+        setDocuments(initialDocs);
       }
     } catch (error) {
       console.error('Error fetching KYC status:', error);
+      // Initialize empty documents on error
+      const initialDocs = DOCUMENT_TYPES.map(docType => ({
+        ...docType,
+        file: null,
+        url: null,
+        documentNumber: '',
+      }));
+      setDocuments(initialDocs);
     } finally {
       setLoading(false);
     }

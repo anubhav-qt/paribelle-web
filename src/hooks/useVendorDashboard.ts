@@ -126,7 +126,8 @@ export function useVendorDashboard() {
   return useQuery<VendorDashboardData>({
     queryKey: ['vendor-dashboard'],
     queryFn: fetchVendorDashboard,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 0, // Always fetch fresh data - no caching
+    refetchOnMount: 'always', // Always refetch when component mounts
     retry: false,
     // Redirect on auth error
     throwOnError: (error: any) => {
