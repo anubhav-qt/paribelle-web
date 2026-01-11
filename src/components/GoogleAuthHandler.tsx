@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { setAuthCookie } from '@/lib/cross-domain-auth';
 
 export default function GoogleAuthHandler() {
   const router = useRouter();
@@ -21,13 +22,14 @@ export default function GoogleAuthHandler() {
           const user = JSON.parse(decodeURIComponent(userStr));
           localStorage.setItem('user', JSON.stringify(user));
           
-          // Set cookie for middleware and cross-subdomain auth
-          const domain = window.location.hostname.includes('localhost') 
-            ? '.localhost' 
-            : window.location.hostname;
-          document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; domain=${domain}`;
+          // Set cookies using secure utility
+          setAuthCookie('token', token);
+          setAuthCookie('user', userStr, 7 * 24 * 60 * 60);
           
-          console.log('Google OAuth successful, token and user stored');
+          // Dispatch event to notify components
+          window.dispatchEvent(new CustomEvent('userChanged'));
+          
+          console.log('Google OAuth successful, token and user stored in localStorage and cookies');
         }
         
         // Clean up URL by removing query parameters

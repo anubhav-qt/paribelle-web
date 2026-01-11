@@ -74,6 +74,8 @@ export async function GET(request: NextRequest) {
 
     // Regular login flow
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    console.log('[Callback] Calling backend google-login at:', `${backendUrl}/api/v1/auth/google-login`);
+    
     const authResponse = await fetch(`${backendUrl}/api/v1/auth/google-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -86,16 +88,25 @@ export async function GET(request: NextRequest) {
     });
 
     if (!authResponse.ok) {
-      return NextResponse.redirect(new URL('/login?error=auth_failed', request.url));
+      const errorText = await authResponse.text();
+      console.error('[Callback] Backend auth failed:', authResponse.status, errorText);
+      return NextResponse.redirect(new URL('/login?error=auth_failed&message=' + encodeURIComponent(`Backend authentication failed: ${errorText}`), request.url));
     }
 
     const authData = await authResponse.json();
-    const token = authData.token || authData.access_token;
+    console.log('Backend auth response:', { hasToken: !!authData.token, hasUser: !!authData.user });
+    
+    const token = authData.token;
     const user = authData.user;
 
     if (!token) {
       console.error('No token in auth response:', authData);
-      return NextResponse.redirect(new URL('/login?error=no_token', request.url));
+      return NextResponse.redirect(new URL('/login?error=no_token&message=' + encodeURIComponent('Authentication failed - no token received'), request.url));
+    }
+    
+    if (!user) {
+      console.error('No user in auth response:', authData);
+      return NextResponse.redirect(new URL('/login?error=no_user&message=' + encodeURIComponent('Authentication failed - no user data received'), request.url));
     }
 
     // Determine redirect URL based on returnUrl, user role, or default

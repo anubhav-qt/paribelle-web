@@ -22,13 +22,29 @@ function LoginContent() {
   // Load saved credentials on mount and handle URL errors
   useEffect(() => {
     // Display error message from URL if present
-    if (urlError && urlMessage) {
+    if (urlError) {
+      const errorMessage = urlMessage ? decodeURIComponent(urlMessage) : 'Authentication failed';
+      
       if (urlError === 'email_not_verified') {
-        setError('⚠️ ' + decodeURIComponent(urlMessage));
+        setError('⚠️ ' + errorMessage);
       } else if (urlError === 'session_expired') {
-        setError('🔒 ' + decodeURIComponent(urlMessage));
+        setError('🔒 ' + errorMessage);
+      } else if (urlError === 'auth_failed') {
+        setError('❌ Google Sign-In Failed: ' + errorMessage);
+      } else if (urlError === 'no_token') {
+        setError('❌ Authentication Error: ' + errorMessage);
+      } else if (urlError === 'no_user') {
+        setError('❌ Authentication Error: ' + errorMessage);
+      } else if (urlError === 'oauth_failed') {
+        setError('❌ Google OAuth failed. Please try again or use email/password.');
+      } else if (urlError === 'token_exchange_failed') {
+        setError('❌ Failed to exchange Google token. Please try again.');
+      } else if (urlError === 'user_info_failed') {
+        setError('❌ Failed to get user info from Google. Please try again.');
+      } else if (urlError === 'callback_failed') {
+        setError('❌ Google OAuth callback failed. Please try again.');
       } else {
-        setError(decodeURIComponent(urlMessage));
+        setError(errorMessage);
       }
     }
     

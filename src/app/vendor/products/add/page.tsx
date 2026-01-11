@@ -19,6 +19,16 @@ export default function VendorAddProductPage() {
   const [submitting, setSubmitting] = useState(false);
   const [productType, setProductType] = useState<'physical' | 'booking'>('physical');
   
+  // Vendor verification status
+  const [vendorStatus, setVendorStatus] = useState<{
+    kycStatus: string;
+    storeName: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    canAddProducts: boolean;
+    blockReason: string | null;
+  } | null>(null);
+  
   // Category filters and product attributes
   const [categoryFilters, setCategoryFilters] = useState<any[]>([]);
   const [productAttributes, setProductAttributes] = useState<Record<string, any>>({});
@@ -81,10 +91,67 @@ export default function VendorAddProductPage() {
   ];
 
   useEffect(() => {
+    fetchVendorStatus();
     fetchCategories();
     generateSKU();
     setMounted(true);
   }, []);
+
+  const fetchVendorStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+      
+      const vendorId = getVendorId();
+      if (!vendorId) {
+        router.push('/vendor/dashboard');
+        return;
+      }
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        const vendor = await response.json();
+        
+        // Check if vendor can add products
+        const hasBasicSetup = vendor.storeName && vendor.contactEmail && vendor.contactPhone;
+        const kycApproved = vendor.kycStatus === 'approved';
+        
+        let blockReason = null;
+        if (!hasBasicSetup) {
+          blockReason = 'Please complete your store setup in Vendor Settings before adding products.';
+        } else if (!kycApproved) {
+          blockReason = `KYC verification required. Your status is: ${vendor.kycStatus}. Complete KYC verification to add products.`;
+        }
+        
+        setVendorStatus({
+          kycStatus: vendor.kycStatus,
+          storeName: vendor.storeName,
+          contactEmail: vendor.contactEmail,
+          contactPhone: vendor.contactPhone,
+          canAddProducts: hasBasicSetup && kycApproved,
+          blockReason,
+        });
+        
+        // Redirect if cannot add products
+        if (!hasBasicSetup || !kycApproved) {
+          setTimeout(() => {
+            router.push('/vendor/products');
+          }, 3000);
+        }
+        
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor status:', error);
+      setLoading(false);
+    }
+  };
 
   // Fetch category filters when categories are selected
   useEffect(() => {
@@ -517,6 +584,37 @@ export default function VendorAddProductPage() {
             >
               ← Back to Products
             </Link>
+            
+        {/* KYC Blocking Banner */}
+        {vendorStatus && !vendorStatus.canAddProducts && (
+          <div className="mb-6 p-6 bg-red-50 border-2 border-red-300 rounded-lg">
+            <div className="flex items-start gap-4">
+              <span className="text-4xl">🚫</span>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-red-900 mb-2">Cannot Add Products</h2>
+                <p className="text-red-800 mb-4 text-lg">{vendorStatus.blockReason}</p>
+                <div className="flex gap-3">
+                  <Link
+                    href="/vendor/settings"
+                    className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold"
+                  >
+                    Go to Settings
+                  </Link>
+                  <Link
+                    href="/vendor/products"
+                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    Back to Products
+                  </Link>
+                </div>
+                <p className="text-sm text-red-700 mt-4">
+                  ⏱️ You will be redirected to the products page in 3 seconds...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+            
         <div className="mb-8">
           <div className="flex justify-between items-start">
             <div>

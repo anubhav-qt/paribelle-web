@@ -49,6 +49,16 @@ export default function VendorProductsPage() {
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   
+  // Vendor verification status
+  const [vendorStatus, setVendorStatus] = useState<{
+    kycStatus: string;
+    storeName: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    canAddProducts: boolean;
+    blockReason: string | null;
+  } | null>(null);
+  
   // Filtering and sorting states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -90,9 +100,50 @@ export default function VendorProductsPage() {
       })
       .catch(err => console.error('Error fetching currency setting:', err));
     
+    fetchVendorStatus();
     fetchProducts();
     fetchCategories();
   }, []);
+
+  const fetchVendorStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const vendorId = getVendorId();
+      if (!vendorId) return;
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        const vendor = await response.json();
+        
+        // Check if vendor can add products
+        const hasBasicSetup = vendor.storeName && vendor.contactEmail && vendor.contactPhone;
+        const kycApproved = vendor.kycStatus === 'approved';
+        
+        let blockReason = null;
+        if (!hasBasicSetup) {
+          blockReason = 'Please complete your store setup in Vendor Settings before adding products.';
+        } else if (!kycApproved) {
+          blockReason = `KYC verification required. Your status is: ${vendor.kycStatus}. Complete KYC verification to add products.`;
+        }
+        
+        setVendorStatus({
+          kycStatus: vendor.kycStatus,
+          storeName: vendor.storeName,
+          contactEmail: vendor.contactEmail,
+          contactPhone: vendor.contactPhone,
+          canAddProducts: hasBasicSetup && kycApproved,
+          blockReason,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching vendor status:', error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -547,6 +598,49 @@ export default function VendorProductsPage() {
                   className="hidden"
                 />
               </label>
+              {vendorStatus && !vendorStatus.canAddProducts ? (
+                <div className="relative group">
+                  <button
+                    disabled
+                    className="bg-gray-300 text-gray-500 px-6 py-3 rounded-lg cursor-not-allowed"
+                  >
+                    + Add Product
+                  </button>
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-amber-50 border-2 border-amber-300 rounded-lg p-4 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    <p className="text-sm text-amber-800 font-semibold mb-2">⚠️ Cannot Add Products</p>
+                    <p className="text-sm text-amber-700">{vendorStatus.blockReason}</p>
+                  </div>
+                </div>
+              ) : (
+                <Link
+                  href="/vendor/products/add"
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+                >
+                  + Add Product
+                </Link>
+              )}
+            </div>
+          </div>
+          
+          {/* KYC Warning Banner */}
+          {vendorStatus && !vendorStatus.canAddProducts && (
+            <div className="mt-4 p-4 bg-amber-50 border-l-4 border-amber-400 rounded">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">⚠️</span>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-amber-900 mb-1">Action Required</h3>
+                  <p className="text-amber-800 mb-2">{vendorStatus.blockReason}</p>
+                  <Link
+                    href="/vendor/settings"
+                    className="inline-block mt-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
+                  >
+                    Go to Settings
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
               <Link
                 href="/vendor/products/add"
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
