@@ -641,15 +641,6 @@ export default function VendorProductsPage() {
             </div>
           )}
         </div>
-              <Link
-                href="/vendor/products/add"
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
-              >
-                + Add Product
-              </Link>
-            </div>
-          </div>
-        </div>
 
         {/* Help Section */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
