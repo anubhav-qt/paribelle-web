@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Star, Calendar, ExternalLink, Heart } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getProductImageUrl } from '@/lib/image-url';
+import { calculateDiscount, getStockStatus, formatRating } from '@/lib/product';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
@@ -67,11 +68,7 @@ export default function ProductGrid({
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { isVendorStore } = useVendorContext();
   const theme = useThemeClasses();
-  const getDiscount = (price: string | number, compareAtPrice?: string | number) => {
-    if (!compareAtPrice || Number(compareAtPrice) <= Number(price)) return null;
-    return Math.round(((Number(compareAtPrice) - Number(price)) / Number(compareAtPrice)) * 100);
-  };
-
+  
   // Split products by location if filter is active
   const productsWithLocation = isLocationFilterActive 
     ? products.filter(p => p.vendor?.cityId || p.vendor?.subLocationId)
@@ -82,7 +79,8 @@ export default function ProductGrid({
     : [];
 
   const renderProduct = (product: Product) => {
-    const discount = getDiscount(product.price, product.compareAtPrice);
+    const discount = calculateDiscount(product.price, product.compareAtPrice);
+    const stockStatus = getStockStatus(product);
     
     if (!product.slug) {
       console.warn('Product missing slug:', product.id, product.name);
@@ -153,7 +151,7 @@ export default function ProductGrid({
           <div className="flex items-center gap-1 mb-2">
             <div className="flex items-center gap-1 bg-accent text-primary-foreground px-2 py-0.5 rounded text-xs">
               <span className="font-semibold">
-                {Number(product.averageRating).toFixed(1)}
+                {formatRating(product.averageRating)}
               </span>
               <Star className="w-3 h-3 fill-current" />
             </div>
@@ -173,21 +171,15 @@ export default function ProductGrid({
           </div>
           
           {/* Stock Status */}
-          {product.productType === 'physical' && product.stockQuantity !== undefined && (
+          {stockStatus && (
             <div className="mt-2">
-              {product.stockQuantity === 0 ? (
-                <span className="text-xs font-semibold text-red-600 dark:text-red-400">
-                  Out of Stock
-                </span>
-              ) : product.stockQuantity <= 5 ? (
-                <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                  Only {product.stockQuantity} left!
-                </span>
-              ) : (
-                <span className="text-xs text-green-600 dark:text-green-400">
-                  {product.stockQuantity} in stock
-                </span>
-              )}
+              <span className={`text-xs font-semibold ${
+                stockStatus.severity === 'error' ? 'text-red-600 dark:text-red-400' :
+                stockStatus.severity === 'warning' ? 'text-orange-600 dark:text-orange-400' :
+                'text-green-600 dark:text-green-400'
+              }`}>
+                {stockStatus.label}
+              </span>
             </div>
           )}
           
