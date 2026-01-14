@@ -82,14 +82,27 @@ export default function AdminVendorsPage() {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${id}`, {
+      // Optimistic UI update
+      setVendors(prevVendors =>
+        prevVendors.map(v => v.id === id ? { ...v, status: newStatus } : v)
+      );
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to update vendor status');
+      }
+
+      // Refetch to ensure we have the latest data
       fetchVendors();
     } catch (error) {
       console.error('Error updating vendor status:', error);
+      // Revert optimistic update on error
+      fetchVendors();
     }
   };
 
