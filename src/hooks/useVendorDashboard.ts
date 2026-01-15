@@ -71,18 +71,27 @@ async function fetchVendorDashboard(): Promise<VendorDashboardData> {
 
   const user = JSON.parse(userStr);
   
-  // Check if user is a vendor admin
-  if (user.role !== 'vendor_admin') {
-    throw new Error('This account is not a vendor account. Please use a vendor login.');
+  // Check if user is a vendor admin or super admin
+  if (user.role !== 'vendor_admin' && user.role !== 'super_admin') {
+    throw new Error('This account is not a vendor account. Please use a vendor or admin login.');
   }
   
+  // For super admin, they might be accessing any vendor's dashboard
+  // The vendorId should be passed via context or route params
+  // For now, we'll allow super admin to proceed even without vendorId in token
   const vendorId = getVendorIdFromToken();
   
-  if (!vendorId) {
+  if (!vendorId && user.role !== 'super_admin') {
     console.error('Vendor ID not found in token or localStorage');
     console.log('User object:', user);
     console.log('Token parts available:', !!token);
     throw new Error('Your vendor account is not properly linked. Please log out and log in again. If the issue persists, contact support.');
+  }
+
+  // For super admin accessing vendor pages, we might need to get vendorId from URL or context
+  // If vendorId is not available and user is super_admin, we should redirect to vendor selection
+  if (!vendorId && user.role === 'super_admin') {
+    throw new Error('Please select a vendor from the admin panel to manage their dashboard.');
   }
 
   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {

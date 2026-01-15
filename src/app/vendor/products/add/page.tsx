@@ -105,6 +105,19 @@ export default function VendorAddProductPage() {
         return;
       }
       
+      // Super admin doesn't need vendor status check
+      if (isSuperAdmin()) {
+        setVendorStatus({
+          kycStatus: 'approved',
+          storeName: 'Platform Admin',
+          contactEmail: 'admin@marketplace.com',
+          contactPhone: '000-000-0000',
+          canAddProducts: true,
+          blockReason: null,
+        });
+        return;
+      }
+      
       const vendorId = getVendorId();
       if (!vendorId) {
         router.push('/vendor/dashboard');
@@ -165,7 +178,8 @@ export default function VendorAddProductPage() {
 
   const generateSKU = () => {
     const isAdmin = isSuperAdmin();
-    const prefix = isAdmin ? 'ADMIN' : getVendorId()?.substring(0, 8).toUpperCase() || 'VENDOR';
+    const vendorId = getProductVendorId();
+    const prefix = isAdmin ? 'ADMIN' : vendorId?.substring(0, 8).toUpperCase() || 'VENDOR';
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.random().toString(36).substring(2, 5).toUpperCase();
     setFormData(prev => ({ ...prev, sku: `${prefix}-${timestamp}-${random}` }));
@@ -476,9 +490,9 @@ export default function VendorAddProductPage() {
       setExporting(true);
       const token = localStorage.getItem('token');
       
-      const vendorId = getVendorId();
+      const vendorId = getProductVendorId();
       if (!vendorId) {
-        alert('Vendor ID not found');
+        alert(isSuperAdmin() ? 'User ID not found' : 'Vendor ID not found');
         return;
       }
 
@@ -522,9 +536,9 @@ export default function VendorAddProductPage() {
       
       const token = localStorage.getItem('token');
       
-      const vendorId = getVendorId();
+      const vendorId = getProductVendorId();
       if (!vendorId) {
-        setImportMessage({ type: 'error', text: 'Vendor ID not found' });
+        setImportMessage({ type: 'error', text: isSuperAdmin() ? 'User ID not found' : 'Vendor ID not found' });
         return;
       }
 
