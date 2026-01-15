@@ -417,7 +417,7 @@ export default function HomepageContent({
         {!loading && (
           <div className="flex gap-6">
             {/* Left Sidebar - Categories */}
-            <CategorySidebar />
+            {/* <CategorySidebar /> */}
 
             {/* Main Content Area */}
             <div className="flex-1 space-y-8">

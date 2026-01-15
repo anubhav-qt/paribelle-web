@@ -169,7 +169,7 @@ export default function CustomPage({ params }: { params: { pageSlug: string } })
           // Render markdown content
           <div className="container mx-auto px-4 py-8">
             <div className="flex gap-6">
-              <CategorySidebar />
+              {/* <CategorySidebar /> */}
               <div className="flex-1 max-w-4xl bg-white rounded-lg shadow-sm p-8">
               <h1 className="text-3xl font-bold mb-6 text-gray-900">{page.title}</h1>
               <div className="prose prose-lg max-w-none dark:prose-invert">

@@ -483,7 +483,7 @@ export default function OrdersPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
-          <CategorySidebar />
+          {/* <CategorySidebar /> */}
           <div className="flex-1 max-w-7xl">
             <div className="mb-6">
               <Link

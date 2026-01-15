@@ -175,6 +175,23 @@ export default function ProductDetailPage() {
       if (response.ok) {
         const data = await response.json();
         setReviews(data.reviews || []);
+        
+        // Detect discrepancy and trigger backend recalculation
+        if (product && (data.total !== product.reviewCount || data.averageRating !== product.averageRating)) {
+          console.log(`Review count mismatch detected. Expected: ${product.reviewCount}, Actual: ${data.total}`);
+          
+          // Trigger backend recalculation to fix the database
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/products/${productId}/recalculate`, {
+            method: 'POST'
+          }).catch(err => console.error('Failed to recalculate ratings:', err));
+          
+          // Update frontend state immediately with correct values
+          setProduct({
+            ...product,
+            reviewCount: data.total,
+            averageRating: data.averageRating || 0
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching reviews:', error);
@@ -702,7 +719,7 @@ export default function ProductDetailPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
-          <CategorySidebar />
+          {/* <CategorySidebar /> */}
           <div className="flex-1">
             {/* Breadcrumb */}
             <div className="bg-card border-b border-border mb-4">
@@ -1215,6 +1232,7 @@ export default function ProductDetailPage() {
               </div>
             )}
 
+            {/* Reviews List */}
             {showReviews && (
               reviewsLoading ? (
                 <div className="text-center py-8 text-muted-foreground">Loading reviews...</div>
@@ -1228,6 +1246,11 @@ export default function ProductDetailPage() {
                 <div className="text-center py-12 bg-muted/50 rounded-lg">
                   <Star className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                   <p className="text-muted-foreground">No reviews yet. Be the first to review this product!</p>
+                  {product.reviewCount > 0 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      (Review count may be outdated. The database shows {product.reviewCount} reviews but they may have been removed.)
+                    </p>
+                  )}
                 </div>
               )
             )}
