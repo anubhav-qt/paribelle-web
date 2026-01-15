@@ -42,6 +42,7 @@ export default function AdminSettingsPage() {
   const [returnPolicy, setReturnPolicy] = useState<{ enabled: boolean; days?: number; text: string }>({ enabled: false, text: '' });
   const [cancellationPolicy, setCancellationPolicy] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: '' });
   const [commissionRate, setCommissionRate] = useState<number>(10);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(0);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -110,6 +111,11 @@ export default function AdminSettingsPage() {
             const commissionRateSetting = data.find((s: Setting) => s.key === 'platform_commission_rate');
             if (commissionRateSetting) {
           setCommissionRate(parseFloat(commissionRateSetting.value) || 10);
+            }
+
+            const freeShippingThresholdSetting = data.find((s: Setting) => s.key === 'default_free_shipping_threshold');
+            if (freeShippingThresholdSetting) {
+          setFreeShippingThreshold(parseFloat(freeShippingThresholdSetting.value) || 0);
             }
       }
     } catch (error) {
@@ -249,7 +255,13 @@ export default function AdminSettingsPage() {
             'Default marketplace commission rate percentage for all vendors'
       );
 
-      if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroBannersSuccess && logoSuccess && nameSuccess && returnPolicySuccess && cancellationPolicySuccess && commissionRateSuccess) {
+      const freeShippingThresholdSuccess = await updateSetting(
+            'default_free_shipping_threshold',
+            freeShippingThreshold.toString(),
+            'Default free shipping threshold amount. Orders above this amount get free shipping.'
+      );
+
+      if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroBannersSuccess && logoSuccess && nameSuccess && returnPolicySuccess && cancellationPolicySuccess && commissionRateSuccess && freeShippingThresholdSuccess) {
             showMessage('success', 'Settings saved successfully!');
             await fetchSettings(); // Refresh settings
       } else {
@@ -497,6 +509,29 @@ export default function AdminSettingsPage() {
                   <li>Set per-vendor rates in Admin → Vendors → Edit Vendor</li>
                   <li>Commission is calculated when order is placed and stored in order record</li>
                 </ul>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="freeShippingThreshold" className="block font-medium text-gray-900 mb-2">
+                Default Free Shipping Threshold ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency})
+              </label>
+              <input
+                type="number"
+                id="freeShippingThreshold"
+                value={freeShippingThreshold}
+                onChange={(e) => setFreeShippingThreshold(parseFloat(e.target.value) || 0)}
+                min="0"
+                step="0.01"
+                placeholder="500.00"
+                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-sm text-gray-600 mt-2">
+                Orders above this amount automatically get free shipping. Set to 0 to disable platform-wide free shipping.
+              </p>
+              <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-sm text-yellow-800">
+                <p className="font-medium mb-1">⚙️ Vendor Override:</p>
+                <p>Individual vendors can set their own free shipping threshold in their settings, which will override this default value.</p>
               </div>
             </div>
 
