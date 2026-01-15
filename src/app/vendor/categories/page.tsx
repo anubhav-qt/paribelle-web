@@ -280,7 +280,7 @@ export default function VendorCategoriesPage() {
       <ThemeRenderer component="header" showLocationFilter={false} />
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
-          <CategorySidebar />
+          {/* <CategorySidebar /> */}
           <div className="flex-1 max-w-7xl">
             <div className="flex items-center justify-between mb-6">
               <div>
