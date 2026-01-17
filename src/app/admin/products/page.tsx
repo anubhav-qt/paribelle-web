@@ -80,6 +80,10 @@ export default function AdminProductsPage() {
   const [exporting, setExporting] = useState(false);
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [importMessageExpanded, setImportMessageExpanded] = useState(true);
+  const [sortField, setSortField] = useState<'name' | 'price' | 'stockQuantity' | 'createdAt' | 'status'>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
 
   // Listen for refetch event from import
   useEffect(() => {
@@ -177,13 +181,80 @@ export default function AdminProductsPage() {
       
       if (response.ok) {
         alert('Product deleted successfully!');
-        window.location.reload();
+        refetchProducts();
+        setSelectedProducts(new Set());
       } else {
         const error = await response.json();
         alert(`Failed to delete product: ${error.message || 'Unknown error'}`);
       }
     } catch (error) {
       alert('Failed to delete product. Please try again.');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProducts.size === 0) {
+      alert('Please select products to delete');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedProducts.size} product(s)?`)) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const promises = Array.from(selectedProducts).map(id =>
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      );
+
+      const results = await Promise.all(promises);
+      const failed = results.filter(r => !r.ok).length;
+
+      if (failed === 0) {
+        alert(`Successfully deleted ${selectedProducts.size} product(s)`);
+      } else {
+        alert(`Deleted ${selectedProducts.size - failed} product(s), ${failed} failed`);
+      }
+
+      refetchProducts();
+      setSelectedProducts(new Set());
+      setSelectAll(false);
+    } catch (error) {
+      alert('Failed to delete products. Please try again.');
+    }
+  };
+
+  const handleSelectProduct = (id: string) => {
+    const newSelected = new Set(selectedProducts);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedProducts(newSelected);
+    setSelectAll(newSelected.size === products.length && products.length > 0);
+  };
+
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedProducts(new Set());
+      setSelectAll(false);
+    } else {
+      setSelectedProducts(new Set(products.map(p => p.id)));
+      setSelectAll(true);
+    }
+  };
+
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
     }
   };
 
@@ -403,10 +474,37 @@ export default function AdminProductsPage() {
     }
   };
 
+  const getSortedProducts = (productList: Product[]) => {
+    return [...productList].sort((a, b) => {
+      let aVal: any = a[sortField];
+      let bVal: any = b[sortField];
+
+      // Handle special cases
+      if (sortField === 'createdAt') {
+        aVal = new Date(a.createdAt).getTime();
+        bVal = new Date(b.createdAt).getTime();
+      } else if (sortField === 'price' || sortField === 'stockQuantity') {
+        aVal = Number(aVal) || 0;
+        bVal = Number(bVal) || 0;
+      } else if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal?.toLowerCase() || '';
+      }
+
+      if (sortDirection === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
+    });
+  };
+
   const groupProductsByVendor = () => {
     const grouped = new Map<string, { vendor: any; products: Product[] }>();
 
-    products.forEach((product: Product) => {
+    const sortedProducts = getSortedProducts(products);
+
+    sortedProducts.forEach((product: Product) => {
       const vendorId = product.vendor?.id || 'no-vendor';
       const vendorName = product.vendor?.storeName || product.vendor?.businessName || 'No Vendor Assigned';
       const vendorEmail = product.vendor?.contactEmail || '';
@@ -933,7 +1031,7 @@ export default function AdminProductsPage() {
     <>
       <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1800px] mx-auto">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -1135,6 +1233,21 @@ export default function AdminProductsPage() {
             </div>
           ) : (
             <>
+              {/* Bulk Actions Bar */}
+              {selectedProducts.size > 0 && (
+                <div className="px-6 py-3 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
+                  <div className="text-sm text-blue-900">
+                    {selectedProducts.size} product{selectedProducts.size !== 1 ? 's' : ''} selected
+                  </div>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                  >
+                    Delete Selected
+                  </button>
+                </div>
+              )}
+
               {/* Pagination - Top - Only show when NOT grouping by vendor */}
               {groupBy === 'none' && totalPages > 1 && (
                 <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -1181,34 +1294,82 @@ export default function AdminProductsPage() {
               )}
 
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="min-w-full w-full border-collapse">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Product
+                      <th className="px-3 py-3 text-left">
+                        <input
+                          type="checkbox"
+                          checked={selectAll}
+                          onChange={handleSelectAll}
+                          className="rounded border-gray-300"
+                        />
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('name')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Product
+                          {sortField === 'name' && (
+                            <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         SKU
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Category
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Price
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('price')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Price
+                          {sortField === 'price' && (
+                            <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Stock
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('stockQuantity')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Stock
+                          {sortField === 'stockQuantity' && (
+                            <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Created Date
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('createdAt')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Created Date
+                          {sortField === 'createdAt' && (
+                            <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('status')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Status
+                          {sortField === 'status' && (
+                            <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -1221,7 +1382,7 @@ export default function AdminProductsPage() {
                           <Fragment key={vendor.id}>
                             {/* Vendor Header Row */}
                             <tr className="bg-gray-100 border-t-2 border-gray-300">
-                              <td colSpan={8} className="px-6 py-3">
+                              <td colSpan={11} className="px-6 py-3">
                                 <button
                                   onClick={() => toggleVendor(vendor.id)}
                                   className="flex items-center gap-3 w-full text-left hover:opacity-80"
@@ -1246,7 +1407,15 @@ export default function AdminProductsPage() {
                             {/* Vendor Products */}
                             {!isCollapsed && vendorProducts.map((product) => (
                               <tr key={product.id} className="hover:bg-gray-50 border-b border-gray-200">
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="px-3 py-4 whitespace-nowrap">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedProducts.has(product.id)}
+                                    onChange={() => handleSelectProduct(product.id)}
+                                    className="rounded border-gray-300"
+                                  />
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
                                   <div className="flex items-center">
                                     {product.featuredImage ? (
                                       <img
