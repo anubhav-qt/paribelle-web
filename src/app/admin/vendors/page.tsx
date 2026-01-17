@@ -119,6 +119,32 @@ export default function AdminVendorsPage() {
     }
   };
 
+  const handleDeleteKYCDocuments = async (vendorId: string) => {
+    if (!confirm('Are you sure you want to delete all KYC documents from Cloudinary? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/kyc/${vendorId}/documents`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message || 'Documents deleted successfully!');
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete documents');
+      }
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    }
+  };
+
   const handleOpenAddModal = () => {
     setShowAddModal(true);
     setNewVendorFormData({
@@ -453,6 +479,13 @@ export default function AdminVendorsPage() {
                             className="text-green-600 hover:text-green-900"
                           >
                             Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteKYCDocuments(vendor.id)}
+                            className="text-orange-600 hover:text-orange-900"
+                            title="Delete KYC Documents"
+                          >
+                            Del KYC
                           </button>
                           <button
                             onClick={() => handleDelete(vendor.id)}

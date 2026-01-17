@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Eye, Clock, FileText, ArrowLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, Clock, FileText, ArrowLeft, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -126,6 +126,35 @@ export default function AdminKYCVerificationPage() {
       } else {
         const error = await response.json();
         throw new Error(error.message || 'Failed to reject KYC');
+      }
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteDocuments = async (vendorId: string) => {
+    if (!confirm('Are you sure you want to delete all KYC documents from Cloudinary? This action cannot be undone.')) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_URL}/api/v1/vendors/kyc/${vendorId}/documents`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message || 'Documents deleted successfully!');
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete documents');
       }
     } catch (error: any) {
       alert(`Error: ${error.message}`);
@@ -291,32 +320,46 @@ export default function AdminKYCVerificationPage() {
               </div>
             </div>
 
-            <div className="p-6 border-t bg-gray-50 flex gap-4">
-              <button
-                onClick={() => handleApprove(selectedVendor.id)}
-                disabled={actionLoading}
-                className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
-              >
-                <CheckCircle className="w-5 h-5" />
-                Approve KYC
-              </button>
-              <button
-                onClick={() => handleReject(selectedVendor.id)}
-                disabled={actionLoading}
-                className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition disabled:opacity-50"
-              >
-                <XCircle className="w-5 h-5" />
-                Reject KYC
-              </button>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setRejectionReason('');
-                }}
-                className="px-6 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition"
-              >
-                Close
-              </button>
+            <div className="p-6 border-t bg-gray-50 space-y-3">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => handleApprove(selectedVendor.id)}
+                  disabled={actionLoading}
+                  className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  Approve KYC
+                </button>
+                <button
+                  onClick={() => handleReject(selectedVendor.id)}
+                  disabled={actionLoading}
+                  className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                >
+                  <XCircle className="w-5 h-5" />
+                  Reject KYC
+                </button>
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    setRejectionReason('');
+                  }}
+                  className="px-6 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition"
+                >
+                  Close
+                </button>
+              </div>
+              
+              <div className="flex gap-4 pt-2 border-t">
+                <button
+                  onClick={() => handleDeleteDocuments(selectedVendor.id)}
+                  disabled={actionLoading}
+                  className="flex-1 flex items-center justify-center gap-2 bg-orange-600 text-white py-2.5 rounded-lg hover:bg-orange-700 transition disabled:opacity-50 text-sm"
+                  title="Delete all KYC documents from Cloudinary storage"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Documents from Storage
+                </button>
+              </div>
             </div>
           </div>
         </div>

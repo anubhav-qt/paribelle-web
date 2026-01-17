@@ -59,7 +59,7 @@ export default function AdminProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   
   // Use React Query for products
-  const { data: productsData, isLoading: loading } = useAdminProducts({
+  const { data: productsData, isLoading: loading, refetch: refetchProducts } = useAdminProducts({
     page: currentPage,
     limit: 20,
     status: statusFilter,
@@ -79,6 +79,16 @@ export default function AdminProductsPage() {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [importMessageExpanded, setImportMessageExpanded] = useState(true);
+
+  // Listen for refetch event from import
+  useEffect(() => {
+    const handleRefetch = () => {
+      refetchProducts();
+    };
+    window.addEventListener('refetchProducts', handleRefetch);
+    return () => window.removeEventListener('refetchProducts', handleRefetch);
+  }, [refetchProducts]);
   const [editFormData, setEditFormData] = useState({
     name: '',
     price: 0,
@@ -494,23 +504,71 @@ export default function AdminProductsPage() {
       const result = await response.json();
 
       if (response.ok) {
+        // Build success message with details
+        let successMsg = `Import successful! Created: ${result.created}, Updated: ${result.updated}`;
+        
+        // Add information about auto-created categories
+        if (result.createdCategories && result.createdCategories.length > 0) {
+          successMsg += `\nAuto-created categories: ${result.createdCategories.join(', ')}`;
+        }
+        
+        // Add error details if any
+        if (result.errors && result.errors.length > 0) {
+          successMsg += `\n\nWarnings/Errors (${result.errors.length}):\n`;
+          result.errors.slice(0, 10).forEach((err: any) => {
+            // Handle both string errors and object errors
+            const errorText = typeof err === 'string' ? err : (err.error || JSON.stringify(err));
+            successMsg += `- ${errorText}\n`;
+          });
+          if (result.errors.length > 10) {
+            successMsg += `... and ${result.errors.length - 10} more errors\n`;
+          }
+        }
+        
         setImportMessage({
           type: 'success',
-          text: `Import successful! Created: ${result.created}, Updated: ${result.updated}${
-            result.errors.length > 0 ? `, Errors: ${result.errors.length}` : ''
-          }`,
+          text: successMsg,
         });
-        // Refresh products list after successful import
-        window.location.reload();
+        
+        // Refresh products list without page reload to keep message visible
+        if (result.created > 0 || result.updated > 0) {
+          // Refetch products data using React Query
+          window.dispatchEvent(new Event('refetchProducts'));
+        }
       } else {
+        // Build detailed error message
+        let errorMsg = result.message || 'Failed to import products';
+        
+        if (result.errors && result.errors.length > 0) {
+          errorMsg += '\n\nDetailed Errors:\n';
+          result.errors.slice(0, 15).forEach((err: any) => {
+            // Handle both string errors and object errors
+            if (typeof err === 'string') {
+              errorMsg += `${err}\n`;
+            } else {
+              const sheetInfo = err.sheet ? `[${err.sheet}]` : '';
+              const rowInfo = err.row ? ` Row ${err.row}` : '';
+              errorMsg += `${sheetInfo}${rowInfo}: ${err.error || err.message || JSON.stringify(err)}\n`;
+            }
+          });
+          if (result.errors.length > 15) {
+            errorMsg += `\n... and ${result.errors.length - 15} more errors`;
+          }
+          errorMsg += '\n\nPlease correct these issues in your Excel file and try again.';
+        }
+        
         setImportMessage({
           type: 'error',
-          text: result.message || 'Failed to import products',
+          text: errorMsg,
         });
       }
     } catch (error) {
       console.error('Import error:', error);
-      setImportMessage({ type: 'error', text: 'Failed to import products' });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setImportMessage({ 
+        type: 'error', 
+        text: `Failed to import products: ${errorMessage}\n\nPlease check the file format and try again.` 
+      });
     } finally {
       setImporting(false);
       // Reset file input
@@ -569,8 +627,8 @@ export default function AdminProductsPage() {
       // Create Excel workbook using ExcelJS
       const workbook = new ExcelJS.Workbook();
 
-      // Add Sample Products sheet
-      const sampleSheet = workbook.addWorksheet('Sample Products');
+      // Add Electronics sheet
+      const sampleSheet = workbook.addWorksheet('Electronics');
       sampleSheet.columns = [
         { header: 'Product Name', key: 'name', width: 30 },
         { header: 'Description', key: 'description', width: 50 },
@@ -591,7 +649,6 @@ export default function AdminProductsPage() {
         { header: 'Booking Buffer Time', key: 'bookingBufferTime', width: 20 },
         { header: 'Booking Available Days', key: 'bookingAvailableDays', width: 35 },
         { header: 'Booking Time Slots', key: 'bookingTimeSlots', width: 30 },
-        { header: '_ID', key: 'id', width: 10 },
       ];
 
       // Style header row
@@ -619,7 +676,6 @@ export default function AdminProductsPage() {
         bookingBufferTime: '',
         bookingAvailableDays: '',
         bookingTimeSlots: '',
-        id: '',
       });
 
       sampleSheet.addRow({
@@ -642,7 +698,6 @@ export default function AdminProductsPage() {
         bookingBufferTime: 0,
         bookingAvailableDays: 'monday,tuesday,wednesday,thursday,friday',
         bookingTimeSlots: '09:00-18:00',
-        id: '',
       });
 
       sampleSheet.addRow({
@@ -665,7 +720,6 @@ export default function AdminProductsPage() {
         bookingBufferTime: '',
         bookingAvailableDays: '',
         bookingTimeSlots: '',
-        id: '',
       });
 
       // Add Product Variants sheet
@@ -927,12 +981,49 @@ export default function AdminProductsPage() {
 
         {/* Import Message */}
         {importMessage && (
-          <div className={`mb-6 p-4 rounded-lg ${
+          <div className={`mb-6 rounded-lg border ${
             importMessage.type === 'success' 
-              ? 'bg-green-50 text-green-800 border border-green-200' 
-              : 'bg-red-50 text-red-800 border border-red-200'
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
           }`}>
-            {importMessage.text}
+            <div className="flex items-center justify-between p-4">
+              <div className={`font-semibold ${
+                importMessage.type === 'success' ? 'text-green-800' : 'text-red-800'
+              }`}>
+                {importMessage.type === 'success' ? '✓ Import Result' : '✗ Import Failed'}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setImportMessageExpanded(!importMessageExpanded)}
+                  className={`px-3 py-1 rounded text-sm font-medium ${
+                    importMessage.type === 'success'
+                      ? 'bg-green-200 text-green-800 hover:bg-green-300'
+                      : 'bg-red-200 text-red-800 hover:bg-red-300'
+                  }`}
+                  title={importMessageExpanded ? 'Collapse' : 'Expand'}
+                >
+                  {importMessageExpanded ? '▲' : '▼'}
+                </button>
+                <button
+                  onClick={() => setImportMessage(null)}
+                  className={`px-3 py-1 rounded text-sm font-medium ${
+                    importMessage.type === 'success'
+                      ? 'bg-green-200 text-green-800 hover:bg-green-300'
+                      : 'bg-red-200 text-red-800 hover:bg-red-300'
+                  }`}
+                  title="Close"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {importMessageExpanded && (
+              <div className={`px-4 pb-4 border-t ${
+                importMessage.type === 'success' ? 'border-green-200 text-green-800' : 'border-red-200 text-red-800'
+              }`}>
+                <pre className="whitespace-pre-wrap font-sans text-sm mt-3">{importMessage.text}</pre>
+              </div>
+            )}
           </div>
         )}
 
@@ -1112,6 +1203,9 @@ export default function AdminProductsPage() {
                         Stock
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Created Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1203,6 +1297,9 @@ export default function AdminProductsPage() {
                                     {product.stockQuantity}
                                   </span>
                                 </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                  {new Date(product.createdAt).toLocaleDateString()}
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <select
                                     value={product.status}
@@ -1290,6 +1387,9 @@ export default function AdminProductsPage() {
                             <span className={`text-sm ${getStockColor(product.stockQuantity)}`}>
                               {product.stockQuantity}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {new Date(product.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <select
