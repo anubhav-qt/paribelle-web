@@ -7,6 +7,7 @@ import MultiImageUpload from '@/components/MultiImageUpload';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
 import ThemeRenderer from '@/components/ThemeRenderer';
+import { getImageUrl } from '@/lib/image-url';
 
 interface ProductVariant {
   id: string;
@@ -1419,7 +1420,7 @@ export default function AdminProductsPage() {
                                   <div className="flex items-center">
                                     {product.featuredImage ? (
                                       <img
-                                        src={product.featuredImage}
+                                        src={getImageUrl(product.featuredImage)}
                                         alt={product.name}
                                         className="h-10 w-10 rounded object-cover mr-3"
                                       />
