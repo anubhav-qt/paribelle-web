@@ -244,7 +244,7 @@ export default function AdminProductsPage() {
       setSelectedProducts(new Set());
       setSelectAll(false);
     } else {
-      setSelectedProducts(new Set(products.map(p => p.id)));
+      setSelectedProducts(new Set(products.map((p: Product) => p.id)));
       setSelectAll(true);
     }
   };
