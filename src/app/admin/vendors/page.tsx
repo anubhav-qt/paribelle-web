@@ -292,12 +292,6 @@ export default function AdminVendorsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Vendors Management</h1>
             <p className="text-gray-600 mt-2">Manage marketplace vendors and their accounts</p>
           </div>
-          <button 
-            onClick={handleOpenAddModal}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-          >
-            + Add New Vendor
-          </button>
         </div>
 
         {/* Stats Cards */}
