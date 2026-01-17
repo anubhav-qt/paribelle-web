@@ -16,6 +16,9 @@ interface Vendor {
   totalProducts?: number;
   totalSales?: number;
   createdAt: string;
+  kycBusinessRegistration?: string;
+  kycTaxDocument?: string;
+  kycIdentityProof?: string;
 }
 
 export default function AdminVendorsPage() {
@@ -480,13 +483,15 @@ export default function AdminVendorsPage() {
                           >
                             Edit
                           </button>
-                          <button
-                            onClick={() => handleDeleteKYCDocuments(vendor.id)}
-                            className="text-orange-600 hover:text-orange-900"
-                            title="Delete KYC Documents"
-                          >
-                            Del KYC
-                          </button>
+                          {((vendor as any).kycBusinessRegistration || (vendor as any).kycTaxDocument || (vendor as any).kycIdentityProof) && (
+                            <button
+                              onClick={() => handleDeleteKYCDocuments(vendor.id)}
+                              className="text-orange-600 hover:text-orange-900"
+                              title="Delete KYC Documents"
+                            >
+                              Del KYC
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDelete(vendor.id)}
                             className="text-red-600 hover:text-red-900"
