@@ -56,6 +56,7 @@ export default function AdminProductsPage() {
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [groupBy, setGroupBy] = useState<'none' | 'vendor'>('vendor');
   const [collapsedVendors, setCollapsedVendors] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -478,7 +479,15 @@ export default function AdminProductsPage() {
   };
 
   const getSortedProducts = (productList: Product[]) => {
-    return [...productList].sort((a, b) => {
+    // Apply category filter client-side
+    let filteredList = productList;
+    if (categoryFilter !== 'all') {
+      filteredList = productList.filter(p => 
+        p.categories?.some(c => c.id === categoryFilter)
+      );
+    }
+    
+    return [...filteredList].sort((a, b) => {
       let aVal: any;
       let bVal: any;
 
@@ -888,7 +897,7 @@ export default function AdminProductsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
               <span className="font-medium text-gray-900">Search & Filters</span>
-              {(searchTerm || statusFilter !== 'all') && (
+              {(searchTerm || statusFilter !== 'all' || categoryFilter !== 'all') && (
                 <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
                   Active
                 </span>
@@ -938,6 +947,27 @@ export default function AdminProductsPage() {
                     <option value="active">Active</option>
                     <option value="draft">Draft</option>
                     <option value="archived">Archived</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category Filter
+                  </label>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => {
+                      setCategoryFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Categories</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {'  '.repeat(cat.level)}
+                        {cat.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
