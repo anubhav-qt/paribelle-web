@@ -59,6 +59,7 @@ export default function AdminProductsPage() {
   const [groupBy, setGroupBy] = useState<'none' | 'vendor'>('vendor');
   const [collapsedVendors, setCollapsedVendors] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
   
   // Use React Query for products
   const { data: productsData, isLoading: loading, refetch: refetchProducts } = useAdminProducts({
@@ -835,100 +836,129 @@ export default function AdminProductsPage() {
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-sm text-gray-600 mb-1">Total Products</div>
+        {/* Stats in One Row */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="text-xs text-gray-600 mb-1">Total Products</div>
             <div className="text-2xl font-bold text-gray-900">{totalProducts}</div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-sm text-gray-600 mb-1">Active</div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="text-xs text-gray-600 mb-1">Active</div>
             <div className="text-2xl font-bold text-green-600">
               {products.filter((p: Product) => p.status === 'active').length}
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-sm text-gray-600 mb-1">Low Stock</div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="text-xs text-gray-600 mb-1">Low Stock</div>
             <div className="text-2xl font-bold text-orange-600">
               {products.filter((p: Product) => p.stockQuantity < 10 && p.stockQuantity > 0).length}
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-sm text-gray-600 mb-1">Out of Stock</div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="text-xs text-gray-600 mb-1">Out of Stock</div>
             <div className="text-2xl font-bold text-red-600">
               {products.filter((p: Product) => p.stockQuantity === 0).length}
             </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Products
-              </label>
-              <input
-                type="text"
-                placeholder="Search by name, SKU..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status Filter
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="draft">Draft</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Group By
-              </label>
-              <select
-                value={groupBy}
-                onChange={(e) => {
-                  setGroupBy(e.target.value as 'none' | 'vendor');
-                  setCurrentPage(1); // Reset to page 1 when changing grouping
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="vendor">Vendor</option>
-                <option value="none">None (Paginated)</option>
-              </select>
-              {groupBy === 'vendor' && (
-                <p className="text-xs text-gray-500 mt-1">Showing all products grouped by vendor</p>
+        {/* Collapsible Filters */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition rounded-lg"
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              <span className="font-medium text-gray-900">Search & Filters</span>
+              {(searchTerm || statusFilter !== 'all') && (
+                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                  Active
+                </span>
               )}
             </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('all');
-                  setCurrentPage(1);
-                }}
-                className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-              >
-                Clear Filters
-              </button>
+            <svg
+              className={`w-5 h-5 text-gray-600 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          {showFilters && (
+            <div className="px-6 pb-6 border-t border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Search Products
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Search by name, SKU..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status Filter
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="draft">Draft</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Group By
+                  </label>
+                  <select
+                    value={groupBy}
+                    onChange={(e) => {
+                      setGroupBy(e.target.value as 'none' | 'vendor');
+                      setCurrentPage(1);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="vendor">Vendor</option>
+                    <option value="none">None (Paginated)</option>
+                  </select>
+                  {groupBy === 'vendor' && (
+                    <p className="text-xs text-gray-500 mt-1">Showing all products grouped by vendor</p>
+                  )}
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('all');
+                      setCurrentPage(1);
+                    }}
+                    className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Products Table */}

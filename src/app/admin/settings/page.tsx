@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Settings, MapPin, Save, DollarSign, Upload } from 'lucide-react';
+import { Settings, MapPin, Save, DollarSign, Upload, Trash2, AlertCircle } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
@@ -43,6 +43,11 @@ export default function AdminSettingsPage() {
   const [cancellationPolicy, setCancellationPolicy] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: '' });
   const [commissionRate, setCommissionRate] = useState<number>(10);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(0);
+  
+  // Orphan cleanup state
+  const [orphanImages, setOrphanImages] = useState<string[]>([]);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [cleanupResults, setCleanupResults] = useState<{ total: number; orphans: number; deleted: number; errors: string[] } | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -277,6 +282,68 @@ export default function AdminSettingsPage() {
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const scanOrphanImages = async () => {
+    try {
+      setCleanupLoading(true);
+      setCleanupResults(null);
+      setOrphanImages([]);
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/admin/cleanup-orphan-images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) throw new Error('Failed to scan orphan images');
+      
+      const data = await response.json();
+      setCleanupResults(data);
+      setOrphanImages(data.orphans || []);
+      
+      if (data.orphans.length === 0) {
+        showMessage('success', 'No orphan images found!');
+      } else {
+        showMessage('success', `Found ${data.orphans.length} orphan images`);
+      }
+    } catch (error) {
+      console.error('Error scanning orphan images:', error);
+      showMessage('error', 'Failed to scan orphan images');
+    } finally {
+      setCleanupLoading(false);
+    }
+  };
+
+  const deleteOrphanImages = async () => {
+    if (!confirm(`Are you sure you want to delete ${orphanImages.length} orphan images? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setCleanupLoading(true);
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/admin/cleanup-orphan-images?delete=true`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete orphan images');
+      
+      const data = await response.json();
+      setCleanupResults(data);
+      
+      if (data.deleted > 0) {
+        showMessage('success', `Successfully deleted ${data.deleted} orphan images`);
+        setOrphanImages([]);
+      } else {
+        showMessage('error', 'No images were deleted');
+      }
+    } catch (error) {
+      console.error('Error deleting orphan images:', error);
+      showMessage('error', 'Failed to delete orphan images');
+    } finally {
+      setCleanupLoading(false);
+    }
   };
 
   if (authLoading || !isAuthenticated || loading) {
@@ -806,6 +873,100 @@ export default function AdminSettingsPage() {
               </ul>
             </div>
           </div>
+            </div>
+
+            {/* Cloudinary Image Cleanup */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Trash2 className="w-5 h-5 text-red-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Cloudinary Image Cleanup</h2>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Scan and remove orphan images from Cloudinary that are no longer referenced by any products.
+              </p>
+
+              <div className="space-y-4">
+                {/* Scan Button */}
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={scanOrphanImages}
+                    disabled={cleanupLoading}
+                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <AlertCircle className="w-4 h-4" />
+                    {cleanupLoading ? 'Scanning...' : 'Scan for Orphan Images'}
+                  </button>
+
+                  {cleanupResults && (
+                    <div className="text-sm text-gray-600">
+                      Found <span className="font-semibold text-gray-900">{cleanupResults.orphans}</span> orphan images out of <span className="font-semibold text-gray-900">{cleanupResults.total}</span> total images
+                    </div>
+                  )}
+                </div>
+
+                {/* Orphan Images List */}
+                {orphanImages.length > 0 && (
+                  <div className="border border-orange-200 rounded-lg p-4 bg-orange-50">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-medium text-gray-900 mb-1">Orphan Images ({orphanImages.length})</h3>
+                        <p className="text-sm text-gray-600">These images are not referenced by any products and can be safely deleted.</p>
+                      </div>
+                      <button
+                        onClick={deleteOrphanImages}
+                        disabled={cleanupLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete All Orphans
+                      </button>
+                    </div>
+
+                    {/* Image List */}
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                      {orphanImages.slice(0, 20).map((url, idx) => (
+                        <div key={idx} className="text-xs text-gray-700 bg-white p-2 rounded border border-gray-200 break-all">
+                          {url}
+                        </div>
+                      ))}
+                      {orphanImages.length > 20 && (
+                        <div className="text-sm text-gray-600 italic">
+                          ... and {orphanImages.length - 20} more images
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cleanup Results */}
+                {cleanupResults && cleanupResults.deleted > 0 && (
+                  <div className="border border-green-200 rounded-lg p-4 bg-green-50">
+                    <h3 className="font-medium text-green-900 mb-2">Cleanup Complete</h3>
+                    <div className="space-y-1 text-sm text-green-800">
+                      <p>✓ Deleted {cleanupResults.deleted} orphan images</p>
+                      {cleanupResults.errors && cleanupResults.errors.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-red-800 font-medium">Errors:</p>
+                          {cleanupResults.errors.map((err, idx) => (
+                            <p key={idx} className="text-xs text-red-700">{err}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Info Box */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-blue-900 mb-2">How it works:</h3>
+                  <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                    <li>Scans all images in the Cloudinary marketplace folder</li>
+                    <li>Compares them against all product and variant images in the database</li>
+                    <li>Identifies images that are not referenced anywhere</li>
+                    <li>Allows you to permanently delete orphan images to free up storage</li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
             {/* Marketplace Policies */}
