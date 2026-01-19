@@ -47,7 +47,7 @@ export default function AdminSettingsPage() {
   // Orphan cleanup state
   const [orphanImages, setOrphanImages] = useState<string[]>([]);
   const [cleanupLoading, setCleanupLoading] = useState(false);
-  const [cleanupResults, setCleanupResults] = useState<{ total: number; orphans: number; deleted: number; errors: string[] } | null>(null);
+  const [cleanupResults, setCleanupResults] = useState<{ total: number; orphans: string[]; deleted: number; errors: string[] } | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
