@@ -899,7 +899,7 @@ export default function AdminSettingsPage() {
 
                   {cleanupResults && (
                     <div className="text-sm text-gray-600">
-                      Found <span className="font-semibold text-gray-900">{cleanupResults.orphans}</span> orphan images out of <span className="font-semibold text-gray-900">{cleanupResults.total}</span> total images
+                      Found <span className="font-semibold text-gray-900">{cleanupResults.orphans.length}</span> orphan images out of <span className="font-semibold text-gray-900">{cleanupResults.total}</span> total images
                     </div>
                   )}
                 </div>
