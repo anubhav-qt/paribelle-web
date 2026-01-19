@@ -65,7 +65,7 @@ export default function VendorProductsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock' | 'productType' | 'sku' | 'category' | 'status'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   const [editFormData, setEditFormData] = useState({
@@ -549,11 +549,25 @@ export default function VendorProductsPage() {
         case 'stock':
           comparison = a.stockQuantity - b.stockQuantity;
           break;
+        case 'productType':
+          comparison = (a.productType || '').localeCompare(b.productType || '');
+          break;
+        case 'sku':
+          comparison = (a.sku || '').localeCompare(b.sku || '');
+          break;
+        case 'category':
+          const aCat = a.categories?.[0]?.name || '';
+          const bCat = b.categories?.[0]?.name || '';
+          comparison = aCat.localeCompare(bCat);
+          break;
+        case 'status':
+          comparison = (a.status || '').localeCompare(b.status || '');
+          break;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
-  const handleSort = (field: 'name' | 'price' | 'stock') => {
+  const handleSort = (field: 'name' | 'price' | 'stock' | 'productType' | 'sku' | 'category' | 'status') => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -973,31 +987,78 @@ export default function VendorProductsPage() {
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('name')}
                     >
-                      Product {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      <div className="flex items-center gap-1">
+                        Product
+                        {sortBy === 'name' && (
+                          <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('productType')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Type
+                        {sortBy === 'productType' && (
+                          <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      SKU
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('sku')}
+                    >
+                      <div className="flex items-center gap-1">
+                        SKU
+                        {sortBy === 'sku' && (
+                          <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('category')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Category
+                        {sortBy === 'category' && (
+                          <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
                     </th>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('price')}
                     >
-                      Price {sortBy === 'price' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      <div className="flex items-center gap-1">
+                        Price
+                        {sortBy === 'price' && (
+                          <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
                     </th>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('stock')}
                     >
-                      Stock {sortBy === 'stock' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      <div className="flex items-center gap-1">
+                        Stock
+                        {sortBy === 'stock' && (
+                          <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Status
+                        {sortBy === 'status' && (
+                          <span className="text-blue-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions

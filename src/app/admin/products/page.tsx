@@ -83,7 +83,7 @@ export default function AdminProductsPage() {
   const [exporting, setExporting] = useState(false);
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [importMessageExpanded, setImportMessageExpanded] = useState(true);
-  const [sortField, setSortField] = useState<'name' | 'price' | 'stockQuantity' | 'createdAt' | 'status'>('createdAt');
+  const [sortField, setSortField] = useState<'name' | 'price' | 'stockQuantity' | 'createdAt' | 'status' | 'productType' | 'sku' | 'category'>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
@@ -479,8 +479,23 @@ export default function AdminProductsPage() {
 
   const getSortedProducts = (productList: Product[]) => {
     return [...productList].sort((a, b) => {
-      let aVal: any = a[sortField];
-      let bVal: any = b[sortField];
+      let aVal: any;
+      let bVal: any;
+
+      // Handle special field mappings
+      if (sortField === 'productType') {
+        aVal = a.productType || '';
+        bVal = b.productType || '';
+      } else if (sortField === 'sku') {
+        aVal = a.sku || '';
+        bVal = b.sku || '';
+      } else if (sortField === 'category') {
+        aVal = a.categories?.[0]?.name || '';
+        bVal = b.categories?.[0]?.name || '';
+      } else {
+        aVal = a[sortField];
+        bVal = b[sortField];
+      }
 
       // Handle special cases
       if (sortField === 'createdAt') {
@@ -1056,14 +1071,38 @@ export default function AdminProductsPage() {
                           )}
                         </div>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Type
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('productType')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Type
+                          {sortField === 'productType' && (
+                            <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </div>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        SKU
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('sku')}
+                      >
+                        <div className="flex items-center gap-1">
+                          SKU
+                          {sortField === 'sku' && (
+                            <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </div>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Category
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('category')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Category
+                          {sortField === 'category' && (
+                            <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </div>
                       </th>
                       <th 
                         className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
