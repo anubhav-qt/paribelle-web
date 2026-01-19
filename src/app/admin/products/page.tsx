@@ -1007,7 +1007,7 @@ export default function AdminProductsPage() {
         </div>
 
         {/* Products Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           {loading ? (
             <div className="p-12 text-center">
               <div className="text-gray-500">Loading products...</div>
@@ -1020,7 +1020,7 @@ export default function AdminProductsPage() {
             <>
               {/* Bulk Actions Bar */}
               {selectedProducts.size > 0 && (
-                <div className="px-6 py-3 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
+                <div className="px-6 py-3 bg-blue-50 border-b border-blue-200 flex items-center justify-between sticky top-0 z-20 shadow-sm">
                   <div className="text-sm text-blue-900">
                     {selectedProducts.size} product{selectedProducts.size !== 1 ? 's' : ''} selected
                   </div>
@@ -1080,7 +1080,7 @@ export default function AdminProductsPage() {
 
               <div className="overflow-x-auto">
                 <table className="min-w-full w-full border-collapse">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     <tr>
                       <th className="px-3 py-3 text-left">
                         <input
