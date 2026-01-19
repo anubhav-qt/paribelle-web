@@ -147,33 +147,10 @@ function AdminDashboardContent() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {adminCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Link
-                key={card.href}
-                href={card.href}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6 border border-gray-200"
-              >
-                <div className={`${card.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}>
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {card.title}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {card.description}
-                </p>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Quick Stats */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
+        {/* Quick Stats at Top */}
+        <div className="mb-8 bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-semibold mb-4">Quick Stats</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
               <div className="text-3xl font-bold text-blue-600">~110</div>
               <div className="text-sm text-gray-600 mt-1">Total Products</div>
@@ -191,6 +168,30 @@ function AdminDashboardContent() {
               <div className="text-sm text-gray-600 mt-1">Orders Today</div>
             </div>
           </div>
+        </div>
+
+        {/* Management Tiles - More compact */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {adminCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <Link
+                key={card.href}
+                href={card.href}
+                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 border border-gray-200 group"
+              >
+                <div className={`${card.color} w-10 h-10 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                  <Icon className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                  {card.title}
+                </h3>
+                <p className="text-xs text-gray-600 line-clamp-2">
+                  {card.description}
+                </p>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>
