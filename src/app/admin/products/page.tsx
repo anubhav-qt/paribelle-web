@@ -578,6 +578,9 @@ export default function AdminProductsPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Reset file input
+    event.target.value = '';
+
     try {
       setImporting(true);
       setImportMessage(null);
@@ -587,8 +590,6 @@ export default function AdminProductsPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      // For admin, import all products by using 'all' as vendor ID
-      // The backend should handle this special case
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/import-zip/all`,
         {
@@ -1033,8 +1034,8 @@ export default function AdminProductsPage() {
       <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-[1800px] mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
+          {/* Header */}
+          <div className="mb-8 flex justify-between items-center">
           <div>
             <Link
               href="/admin"

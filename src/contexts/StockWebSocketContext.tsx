@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { usePathname } from 'next/navigation';
 
 interface StockUpdate {
   productId: string;
@@ -79,18 +80,37 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [stockUpdates, setStockUpdates] = useState<Map<string, number>>(new Map());
+  const pathname = usePathname();
 
   useEffect(() => {
+    // Don't connect WebSocket on auth pages or static pages
+    const skipWebSocketPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/_next'];
+    const shouldSkipWebSocket = skipWebSocketPaths.some(path => pathname?.startsWith(path));
+    
+    // Check if user is authenticated (has token)
+    const hasToken = typeof window !== 'undefined' && localStorage.getItem('token');
+    
+    // Only connect if authenticated and not on auth pages
+    if (shouldSkipWebSocket || !hasToken) {
+      console.log('Skipping WebSocket connection on:', pathname);
+      return;
+    }
+
     // Connect to WebSocket server
     // Remove /api/v1 from the API URL for WebSocket connection
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     const wsUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
+    
+    console.log('Connecting WebSocket to:', wsUrl);
     
     const socketInstance = io(wsUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
+      auth: {
+        token: hasToken
+      }
     });
 
     socketInstance.on('connect', () => {
@@ -133,7 +153,7 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
       console.log('Cleaning up WebSocket connection');
       socketInstance.disconnect();
     };
-  }, []);
+  }, [pathname]);
 
   const subscribeToStockUpdates = useCallback((callback: (update: StockUpdate) => void) => {
     if (!socket) return () => {};
