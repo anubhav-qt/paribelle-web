@@ -54,9 +54,8 @@ export async function downloadProductTemplate() {
     // Create Excel workbook using ExcelJS
     const workbook = new ExcelJS.Workbook();
 
-    // Add Electronics sheet
-    const sampleSheet = workbook.addWorksheet('Electronics');
-    sampleSheet.columns = [
+    // Column definitions for product sheets
+    const productColumns = [
       { header: 'Product Name', key: 'name', width: 30 },
       { header: 'Description', key: 'description', width: 50 },
       { header: 'Images (comma-separated filenames)', key: 'images', width: 35 },
@@ -78,12 +77,13 @@ export async function downloadProductTemplate() {
       { header: 'Booking Time Slots', key: 'bookingTimeSlots', width: 30 },
     ];
 
-    // Style header row
-    sampleSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    sampleSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+    // Add Electronics sheet
+    const electronicsSheet = workbook.addWorksheet('Electronics');
+    electronicsSheet.columns = productColumns;
+    electronicsSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    electronicsSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
 
-    // Add sample data
-    sampleSheet.addRow({
+    electronicsSheet.addRow({
       name: 'Wireless Headphones',
       description: 'Premium noise-cancelling wireless headphones with 30-hour battery life',
       images: 'headphones1.jpg, headphones2.jpg',
@@ -105,7 +105,7 @@ export async function downloadProductTemplate() {
       bookingTimeSlots: '',
     });
 
-    sampleSheet.addRow({
+    electronicsSheet.addRow({
       name: 'Conference Room - Per Day',
       description: 'Book our premium conference room for full day. Includes projector, whiteboard, and high-speed WiFi. Available 9 AM to 6 PM',
       images: 'conference1.jpg, conference2.jpg',
@@ -127,7 +127,13 @@ export async function downloadProductTemplate() {
       bookingTimeSlots: '09:00-18:00',
     });
 
-    sampleSheet.addRow({
+    // Add Fashion sheet
+    const fashionSheet = workbook.addWorksheet('Fashion');
+    fashionSheet.columns = productColumns;
+    fashionSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    fashionSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+
+    fashionSheet.addRow({
       name: 'Cotton T-Shirt',
       description: 'Premium cotton t-shirt available in multiple sizes and colors. 100% cotton, comfortable fit',
       images: 'tshirt1.jpg, tshirt2.jpg',
