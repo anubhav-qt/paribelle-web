@@ -8,6 +8,7 @@ import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getVendorId } from '@/lib/auth';
+import { downloadProductTemplate } from '@/lib/product-template';
 
 interface Product {
   id: string;
@@ -581,6 +582,19 @@ export default function VendorProductsPage() {
               <p className="text-gray-600 mt-2">Manage your product catalog</p>
             </div>
             <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  try {
+                    await downloadProductTemplate();
+                  } catch (error) {
+                    console.error('Error creating template:', error);
+                    alert('❌ Error creating template. Please try again.');
+                  }
+                }}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+              >
+                📄 Download Template
+              </button>
               <button
                 onClick={handleExport}
                 disabled={exporting || products.length === 0}
