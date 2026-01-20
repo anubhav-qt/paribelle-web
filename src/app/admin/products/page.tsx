@@ -8,7 +8,6 @@ import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import { getImageUrl } from '@/lib/image-url';
-import { downloadProductTemplate } from '@/lib/product-template';
 
 interface ProductVariant {
   id: string;
@@ -703,12 +702,8 @@ export default function AdminProductsPage() {
   };
 
   const handleDownloadTemplate = async () => {
-    try {
-      await downloadProductTemplate();
-    } catch (error) {
-      console.error('Error creating template:', error);
-      alert('❌ Error creating template. Please try again or check browser console for details.');
-    }
+    // Use the same backend export as "Export to ZIP" - works for templates too
+    await handleExport();
   };
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
@@ -782,14 +777,17 @@ export default function AdminProductsPage() {
           <div className="flex gap-3">
             <button
               onClick={handleDownloadTemplate}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+              disabled={exporting}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download product import template with ID column"
             >
-              📄 Download Template
+              {exporting ? 'Downloading...' : '📄 Download Template'}
             </button>
             <button
               onClick={handleExport}
               disabled={exporting || products.length === 0}
               className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Export all products with images"
             >
               {exporting ? 'Exporting...' : '📥 Export to ZIP'}
             </button>

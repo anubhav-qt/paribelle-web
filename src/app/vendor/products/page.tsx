@@ -8,7 +8,6 @@ import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getVendorId } from '@/lib/auth';
-import { downloadProductTemplate } from '@/lib/product-template';
 
 interface Product {
   id: string;
@@ -597,22 +596,18 @@ export default function VendorProductsPage() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={async () => {
-                  try {
-                    await downloadProductTemplate();
-                  } catch (error) {
-                    console.error('Error creating template:', error);
-                    alert('❌ Error creating template. Please try again.');
-                  }
-                }}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                onClick={handleExport}
+                disabled={exporting}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Download product import template with ID column"
               >
-                📄 Download Template
+                {exporting ? 'Downloading...' : '📄 Download Template'}
               </button>
               <button
                 onClick={handleExport}
                 disabled={exporting || products.length === 0}
                 className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export all your products with images"
               >
                 {exporting ? 'Exporting...' : '📥 Export to ZIP'}
               </button>
