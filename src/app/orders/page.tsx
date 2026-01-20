@@ -246,8 +246,9 @@ export default function OrdersPage() {
     if (!allowReturns) return 'Vendor does not accept returns';
     if (returnPolicyDays === 0) return 'Returns not allowed';
     
-    const isDeliveredOrPaidCOD = order.deliveredAt || (order.paymentStatus === 'paid');
-    if (!isDeliveredOrPaidCOD) return 'Order not yet delivered';
+    // For COD orders, allow returns after delivery. For online payments, allow after payment or delivery
+    const isDeliveredOrPaid = order.deliveredAt || (order.paymentStatus === 'paid');
+    if (!isDeliveredOrPaid) return 'Order not yet delivered or paid';
     
     const deliveryDate = order.deliveredAt ? new Date(order.deliveredAt) : new Date();
     const currentDate = new Date();
