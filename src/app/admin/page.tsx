@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Settings, Package, ShoppingBag, Users, BarChart3, Filter, ClipboardList, Palette, FileText, LayoutList, Shield, Receipt } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
@@ -25,6 +26,31 @@ export default function AdminDashboard() {
 }
 
 function AdminDashboardContent() {
+  const [productCount, setProductCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchProductCount = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?page=1&limit=1`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setProductCount(data.total || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching product count:', error);
+      }
+    };
+    fetchProductCount();
+  }, []);
+
   const adminCards = [
     {
       title: 'Platform KYC',
@@ -152,7 +178,9 @@ function AdminDashboardContent() {
           <h2 className="text-xl font-semibold mb-4">Quick Stats</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-3xl font-bold text-blue-600">~110</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {productCount !== null ? productCount : '...'}
+              </div>
               <div className="text-sm text-gray-600 mt-1">Total Products</div>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
