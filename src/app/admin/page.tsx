@@ -27,12 +27,17 @@ export default function AdminDashboard() {
 
 function AdminDashboardContent() {
   const [productCount, setProductCount] = useState<number | null>(null);
+  const [categoryCount, setCategoryCount] = useState<number | null>(null);
+  const [vendorCount, setVendorCount] = useState<number | null>(null);
+  const [orderCount, setOrderCount] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchProductCount = async () => {
+    const fetchStats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(
+        
+        // Fetch product count
+        const productsResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?page=1&limit=1`,
           {
             headers: {
@@ -40,15 +45,62 @@ function AdminDashboardContent() {
             },
           }
         );
-        if (response.ok) {
-          const data = await response.json();
-          setProductCount(data.total || 0);
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          setProductCount(productsData.total || 0);
+        }
+
+        // Fetch category count
+        const categoriesResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          setCategoryCount(categoriesData.length || 0);
+        }
+
+        // Fetch vendor count
+        const vendorsResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vendors`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (vendorsResponse.ok) {
+          const vendorsData = await vendorsResponse.json();
+          const activeVendors = vendorsData.filter((v: any) => v.status === 'active').length;
+          setVendorCount(activeVendors);
+        }
+
+        // Fetch today's order count
+        const today = new Date().toISOString().split('T')[0];
+        const ordersResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (ordersResponse.ok) {
+          const ordersData = await ordersResponse.json();
+          const todayOrders = ordersData.filter((o: any) => 
+            o.createdAt?.startsWith(today)
+          ).length;
+          setOrderCount(todayOrders);
         }
       } catch (error) {
-        console.error('Error fetching product count:', error);
+        console.error('Error fetching dashboard stats:', error);
       }
     };
-    fetchProductCount();
+    fetchStats();
   }, []);
 
   const adminCards = [
@@ -184,15 +236,21 @@ function AdminDashboardContent() {
               <div className="text-sm text-gray-600 mt-1">Total Products</div>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-3xl font-bold text-green-600">17</div>
+              <div className="text-3xl font-bold text-green-600">
+                {categoryCount !== null ? categoryCount : '...'}
+              </div>
               <div className="text-sm text-gray-600 mt-1">Categories</div>
             </div>
             <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-3xl font-bold text-purple-600">1</div>
+              <div className="text-3xl font-bold text-purple-600">
+                {vendorCount !== null ? vendorCount : '...'}
+              </div>
               <div className="text-sm text-gray-600 mt-1">Active Vendors</div>
             </div>
             <div className="text-center p-4 bg-orange-50 rounded-lg">
-              <div className="text-3xl font-bold text-orange-600">0</div>
+              <div className="text-3xl font-bold text-orange-600">
+                {orderCount !== null ? orderCount : '...'}
+              </div>
               <div className="text-sm text-gray-600 mt-1">Orders Today</div>
             </div>
           </div>
