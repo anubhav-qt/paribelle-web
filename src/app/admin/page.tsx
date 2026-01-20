@@ -140,6 +140,13 @@ function AdminDashboardContent() {
       color: 'bg-cyan-500',
     },
     {
+      title: 'Blog Posts',
+      description: 'Manage marketplace blog and articles',
+      icon: FileText,
+      href: '/admin/blog',
+      color: 'bg-purple-500',
+    },
+    {
       title: 'Footer Settings',
       description: 'Customize footer content and links',
       icon: LayoutList,
