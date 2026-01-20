@@ -702,8 +702,40 @@ export default function AdminProductsPage() {
   };
 
   const handleDownloadTemplate = async () => {
-    // Use the same backend export as "Export to ZIP" - works for templates too
-    await handleExport();
+    try {
+      setExporting(true);
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/template/download`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `products-template-${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const error = await response.text();
+        console.error('Template download error:', error);
+        alert('Failed to download template');
+      }
+    } catch (error) {
+      console.error('Template download error:', error);
+      alert('Failed to download template');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
