@@ -116,6 +116,9 @@ function BookingCheckoutContent() {
       const parsedUser = JSON.parse(userStr);
       setUser(parsedUser);
       
+      // Fetch saved addresses
+      fetchSavedAddresses(token);
+      
       // Check if this is a tour booking
       const bookingType = searchParams.get('type');
       if (bookingType === 'tour') {
@@ -218,6 +221,32 @@ function BookingCheckoutContent() {
       console.error('Error fetching bookings:', error);
       alert(`Failed to load booking details: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setLoading(false);
+    }
+  };
+
+  const fetchSavedAddresses = async (token: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/addresses`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setAddresses(data);
+          // Auto-select default address
+          const defaultAddr = data.find((a: Address) => a.isDefault);
+          if (defaultAddr) {
+            setSelectedAddress(defaultAddr);
+          } else {
+            setSelectedAddress(data[0]);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching saved addresses:', error);
     }
   };
 

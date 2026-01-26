@@ -823,9 +823,10 @@ export default function TourDetailsPage() {
                         selectedDeparture: selectedDeparture,
                         availableDepartures: departuresToPass,
                         vendorId: tour.vendor?.id,
-                        productImage: tour.images[0]
+                        productImage: tour.images[0],
+                        tour: tour
                       }));
-                      window.location.href = `/checkout/booking?type=tour`;
+                      window.location.href = `/checkout?type=tour`;
                     }}
                     className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition mb-3"
                     disabled={!selectedDeparture}

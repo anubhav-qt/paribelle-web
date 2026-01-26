@@ -65,7 +65,7 @@ export const useRazorpay = () => {
     }
   };
 
-  const createOrder = async (orderId: string, amount: number) => {
+  const createOrder = async (orderId: string, amount: number, referenceType: 'order' | 'booking' = 'order') => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
@@ -80,6 +80,7 @@ export const useRazorpay = () => {
             orderId,
             amount,
             currency: 'INR',
+            referenceType,
           }),
         }
       );
