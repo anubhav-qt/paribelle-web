@@ -113,6 +113,13 @@ export default function TourDepartureSelector({
                       {days}D / {nights}N
                     </span>
 
+                    {/* Booking Count Display */}
+                    {departure.bookedSeats > 0 && !isCancelled && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        📊 {departure.bookedSeats} booked
+                      </span>
+                    )}
+
                     {/* Seats Status */}
                     {isCancelled ? (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">

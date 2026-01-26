@@ -13,6 +13,7 @@ interface AvailableTimeSlot {
   startTime: string;
   endTime: string;
   available: boolean;
+  bookingCount?: number;
 }
 
 interface BookingData {
@@ -45,6 +46,7 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<AvailableTimeSlot[]>([]);
   const [unavailableDates, setUnavailableDates] = useState<Set<string>>(new Set());
+  const [dateBookingCounts, setDateBookingCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [currency, setCurrency] = useState('INR');
@@ -143,14 +145,21 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
       if (response.ok) {
         const data = await response.json();
         const unavailable = new Set<string>();
+        const bookingCounts = new Map<string, number>();
         
         data.forEach((dateInfo: any) => {
           if (dateInfo.slots && dateInfo.slots.length > 0) {
             if (bookingData.durationUnit === 'days') {
               // For daily bookings, mark date as unavailable if the full-day slot is not available
               const fullDaySlot = dateInfo.slots.find((s: any) => s.startTime === 'full-day');
-              if (fullDaySlot && !fullDaySlot.available) {
-                unavailable.add(dateInfo.date);
+              if (fullDaySlot) {
+                if (!fullDaySlot.available) {
+                  unavailable.add(dateInfo.date);
+                }
+                // Store booking count for this date
+                if (fullDaySlot.bookingCount) {
+                  bookingCounts.set(dateInfo.date, fullDaySlot.bookingCount);
+                }
               }
             } else {
               // For hourly bookings, mark date as unavailable if NO slots are available
@@ -158,11 +167,17 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
               if (!hasAvailableSlot) {
                 unavailable.add(dateInfo.date);
               }
+              // Count total bookings for all slots on this date
+              const totalBookings = dateInfo.slots.reduce((sum: number, s: any) => sum + (s.bookingCount || 0), 0);
+              if (totalBookings > 0) {
+                bookingCounts.set(dateInfo.date, totalBookings);
+              }
             }
           }
         });
         
         setUnavailableDates(unavailable);
+        setDateBookingCounts(bookingCounts);
       }
     } catch (error) {
       console.error('Failed to fetch unavailable dates:', error);
@@ -288,6 +303,8 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
       const isAvailable = isDateAvailable(date);
       const isSelected = isDateSelected(date);
+      const dateStr = date.toISOString().split('T')[0];
+      const bookingCount = dateBookingCounts.get(dateStr) || 0;
 
       days.push(
         <button
@@ -296,13 +313,20 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
           onClick={() => handleDateClick(date)}
           disabled={!isAvailable}
           className={`
-            h-12 rounded-lg text-sm font-medium transition-colors
+            h-12 rounded-lg text-sm font-medium transition-colors relative
             ${!isAvailable ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover:bg-primary/10'}
             ${isSelected ? 'bg-primary text-primary-foreground hover:opacity-90' : ''}
             ${isAvailable && !isSelected ? 'text-foreground' : ''}
           `}
         >
-          {day}
+          <div className="flex flex-col items-center justify-center h-full">
+            <span>{day}</span>
+            {bookingCount > 0 && (
+              <span className={`text-[10px] ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                {bookingCount} {bookingCount === 1 ? 'booking' : 'bookings'}
+              </span>
+            )}
+          </div>
         </button>
       );
     }
@@ -397,6 +421,7 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
                 {availableTimeSlots.map((slot) => {
                   const slotKey = `${slot.startTime} - ${slot.endTime}`;
                   const isSelected = selectedTimeSlots.includes(slotKey);
+                  const bookingCount = slot.bookingCount || 0;
                   return (
                     <button
                       key={slotKey}
@@ -420,7 +445,14 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
                         }
                       `}
                     >
-                      {slotKey}
+                      <div className="flex flex-col items-center">
+                        <span>{slotKey}</span>
+                        {bookingCount > 0 && (
+                          <span className={`text-[10px] mt-1 ${!slot.available ? 'text-muted-foreground' : isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                            {bookingCount} {bookingCount === 1 ? 'booking' : 'bookings'}
+                          </span>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
