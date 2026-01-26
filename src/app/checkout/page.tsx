@@ -449,7 +449,8 @@ function CheckoutContent() {
             );
 
             // Update booking status
-            await fetch(
+            console.log('Updating booking status to confirmed, booking ID:', booking.id);
+            const statusUpdateResponse = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}/status`,
               {
                 method: 'PATCH',
@@ -462,9 +463,11 @@ function CheckoutContent() {
                 }),
               }
             );
+            console.log('Status update response:', statusUpdateResponse.status, await statusUpdateResponse.text());
             
             // Update payment reference
-            await fetch(
+            console.log('Updating payment reference, payment ID:', response.razorpay_payment_id);
+            const paymentUpdateResponse = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}/payment`,
               {
                 method: 'PATCH',
@@ -477,6 +480,7 @@ function CheckoutContent() {
                 }),
               }
             );
+            console.log('Payment update response:', paymentUpdateResponse.status, await paymentUpdateResponse.text());
 
             sessionStorage.removeItem('tourBooking');
             setSuccessBookingDetails({

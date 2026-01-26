@@ -125,6 +125,7 @@ export default function ProductDetailPage() {
   const [userOrderItemId, setUserOrderItemId] = useState<string | undefined>();
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [tourDepartures, setTourDepartures] = useState<any[]>([]);
 
   // Clamp quantity to available stock whenever stock or variant changes
   useEffect(() => {
@@ -285,7 +286,37 @@ export default function ProductDetailPage() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/slug/${productSlug}`);
       if (response.ok) {
         const productData = await response.json();
+        console.log('Product data:', { 
+          productType: productData.productType, 
+          hasTour: !!productData.attributes?.tour,
+          tourMode: productData.attributes?.tour?.tourMode,
+          productId: productData.id
+        });
         setProduct(productData);
+        
+        // Fetch tour departures with live booking counts if it's a tour
+        if (productData.productType === 'booking' && productData.attributes?.tour?.tourMode) {
+          console.log('Fetching tour departures from API...');
+          try {
+            const departuresResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/tours/${productData.id}/departures`
+            );
+            console.log('Departures response status:', departuresResponse.status);
+            if (departuresResponse.ok) {
+              const departuresData = await departuresResponse.json();
+              console.log('Tour departures with booking counts:', departuresData);
+              setTourDepartures(departuresData);
+            } else {
+              console.error('Failed to fetch departures:', await departuresResponse.text());
+            }
+          } catch (error) {
+            console.error('Error fetching tour departures:', error);
+            // Fallback to product data departures
+            setTourDepartures(productData.attributes?.tour?.departures || []);
+          }
+        } else {
+          console.log('Not fetching departures - not a tour or missing tour mode');
+        }
         
         // Check if user has purchased this product
         if (productData.id) {
@@ -989,7 +1020,7 @@ export default function ProductDetailPage() {
                         Select Tour Departure
                       </h3>
                       <TourDepartureSelector
-                        departures={product.attributes.tour.departures}
+                        departures={tourDepartures.length > 0 ? tourDepartures : product.attributes.tour.departures}
                         onSelectDeparture={(departure) => {
                           setSelectedBooking({
                             date: departure.departureDate,

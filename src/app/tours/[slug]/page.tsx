@@ -113,6 +113,26 @@ export default function TourDetailsPage() {
         return;
       }
 
+      // Fetch tour departures with live booking counts
+      try {
+        const departuresResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/tours/${data.id}/departures`
+        );
+        if (departuresResponse.ok) {
+          const departuresData = await departuresResponse.json();
+          console.log('Tour departures with booking counts:', departuresData);
+          console.log('First departure full details:', JSON.stringify(departuresData[0], null, 2));
+          console.log('Number of departures:', departuresData.length);
+          console.log('Departures with IDs:', departuresData.filter(d => d.id).length);
+          console.log('Departures without IDs:', departuresData.filter(d => !d.id).length);
+          // Update tour data with live departure data
+          data.attributes.tour.departures = departuresData;
+        }
+      } catch (error) {
+        console.error('Error fetching tour departures:', error);
+        // Continue with existing departure data from product
+      }
+
       setTour(data);
       
       // Set initial number of people to minimum group size
@@ -715,14 +735,15 @@ export default function TourDetailsPage() {
                         <option value="">Choose a date...</option>
                         {tourData.departures
                           .filter(d => new Date(d.departureDate) >= new Date())
-                          .map((departure) => (
-                            <option key={departure.id} value={departure.id}>
+                          .map((departure, index) => (
+                            <option key={departure.id || `departure-${index}`} value={departure.id || ''}>
                               {new Date(departure.departureDate).toLocaleDateString('en-US', {
                                 weekday: 'short',
                                 year: 'numeric',
                                 month: 'short',
                                 day: 'numeric'
-                              })} - {departure.availableSeats} seats
+                              })} - {departure.availableSeats} seats available
+                              {departure.bookedSeats > 0 ? ` (${departure.bookedSeats} booked)` : ''}
                             </option>
                           ))}
                       </select>
