@@ -111,6 +111,11 @@ export default function OrdersPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [orderToAction, setOrderToAction] = useState<Order | null>(null);
   
+  // Status change modal state for admin/vendor
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedOrderForStatusChange, setSelectedOrderForStatusChange] = useState<Order | null>(null);
+  const [user, setUser] = useState<any>(null);
+  
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -121,11 +126,16 @@ export default function OrdersPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
     
     if (!token) {
       alert('Please login to view your orders');
       router.push('/login');
       return;
+    }
+
+    if (userStr) {
+      setUser(JSON.parse(userStr));
     }
 
     fetchOrders();
@@ -168,6 +178,71 @@ export default function OrdersPage() {
       setLoading(false);
     }
   };
+
+  // Get next possible statuses based on current status
+  const getNextStatuses = (currentStatus: string): string[] => {
+    const statusMap: { [key: string]: string[] } = {
+      'pending': ['processing', 'cancelled'],
+      'processing': ['shipped', 'cancelled'],
+      'shipped': ['delivered', 'cancelled'],
+      'delivered': [],
+      'cancelled': [],
+      'return_requested': [],
+      'return_approved': [],
+    };
+    return statusMap[currentStatus.toLowerCase()] || [];
+  };
+
+  // Admin/Vendor: Handle status badge click
+  const handleStatusBadgeClick = (order: Order, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (user?.role === 'super_admin' || user?.role === 'vendor_admin') {
+      const nextStatuses = getNextStatuses(order.status);
+      if (nextStatuses.length > 0) {
+        setSelectedOrderForStatusChange(order);
+        setShowStatusModal(true);
+      }
+    }
+  };
+
+  // Admin/Vendor: Update order status
+  const handleUpdateOrderStatus = async (newStatus: string) => {
+    if (!selectedOrderForStatusChange) return;
+
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${selectedOrderForStatusChange.id}/status`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      if (response.ok) {
+        showToast(`Order status updated to ${newStatus}`, 'success');
+        setShowStatusModal(false);
+        setSelectedOrderForStatusChange(null);
+        fetchOrders();
+      } else {
+        const error = await response.json();
+        showToast(error.message || 'Failed to update order status', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      showToast('Failed to update order status', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Check if user is admin or vendor
+  const isAdminOrVendor = user?.role === 'super_admin' || user?.role === 'vendor_admin';
 
   const handleCancelOrder = async () => {
     if (!orderToAction || !cancelReason) {
@@ -618,12 +693,27 @@ export default function OrdersPage() {
                         </h3>
                         {/* Current Order Status */}
                         <span
+                          onClick={(e) => handleStatusBadgeClick(order, e)}
                           className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${getStatusColor(
                             order.status
-                          )}`}
+                          )} ${
+                            isAdminOrVendor && getNextStatuses(order.status).length > 0
+                              ? 'cursor-pointer hover:opacity-80 transition-opacity'
+                              : ''
+                          }`}
+                          title={
+                            isAdminOrVendor && getNextStatuses(order.status).length > 0
+                              ? 'Click to change status'
+                              : undefined
+                          }
                         >
                           {getStatusIcon(order.status)}
                           {order.status}
+                          {isAdminOrVendor && getNextStatuses(order.status).length > 0 && (
+                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          )}
                         </span>
                         
                         {/* Additional Return Status Indicators (if applicable) */}
@@ -914,6 +1004,67 @@ export default function OrdersPage() {
         />
       )}
       
+      {/* Status Change Modal for Admin/Vendor */}
+      {showStatusModal && selectedOrderForStatusChange && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                Change Order Status
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Order #{selectedOrderForStatusChange.orderNumber}
+              </p>
+              
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-medium text-foreground">Current:</span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedOrderForStatusChange.status)}`}>
+                    {selectedOrderForStatusChange.status}
+                  </span>
+                </div>
+                
+                <p className="text-sm font-medium text-foreground mb-2">Select new status:</p>
+                <div className="space-y-2">
+                  {getNextStatuses(selectedOrderForStatusChange.status).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => handleUpdateOrderStatus(status)}
+                      disabled={actionLoading}
+                      className={`w-full px-4 py-3 rounded-lg border-2 text-left flex items-center justify-between transition-colors ${getStatusColor(status)} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {getStatusIcon(status)}
+                        <span className="font-medium">{status}</span>
+                      </span>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+                
+                {getNextStatuses(selectedOrderForStatusChange.status).length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">
+                    No status changes available for this order
+                  </p>
+                )}
+              </div>
+              
+              <button
+                onClick={() => {
+                  setShowStatusModal(false);
+                  setSelectedOrderForStatusChange(null);
+                }}
+                className="w-full px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confirmation Dialog */}
       {confirm && (
         <ConfirmDialog
