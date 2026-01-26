@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   User, 
@@ -12,7 +12,10 @@ import {
   Save,
   X,
   Shield,
-  Lock
+  Lock,
+  ShoppingBag,
+  Ticket,
+  Package
 } from 'lucide-react';
 import AddressManager from '@/components/AddressManager';
 
@@ -22,10 +25,16 @@ interface ProfileContentProps {
 
 export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [activeTab, setActiveTab] = useState<'profile' | 'bookings' | 'orders'>('profile');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -54,11 +63,80 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
         phone: parsedUser.phone || '',
       });
       setLoading(false);
+      
+      // Check if tab parameter is set to bookings
+      const tab = searchParams.get('tab');
+      if (tab === 'bookings') {
+        setActiveTab('bookings');
+        fetchBookings(parsedUser.id, token);
+      }
     } catch (error) {
       console.error('Error parsing user data:', error);
       router.push(`${getRoutePrefix()}/login`);
     }
-  }, [router, vendorSlug]);
+  }, [router, vendorSlug, searchParams]);
+
+  const fetchBookings = async (userId: string, token: string) => {
+    setLoadingBookings(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/user/${userId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data);
+      } else {
+        console.error('Failed to fetch bookings:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    } finally {
+      setLoadingBookings(false);
+    }
+  };
+
+  const fetchOrders = async (token: string) => {
+    setLoadingOrders(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(Array.isArray(data) ? data : data.orders || []);
+      } else {
+        console.error('Failed to fetch orders:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const handleTabChange = (tab: 'profile' | 'bookings' | 'orders') => {
+    setActiveTab(tab);
+    const token = localStorage.getItem('token');
+    if (!token || !user) return;
+
+    if (tab === 'bookings' && bookings.length === 0) {
+      fetchBookings(user.id, token);
+    } else if (tab === 'orders' && orders.length === 0) {
+      fetchOrders(token);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -130,6 +208,62 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
           <p className="text-muted-foreground">Manage your account information</p>
         </div>
 
+        {/* Tabs */}
+        <div className="mb-6 border-b border-border">
+          <div className="flex gap-4">
+            <button
+              onClick={() => handleTabChange('profile')}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === 'profile'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Profile
+              </div>
+            </button>
+            <button
+              onClick={() => handleTabChange('bookings')}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === 'bookings'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Ticket className="w-4 h-4" />
+                Bookings
+                {bookings.length > 0 && (
+                  <span className="ml-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs">
+                    {bookings.length}
+                  </span>
+                )}
+              </div>
+            </button>
+            <button
+              onClick={() => handleTabChange('orders')}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === 'orders'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Orders
+                {orders.length > 0 && (
+                  <span className="ml-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs">
+                    {orders.length}
+                  </span>
+                )}
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'profile' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Profile Card */}
           <div className="lg:col-span-1">
@@ -329,29 +463,295 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
             <div className="bg-card rounded-lg shadow-sm border border-border p-6">
               <h3 className="text-lg font-semibold mb-4 text-foreground">Quick Links</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Link
-                  href={`${getRoutePrefix()}/orders`}
-                  className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors"
+                <button
+                  onClick={() => handleTabChange('orders')}
+                  className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors text-left"
                 >
                   <div className="p-2 bg-primary/10 rounded-lg">
-                    <Calendar className="w-5 h-5 text-primary" />
+                    <Package className="w-5 h-5 text-primary" />
                   </div>
-                  <span className="font-medium text-foreground">My Orders</span>
-                </Link>
+                  <div>
+                    <span className="font-medium text-foreground block">My Orders</span>
+                    {orders.length > 0 && (
+                      <span className="text-xs text-muted-foreground">{orders.length} orders</span>
+                    )}
+                  </div>
+                </button>
 
-                <Link
-                  href={`${getRoutePrefix()}/dashboard`}
-                  className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors"
+                <button
+                  onClick={() => handleTabChange('bookings')}
+                  className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors text-left"
                 >
                   <div className="p-2 bg-purple-500/10 rounded-lg">
-                    <User className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <Ticket className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   </div>
-                  <span className="font-medium text-foreground">Dashboard</span>
-                </Link>
+                  <div>
+                    <span className="font-medium text-foreground block">My Bookings</span>
+                    {bookings.length > 0 && (
+                      <span className="text-xs text-muted-foreground">{bookings.length} bookings</span>
+                    )}
+                  </div>
+                </button>
               </div>
             </div>
           </div>
         </div>
+        )}
+
+        {activeTab === 'bookings' && (
+          <div className="space-y-4">
+            {loadingBookings ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : bookings.length === 0 ? (
+              <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
+                <Ticket className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2 text-foreground">No Bookings Yet</h3>
+                <p className="text-muted-foreground mb-6">You haven't made any bookings yet.</p>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  Browse Products
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {bookings.map((booking) => (
+                  <div
+                    key={booking.id}
+                    className="bg-card rounded-lg shadow-sm border border-border p-6"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-start gap-4">
+                          {booking.product?.images?.[0] && (
+                            <img
+                              src={booking.product.images[0]}
+                              alt={booking.product.name}
+                              className="w-20 h-20 rounded-lg object-cover"
+                            />
+                          )}
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-foreground mb-1">
+                              {booking.product?.name || 'Booking'}
+                            </h3>
+                            <div className="space-y-1 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>
+                                  {new Date(booking.bookingDate).toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                  })}
+                                </span>
+                              </div>
+                              {booking.startTime && (
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>
+                                    {booking.startTime} - {booking.endTime || 'N/A'}
+                                  </span>
+                                </div>
+                              )}
+                              {booking.numberOfGuests && (
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4" />
+                                  <span>{booking.numberOfGuests} {booking.numberOfGuests === 1 ? 'guest' : 'guests'}</span>
+                                </div>
+                              )}
+                              {booking.specialRequests && (
+                                <div className="mt-2 p-2 bg-muted rounded text-xs">
+                                  <strong>Special Requests:</strong> {booking.specialRequests}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-right">
+                          <div className="text-sm text-muted-foreground">Total Price</div>
+                          <div className="text-xl font-bold text-foreground">
+                            ₹{booking.totalPrice?.toLocaleString() || '0'}
+                          </div>
+                        </div>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            booking.status === 'confirmed'
+                              ? 'bg-green-100 text-green-800'
+                              : booking.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : booking.status === 'cancelled'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {booking.status?.toUpperCase() || 'PENDING'}
+                        </span>
+                      </div>
+                    </div>
+                    {booking.customerName && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Name:</span>{' '}
+                            <span className="font-medium text-foreground">{booking.customerName}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Email:</span>{' '}
+                            <span className="font-medium text-foreground">{booking.customerEmail}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Phone:</span>{' '}
+                            <span className="font-medium text-foreground">{booking.customerPhone || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div className="space-y-4">
+            {loadingOrders ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
+                <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2 text-foreground">No Orders Yet</h3>
+                <p className="text-muted-foreground mb-6">You haven't placed any orders yet.</p>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  Start Shopping
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {orders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="bg-card rounded-lg shadow-sm border border-border p-6"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="text-lg font-semibold text-foreground">
+                              Order #{order.orderNumber || order.id.slice(0, 8)}
+                            </h3>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <Calendar className="w-4 h-4" />
+                              <span>
+                                {new Date(order.createdAt).toLocaleDateString('en-US', {
+                                  weekday: 'short',
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              order.status === 'delivered' || order.status === 'completed'
+                                ? 'bg-green-100 text-green-800'
+                                : order.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : order.status === 'processing' || order.status === 'shipped'
+                                ? 'bg-blue-100 text-blue-800'
+                                : order.status === 'cancelled'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {order.status?.toUpperCase() || 'PENDING'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-muted-foreground">Total Amount</div>
+                        <div className="text-xl font-bold text-foreground">
+                          ₹{order.totalAmount?.toLocaleString() || '0'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Order Items */}
+                    {order.items && order.items.length > 0 && (
+                      <div className="border-t border-border pt-4">
+                        <h4 className="text-sm font-semibold text-foreground mb-3">Items ({order.items.length})</h4>
+                        <div className="space-y-3">
+                          {order.items.slice(0, 3).map((item: any, index: number) => (
+                            <div key={index} className="flex items-center gap-3">
+                              {item.product?.images?.[0] && (
+                                <img
+                                  src={item.product.images[0]}
+                                  alt={item.product.name}
+                                  className="w-12 h-12 rounded object-cover"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {item.product?.name || item.productName || 'Product'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Qty: {item.quantity} × ₹{item.price?.toLocaleString()}
+                                </p>
+                              </div>
+                              <div className="text-sm font-medium text-foreground">
+                                ₹{((item.quantity || 0) * (item.price || 0)).toLocaleString()}
+                              </div>
+                            </div>
+                          ))}
+                          {order.items.length > 3 && (
+                            <p className="text-xs text-muted-foreground text-center pt-2">
+                              +{order.items.length - 3} more item(s)
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Shipping Address */}
+                    {order.shippingAddress && (
+                      <div className="border-t border-border pt-4 mt-4">
+                        <h4 className="text-sm font-semibold text-foreground mb-2">Shipping Address</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {order.shippingAddress.street}, {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Action Button */}
+                    <div className="border-t border-border pt-4 mt-4">
+                      <Link
+                        href={`/orders/${order.id}`}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium"
+                      >
+                        View Details
+                        <ShoppingBag className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

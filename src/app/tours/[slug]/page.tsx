@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, notFound } from 'next/navigation';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import Footer from '@/components/Footer';
-import { Calendar, MapPin, Users, Clock, Check, X, Info, Star, Phone, Mail, Share2, Loader } from 'lucide-react';
-import { handleBookNow, handleEnquireNow, handleShare, handleEmail, handleCall } from '@/lib/utils/booking-actions';
+import { Calendar, MapPin, Users, Clock, Check, X, Info, Star, Share2, Loader } from 'lucide-react';
+import { handleBookNow, handleShare } from '@/lib/utils/booking-actions';
 
 interface TourProduct {
   id: string;
@@ -24,6 +24,7 @@ interface TourProduct {
     storeName: string;
     contactEmail: string;
     contactPhone: string;
+    subdomain?: string;
   };
   attributes?: {
     tour?: {
@@ -74,6 +75,8 @@ export default function TourDetailsPage() {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+  const [numberOfPeople, setNumberOfPeople] = useState(8); // Will be updated when tour data loads
+  const [selectedDeparture, setSelectedDeparture] = useState<any>(null);
 
   useEffect(() => {
     fetchTourData();
@@ -111,6 +114,11 @@ export default function TourDetailsPage() {
       }
 
       setTour(data);
+      
+      // Set initial number of people to minimum group size
+      if (data.attributes?.tour?.details?.groupSize?.min) {
+        setNumberOfPeople(data.attributes.tour.details.groupSize.min);
+      }
     } catch (error) {
       console.error('Error fetching tour:', error);
       notFound();
@@ -158,14 +166,14 @@ export default function TourDetailsPage() {
       
       <main className="min-h-screen bg-gray-50">
         <div className="bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="w-full">
             {/* Breadcrumb */}
-            <div className="text-sm text-gray-500 mb-4">
+            <div className="text-sm text-gray-500 mb-4 max-w-[80%] mx-auto px-4 sm:px-6 lg:px-8 pt-8">
               Home / Tours / {tour.name}
             </div>
 
             {/* Title and Quick Info */}
-            <div className="mb-6">
+            <div className="mb-6 max-w-[80%] mx-auto px-4 sm:px-6 lg:px-8">
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
                 {tour.name}
               </h1>
@@ -190,33 +198,36 @@ export default function TourDetailsPage() {
               </div>
             </div>
 
-            {/* Image Gallery - Professional Layout */}
-            <div className="mb-8">
-              {/* Main Image */}
-              <div className="relative mb-3 group cursor-pointer bg-gray-100 rounded-xl" onClick={() => setIsLightboxOpen(true)}>
+            {/* Image Gallery - Hero Layout */}
+            <div className="mb-8 -mx-4 sm:-mx-6 lg:-mx-8">
+              {/* Main Hero Image */}
+              <div className="relative group cursor-pointer bg-gray-900" onClick={() => setIsLightboxOpen(true)}>
                 <img
                   src={tour.images[selectedImage] || tour.images[0]}
                   alt={tour.name}
-                  className="w-full h-[500px] object-contain rounded-xl shadow-lg hover:shadow-2xl transition-shadow"
+                  className="w-full h-[60vh] min-h-[400px] max-h-[600px] object-cover hover:scale-[1.02] transition-transform duration-500"
                 />
                 
+                {/* Gradient Overlay for Better Text Visibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
+                
                 {/* Click to Zoom Indicator */}
-                <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1.5 rounded-lg text-sm font-medium backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="absolute top-4 right-4 bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md border border-white/20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                   </svg>
-                  Click to Zoom
+                  Click to Enlarge
                 </div>
                 
                 {/* Image Counter and Auto-play Controls */}
-                <div className="absolute bottom-4 right-4 flex items-center gap-2">
+                <div className="absolute bottom-6 right-6 flex items-center gap-3">
                   {tour.images.length > 1 && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsAutoPlaying(!isAutoPlaying);
                       }}
-                      className="bg-black/70 hover:bg-black/80 text-white p-2 rounded-lg transition backdrop-blur-sm"
+                      className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-full transition backdrop-blur-md border border-white/30"
                       aria-label={isAutoPlaying ? 'Pause slideshow' : 'Play slideshow'}
                     >
                       {isAutoPlaying ? (
@@ -230,7 +241,7 @@ export default function TourDetailsPage() {
                       )}
                     </button>
                   )}
-                  <div className="bg-black/70 text-white px-3 py-1.5 rounded-lg text-sm font-medium backdrop-blur-sm">
+                  <div className="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-md border border-white/30">
                     {selectedImage + 1} / {tour.images.length}
                   </div>
                 </div>
@@ -244,11 +255,11 @@ export default function TourDetailsPage() {
                         setIsAutoPlaying(false);
                         setSelectedImage(selectedImage === 0 ? tour.images.length - 1 : selectedImage - 1);
                       }}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 p-3 rounded-full shadow-lg transition opacity-0 group-hover:opacity-100"
+                      className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-4 rounded-full shadow-2xl transition backdrop-blur-md border border-white/30 opacity-0 group-hover:opacity-100"
                       aria-label="Previous image"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                       </svg>
                     </button>
                     <button
@@ -257,45 +268,16 @@ export default function TourDetailsPage() {
                         setIsAutoPlaying(false);
                         setSelectedImage(selectedImage === tour.images.length - 1 ? 0 : selectedImage + 1);
                       }}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 p-3 rounded-full shadow-lg transition opacity-0 group-hover:opacity-100"
+                      className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-4 rounded-full shadow-2xl transition backdrop-blur-md border border-white/30 opacity-0 group-hover:opacity-100"
                       aria-label="Next image"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
                   </>
                 )}
               </div>
-              
-              {/* Thumbnail Gallery */}
-              {tour.images.length > 1 && (
-                <div className="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2">
-                  {tour.images.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setIsAutoPlaying(false);
-                        setSelectedImage(idx);
-                      }}
-                      className={`relative aspect-square rounded-lg overflow-hidden transition-all ${
-                        selectedImage === idx 
-                          ? 'ring-3 ring-blue-500 ring-offset-2 shadow-lg scale-105' 
-                          : 'hover:ring-2 hover:ring-gray-300 hover:scale-105 opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      <img
-                        src={img}
-                        alt={`${tour.name} ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      {selectedImage === idx && (
-                        <div className="absolute inset-0 bg-blue-500/20"></div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Lightbox Modal */}
@@ -371,7 +353,7 @@ export default function TourDetailsPage() {
 
                 {/* Main Lightbox Image Container with Scroll */}
                 <div 
-                  className="relative max-w-7xl max-h-[90vh] w-full overflow-auto" 
+                  className="relative w-full h-full flex items-center justify-center overflow-auto" 
                   onClick={(e) => e.stopPropagation()}
                   style={{ 
                     cursor: zoomLevel > 1 ? 'move' : 'default'
@@ -380,11 +362,10 @@ export default function TourDetailsPage() {
                   <img
                     src={tour.images[selectedImage]}
                     alt={tour.name}
-                    className="mx-auto transition-transform duration-200"
+                    className="max-w-full max-h-[90vh] w-auto h-auto object-contain transition-transform duration-200"
                     style={{
                       transform: `scale(${zoomLevel})`,
-                      transformOrigin: 'center center',
-                      maxHeight: zoomLevel > 1 ? 'none' : '90vh'
+                      transformOrigin: 'center center'
                     }}
                   />
                 </div>
@@ -451,7 +432,7 @@ export default function TourDetailsPage() {
             )}
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-[80%] mx-auto px-4 sm:px-6 lg:px-8 pb-8">
               {/* Left Column - Tour Details */}
               <div className="lg:col-span-2">
                 {/* Description */}
@@ -717,62 +698,165 @@ export default function TourDetailsPage() {
                     </div>
                   </div>
 
-                  {nextDeparture && (
-                    <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm font-semibold text-gray-700 mb-1">Next Departure</p>
-                      <p className="text-blue-600 font-semibold">{new Date(nextDeparture.departureDate).toLocaleDateString()}</p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {nextDeparture.availableSeats} seats available
-                      </p>
+                  {/* Available Departures */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Select Departure Date
+                    </label>
+                    {tourData.departures && tourData.departures.length > 0 ? (
+                      <select
+                        value={selectedDeparture?.id || ''}
+                        onChange={(e) => {
+                          const departure = tourData.departures.find(d => d.id === e.target.value);
+                          setSelectedDeparture(departure || null);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      >
+                        <option value="">Choose a date...</option>
+                        {tourData.departures
+                          .filter(d => new Date(d.departureDate) >= new Date())
+                          .map((departure) => (
+                            <option key={departure.id} value={departure.id}>
+                              {new Date(departure.departureDate).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })} - {departure.availableSeats} seats
+                            </option>
+                          ))}
+                      </select>
+                    ) : (
+                      <p className="text-sm text-gray-500">No departures available</p>
+                    )}
+                    {selectedDeparture && (
+                      <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-700">Available Seats:</span>
+                          <span className="font-semibold text-blue-600">{selectedDeparture.availableSeats}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm mt-1">
+                          <span className="text-gray-700">Return Date:</span>
+                          <span className="font-medium text-gray-900">
+                            {new Date(selectedDeparture.returnDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Number of People Selector */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Number of People
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setNumberOfPeople(Math.max(tourData.details.groupSize.min, numberOfPeople - 1))}
+                        className="w-10 h-10 flex items-center justify-center border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-bold"
+                        disabled={numberOfPeople <= tourData.details.groupSize.min}
+                      >
+                        -
+                      </button>
+                      <div className="flex-1 text-center">
+                        <div className="text-2xl font-bold text-gray-900">{numberOfPeople}</div>
+                        <div className="text-xs text-gray-500">{tourData.details.groupSize.min}-{tourData.details.groupSize.max} allowed</div>
+                      </div>
+                      <button
+                        onClick={() => setNumberOfPeople(Math.min(tourData.details.groupSize.max, numberOfPeople + 1))}
+                        className="w-10 h-10 flex items-center justify-center border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-bold"
+                        disabled={numberOfPeople >= tourData.details.groupSize.max}
+                      >
+                        +
+                      </button>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Total Price */}
+                  <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm text-gray-600">Price per person</span>
+                      <span className="text-sm font-semibold">₹{tour.price.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">× {numberOfPeople} people</span>
+                    </div>
+                    <div className="border-t border-gray-300 mt-3 pt-3 flex justify-between items-center">
+                      <span className="text-lg font-bold text-gray-900">Total</span>
+                      <span className="text-2xl font-bold text-blue-600">₹{(tour.price * numberOfPeople).toLocaleString()}</span>
+                    </div>
+                  </div>
 
                   <button 
-                    onClick={() => handleBookNow(tour.slug, !!nextDeparture)}
+                    onClick={() => {
+                      // Get all departures, prioritize active ones with available seats
+                      const allDepartures = tourData.departures || [];
+                      const futureDepartures = allDepartures.filter(d => 
+                        new Date(d.departureDate) >= new Date()
+                      );
+                      const availableDepartures = futureDepartures.filter(d => 
+                        d.availableSeats > 0
+                      );
+                      
+                      // Use available departures if any, otherwise use all future departures
+                      const departuresToPass = availableDepartures.length > 0 
+                        ? availableDepartures 
+                        : futureDepartures;
+                      
+                      console.log('All departures:', allDepartures);
+                      console.log('Future departures:', futureDepartures);
+                      console.log('Available departures:', availableDepartures);
+                      console.log('Passing to checkout:', departuresToPass);
+                      console.log('Selected departure:', selectedDeparture);
+                      
+                      // Store tour booking details and navigate to checkout
+                      sessionStorage.setItem('tourBooking', JSON.stringify({
+                        type: 'tour',
+                        productId: tour.id,
+                        productName: tour.name,
+                        numberOfGuests: numberOfPeople,
+                        pricePerPerson: tour.price,
+                        totalPrice: tour.price * numberOfPeople,
+                        selectedDeparture: selectedDeparture,
+                        availableDepartures: departuresToPass,
+                        vendorId: tour.vendor?.id,
+                        productImage: tour.images[0]
+                      }));
+                      window.location.href = `/checkout/booking?type=tour`;
+                    }}
                     className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition mb-3"
+                    disabled={!selectedDeparture}
                   >
-                    Book Now
+                    {selectedDeparture ? 'Book Now' : 'Please Select a Departure'}
                   </button>
                   
                   <button 
-                    onClick={() => handleEnquireNow(
-                      { slug: tour.slug, name: tour.name },
-                      `Hi, I'm interested in the ${tour.name} tour. Can you provide more details?`
-                    )}
+                    onClick={() => {
+                      // Navigate to vendor's contact page
+                      const vendorPath = tour.vendor?.subdomain 
+                        ? `/vendors/${tour.vendor.subdomain}/contact`
+                        : `/contact?vendor=${tour.vendor?.id || ''}&product=${tour.slug}`;
+                      window.location.href = vendorPath;
+                    }}
                     className="w-full bg-white text-blue-600 py-3 rounded-lg font-semibold border-2 border-blue-600 hover:bg-blue-50 transition mb-4"
                   >
-                    Enquire Now
+                    Contact {tour.vendor?.storeName || 'Vendor'}
                   </button>
 
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleCall(tour.vendor?.contactPhone || '+91-1234567890', { slug: tour.slug, name: tour.name })}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                      title={`Call ${tour.vendor?.storeName || 'us'}`}
-                    >
-                      <Phone className="w-4 h-4" />
-                      <span className="text-sm">Call</span>
-                    </button>
-                    <button 
-                      onClick={() => handleEmail({ slug: tour.slug, name: tour.name }, tour.vendor?.contactEmail)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                      title={`Email ${tour.vendor?.storeName || 'us'}`}
-                    >
-                      <Mail className="w-4 h-4" />
-                      <span className="text-sm">Email</span>
-                    </button>
-                    <button 
-                      onClick={() => handleShare(
-                        { slug: tour.slug, name: tour.name },
-                        tour.shortDescription
-                      )}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                      title="Share tour"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span className="text-sm">Share</span>
-                    </button>
-                  </div>
+                  <button 
+                    onClick={() => handleShare(
+                      { slug: tour.slug, name: tour.name },
+                      tour.shortDescription
+                    )}
+                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition font-semibold"
+                    title="Share tour via WhatsApp, Email, etc."
+                  >
+                    <Share2 className="w-5 h-5" />
+                    <span>Share Tour</span>
+                  </button>
 
                   <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-sm font-semibold text-green-800 mb-2">✓ Instant Confirmation</p>
