@@ -34,13 +34,14 @@ interface BookingCalendarProps {
     endTime?: string;
     totalPrice: number;
     selectedSlots?: string[];
+    selectedDates?: Date[]; // For multi-date selection
   } | null) => void;
 }
 
 export default function BookingCalendar({ productId, bookingData, price, onBookingSelect }: BookingCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]); // For multi-date selection
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<AvailableTimeSlot[]>([]);
   const [unavailableDates, setUnavailableDates] = useState<Set<string>>(new Set());
@@ -79,11 +80,8 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
 
   useEffect(() => {
     if (selectedDate) {
-      if (bookingData.durationUnit === 'days' && !selectedEndDate) {
-        // For daily bookings, clear selection if no end date
-        onBookingSelect(null);
-      } else if (bookingData.durationUnit === 'days' && selectedEndDate) {
-        // Calculate and select for daily booking
+      if (bookingData.durationUnit === 'days' && selectedDates.length > 0) {
+        // For daily bookings with multiple dates, calculate booking
         calculateBooking();
       } else if (bookingData.durationUnit !== 'days') {
         // For hourly bookings, fetch available time slots
@@ -92,7 +90,7 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
     } else {
       onBookingSelect(null);
     }
-  }, [selectedDate, selectedEndDate, bookingData, refreshKey]);
+  }, [selectedDate, selectedDates, bookingData, refreshKey]);
 
   useEffect(() => {
     if (selectedDate && selectedTimeSlots.length > 0 && bookingData.durationUnit !== 'days') {
@@ -208,11 +206,15 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
     let totalPrice = price;
 
     if (bookingData.durationUnit === 'days') {
-      if (!selectedEndDate) return;
+      if (selectedDates.length === 0) return;
       
-      endDate = new Date(selectedEndDate);
-      const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      totalPrice = price * days;
+      // Sort dates to get first and last
+      const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+      startDate = sortedDates[0];
+      endDate = sortedDates[sortedDates.length - 1];
+      
+      // Calculate price based on number of selected dates
+      totalPrice = price * selectedDates.length;
     } else {
       if (selectedTimeSlots.length === 0) return;
       
@@ -234,6 +236,7 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
       endTime,
       totalPrice,
       selectedSlots: bookingData.durationUnit !== 'days' ? selectedTimeSlots : undefined,
+      selectedDates: bookingData.durationUnit === 'days' ? selectedDates : undefined,
     });
   };
 
@@ -241,28 +244,20 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
     if (!isDateAvailable(date)) return;
 
     if (bookingData.durationUnit === 'days') {
-      if (!selectedDate) {
-        // First click - set both start and end to same date for single-day booking
-        setSelectedDate(date);
-        setSelectedEndDate(date);
-      } else if (!selectedEndDate || selectedDate.toDateString() === selectedEndDate.toDateString()) {
-        // Second click - either extend range or reset
-        if (date.toDateString() === selectedDate.toDateString()) {
-          // Clicking same date again - reset
-          setSelectedDate(null);
-          setSelectedEndDate(null);
-        } else if (date < selectedDate) {
-          // Clicking earlier date - make it the new start
-          setSelectedDate(date);
-          setSelectedEndDate(date);
-        } else {
-          // Clicking later date - extend the range
-          setSelectedEndDate(date);
-        }
+      // For daily bookings, allow multiple date selection
+      const dateStr = date.toDateString();
+      const isAlreadySelected = selectedDates.some(d => d.toDateString() === dateStr);
+      
+      if (isAlreadySelected) {
+        // Remove date from selection
+        const newDates = selectedDates.filter(d => d.toDateString() !== dateStr);
+        setSelectedDates(newDates);
+        setSelectedDate(newDates.length > 0 ? newDates[0] : null);
       } else {
-        // Third click - start new selection
+        // Add date to selection
+        const newDates = [...selectedDates, date];
+        setSelectedDates(newDates);
         setSelectedDate(date);
-        setSelectedEndDate(date);
       }
     } else {
       setSelectedDate(date);
@@ -272,9 +267,11 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
     }
   };
 
-  const isDateInRange = (date: Date) => {
-    if (!selectedDate || !selectedEndDate) return false;
-    return date >= selectedDate && date <= selectedEndDate;
+  const isDateSelected = (date: Date) => {
+    if (bookingData.durationUnit === 'days') {
+      return selectedDates.some(d => d.toDateString() === date.toDateString());
+    }
+    return selectedDate?.toDateString() === date.toDateString();
   };
 
   const renderCalendar = () => {
@@ -290,9 +287,7 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
       const isAvailable = isDateAvailable(date);
-      const isSelected = selectedDate?.toDateString() === date.toDateString();
-      const isEndSelected = selectedEndDate?.toDateString() === date.toDateString();
-      const inRange = isDateInRange(date);
+      const isSelected = isDateSelected(date);
 
       days.push(
         <button
@@ -303,9 +298,8 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
           className={`
             h-12 rounded-lg text-sm font-medium transition-colors
             ${!isAvailable ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover:bg-primary/10'}
-            ${isSelected || isEndSelected ? 'bg-primary text-primary-foreground hover:opacity-90' : ''}
-            ${inRange && !isSelected && !isEndSelected ? 'bg-primary/20 text-primary' : ''}
-            ${isAvailable && !isSelected && !isEndSelected && !inRange ? 'text-foreground' : ''}
+            ${isSelected ? 'bg-primary text-primary-foreground hover:opacity-90' : ''}
+            ${isAvailable && !isSelected ? 'text-foreground' : ''}
           `}
         >
           {day}
@@ -446,17 +440,21 @@ export default function BookingCalendar({ productId, bookingData, price, onBooki
       )}
 
       {/* Selected Booking Summary */}
-      {((bookingData.durationUnit === 'days' && selectedDate && selectedEndDate) ||
+      {((bookingData.durationUnit === 'days' && selectedDates.length > 0) ||
         (bookingData.durationUnit !== 'days' && selectedDate && selectedTimeSlots.length > 0)) && (
         <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
           <h4 className="font-semibold mb-2">Selected Booking</h4>
           <div className="text-sm space-y-1">
             {bookingData.durationUnit === 'days' ? (
               <>
-                <p>Check-in: {selectedDate?.toLocaleDateString()}</p>
-                <p>Check-out: {selectedEndDate?.toLocaleDateString()}</p>
+                <p>Selected Dates ({selectedDates.length}):</p>
+                <div className="space-y-1 max-h-24 overflow-y-auto">
+                  {selectedDates.sort((a, b) => a.getTime() - b.getTime()).map((date, idx) => (
+                    <p key={idx} className="text-xs">{date.toLocaleDateString()}</p>
+                  ))}
+                </div>
                 <p className="font-semibold mt-2">
-                  Total: {getCurrencySymbol(currency)}{(price * (Math.ceil((selectedEndDate!.getTime() - selectedDate!.getTime()) / (1000 * 60 * 60 * 24)) + 1)).toLocaleString()}
+                  Total: {getCurrencySymbol(currency)}{(price * selectedDates.length).toLocaleString()}
                 </p>
               </>
             ) : (

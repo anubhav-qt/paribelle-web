@@ -116,6 +116,7 @@ function CheckoutContent() {
   
   // Success dialog state
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [successBookingDetails, setSuccessBookingDetails] = useState<any>(null);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -408,6 +409,13 @@ function CheckoutContent() {
         );
 
         sessionStorage.removeItem('tourBooking');
+        setSuccessBookingDetails({
+          productName: tourBooking.productName,
+          numberOfGuests: tourBooking.numberOfGuests,
+          departureDate: tourBooking.selectedDeparture?.departureDate || bookingDate,
+          totalPrice: tourBooking.totalPrice,
+          currency: currency,
+        });
         setLoading(false);
         setShowSuccessDialog(true);
         return;
@@ -471,6 +479,13 @@ function CheckoutContent() {
             );
 
             sessionStorage.removeItem('tourBooking');
+            setSuccessBookingDetails({
+              productName: tourBooking.productName,
+              numberOfGuests: tourBooking.numberOfGuests,
+              departureDate: tourBooking.selectedDeparture?.departureDate || bookingDate,
+              totalPrice: tourBooking.totalPrice,
+              currency: currency,
+            });
             setLoading(false);
             setShowSuccessDialog(true);
           } catch (error) {
@@ -494,6 +509,13 @@ function CheckoutContent() {
         alert('⚠️ Payment Gateway Not Configured\n\nRazorpay is not set up on this server. This is normal in development mode.\n\nYour booking has been created successfully! In production, you would complete payment here.');
         // Show success dialog anyway since booking was created
         sessionStorage.removeItem('tourBooking');
+        setSuccessBookingDetails({
+          productName: tourBooking.productName,
+          numberOfGuests: tourBooking.numberOfGuests,
+          departureDate: tourBooking.selectedDeparture?.departureDate || bookingDate,
+          totalPrice: tourBooking.totalPrice,
+          currency: currency,
+        });
         setLoading(false);
         setShowSuccessDialog(true);
       } else {
@@ -514,6 +536,45 @@ function CheckoutContent() {
     
     try {
       const totalAmount = bookings.reduce((sum, b) => sum + Number(b.totalPrice), 0);
+      
+      // If payment method is not Razorpay, just confirm the bookings
+      if (paymentMethod !== 'razorpay') {
+        // Mark all bookings as confirmed (pay at venue)
+        for (const booking of bookings) {
+          await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                status: 'confirmed',
+              }),
+            }
+          );
+        }
+
+        // Check if bookings have time slots (hourly bookings) or are multi-day
+        const hasTimeSlots = bookings.some(b => b.startTime && b.endTime);
+        const isMultiDay = bookings.length > 1;
+        
+        setSuccessBookingDetails({
+          productName: bookings[0]?.product?.name,
+          numberOfDays: isMultiDay && !hasTimeSlots ? bookings.length : undefined,
+          bookingDates: isMultiDay && !hasTimeSlots ? bookings.map(b => b.bookingDate).filter(Boolean) : undefined,
+          bookingDate: !isMultiDay || hasTimeSlots ? bookings[0]?.bookingDate : undefined,
+          startTime: !hasTimeSlots ? bookings[0]?.startTime : undefined,
+          endTime: !hasTimeSlots ? bookings[0]?.endTime : undefined,
+          timeSlots: hasTimeSlots ? bookings.map(b => `${b.startTime} - ${b.endTime}`).filter(Boolean) : undefined,
+          totalPrice: totalAmount,
+          currency: currency,
+        });
+        setLoading(false);
+        setShowSuccessDialog(true);
+        return;
+      }
       
       // Create Razorpay order with booking reference
       const razorpayOrder = await createRazorpayOrder(bookings[0].id, totalAmount, 'booking');
@@ -559,6 +620,21 @@ function CheckoutContent() {
               );
             }
 
+            // Check if bookings have time slots (hourly bookings) or are multi-day
+            const hasTimeSlots = bookings.some(b => b.startTime && b.endTime);
+            const isMultiDay = bookings.length > 1;
+            
+            setSuccessBookingDetails({
+              productName: bookings[0]?.product?.name,
+              numberOfDays: isMultiDay && !hasTimeSlots ? bookings.length : undefined,
+              bookingDates: isMultiDay && !hasTimeSlots ? bookings.map(b => b.bookingDate).filter(Boolean) : undefined,
+              bookingDate: !isMultiDay || hasTimeSlots ? bookings[0]?.bookingDate : undefined,
+              startTime: !hasTimeSlots ? bookings[0]?.startTime : undefined,
+              endTime: !hasTimeSlots ? bookings[0]?.endTime : undefined,
+              timeSlots: hasTimeSlots ? bookings.map(b => `${b.startTime} - ${b.endTime}`).filter(Boolean) : undefined,
+              totalPrice: totalAmount,
+              currency: currency,
+            });
             setLoading(false);
             setShowSuccessDialog(true);
           } catch (error) {
@@ -1636,6 +1712,7 @@ function CheckoutContent() {
           router.push('/');
         }}
         bookingType={productType === 'tour' ? 'tour' : 'booking'}
+        bookingDetails={successBookingDetails}
       />
       
       {/* Simple Checkout Header */}

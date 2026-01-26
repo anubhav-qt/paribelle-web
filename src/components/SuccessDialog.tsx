@@ -94,12 +94,25 @@ export const BookingSuccessDialog = ({
   onViewBookings,
   onContinueShopping,
   bookingType = 'booking',
+  bookingDetails,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onViewBookings: () => void;
   onContinueShopping: () => void;
   bookingType?: 'booking' | 'tour';
+  bookingDetails?: {
+    productName?: string;
+    numberOfGuests?: number;
+    numberOfDays?: number;
+    departureDate?: string;
+    totalPrice?: number;
+    currency?: string;
+    bookingDate?: string;    bookingDates?: string[];    startTime?: string;
+    endTime?: string;
+    endDate?: string;
+    timeSlots?: string[];
+  };
 }) => (
   <SuccessDialog
     isOpen={isOpen}
@@ -120,7 +133,106 @@ export const BookingSuccessDialog = ({
       },
     ]}
   >
-    <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-2">
+    {bookingDetails && (
+      <div className="bg-muted rounded-lg p-4 mb-2 space-y-2">
+        {bookingDetails.productName && (
+          <div className="text-center">
+            <p className="font-semibold text-foreground text-lg">{bookingDetails.productName}</p>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-2 gap-3 text-sm pt-2">
+          {bookingDetails.numberOfDays && (
+            <div>
+              <p className="text-muted-foreground">Duration</p>
+              <p className="font-semibold text-foreground">
+                {bookingDetails.numberOfDays} {bookingDetails.numberOfDays === 1 ? 'Day' : 'Days'}
+              </p>
+            </div>
+          )}
+          
+          {bookingDetails.timeSlots && bookingDetails.timeSlots.length > 0 && (
+            <div className="col-span-2">
+              <p className="text-muted-foreground mb-2">Time Slots</p>
+              <div className="space-y-1">
+                {bookingDetails.timeSlots.map((slot, idx) => (
+                  <p key={idx} className="font-semibold text-foreground text-sm">
+                    {slot}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {!bookingDetails.numberOfDays && !bookingDetails.timeSlots && bookingDetails.numberOfGuests && (
+            <div>
+              <p className="text-muted-foreground">Guests</p>
+              <p className="font-semibold text-foreground">
+                {bookingDetails.numberOfGuests} {bookingDetails.numberOfGuests === 1 ? 'Person' : 'People'}
+              </p>
+            </div>
+          )}
+          
+          {bookingDetails.departureDate && (
+            <div>
+              <p className="text-muted-foreground">{bookingType === 'tour' ? 'Departure Date' : 'Booking Date'}</p>
+              <p className="font-semibold text-foreground">
+                {new Date(bookingDetails.departureDate).toLocaleDateString()}
+              </p>
+            </div>
+          )}
+          
+          {bookingDetails.bookingDates && bookingDetails.bookingDates.length > 0 && (
+            <div className="col-span-2">
+              <p className="text-muted-foreground mb-2">Selected Dates</p>
+              <div className="space-y-1">
+                {bookingDetails.bookingDates.map((date, idx) => (
+                  <p key={idx} className="font-semibold text-foreground text-sm">
+                    {new Date(date).toLocaleDateString()}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {bookingDetails.bookingDate && !bookingDetails.departureDate && !bookingDetails.bookingDates && (
+            <div className={bookingDetails.endDate ? 'col-span-2' : ''}>
+              <p className="text-muted-foreground">{bookingDetails.endDate ? 'Booking Period' : 'Date'}</p>
+              <p className="font-semibold text-foreground">
+                {new Date(bookingDetails.bookingDate).toLocaleDateString()}
+                {bookingDetails.endDate && (
+                  <> - {new Date(bookingDetails.endDate).toLocaleDateString()}</>
+                )}
+              </p>
+            </div>
+          )}
+          
+          {bookingDetails.startTime && !bookingDetails.timeSlots && (
+            <div>
+              <p className="text-muted-foreground">Time</p>
+              <p className="font-semibold text-foreground">
+                {bookingDetails.startTime}
+                {bookingDetails.endTime && ` - ${bookingDetails.endTime}`}
+              </p>
+            </div>
+          )}
+          
+          {bookingDetails.totalPrice && (
+            <div className="col-span-2 pt-2 border-t border-border">
+              <p className="text-muted-foreground">Total Amount</p>
+              <p className="font-bold text-primary text-lg">
+                {new Intl.NumberFormat('en-IN', {
+                  style: 'currency',
+                  currency: bookingDetails.currency || 'INR'
+                }).format(bookingDetails.totalPrice)}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    
+    <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-2 mt-4">
       <p className="text-sm text-muted-foreground text-center">
         What would you like to do next?
       </p>

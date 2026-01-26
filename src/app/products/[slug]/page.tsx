@@ -365,24 +365,78 @@ export default function ProductDetailPage() {
 
       // For daily bookings, we might need to create multiple booking records
       if (product.attributes?.booking?.durationUnit === 'days') {
-        const startDate = new Date(selectedBooking.startDate);
-        const endDate = new Date(selectedBooking.endDate);
+        // Use selectedDates if available, otherwise fall back to date range
         const bookings = [];
+        
+        if (selectedBooking.selectedDates && selectedBooking.selectedDates.length > 0) {
+          // Use the individually selected dates
+          for (const date of selectedBooking.selectedDates) {
+            const dateString = new Date(date).toISOString().split('T')[0];
+            const bookingData = {
+              productId: product.id,
+              vendorId: product.vendorId || '',
+              userId: user.id,
+              bookingDate: dateString,
+              startTime: null,
+              endTime: null,
+              totalPrice: Number(product.price),
+              status: 'pending',
+            };
+            bookings.push(bookingData);
+          }
+        } else {
+          // Fallback to date range (for backward compatibility)
+          const startDate = new Date(selectedBooking.startDate);
+          const endDate = new Date(selectedBooking.endDate);
+          
+          // First, check availability for all dates in the range
+          const startDateStr = startDate.toISOString().split('T')[0];
+          const endDateStr = endDate.toISOString().split('T')[0];
+          
+          const availabilityResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/availability/${product.id}?startDate=${startDateStr}&endDate=${endDateStr}`
+          );
+          
+          if (!availabilityResponse.ok) {
+            alert('Failed to check availability. Please try again.');
+            return;
+          }
+          
+          const availabilityData = await availabilityResponse.json();
+          const unavailableDates: string[] = [];
+          
+          // Check which dates are unavailable
+          availabilityData.forEach((dateInfo: any) => {
+            if (dateInfo.slots && dateInfo.slots.length > 0) {
+              const fullDaySlot = dateInfo.slots.find((s: any) => s.startTime === 'full-day');
+              if (fullDaySlot && !fullDaySlot.available) {
+                unavailableDates.push(dateInfo.date);
+              }
+            }
+          });
+          
+          // If any dates are unavailable, show error and stop
+          if (unavailableDates.length > 0) {
+            const datesList = unavailableDates.map(d => new Date(d).toLocaleDateString()).join(', ');
+            alert(`The following dates are not available:\\n\\n${datesList}\\n\\nPlease select different dates.`);
+            return;
+          }
 
-        // Create a booking for each day in the range with PENDING status
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          const dateString = new Date(d).toISOString().split('T')[0]; // Create snapshot of current date
-          const bookingData = {
-            productId: product.id,
-            vendorId: product.vendorId || '',
-            userId: user.id,
-            bookingDate: dateString,
-            startTime: null,
-            endTime: null,
-            totalPrice: Number(product.price),
-            status: 'pending',
-          };
-          bookings.push(bookingData);
+          // Create a booking for each day in the range with PENDING status
+          for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateString = new Date(d).toISOString().split('T')[0];
+            const bookingData = {
+              productId: product.id,
+              vendorId: product.vendorId || '',
+              userId: user.id,
+              bookingDate: dateString,
+              startTime: null,
+              endTime: null,
+              totalPrice: Number(product.price),
+              status: 'pending',
+            };
+            bookings.push(bookingData);
+          }
         }
 
         // Create all bookings
