@@ -8,6 +8,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Star, Heart, Share2, Package, ArrowLeft, Calendar, Clock, CreditCard, ExternalLink, ShoppingCart, Facebook, Twitter, Linkedin, Link as LinkIcon, Check, XCircle } from 'lucide-react';
 import BookingCalendar from '@/components/BookingCalendar';
+import TourDepartureSelector from '@/components/TourDepartureSelector';
 import ProductImageGallery from '@/components/ProductImageGallery';
 import VariationSelector from '@/components/VariationSelector';
 import ProductVariantSelector from '@/components/ProductVariantSelector';
@@ -325,6 +326,43 @@ export default function ProductDetailPage() {
     setBookingLoading(true);
 
     try {
+      // Handle tour bookings
+      if (product.attributes?.tour?.tourMode && selectedBooking.departureId) {
+        const bookingData = {
+          productId: product.id,
+          vendorId: product.vendorId || '',
+          userId: user.id,
+          bookingDate: selectedBooking.date, // Already a string in ISO format
+          startTime: null,
+          endTime: null,
+          numberOfGuests: 1, // Default to 1, could be made configurable
+          totalPrice: selectedBooking.totalPrice,
+          status: 'pending',
+          specialRequests: `Tour Departure ID: ${selectedBooking.departureId}`,
+        };
+
+        console.log('Creating tour booking with data:', bookingData);
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(bookingData),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Tour booking created successfully:', result);
+          router.push(`/checkout/booking?bookingIds=${result.id}`);
+        } else {
+          const error = await response.json();
+          alert(`Failed to create booking: ${JSON.stringify(error)}`);
+        }
+        return;
+      }
+
       // For daily bookings, we might need to create multiple booking records
       if (product.attributes?.booking?.durationUnit === 'days') {
         const startDate = new Date(selectedBooking.startDate);
@@ -890,7 +928,26 @@ export default function ProductDetailPage() {
                 </div>
               ) : product.productType === 'booking' ? (
                 <div className="mb-6">
-                  {product.attributes?.booking ? (
+                  {product.attributes?.tour?.tourMode ? (
+                    <>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-foreground">
+                        <Calendar className="w-5 h-5 text-primary" />
+                        Select Tour Departure
+                      </h3>
+                      <TourDepartureSelector
+                        departures={product.attributes.tour.departures}
+                        onSelectDeparture={(departure) => {
+                          setSelectedBooking({
+                            date: departure.departureDate,
+                            startTime: null,
+                            endTime: null,
+                            totalPrice: departure.pricePerPerson,
+                            departureId: departure.id,
+                          });
+                        }}
+                      />
+                    </>
+                  ) : product.attributes?.booking ? (
                     <>
                       <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-foreground">
                         <Calendar className="w-5 h-5 text-primary" />
@@ -1154,7 +1211,11 @@ export default function ProductDetailPage() {
           <div className="border-t border-border p-8">
             <h2 className="text-2xl font-bold mb-4 text-foreground">Product Description</h2>
             <div className="prose max-w-none text-muted-foreground">
-              {product.description || product.shortDescription}
+              {product.description ? (
+                <div dangerouslySetInnerHTML={{ __html: product.description }} />
+              ) : (
+                <p>{product.shortDescription}</p>
+              )}
             </div>
           </div>
 

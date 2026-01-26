@@ -116,7 +116,7 @@ export default function ProductGrid({
           />
         </button>
         <div className="relative aspect-square overflow-hidden bg-muted">
-          <Link href={`/products/${product.slug}`}>
+          <Link href={product.productType === 'booking' && product.attributes?.tour?.tourMode ? `/tours/${product.slug}` : `/products/${product.slug}`}>
             <img
               src={getProductImageUrl(product)}
               alt={product.name}
@@ -143,7 +143,7 @@ export default function ProductGrid({
           )}
         </div>
         <div className="p-4">
-          <Link href={`/products/${product.slug}`}>
+          <Link href={product.productType === 'booking' && product.attributes?.tour?.tourMode ? `/tours/${product.slug}` : `/products/${product.slug}`}>
             <h3 className={theme.combine('font-medium mb-1 line-clamp-2 text-sm min-h-[40px] transition-colors', theme.text, isVendorStore ? 'group-hover/card:vendor-primary' : 'group-hover/card:text-primary')}>
               {product.name}
             </h3>

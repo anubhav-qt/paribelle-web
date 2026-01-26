@@ -280,10 +280,12 @@ function SearchContent() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map((product) => (
+                {products.map((product) => {
+                  const isTour = product.productType === 'booking' && product.attributes?.tour?.tourMode;
+                  return (
                   <Link
                     key={product.id}
-                    href={`/products/${product.slug}`}
+                    href={isTour ? `/tours/${product.slug}` : `/products/${product.slug}`}
                     className={theme.combine('group rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden', isVendorStore ? 'vendor-product-card' : 'bg-card')}
                   >
                     <div className="aspect-square bg-muted overflow-hidden relative">
@@ -343,7 +345,8 @@ function SearchContent() {
                       </div>
                     </div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
 

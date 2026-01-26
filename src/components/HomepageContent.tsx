@@ -421,11 +421,51 @@ export default function HomepageContent({
 
             {/* Main Content Area */}
             <div className="flex-1 space-y-8">
-            {/* Bookings & Services Section - Always show if there are booking products */}
+            {/* Tours & Travel Section - Show tour products separately */}
             {(() => {
-              const bookingProducts = productsByCategory['bookings-services'] || [];
+              const allBookingProducts = productsByCategory['bookings-services'] || [];
+              const tourProducts = allBookingProducts.filter(
+                (p: any) => p.attributes?.tour?.tourMode === true
+              );
               
-              if (bookingProducts.length === 0) return null;
+              if (tourProducts.length === 0) return null;
+              
+              return (
+                <section
+                  id="category-tours-travel"
+                  className={theme.combine(theme.cardBg, 'rounded-lg shadow-sm p-6')}
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className={theme.combine('text-2xl font-bold', isVendorStore ? 'vendor-themed-heading' : 'text-gray-900')}>Tours & Travel</h2>
+                      <p className={theme.combine('text-sm', theme.textMuted)}>Explore amazing tour packages</p>
+                    </div>
+                    <Link
+                      href="/?productType=booking&tourMode=true"
+                      className={theme.combine('hover:opacity-80 font-medium text-sm flex items-center gap-1', isVendorStore ? 'vendor-themed-link' : 'text-primary')}
+                    >
+                      View All
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+
+                  <ProductGrid
+                    products={tourProducts}
+                    currency={currency}
+                    isLocationFilterActive={isLocationFilterActive}
+                  />
+                </section>
+              );
+            })()}
+            
+            {/* Bookings & Services Section - Show only non-tour booking products */}
+            {(() => {
+              const allBookingProducts = productsByCategory['bookings-services'] || [];
+              const regularBookingProducts = allBookingProducts.filter(
+                (p: any) => p.attributes?.tour?.tourMode !== true
+              );
+              
+              if (regularBookingProducts.length === 0) return null;
               
               return (
                 <section
@@ -438,7 +478,7 @@ export default function HomepageContent({
                       <p className={theme.combine('text-sm', theme.textMuted)}>Book appointments and services</p>
                     </div>
                     <Link
-                      href="/?productType=booking"
+                      href="/?productType=booking&tourMode=false"
                       className={theme.combine('hover:opacity-80 font-medium text-sm flex items-center gap-1', isVendorStore ? 'vendor-themed-link' : 'text-primary')}
                     >
                       View All
@@ -447,7 +487,7 @@ export default function HomepageContent({
                   </div>
 
                   <ProductGrid
-                    products={bookingProducts}
+                    products={regularBookingProducts}
                     currency={currency}
                     isLocationFilterActive={isLocationFilterActive}
                   />

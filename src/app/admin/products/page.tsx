@@ -2,11 +2,17 @@
 
 import { useEffect, useState, Fragment } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import JSZip from 'jszip';
 import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
 import ThemeRenderer from '@/components/ThemeRenderer';
+import { handleSortChange, getSortIcon, compareValues, getSortableHeaderClass, SortOrder } from '@/lib/utils/sorting';
+import 'react-quill/dist/quill.snow.css';
+
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
 interface ProductVariant {
   id: string;
@@ -22,6 +28,8 @@ interface Product {
   id: string;
   name: string;
   slug: string;
+  description?: string;
+  shortDescription?: string;
   price: number;
   compareAtPrice?: number;
   stockQuantity: number;
@@ -57,6 +65,8 @@ export default function AdminProductsPage() {
   const [groupBy, setGroupBy] = useState<'none' | 'vendor'>('vendor');
   const [collapsedVendors, setCollapsedVendors] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock' | 'status'>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   
   // Use React Query for products
   const { data: productsData, isLoading: loading } = useAdminProducts({
@@ -70,17 +80,43 @@ export default function AdminProductsPage() {
   const products = productsData?.products || [];
   const totalProducts = productsData?.total || 0;
   
+  // Sort products based on current sort settings
+  const sortedProducts = [...products].sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return compareValues(a.name, b.name, sortOrder);
+      case 'price':
+        return compareValues(a.price, b.price, sortOrder);
+      case 'stock':
+        const aStock = a.hasVariants 
+          ? (a.productVariants?.reduce((sum: number, v: ProductVariant) => sum + (v.stockQuantity || 0), 0) || 0)
+          : (a.stockQuantity || 0);
+        const bStock = b.hasVariants 
+          ? (b.productVariants?.reduce((sum: number, v: ProductVariant) => sum + (v.stockQuantity || 0), 0) || 0)
+          : (b.stockQuantity || 0);
+        return compareValues(aStock, bStock, sortOrder);
+      case 'status':
+        return compareValues(a.status, b.status, sortOrder);
+      default:
+        return 0;
+    }
+  });
+  
   const updateStatusMutation = useUpdateProductStatus();
   const deleteProductMutation = useDeleteProduct();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; level: number }>>([]);
   const [vendors, setVendors] = useState<Array<{ id: string; storeName: string }>>([]);
+  const [customPages, setCustomPages] = useState<Array<{ id: string; title: string; slug: string }>>([]);
+  const [linkableProducts, setLinkableProducts] = useState<Array<{ id: string; name: string; slug: string; productType: string; isTour: boolean }>>([]);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
+    description: '',
+    shortDescription: '',
     price: 0,
     compareAtPrice: 0,
     stockQuantity: 0,
@@ -93,6 +129,47 @@ export default function AdminProductsPage() {
     variationThemes: [] as string[],
     productVariants: [] as ProductVariant[],
     variantOptions: [] as any[],
+    attributes: {
+      booking: {
+        duration: 60,
+        durationUnit: 'hours' as 'hours' | 'days' | 'sessions',
+        bufferTime: 0,
+        availableDays: [] as string[],
+        timeSlots: [{ start: '09:00', end: '17:00' }],
+      },
+      tour: {
+        tourMode: false,
+        departures: [] as Array<{
+          departureDate: string;
+          returnDate: string;
+          availableSeats: number;
+          pricePerPerson: number;
+          status: 'active' | 'full' | 'cancelled';
+        }>,
+        itinerary: [] as Array<{
+          day: number;
+          title: string;
+          description: string;
+          activities: string[];
+          meals: string[];
+          accommodation: string;
+        }>,
+        details: {
+          destinations: [] as string[],
+          tourType: '',
+          difficulty: 'moderate' as 'easy' | 'moderate' | 'challenging' | 'difficult',
+          groupSize: { min: 1, max: 20 },
+          inclusions: [] as string[],
+          exclusions: [] as string[],
+          pickupPoints: [] as Array<{ location: string; time: string }>,
+          dropPoints: [] as Array<{ location: string; time: string }>,
+          accommodation: '',
+          transportation: '',
+          languages: [] as string[],
+          ageRestriction: '',
+        },
+      },
+    },
   });
   const [newProductFormData, setNewProductFormData] = useState({
     name: '',
@@ -112,6 +189,8 @@ export default function AdminProductsPage() {
   useEffect(() => {
     fetchCategories();
     fetchVendors();
+    fetchCustomPages(); // Load marketplace pages by default
+    fetchLinkableProducts(); // Load products for linking
   }, []);
 
   const fetchCategories = async () => {
@@ -149,6 +228,62 @@ export default function AdminProductsPage() {
       setVendors(Array.isArray(data) ? data : []);
     } catch (error) {
       setVendors([]);
+    }
+  };
+
+  const fetchCustomPages = async (vendorId?: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // For admin, fetch both marketplace pages and vendor pages if vendorId is provided
+      const response = await fetch(
+        vendorId 
+          ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/pages`
+          : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/marketplace/pages`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        // Only show published pages
+        const publishedPages = data.filter((p: any) => p.status === 'published');
+        setCustomPages(publishedPages);
+      }
+    } catch (error) {
+      console.error('Error fetching custom pages:', error);
+      setCustomPages([]);
+    }
+  };
+
+  const fetchLinkableProducts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?limit=100&status=active`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const products = data.products || data;
+        // Map products with tour detection
+        const mappedProducts = products.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          productType: p.productType,
+          isTour: p.productType === 'booking' && p.attributes?.tour?.tourMode === true
+        }));
+        setLinkableProducts(mappedProducts);
+      }
+    } catch (error) {
+      console.error('Error fetching linkable products:', error);
     }
   };
 
@@ -198,8 +333,12 @@ export default function AdminProductsPage() {
       if (response.ok) {
         const fullProduct = await response.json();
         setEditingProduct(fullProduct);
+        // Fetch custom pages - vendor pages if product has vendor, otherwise marketplace pages
+        fetchCustomPages(fullProduct.vendor?.id);
         setEditFormData({
           name: fullProduct.name,
+          description: fullProduct.description || '',
+          shortDescription: fullProduct.shortDescription || '',
           price: fullProduct.price,
           compareAtPrice: fullProduct.compareAtPrice || 0,
           stockQuantity: fullProduct.stockQuantity,
@@ -212,11 +351,43 @@ export default function AdminProductsPage() {
           variationThemes: fullProduct.variationThemes || [],
           productVariants: fullProduct.productVariants || [],
           variantOptions: fullProduct.variantOptions || [],
+          attributes: {
+            booking: {
+              duration: fullProduct.attributes?.booking?.duration || 60,
+              durationUnit: fullProduct.attributes?.booking?.durationUnit || 'hours',
+              bufferTime: fullProduct.attributes?.booking?.bufferTime || 0,
+              availableDays: fullProduct.attributes?.booking?.availableDays || [],
+              timeSlots: fullProduct.attributes?.booking?.timeSlots || [{ start: '09:00', end: '17:00' }],
+            },
+            tour: {
+              tourMode: fullProduct.attributes?.tour?.tourMode || false,
+              departures: fullProduct.attributes?.tour?.departures || [],
+              itinerary: fullProduct.attributes?.tour?.itinerary || [],
+              details: {
+                destinations: fullProduct.attributes?.tour?.details?.destinations || [],
+                tourType: fullProduct.attributes?.tour?.details?.tourType || '',
+                difficulty: fullProduct.attributes?.tour?.details?.difficulty || 'moderate',
+                groupSize: fullProduct.attributes?.tour?.details?.groupSize || { min: 1, max: 20 },
+                inclusions: fullProduct.attributes?.tour?.details?.inclusions || [],
+                exclusions: fullProduct.attributes?.tour?.details?.exclusions || [],
+                pickupPoints: fullProduct.attributes?.tour?.details?.pickupPoints || [],
+                dropPoints: fullProduct.attributes?.tour?.details?.dropPoints || [],
+                accommodation: fullProduct.attributes?.tour?.details?.accommodation || '',
+                transportation: fullProduct.attributes?.tour?.details?.transportation || '',
+                languages: fullProduct.attributes?.tour?.details?.languages || [],
+                ageRestriction: fullProduct.attributes?.tour?.details?.ageRestriction || '',
+              },
+            },
+          },
         });
       } else {
         setEditingProduct(product);
+        // Fetch custom pages - vendor pages if product has vendor, otherwise marketplace pages
+        fetchCustomPages(product.vendor?.id);
         setEditFormData({
           name: product.name,
+          description: product.description || '',
+          shortDescription: product.shortDescription || '',
           price: product.price,
           compareAtPrice: product.compareAtPrice || 0,
           stockQuantity: product.stockQuantity,
@@ -235,8 +406,12 @@ export default function AdminProductsPage() {
       console.error('Error fetching product details:', error);
       // Fallback to using the product from the list
       setEditingProduct(product);
+      // Fetch custom pages - vendor pages if product has vendor, otherwise marketplace pages
+      fetchCustomPages(product.vendor?.id);
       setEditFormData({
         name: product.name,
+        description: product.description || '',
+        shortDescription: product.shortDescription || '',
         price: product.price,
         compareAtPrice: product.compareAtPrice || 0,
         stockQuantity: product.stockQuantity,
@@ -287,6 +462,8 @@ export default function AdminProductsPage() {
     setEditingProduct(null);
     setEditFormData({
       name: '',
+      description: '',
+      shortDescription: '',
       price: 0,
       compareAtPrice: 0,
       stockQuantity: 0,
@@ -396,7 +573,7 @@ export default function AdminProductsPage() {
   const groupProductsByVendor = () => {
     const grouped = new Map<string, { vendor: any; products: Product[] }>();
 
-    products.forEach((product: Product) => {
+    sortedProducts.forEach((product: Product) => {
       const vendorId = product.vendor?.id || 'no-vendor';
       const vendorName = product.vendor?.storeName || product.vendor?.businessName || 'No Vendor Assigned';
       const vendorEmail = product.vendor?.contactEmail || '';
@@ -424,6 +601,334 @@ export default function AdminProductsPage() {
       }
       return newSet;
     });
+  };
+
+  const downloadTourTemplate = async () => {
+    try {
+      setExporting(true);
+      
+      // Create CSV content for tour template with local file references
+      const csvContent = `Tour Name,Price,Compare At Price,Short Description,Description,Departure Date 1,Return Date 1,Available Seats 1,Price Per Person 1,Departure Date 2,Return Date 2,Available Seats 2,Price Per Person 2,Day 1 Title,Day 1 Description,Day 1 Activities,Day 1 Meals,Day 1 Accommodation,Day 2 Title,Day 2 Description,Day 2 Activities,Day 2 Meals,Day 2 Accommodation,Day 3 Title,Day 3 Description,Day 3 Activities,Day 3 Meals,Day 3 Accommodation,Destinations,Tour Type,Difficulty,Group Min,Group Max,Inclusions,Exclusions,Accommodation Type,Transportation,Languages,Age Restriction,Pickup Points,Drop Points,Featured Image,Image 1,Image 2,Image 3,Image 4
+Golden Triangle Tour,25000,30000,"Explore Delhi Agra Jaipur in 5 days","<p>Experience the best of North India with our comprehensive Golden Triangle tour package.</p>",2024-12-01,2024-12-05,20,25000,2024-12-15,2024-12-19,20,25000,Arrival in Delhi,Welcome to Delhi! Check into hotel and evening at leisure,City orientation|Welcome dinner,Dinner,3-star hotel,Agra Sightseeing,Visit Taj Mahal and Agra Fort,Taj Mahal visit|Agra Fort tour|Local market,Breakfast|Lunch|Dinner,3-star hotel,Jaipur Exploration,Explore the Pink City,Amber Fort|City Palace|Hawa Mahal,Breakfast|Lunch|Dinner,3-star hotel,"Delhi, Agra, Jaipur",Cultural,Moderate,2,25,"Accommodation|Transportation|Tour guide|Entry fees|Breakfast and dinner","International flights|Personal expenses|Travel insurance|Lunch on some days",3-star hotels twin sharing,AC coach,English|Hindi,12+ years,"Delhi Airport|09:00|Connaught Place|10:00","Delhi Airport|18:00|Connaught Place|19:00",images/tour1.jpg,images/tour1-1.jpg,images/tour1-2.jpg,images/tour1-3.jpg,images/tour1-4.jpg
+Himalayan Adventure Trek,35000,40000,"7-day trekking adventure in Himalayas","<p>Experience breathtaking mountain views and challenging trails in this week-long Himalayan adventure.</p>",2024-11-01,2024-11-07,15,35000,2024-11-15,2024-11-21,15,35000,Base Camp Arrival,Trek to base camp and acclimatization,Trek to base camp|Evening bonfire,Breakfast|Dinner,Camping,High Altitude Trek,Reach high altitude viewpoints,Mountain climbing|Photography,Breakfast|Packed lunch|Dinner,Camping,Summit Day,Early morning summit attempt,Summit climb|Sunrise viewing,Breakfast|Energy bars,Mountain hut,"Manali, Rohtang Pass, Solang Valley",Adventure,Challenging,4,15,"Camping equipment|Trekking guide|All meals|Safety equipment|Permits","Personal trekking gear|Insurance|Tips|Personal expenses",Camping and mountain huts,Jeep to base camp then trekking,English|Hindi,18+ years,"Manali Bus Stand|06:00","Manali Bus Stand|18:00",images/trek1.jpg,images/trek1-1.jpg,images/trek1-2.jpg,images/trek1-3.jpg,images/trek1-4.jpg`;
+
+      // Create README with instructions
+      const readmeContent = `# Tour Template Package
+
+This package contains a CSV template and sample images for importing tours.
+
+## How to Use
+
+1. **Edit the CSV file**: Open tour-template.csv in Excel or any spreadsheet application
+2. **Add Your Images**: Place your tour images in the 'images' folder
+3. **Import Your Tours**: Go to Admin Products page and click "Import Tours" button
+
+## CSV Column Reference
+
+See TOUR_TEMPLATE_WITH_IMAGES.md for detailed documentation.
+
+---
+Generated by Marketplace Platform - Admin
+`;
+
+      // Create ZIP file
+      const zip = new JSZip();
+      zip.file('tour-template.csv', csvContent);
+      zip.file('README.md', readmeContent);
+      const imagesFolder = zip.folder('images');
+      
+      // Helper function to create placeholder image
+      const createPlaceholderImage = (width: number, height: number, text: string, bgColor: string) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 48px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text, width / 2, height / 2 - 30);
+          ctx.font = '24px Arial';
+          ctx.fillText(`${width}x${height}`, width / 2, height / 2 + 30);
+        }
+        return canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+      };
+      
+      // Add placeholder images
+      const placeholderImages = [
+        { name: 'tour1.jpg', text: 'Golden Triangle', color: '#3b82f6' },
+        { name: 'tour1-1.jpg', text: 'Taj Mahal', color: '#8b5cf6' },
+        { name: 'tour1-2.jpg', text: 'Agra Fort', color: '#ec4899' },
+        { name: 'tour1-3.jpg', text: 'Jaipur Palace', color: '#f59e0b' },
+        { name: 'tour1-4.jpg', text: 'Hawa Mahal', color: '#10b981' },
+        { name: 'trek1.jpg', text: 'Himalayan Trek', color: '#6366f1' },
+        { name: 'trek1-1.jpg', text: 'Base Camp', color: '#14b8a6' },
+        { name: 'trek1-2.jpg', text: 'Mountain View', color: '#06b6d4' },
+        { name: 'trek1-3.jpg', text: 'Summit', color: '#84cc16' },
+        { name: 'trek1-4.jpg', text: 'Trek Path', color: '#f97316' },
+      ];
+      
+      placeholderImages.forEach(img => {
+        const imageData = createPlaceholderImage(1200, 800, img.text, img.color);
+        imagesFolder?.file(img.name, imageData, { base64: true });
+      });
+      
+      imagesFolder?.file('README.txt', 
+        `Sample placeholder images included. Replace with your actual photos.\n\nSupported formats: JPG, PNG, WebP\nRecommended size: 1200x800px or larger\n\nReference them in the CSV as: images/filename.jpg`
+      );
+      
+      // Generate ZIP
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `tour-template-${Date.now()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setExporting(false);
+    } catch (error) {
+      console.error('Error creating tour template:', error);
+      alert('Failed to generate tour template package');
+      setExporting(false);
+    }
+  };
+
+  const handleTourImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      setImporting(true);
+      setImportMessage(null);
+      
+      const token = localStorage.getItem('token');
+      const PLATFORM_VENDOR_ID = '00000000-0000-0000-0000-000000000001';
+      
+      // Separate CSV file and image files
+      let csvFile: File | null = null;
+      const imageFiles: { [key: string]: File } = {};
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.name.endsWith('.csv')) {
+          csvFile = file;
+        } else if (file.type.startsWith('image/')) {
+          const normalizedName = file.name.toLowerCase().replace(/\\/g, '/');
+          imageFiles[normalizedName] = file;
+          imageFiles[`images/${normalizedName}`] = file;
+        }
+      }
+      
+      if (!csvFile) {
+        setImportMessage({ type: 'error', text: 'No CSV file found. Please select a CSV file.' });
+        setImporting(false);
+        return;
+      }
+
+      // Helper function to upload an image
+      const uploadImage = async (file: File): Promise<string> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/upload`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        
+        if (!response.ok) throw new Error(`Failed to upload ${file.name}`);
+        const data = await response.json();
+        return data.url;
+      };
+
+      // Read CSV file
+      const text = await csvFile.text();
+      const lines = text.split('\n');
+      const headers = lines[0].split(',');
+      
+      let created = 0;
+      let errors = [];
+
+      // Process each tour (skip header)
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        try {
+          const values = lines[i].split(',');
+          const tour: any = {};
+          
+          headers.forEach((header, index) => {
+            tour[header.trim()] = values[index]?.trim() || '';
+          });
+
+          // Build departures array
+          const departures = [];
+          for (let d = 1; d <= 10; d++) {
+            const depDate = tour[`Departure Date ${d}`];
+            const retDate = tour[`Return Date ${d}`];
+            if (depDate && retDate) {
+              departures.push({
+                departureDate: depDate,
+                returnDate: retDate,
+                availableSeats: parseInt(tour[`Available Seats ${d}`]) || 20,
+                pricePerPerson: parseFloat(tour[`Price Per Person ${d}`]) || parseFloat(tour.Price) || 0,
+                status: 'active',
+              });
+            }
+          }
+
+          // Build itinerary array
+          const itinerary = [];
+          for (let day = 1; day <= 10; day++) {
+            const title = tour[`Day ${day} Title`];
+            if (title) {
+              itinerary.push({
+                day: day,
+                title: title,
+                description: tour[`Day ${day} Description`] || '',
+                activities: tour[`Day ${day} Activities`] ? tour[`Day ${day} Activities`].split('|') : [],
+                meals: tour[`Day ${day} Meals`] ? tour[`Day ${day} Meals`].split('|') : [],
+                accommodation: tour[`Day ${day} Accommodation`] || '',
+              });
+            }
+          }
+
+          // Build images array - handle both URLs and local file references
+          const images = [];
+          const imageColumns = ['Featured Image', 'Featured Image URL'];
+          for (let img = 1; img <= 10; img++) {
+            imageColumns.push(`Image ${img}`, `Image ${img} URL`);
+          }
+          
+          for (const col of imageColumns) {
+            const imgPath = tour[col];
+            if (!imgPath) continue;
+            
+            if (imgPath.startsWith('http://') || imgPath.startsWith('https://')) {
+              images.push(imgPath);
+            } else {
+              const normalizedPath = imgPath.toLowerCase().replace(/\\/g, '/');
+              const fileName = normalizedPath.split('/').pop() || '';
+              const matchedFile = imageFiles[normalizedPath] || imageFiles[fileName] || imageFiles[`images/${fileName}`];
+              
+              if (matchedFile) {
+                try {
+                  const uploadedUrl = await uploadImage(matchedFile);
+                  images.push(uploadedUrl);
+                  delete imageFiles[normalizedPath];
+                  delete imageFiles[fileName];
+                  delete imageFiles[`images/${fileName}`];
+                } catch (uploadError) {
+                  console.warn(`Failed to upload ${imgPath}:`, uploadError);
+                }
+              }
+            }
+          }
+
+          // Build pickup/drop points
+          const pickupPoints = tour['Pickup Points'] ? 
+            tour['Pickup Points'].split('|').map((p: string) => {
+              const [location, time] = p.split('|');
+              return { location: location || p, time: time || '09:00' };
+            }) : [];
+
+          const dropPoints = tour['Drop Points'] ? 
+            tour['Drop Points'].split('|').map((p: string) => {
+              const [location, time] = p.split('|');
+              return { location: location || p, time: time || '18:00' };
+            }) : [];
+
+          // Create product payload
+          const productData = {
+            name: tour['Tour Name'],
+            price: parseFloat(tour.Price) || 0,
+            compareAtPrice: tour['Compare At Price'] ? parseFloat(tour['Compare At Price']) : undefined,
+            shortDescription: tour['Short Description'] || '',
+            description: tour.Description || '',
+            productType: 'booking',
+            status: 'active',
+            stockQuantity: 0,
+            sku: `TOUR-${Date.now()}-${i}`,
+            vendorId: PLATFORM_VENDOR_ID,
+            images: images,
+            attributes: {
+              tour: {
+                tourMode: true,
+                departures: departures,
+                itinerary: itinerary,
+                details: {
+                  destinations: tour.Destinations ? tour.Destinations.split('|') : [],
+                  tourType: tour['Tour Type'] || '',
+                  difficulty: tour.Difficulty || 'moderate',
+                  groupSize: {
+                    min: parseInt(tour['Group Min']) || 1,
+                    max: parseInt(tour['Group Max']) || 20,
+                  },
+                  inclusions: tour.Inclusions ? tour.Inclusions.split('|') : [],
+                  exclusions: tour.Exclusions ? tour.Exclusions.split('|') : [],
+                  pickupPoints: pickupPoints,
+                  dropPoints: dropPoints,
+                  accommodation: tour['Accommodation Type'] || '',
+                  transportation: tour.Transportation || '',
+                  languages: tour.Languages ? tour.Languages.split('|') : [],
+                  ageRestriction: tour['Age Restriction'] || '',
+                },
+              },
+            },
+          };
+
+          // Submit to API
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(productData),
+          });
+
+          if (response.ok) {
+            created++;
+          } else {
+            const errorData = await response.json();
+            errors.push(`Row ${i + 1}: ${errorData.message || 'Failed'}`);
+          }
+        } catch (rowError) {
+          console.error(`Error processing row ${i + 1}:`, rowError);
+          const errorMessage = rowError instanceof Error ? rowError.message : 'Unknown error';
+          errors.push(`Row ${i + 1}: ${errorMessage}`);
+        }
+      }
+
+      // Show results
+      if (created > 0) {
+        setImportMessage({
+          type: 'success',
+          text: `Import successful! Created ${created} tour(s).${
+            errors.length > 0 ? ` Errors: ${errors.length}` : ''
+          }`,
+        });
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        setImportMessage({
+          type: 'error',
+          text: `Import failed. ${errors.length > 0 ? errors.join(', ') : 'No tours created.'}`,
+        });
+      }
+    } catch (error) {
+      console.error('Tour import error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setImportMessage({ type: 'error', text: 'Failed to import tours: ' + errorMessage });
+    } finally {
+      setImporting(false);
+      event.target.value = '';
+    }
   };
 
   const handleExport = async () => {
@@ -587,6 +1092,33 @@ export default function AdminProductsPage() {
             <p className="text-gray-600 mt-2">Manage your product catalog</p>
           </div>
           <div className="flex gap-3">
+            {/* Tour Import/Export Buttons */}
+            <div className="flex gap-2 border-r pr-3">
+              <button
+                onClick={downloadTourTemplate}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm flex items-center gap-2"
+                title="Download tour template package with CSV and image folder"
+                disabled={exporting}
+              >
+                <span>📦</span>
+                <span>{exporting ? 'Creating...' : 'Tour Template'}</span>
+              </button>
+              <label className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 cursor-pointer text-sm flex items-center gap-2">
+                <span>🗺️</span>
+                <span>{importing ? 'Importing...' : 'Import Tours'}</span>
+                <input
+                  type="file"
+                  accept=".csv,image/*"
+                  onChange={handleTourImport}
+                  disabled={importing}
+                  className="hidden"
+                  multiple
+                  title="Select CSV file and image files together (Ctrl/Cmd + Click to select multiple)"
+                />
+              </label>
+            </div>
+
+            {/* Regular Product Import/Export Buttons */}
             <button
               onClick={handleExport}
               disabled={exporting || products.length === 0}
@@ -781,8 +1313,15 @@ export default function AdminProductsPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Product
+                      <th
+                        className={getSortableHeaderClass(sortBy === 'name')}
+                        onClick={() => {
+                          const result = handleSortChange(sortBy, 'name', sortOrder);
+                          setSortBy(result.field as 'name' | 'price' | 'stock' | 'status');
+                          setSortOrder(result.order);
+                        }}
+                      >
+                        Product {getSortIcon(sortBy, 'name', sortOrder)}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
@@ -793,14 +1332,35 @@ export default function AdminProductsPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Category
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Price
+                      <th
+                        className={getSortableHeaderClass(sortBy === 'price')}
+                        onClick={() => {
+                          const result = handleSortChange(sortBy, 'price', sortOrder);
+                          setSortBy(result.field as 'name' | 'price' | 'stock' | 'status');
+                          setSortOrder(result.order);
+                        }}
+                      >
+                        Price {getSortIcon(sortBy, 'price', sortOrder)}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Stock
+                      <th
+                        className={getSortableHeaderClass(sortBy === 'stock')}
+                        onClick={() => {
+                          const result = handleSortChange(sortBy, 'stock', sortOrder);
+                          setSortBy(result.field as 'name' | 'price' | 'stock' | 'status');
+                          setSortOrder(result.order);
+                        }}
+                      >
+                        Stock {getSortIcon(sortBy, 'stock', sortOrder)}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                      <th
+                        className={getSortableHeaderClass(sortBy === 'status')}
+                        onClick={() => {
+                          const result = handleSortChange(sortBy, 'status', sortOrder);
+                          setSortBy(result.field as 'name' | 'price' | 'stock' | 'status');
+                          setSortOrder(result.order);
+                        }}
+                      >
+                        Status {getSortIcon(sortBy, 'status', sortOrder)}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -926,7 +1486,7 @@ export default function AdminProductsPage() {
                         );
                       })
                     ) : (
-                      products.map((product: Product) => (
+                      sortedProducts.map((product: Product) => (
                         <tr key={product.id} className="hover:bg-gray-50 border-b border-gray-200">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
@@ -1085,6 +1645,104 @@ export default function AdminProductsPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Short Description
+                </label>
+                {typeof window !== 'undefined' ? (
+                  <ReactQuill
+                    theme="snow"
+                    value={editFormData.shortDescription}
+                    onChange={(value) => setEditFormData({ ...editFormData, shortDescription: value })}
+                    className="bg-white"
+                    placeholder="Brief product summary with links (e.g., See trip details, View itinerary)"
+                  />
+                ) : (
+                  <textarea
+                    value={editFormData.shortDescription}
+                    onChange={(e) => setEditFormData({ ...editFormData, shortDescription: e.target.value })}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Brief product summary (1-2 sentences)"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                {(customPages.length > 0 || linkableProducts.length > 0) && (
+                  <div className="mb-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs font-medium text-gray-700 mb-2">📌 Quick Links:</p>
+                    
+                    {customPages.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs font-semibold text-gray-600 mb-1">Custom Pages:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {customPages.map((page) => (
+                            <button
+                              key={page.id}
+                              type="button"
+                              onClick={() => {
+                                const link = `/${page.slug}`;
+                                navigator.clipboard.writeText(link);
+                                alert(`Link copied: ${link}\n\nYou can paste this in the description editor.`);
+                              }}
+                              className="text-xs px-2 py-1 bg-white border border-blue-300 rounded hover:bg-blue-100 transition"
+                              title={`Click to copy link: /${page.slug}`}
+                            >
+                              📄 {page.title}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {linkableProducts.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-600 mb-1">Products & Tours:</p>
+                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                          {linkableProducts.map((product) => (
+                            <button
+                              key={product.id}
+                              type="button"
+                              onClick={() => {
+                                const link = product.isTour ? `/tours/${product.slug}` : `/products/${product.slug}`;
+                                navigator.clipboard.writeText(link);
+                                alert(`Link copied: ${link}\n\nYou can paste this in the description editor.`);
+                              }}
+                              className="text-xs px-2 py-1 bg-white border border-green-300 rounded hover:bg-green-100 transition"
+                              title={`Click to copy link: ${product.isTour ? `/tours/${product.slug}` : `/products/${product.slug}`}`}
+                            >
+                              {product.isTour ? '🗺️' : '🛍️'} {product.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-gray-500 mt-2">💡 Click to copy link, then paste in the editor using the link button.</p>
+                  </div>
+                )}
+                {typeof window !== 'undefined' ? (
+                  <ReactQuill
+                    theme="snow"
+                    value={editFormData.description}
+                    onChange={(value) => setEditFormData({ ...editFormData, description: value })}
+                    className="bg-white"
+                  />
+                ) : (
+                  <textarea
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                    rows={6}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Detailed product description"
+                  />
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1131,44 +1789,700 @@ export default function AdminProductsPage() {
                 </label>
                 <select
                   value={editFormData.productType}
-                  onChange={(e) => setEditFormData({ ...editFormData, productType: e.target.value as 'physical' | 'booking' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                 >
                   <option value="physical">📦 Physical Product</option>
                   <option value="booking">📅 Booking/Service</option>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {editFormData.productType === 'booking' 
-                    ? 'For bookings, appointments, or reservations (e.g., halls, courts, services)'
-                    : 'For physical products with inventory tracking'}
+                <p className="text-xs text-yellow-600 mt-1">
+                  ⚠️ Product type cannot be changed after creation
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Stock Quantity
-                  </label>
-                  {editFormData.hasVariants ? (
-                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
-                      <p className="text-sm">Stock set per variant</p>
-                      <p className="text-xs mt-1">See variants table below</p>
+              {/* Booking Configuration - Only show for non-tour booking products */}
+              {editFormData.productType === 'booking' && !editFormData.attributes.tour.tourMode && (
+                <div className="border-t pt-4 space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Booking Configuration</h3>
+                  
+                  {/* Duration Unit */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Booking Type *
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { value: 'hours', label: 'Hours', desc: 'Hourly bookings' },
+                        { value: 'days', label: 'Days', desc: 'Full day bookings' },
+                        { value: 'sessions', label: 'Sessions', desc: 'Fixed sessions' },
+                      ].map((unit) => (
+                        <button
+                          key={unit.value}
+                          type="button"
+                          onClick={() => setEditFormData({
+                            ...editFormData,
+                            attributes: {
+                              ...editFormData.attributes,
+                              booking: {
+                                ...editFormData.attributes.booking,
+                                durationUnit: unit.value as 'hours' | 'days' | 'sessions',
+                                duration: unit.value === 'days' ? 1440 : unit.value === 'hours' ? 60 : 60,
+                              },
+                            },
+                          })}
+                          className={`p-3 border-2 rounded-lg text-left ${
+                            editFormData.attributes.booking.durationUnit === unit.value
+                              ? 'border-blue-600 bg-blue-50'
+                              : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="font-semibold text-sm">{unit.label}</div>
+                          <div className="text-xs text-gray-600">{unit.desc}</div>
+                        </button>
+                      ))}
                     </div>
-                  ) : (
-                    <>
+                  </div>
+
+                  {/* Duration and Buffer Time */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {editFormData.attributes.booking.durationUnit === 'days'
+                          ? 'Duration (days) *'
+                          : editFormData.attributes.booking.durationUnit === 'hours'
+                          ? 'Duration (hours) *'
+                          : 'Duration (minutes) *'}
+                      </label>
+                      <input
+                        type="number"
+                        value={
+                          editFormData.attributes.booking.durationUnit === 'days'
+                            ? Math.floor(editFormData.attributes.booking.duration / 1440)
+                            : editFormData.attributes.booking.durationUnit === 'hours'
+                            ? Math.floor(editFormData.attributes.booking.duration / 60)
+                            : editFormData.attributes.booking.duration
+                        }
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? '' : parseInt(e.target.value);
+                          if (value === '') {
+                            setEditFormData({
+                              ...editFormData,
+                              attributes: {
+                                ...editFormData.attributes,
+                                booking: { ...editFormData.attributes.booking, duration: 0 },
+                              },
+                            });
+                          } else {
+                            const minutes = editFormData.attributes.booking.durationUnit === 'days'
+                              ? value * 1440
+                              : editFormData.attributes.booking.durationUnit === 'hours'
+                              ? value * 60
+                              : value;
+                            setEditFormData({
+                              ...editFormData,
+                              attributes: {
+                                ...editFormData.attributes,
+                                booking: { ...editFormData.attributes.booking, duration: minutes },
+                              },
+                            });
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        min={editFormData.attributes.booking.durationUnit === 'days' ? '1' : editFormData.attributes.booking.durationUnit === 'hours' ? '1' : '15'}
+                        step={editFormData.attributes.booking.durationUnit === 'days' ? '1' : editFormData.attributes.booking.durationUnit === 'hours' ? '1' : '15'}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Buffer Time (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        value={editFormData.attributes.booking.bufferTime}
+                        onChange={(e) => setEditFormData({
+                          ...editFormData,
+                          attributes: {
+                            ...editFormData.attributes,
+                            booking: { ...editFormData.attributes.booking, bufferTime: parseInt(e.target.value) || 0 },
+                          },
+                        })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        min="0"
+                        step="15"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Gap between bookings</p>
+                    </div>
+                  </div>
+
+                  {/* Available Days */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Available Days *
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditFormData({
+                            ...editFormData,
+                            attributes: {
+                              ...editFormData.attributes,
+                              booking: {
+                                ...editFormData.attributes.booking,
+                                availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                              },
+                            },
+                          })}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Select All
+                        </button>
+                        <span className="text-xs text-gray-400">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditFormData({
+                            ...editFormData,
+                            attributes: {
+                              ...editFormData.attributes,
+                              booking: { ...editFormData.attributes.booking, availableDays: [] },
+                            },
+                          })}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Deselect All
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                        <label
+                          key={day}
+                          className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={editFormData.attributes.booking.availableDays.includes(day)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEditFormData({
+                                  ...editFormData,
+                                  attributes: {
+                                    ...editFormData.attributes,
+                                    booking: {
+                                      ...editFormData.attributes.booking,
+                                      availableDays: [...editFormData.attributes.booking.availableDays, day],
+                                    },
+                                  },
+                                });
+                              } else {
+                                setEditFormData({
+                                  ...editFormData,
+                                  attributes: {
+                                    ...editFormData.attributes,
+                                    booking: {
+                                      ...editFormData.attributes.booking,
+                                      availableDays: editFormData.attributes.booking.availableDays.filter((d) => d !== day),
+                                    },
+                                  },
+                                });
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-sm capitalize">{day}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Time Slots */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Operating Hours (24-hour format)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditFormData({
+                            ...editFormData,
+                            attributes: {
+                              ...editFormData.attributes,
+                              booking: {
+                                ...editFormData.attributes.booking,
+                                timeSlots: [{ start: '00:00', end: '23:59' }],
+                              },
+                            },
+                          });
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 border border-blue-300 rounded hover:bg-blue-50"
+                      >
+                        Set Full Day (00:00 - 23:59)
+                      </button>
+                    </div>
+                    {editFormData.attributes.booking.timeSlots.map((slot, index) => (
+                      <div key={index} className="flex gap-4 mb-2 items-center">
+                        <input
+                          type="time"
+                          value={slot.start}
+                          onChange={(e) => {
+                            const newSlots = [...editFormData.attributes.booking.timeSlots];
+                            newSlots[index].start = e.target.value;
+                            setEditFormData({
+                              ...editFormData,
+                              attributes: {
+                                ...editFormData.attributes,
+                                booking: { ...editFormData.attributes.booking, timeSlots: newSlots },
+                              },
+                            });
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+                          step="3600"
+                        />
+                        <span className="flex items-center text-gray-500">to</span>
+                        <input
+                          type="time"
+                          value={slot.end}
+                          onChange={(e) => {
+                            const newSlots = [...editFormData.attributes.booking.timeSlots];
+                            newSlots[index].end = e.target.value;
+                            setEditFormData({
+                              ...editFormData,
+                              attributes: {
+                                ...editFormData.attributes,
+                                booking: { ...editFormData.attributes.booking, timeSlots: newSlots },
+                              },
+                            });
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+                          step="3600"
+                        />
+                        {editFormData.attributes.booking.timeSlots.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSlots = editFormData.attributes.booking.timeSlots.filter((_, i) => i !== index);
+                              setEditFormData({
+                                ...editFormData,
+                                attributes: {
+                                  ...editFormData.attributes,
+                                  booking: { ...editFormData.attributes.booking, timeSlots: newSlots },
+                                },
+                              });
+                            }}
+                            className="text-red-600 hover:text-red-800 px-3"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditFormData({
+                          ...editFormData,
+                          attributes: {
+                            ...editFormData.attributes,
+                            booking: {
+                              ...editFormData.attributes.booking,
+                              timeSlots: [...editFormData.attributes.booking.timeSlots, { start: '09:00', end: '17:00' }],
+                            },
+                          },
+                        });
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      + Add Time Range
+                    </button>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Time slots are in 24-hour format (e.g., 09:00 for 9 AM, 18:00 for 6 PM)
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Tour Attributes - Show for tour products */}
+              {editFormData.productType === 'booking' && editFormData.attributes.tour.tourMode && (
+                <div className="border-t pt-4 space-y-4">
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-purple-900 mb-2">🗺️ Tour Package Configuration</h4>
+                    <p className="text-sm text-purple-700">Additional tour-specific attributes below</p>
+                  </div>
+
+                      {/* Tour Departures */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">Tour Departures</label>
+                        <div className="space-y-3">
+                          {editFormData.attributes.tour.departures.map((departure, index) => (
+                            <div key={index} className="grid grid-cols-5 gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Departure Date</label>
+                                <input
+                                  type="date"
+                                  value={departure.departureDate}
+                                  onChange={(e) => {
+                                    const newDepartures = [...editFormData.attributes.tour.departures];
+                                    newDepartures[index].departureDate = e.target.value;
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                      },
+                                    });
+                                  }}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Return Date</label>
+                                <input
+                                  type="date"
+                                  value={departure.returnDate}
+                                  onChange={(e) => {
+                                    const newDepartures = [...editFormData.attributes.tour.departures];
+                                    newDepartures[index].returnDate = e.target.value;
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                      },
+                                    });
+                                  }}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Available Seats</label>
+                                <input
+                                  type="number"
+                                  value={departure.availableSeats}
+                                  onChange={(e) => {
+                                    const newDepartures = [...editFormData.attributes.tour.departures];
+                                    newDepartures[index].availableSeats = parseInt(e.target.value) || 0;
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                      },
+                                    });
+                                  }}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                                  min="1"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Price/Person</label>
+                                <input
+                                  type="number"
+                                  value={departure.pricePerPerson}
+                                  onChange={(e) => {
+                                    const newDepartures = [...editFormData.attributes.tour.departures];
+                                    newDepartures[index].pricePerPerson = parseFloat(e.target.value) || 0;
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                      },
+                                    });
+                                  }}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                                  step="0.01"
+                                />
+                              </div>
+                              <div className="flex items-end">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newDepartures = editFormData.attributes.tour.departures.filter((_, i) => i !== index);
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                      },
+                                    });
+                                  }}
+                                  className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditFormData({
+                              ...editFormData,
+                              attributes: {
+                                ...editFormData.attributes,
+                                tour: {
+                                  ...editFormData.attributes.tour,
+                                  departures: [
+                                    ...editFormData.attributes.tour.departures,
+                                    { departureDate: '', returnDate: '', availableSeats: 20, pricePerPerson: editFormData.price, status: 'active' as const },
+                                  ],
+                                },
+                              },
+                            });
+                          }}
+                          className="mt-3 text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                        >
+                          + Add Departure
+                        </button>
+                      </div>
+
+                      {/* Tour Itinerary */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">Tour Itinerary</label>
+                        <div className="space-y-3">
+                          {editFormData.attributes.tour.itinerary.map((day, index) => (
+                            <div key={index} className="p-3 border border-gray-200 rounded-lg bg-white">
+                              <div className="flex items-center justify-between mb-2">
+                                <strong className="text-sm font-semibold">Day {day.day}</strong>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newItinerary = editFormData.attributes.tour.itinerary.filter((_, i) => i !== index);
+                                    const renumbered = newItinerary.map((d, i) => ({ ...d, day: i + 1 }));
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: { ...editFormData.attributes.tour, itinerary: renumbered },
+                                      },
+                                    });
+                                  }}
+                                  className="text-red-600 hover:text-red-800 text-xs"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  placeholder="Day title"
+                                  value={day.title}
+                                  onChange={(e) => {
+                                    const newItinerary = [...editFormData.attributes.tour.itinerary];
+                                    newItinerary[index].title = e.target.value;
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: { ...editFormData.attributes.tour, itinerary: newItinerary },
+                                      },
+                                    });
+                                  }}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                                />
+                                <textarea
+                                  placeholder="Day description"
+                                  value={day.description}
+                                  onChange={(e) => {
+                                    const newItinerary = [...editFormData.attributes.tour.itinerary];
+                                    newItinerary[index].description = e.target.value;
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: { ...editFormData.attributes.tour, itinerary: newItinerary },
+                                      },
+                                    });
+                                  }}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                                  rows={2}
+                                />
+                                {day.activities.length > 0 && (
+                                  <p className="text-xs text-gray-600">Activities: {day.activities.join(', ')}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditFormData({
+                              ...editFormData,
+                              attributes: {
+                                ...editFormData.attributes,
+                                tour: {
+                                  ...editFormData.attributes.tour,
+                                  itinerary: [
+                                    ...editFormData.attributes.tour.itinerary,
+                                    { day: editFormData.attributes.tour.itinerary.length + 1, title: '', description: '', activities: [], meals: [], accommodation: '' },
+                                  ],
+                                },
+                              },
+                            });
+                          }}
+                          className="mt-3 text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                        >
+                          + Add Day
+                        </button>
+                      </div>
+
+                      {/* Tour Details */}
+                      <div>
+                        <details className="border border-gray-200 rounded-lg">
+                          <summary className="px-3 py-2 bg-gray-50 cursor-pointer hover:bg-gray-100 font-medium text-sm">
+                            Tour Details & Specifications
+                          </summary>
+                          <div className="p-3 space-y-3 text-sm">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Destinations (comma-separated)</label>
+                                <input
+                                  type="text"
+                                  value={editFormData.attributes.tour.details.destinations.join(', ')}
+                                  onChange={(e) => {
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: {
+                                          ...editFormData.attributes.tour,
+                                          details: { ...editFormData.attributes.tour.details, destinations: e.target.value.split(',').map((d) => d.trim()) },
+                                        },
+                                      },
+                                    });
+                                  }}
+                                  placeholder="e.g., Paris, Rome, Barcelona"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Tour Type</label>
+                                <input
+                                  type="text"
+                                  value={editFormData.attributes.tour.details.tourType}
+                                  onChange={(e) => {
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: {
+                                          ...editFormData.attributes.tour,
+                                          details: { ...editFormData.attributes.tour.details, tourType: e.target.value },
+                                        },
+                                      },
+                                    });
+                                  }}
+                                  placeholder="e.g., Adventure, Cultural"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Difficulty Level</label>
+                                <select
+                                  value={editFormData.attributes.tour.details.difficulty}
+                                  onChange={(e) => {
+                                    setEditFormData({
+                                      ...editFormData,
+                                      attributes: {
+                                        ...editFormData.attributes,
+                                        tour: {
+                                          ...editFormData.attributes.tour,
+                                          details: { ...editFormData.attributes.tour.details, difficulty: e.target.value },
+                                        },
+                                      },
+                                    });
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                                >
+                                  <option value="easy">Easy</option>
+                                  <option value="moderate">Moderate</option>
+                                  <option value="challenging">Challenging</option>
+                                  <option value="difficult">Difficult</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Group Size</label>
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="number"
+                                    value={editFormData.attributes.tour.details.groupSize.min}
+                                    onChange={(e) => {
+                                      setEditFormData({
+                                        ...editFormData,
+                                        attributes: {
+                                          ...editFormData.attributes,
+                                          tour: {
+                                            ...editFormData.attributes.tour,
+                                            details: {
+                                              ...editFormData.attributes.tour.details,
+                                              groupSize: { ...editFormData.attributes.tour.details.groupSize, min: parseInt(e.target.value) || 1 },
+                                            },
+                                          },
+                                        },
+                                      });
+                                    }}
+                                    placeholder="Min"
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded"
+                                    min="1"
+                                  />
+                                  <span className="text-gray-500">to</span>
+                                  <input
+                                    type="number"
+                                    value={editFormData.attributes.tour.details.groupSize.max}
+                                    onChange={(e) => {
+                                      setEditFormData({
+                                        ...editFormData,
+                                        attributes: {
+                                          ...editFormData.attributes,
+                                          tour: {
+                                            ...editFormData.attributes.tour,
+                                            details: {
+                                              ...editFormData.attributes.tour.details,
+                                              groupSize: { ...editFormData.attributes.tour.details.groupSize, max: parseInt(e.target.value) || 20 },
+                                            },
+                                          },
+                                        },
+                                      });
+                                    }}
+                                    placeholder="Max"
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded"
+                                    min="1"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+                </div>
+              )}
+
+              {editFormData.productType === 'physical' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Stock Quantity
+                    </label>
+                    {editFormData.hasVariants ? (
+                      <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                        <p className="text-sm">Stock set per variant</p>
+                        <p className="text-xs mt-1">See variants table below</p>
+                      </div>
+                    ) : (
                       <input
                         type="number"
                         value={editFormData.stockQuantity}
                         onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: parseInt(e.target.value) || 0 })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        disabled={editFormData.productType === 'booking'}
                       />
-                      {editFormData.productType === 'booking' && (
-                        <p className="text-xs text-gray-500 mt-1">Stock not applicable for booking products</p>
-                      )}
-                    </>
-                  )}
-                </div>
+                    )}
+                  </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1189,6 +2503,18 @@ export default function AdminProductsPage() {
                   )}
                 </div>
               </div>
+              )}
+
+              {/* Booking Product Info */}
+              {editFormData.productType === 'booking' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>ℹ️ Booking Product:</strong> Stock quantity and SKU are not applicable for booking/tour products. 
+                    Availability is managed through booking configuration and time slots.
+                  </p>
+                </div>
+              )}
+
 
               {/* Variant Information Display */}
               {editFormData.hasVariants && editFormData.variations && editFormData.variations.length > 0 && (

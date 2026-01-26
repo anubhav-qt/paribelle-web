@@ -71,12 +71,14 @@ async function fetchVendorDashboard(): Promise<VendorDashboardData> {
 
   const user = JSON.parse(userStr);
   
-  // Check if user is a vendor admin
-  if (user.role !== 'vendor_admin') {
+  // Check if user is a vendor admin or super admin
+  if (user.role !== 'vendor_admin' && user.role !== 'super_admin') {
     throw new Error('This account is not a vendor account. Please use a vendor login.');
   }
   
-  const vendorId = getVendorIdFromToken();
+  // For super admin, use platform vendor ID
+  const PLATFORM_VENDOR_ID = '00000000-0000-0000-0000-000000000001';
+  const vendorId = user.role === 'super_admin' ? PLATFORM_VENDOR_ID : getVendorIdFromToken();
   
   if (!vendorId) {
     console.error('Vendor ID not found in token or localStorage');

@@ -634,10 +634,11 @@ export default function CategoryPage() {
                           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {productsWithLocation.map((product) => {
                               const discount = getDiscount(product.price, product.compareAtPrice);
+                              const isTour = product.productType === 'booking' && product.attributes?.tour?.tourMode;
                               return (
                                 <Link
                                   key={product.id}
-                                  href={`/products/${product.slug}`}
+                                  href={isTour ? `/tours/${product.slug}` : `/products/${product.slug}`}
                                   className="group bg-white rounded-lg overflow-hidden hover:shadow-xl transition-all border border-gray-100"
                                 >
                                   <div className="relative aspect-square overflow-hidden bg-gray-100">
@@ -713,10 +714,11 @@ export default function CategoryPage() {
                           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {productsWithoutLocation.map((product) => {
                               const discount = getDiscount(product.price, product.compareAtPrice);
+                              const isTour = product.productType === 'booking' && product.attributes?.tour?.tourMode;
                               return (
                                 <Link
                                   key={product.id}
-                                  href={`/products/${product.slug}`}
+                                  href={isTour ? `/tours/${product.slug}` : `/products/${product.slug}`}
                                   className="group bg-white rounded-lg overflow-hidden hover:shadow-xl transition-all border border-gray-100"
                                 >
                                   <div className="relative aspect-square overflow-hidden bg-gray-100">

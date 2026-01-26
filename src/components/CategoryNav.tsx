@@ -7,6 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useCategories } from '@/hooks/useCategories';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useVendorContext } from '@/contexts/VendorContext';
+import { getProductTypeIcon } from '@/lib/utils/product-types';
 
 interface Category {
   id: string;
@@ -14,6 +15,12 @@ interface Category {
   slug: string;
   children?: Category[];
   productCount?: number;
+  primaryProductType?: 'physical' | 'booking' | 'tour';
+  typeDistribution?: {
+    physical: number;
+    booking: number;
+    tour: number;
+  };
 }
 
 interface VendorPage {
@@ -31,6 +38,7 @@ interface CategoryNavProps {
   vendorSlug?: string;
   hideEmptyCategories?: boolean;
   themeConfig?: any;
+  showCustomPages?: boolean; // Show custom pages instead of categories
 }
 
 export default function CategoryNav({ 
@@ -40,7 +48,8 @@ export default function CategoryNav({
   mode = 'navigation',
   vendorSlug,
   hideEmptyCategories = true,
-  themeConfig
+  themeConfig,
+  showCustomPages = false
 }: CategoryNavProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -65,6 +74,7 @@ export default function CategoryNav({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pagesMenuRef = useRef<HTMLDivElement>(null);
   const [hasBookingProducts, setHasBookingProducts] = useState(false);
+  const [hasTourProducts, setHasTourProducts] = useState(false);
   
   // Fetch category display mode setting
   useEffect(() => {
@@ -114,8 +124,12 @@ export default function CategoryNav({
     if (effectiveVendorId && effectiveVendorSlug) {
       fetchVendorPages();
     }
+    if (showCustomPages) {
+      fetchMarketplacePages();
+    }
     checkBookingProducts();
-  }, [effectiveVendorId]);
+    checkTourProducts();
+  }, [effectiveVendorId, showCustomPages]);
 
   // Handle hash scrolling when page loads or pathname changes
   useEffect(() => {
@@ -185,6 +199,20 @@ export default function CategoryNav({
     }
   };
 
+  const fetchMarketplacePages = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/marketplace/pages`
+      );
+      if (response.ok) {
+        const pages = await response.json();
+        setCustomPages(pages.filter((p: VendorPage) => p.showInNavigation));
+      }
+    } catch (error) {
+      console.error('Error fetching marketplace pages:', error);
+    }
+  };
+
   const checkBookingProducts = async () => {
     try {
       const url = effectiveVendorId 
@@ -198,6 +226,25 @@ export default function CategoryNav({
       }
     } catch (error) {
       console.error('Error checking booking products:', error);
+    }
+  };
+
+  const checkTourProducts = async () => {
+    try {
+      // Check for products with tour.tourMode = true
+      const url = effectiveVendorId 
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?vendorId=${effectiveVendorId}&productType=booking&limit=100`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?productType=booking&limit=100`;
+      
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        // Check if any products have tour.tourMode = true
+        const hasTours = data.products?.some((p: any) => p.attributes?.tour?.tourMode === true);
+        setHasTourProducts(hasTours);
+      }
+    } catch (error) {
+      console.error('Error checking tour products:', error);
     }
   };
 
@@ -402,7 +449,26 @@ export default function CategoryNav({
           )}
 
           {/* Categories - Middle */}
-          {mode === 'filter' && (
+          {showCustomPages ? (
+            // Show custom pages instead of categories
+            <>
+              {customPages.map((page) => (
+                <Link
+                  key={page.id}
+                  href={`/${page.slug}`}
+                  className={theme.combine(
+                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
+                    isVendorStore ? 'vendor-text' : 'text-secondary-foreground',
+                    pathname === `/${page.slug}` ? 'font-semibold border-b-2 border-primary' : ''
+                  )}
+                >
+                  {page.title}
+                </Link>
+              ))}
+            </>
+          ) : (
+            <>
+              {mode === 'filter' && (
             <button
               onClick={() => handleCategoryClick('')}
               className={theme.combine(
@@ -416,7 +482,7 @@ export default function CategoryNav({
             </button>
           )}
           
-          {categories.map((category) => (
+          {categories.filter(cat => cat.slug !== 'tours-travel' && cat.slug !== 'bookings-services').map((category) => (
             <div
               key={category.id}
               className="relative flex-shrink-0"
@@ -431,6 +497,9 @@ export default function CategoryNav({
                     isVendorStore ? 'vendor-text' : 'text-secondary-foreground'
                   )}
                 >
+                  {category.primaryProductType && (
+                    <span className="text-sm">{getProductTypeIcon(category.primaryProductType)}</span>
+                  )}
                   {category.name}
                   {category.children && category.children.length > 0 && (
                     <ChevronDown className="w-3 h-3" />
@@ -483,6 +552,9 @@ export default function CategoryNav({
                     isVendorStore ? 'vendor-text' : 'text-secondary-foreground'
                   )}
                 >
+                  {category.primaryProductType && (
+                    <span className="text-sm">{getProductTypeIcon(category.primaryProductType)}</span>
+                  )}
                   {category.name}
                   {category.children && category.children.length > 0 && (
                     <ChevronDown className={`w-3 h-3 transition-transform ${
@@ -505,6 +577,9 @@ export default function CategoryNav({
                       : 'border-transparent vendor-text hover:opacity-80 hover:vendor-secondary-bg'
                     }`}
                 >
+                  {category.primaryProductType && (
+                    <span className="text-sm mr-1">{getProductTypeIcon(category.primaryProductType)}</span>
+                  )}
                   {category.name}
                   {category.children && category.children.length > 0 && (
                     <ChevronDown className={`w-3 h-3 transition-transform ${
@@ -583,12 +658,69 @@ export default function CategoryNav({
             </div>
           ))}
 
+          {/* Tours & Travel Link */}
+          {hasTourProducts && (
+            <div className="relative flex-shrink-0">
+              {mode === 'navigation' ? (
+                <Link
+                  href="/?productType=booking&tourMode=true"
+                  className={theme.combine(
+                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
+                    isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
+                  )}
+                >
+                  Tours & Travel
+                </Link>
+              ) : mode === 'scroll' ? (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔴 TOURS CLICKED');
+                    
+                    if (!effectiveVendorSlug) {
+                      const isOnHomepage = pathname === '/' || pathname === '/';
+                      if (!isOnHomepage) {
+                        window.location.href = '/#category-tours-travel';
+                      } else {
+                        handleScrollToCategory('tours-travel');
+                      }
+                    } else {
+                      const isOnVendorHome = pathname === '/';
+                      if (!isOnVendorHome) {
+                        window.location.href = `/${effectiveVendorSlug}#category-tours-travel`;
+                      } else {
+                        handleScrollToCategory('tours-travel');
+                      }
+                    }
+                  }}
+                  className={theme.combine(
+                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
+                    isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
+                  )}
+                >
+                  Tours & Travel
+                </button>
+              ) : (
+                <Link
+                  href="/?productType=booking&tourMode=true"
+                  className={theme.combine(
+                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 border-transparent hover:opacity-80",
+                    isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
+                  )}
+                >
+                  Tours & Travel
+                </Link>
+              )}
+            </div>
+          )}
+
           {/* Booking & Services Link */}
           {hasBookingProducts && (
             <div className="relative flex-shrink-0">
               {mode === 'navigation' ? (
                 <Link
-                  href="/?productType=booking"
+                  href="/?productType=booking&tourMode=false"
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
@@ -597,18 +729,38 @@ export default function CategoryNav({
                   Booking & Services
                 </Link>
               ) : mode === 'scroll' ? (
-                <Link
-                  href="/?productType=booking"
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔴 BOOKINGS CLICKED');
+                    
+                    if (!effectiveVendorSlug) {
+                      const isOnHomepage = pathname === '/' || pathname === '/';
+                      if (!isOnHomepage) {
+                        window.location.href = '/#category-bookings-services';
+                      } else {
+                        handleScrollToCategory('bookings-services');
+                      }
+                    } else {
+                      const isOnVendorHome = pathname === '/';
+                      if (!isOnVendorHome) {
+                        window.location.href = `/${effectiveVendorSlug}#category-bookings-services`;
+                      } else {
+                        handleScrollToCategory('bookings-services');
+                      }
+                    }
+                  }}
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
                   )}
                 >
                   Booking & Services
-                </Link>
+                </button>
               ) : (
                 <Link
-                  href="/?productType=booking"
+                  href="/?productType=booking&tourMode=false"
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 border-transparent hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
@@ -618,6 +770,8 @@ export default function CategoryNav({
                 </Link>
               )}
             </div>
+          )}
+            </>
           )}
         </div>
       </div>

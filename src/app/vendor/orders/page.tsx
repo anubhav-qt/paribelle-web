@@ -35,7 +35,10 @@ export default function VendorOrdersPage() {
       }
 
       const currentUser = JSON.parse(userStr);
-      const vendorId = getVendorId();
+      
+      // For super admin, use platform vendor ID
+      const PLATFORM_VENDOR_ID = '00000000-0000-0000-0000-000000000001';
+      const vendorId = currentUser.role === 'super_admin' ? PLATFORM_VENDOR_ID : getVendorId();
       
       if (!vendorId) {
         console.error('No vendorId found');
