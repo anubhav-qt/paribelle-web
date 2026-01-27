@@ -225,7 +225,7 @@ export default function TourDetailsPage() {
                 <img
                   src={tour.images[selectedImage] || tour.images[0]}
                   alt={tour.name}
-                  className="w-full h-[60vh] min-h-[400px] max-h-[600px] object-cover hover:scale-[1.02] transition-transform duration-500"
+                  className="w-full h-[60vh] min-h-[400px] max-h-[600px] object-contain hover:scale-[1.02] transition-transform duration-500"
                 />
                 
                 {/* Gradient Overlay for Better Text Visibility */}
@@ -466,7 +466,7 @@ export default function TourDetailsPage() {
                 )}
 
                 {/* Quick Highlights */}
-                {tourData.details.inclusions.length > 0 && (
+                {tourData.details.inclusions && tourData.details.inclusions.length > 0 && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Tour Highlights</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -585,7 +585,7 @@ export default function TourDetailsPage() {
                         What's Included
                       </h2>
                       <ul className="space-y-3">
-                        {tourData.details.inclusions.map((item, idx) => (
+                        {tourData.details.inclusions && tourData.details.inclusions.map((item, idx) => (
                           <li key={idx} className="flex items-start gap-3">
                             <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                             <span className="text-gray-700">{item}</span>
@@ -600,7 +600,7 @@ export default function TourDetailsPage() {
                         What's Not Included
                       </h2>
                       <ul className="space-y-3">
-                        {tourData.details.exclusions.map((item, idx) => (
+                        {tourData.details.exclusions && tourData.details.exclusions.map((item, idx) => (
                           <li key={idx} className="flex items-start gap-3">
                             <X className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                             <span className="text-gray-700">{item}</span>
@@ -619,26 +619,36 @@ export default function TourDetailsPage() {
                         Tour Information
                       </h2>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-600">Tour Type</p>
-                          <p className="text-gray-900 capitalize">{tourData.details.tourType}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-600">Difficulty</p>
-                          <p className="text-gray-900 capitalize">{tourData.details.difficulty}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-600">Accommodation</p>
-                          <p className="text-gray-900">{tourData.details.accommodation}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-600">Transportation</p>
-                          <p className="text-gray-900">{tourData.details.transportation}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-600">Languages</p>
-                          <p className="text-gray-900">{tourData.details.languages.join(', ')}</p>
-                        </div>
+                        {tourData.details.tourType && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-600">Tour Type</p>
+                            <p className="text-gray-900 capitalize">{tourData.details.tourType}</p>
+                          </div>
+                        )}
+                        {tourData.details.difficulty && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-600">Difficulty</p>
+                            <p className="text-gray-900 capitalize">{tourData.details.difficulty}</p>
+                          </div>
+                        )}
+                        {tourData.details.accommodation && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-600">Accommodation</p>
+                            <p className="text-gray-900">{tourData.details.accommodation}</p>
+                          </div>
+                        )}
+                        {tourData.details.transportation && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-600">Transportation</p>
+                            <p className="text-gray-900">{tourData.details.transportation}</p>
+                          </div>
+                        )}
+                        {tourData.details.languages && tourData.details.languages.length > 0 && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-600">Languages</p>
+                            <p className="text-gray-900">{tourData.details.languages.join(', ')}</p>
+                          </div>
+                        )}
                         {tourData.details.ageRestriction && (
                           <div>
                             <p className="text-sm font-semibold text-gray-600">Age Restriction</p>
@@ -648,7 +658,7 @@ export default function TourDetailsPage() {
                       </div>
                     </div>
 
-                    {tourData.details.pickupPoints.length > 0 && (
+                    {tourData.details.pickupPoints && tourData.details.pickupPoints.length > 0 && (
                       <div className="bg-white border border-gray-200 rounded-lg p-6">
                         <h2 className="text-xl font-bold text-gray-900 mb-4">Pickup Points</h2>
                         <ul className="space-y-2">

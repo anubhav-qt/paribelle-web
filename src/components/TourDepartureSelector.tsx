@@ -146,7 +146,7 @@ export default function TourDepartureSelector({
                 <div className="text-right">
                   <div className="mb-2">
                     <div className="text-2xl font-bold text-blue-600">
-                      ₹{departure.pricePerPerson.toLocaleString('en-IN')}
+                      ₹{(departure.pricePerPerson || product.price).toLocaleString('en-IN')}
                     </div>
                     <div className="text-xs text-gray-500">per person</div>
                   </div>
