@@ -388,8 +388,21 @@ export default function ProductDetailPage() {
           console.log('Tour booking created successfully:', result);
           router.push(`/checkout?bookingIds=${result.id}`);
         } else {
-          const error = await response.json();
-          alert(`Failed to create booking: ${JSON.stringify(error)}`);
+          const error = await response.json().catch(() => ({ message: 'Failed to create booking' }));
+          console.error('Booking error:', error);
+          
+          let errorMessage = 'Failed to create booking. ';
+          if (response.status === 401) {
+            errorMessage += 'Your session has expired. Please log out and log back in.';
+          } else if (response.status === 400) {
+            errorMessage += error.message || 'Please check your information and try again.';
+          } else if (response.status === 500) {
+            errorMessage += 'A server error occurred. If you recently reset the database, please log out and log back in.';
+          } else {
+            errorMessage += error.message || 'Please try again later.';
+          }
+          
+          alert(errorMessage);
         }
         return;
       }
@@ -410,6 +423,9 @@ export default function ProductDetailPage() {
               bookingDate: dateString,
               startTime: null,
               endTime: null,
+              customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Guest',
+              customerEmail: user.email || '',
+              customerPhone: user.phone || '',
               totalPrice: Number(product.price),
               status: 'pending',
             };
@@ -463,6 +479,9 @@ export default function ProductDetailPage() {
               bookingDate: dateString,
               startTime: null,
               endTime: null,
+              customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Guest',
+              customerEmail: user.email || '',
+              customerPhone: user.phone || '',
               totalPrice: Number(product.price),
               status: 'pending',
             };
@@ -503,7 +522,20 @@ export default function ProductDetailPage() {
           // Redirect to checkout with booking IDs
           router.push(`/checkout?bookingIds=${bookingIds.join(',')}`);
         } else {
-          alert('Some bookings failed. Please try again.');
+          const errors = await Promise.all(responses.map(r => r.ok ? null : r.json().catch(() => ({ message: 'Unknown error' }))));
+          const firstError = errors.find(e => e);
+          console.error('Booking errors:', errors);
+          
+          let errorMessage = 'Failed to create bookings. ';
+          if (responses.some(r => r.status === 401)) {
+            errorMessage += 'Your session has expired. Please log out and log back in.';
+          } else if (responses.some(r => r.status === 500)) {
+            errorMessage += 'A server error occurred. If you recently reset the database, please log out and log back in.';
+          } else {
+            errorMessage += firstError?.message || 'Please check your information and try again.';
+          }
+          
+          alert(errorMessage);
         }
       } else {
         // For hourly/session bookings - handle multiple slots
@@ -520,6 +552,9 @@ export default function ProductDetailPage() {
               bookingDate: selectedBooking.startDate.toISOString().split('T')[0],
               startTime,
               endTime,
+              customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Guest',
+              customerEmail: user.email || '',
+              customerPhone: user.phone || '',
               totalPrice: Number(product.price),
               status: 'pending',
             };
@@ -551,7 +586,20 @@ export default function ProductDetailPage() {
             // Redirect to checkout with booking IDs
             router.push(`/checkout?bookingIds=${bookingIds.join(',')}`);
           } else {
-            alert('Some bookings failed. Please try again.');
+            const errors = await Promise.all(responses.map(r => r.ok ? null : r.json().catch(() => ({ message: 'Unknown error' }))));
+            const firstError = errors.find(e => e);
+            console.error('Booking errors:', errors);
+            
+            let errorMessage = 'Failed to create bookings. ';
+            if (responses.some(r => r.status === 401)) {
+              errorMessage += 'Your session has expired. Please log out and log back in.';
+            } else if (responses.some(r => r.status === 500)) {
+              errorMessage += 'A server error occurred. If you recently reset the database, please log out and log back in.';
+            } else {
+              errorMessage += firstError?.message || 'Please try again later.';
+            }
+            
+            alert(errorMessage);
           }
         } else {
           // Single slot booking with PENDING status
@@ -562,6 +610,9 @@ export default function ProductDetailPage() {
             bookingDate: selectedBooking.startDate.toISOString().split('T')[0],
             startTime: selectedBooking.startTime || null,
             endTime: selectedBooking.endTime || null,
+            customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Guest',
+            customerEmail: user.email || '',
+            customerPhone: user.phone || '',
             totalPrice: selectedBooking.totalPrice,
             status: 'pending',
           };
@@ -583,8 +634,21 @@ export default function ProductDetailPage() {
             // Redirect to checkout with booking ID
             router.push(`/checkout?bookingIds=${result.id}`);
           } else {
-            const error = await response.json();
-            alert(`Failed to create booking: ${JSON.stringify(error)}`);
+            const error = await response.json().catch(() => ({ message: 'Failed to create booking' }));
+            console.error('Booking error:', error);
+            
+            let errorMessage = 'Failed to create booking. ';
+            if (response.status === 401) {
+              errorMessage += 'Your session has expired. Please log out and log back in.';
+            } else if (response.status === 400) {
+              errorMessage += error.message || 'Please check your information and try again.';
+            } else if (response.status === 500) {
+              errorMessage += 'A server error occurred. If you recently reset the database, please log out and log back in.';
+            } else {
+              errorMessage += error.message || 'Please try again later.';
+            }
+            
+            alert(errorMessage);
           }
         }
       }

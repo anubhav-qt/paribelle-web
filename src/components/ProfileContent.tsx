@@ -139,6 +139,12 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
   };
 
   const handleSave = async () => {
+    // Validate required fields
+    if (!formData.phone || !formData.phone.trim()) {
+      alert('Phone number is required for bookings. Please provide your contact number.');
+      return;
+    }
+
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
@@ -394,7 +400,7 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Phone Number
+                    Phone Number <span className="text-red-500">*</span>
                   </label>
                   {editing ? (
                     <input
@@ -402,6 +408,7 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       placeholder="Enter phone number"
+                      required
                       className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
                     />
                   ) : (
@@ -409,6 +416,9 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
                       <Phone className="w-5 h-5 text-muted-foreground" />
                       <span className="text-foreground">{user.phone || 'Not provided'}</span>
                     </div>
+                  )}
+                  {editing && !formData.phone && (
+                    <p className="mt-1 text-sm text-red-500">Phone number is required for bookings</p>
                   )}
                 </div>
               </div>
