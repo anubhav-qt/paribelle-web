@@ -1,11 +1,8 @@
 keep-render-alive:
   image: curlimages/curl:latest
-  
   script:
-    - echo "Pinging backend at $(date)"
-    - response=$(curl -s -o /dev/null -w "%{http_code}" https://marketplace-backend-prqr.onrender.com/api/v1/categories)
-    - echo "Response code: $response"
-    - if [ $response -eq 200 ]; then echo "✅ Backend is alive!"; else echo "⚠️ Backend returned status $response"; fi
-  
+    - echo "Pinging backend"
+    - curl -s https://marketplace-backend-prqr.onrender.com/api/v1/categories
+    - echo "Backend pinged successfully"
   only:
     - schedules
