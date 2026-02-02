@@ -5,16 +5,7 @@ keep-render-alive:
     - echo "Pinging backend at $(date)"
     - response=$(curl -s -o /dev/null -w "%{http_code}" https://marketplace-backend-prqr.onrender.com/api/v1/categories)
     - echo "Response code: $response"
-    - |
-      if [ $response -eq 200 ]; then
-        echo "✅ Backend is alive!"
-      else
-        echo "⚠️ Backend returned status $response"
-      fi
+    - if [ $response -eq 200 ]; then echo "✅ Backend is alive!"; else echo "⚠️ Backend returned status $response"; fi
   
   only:
     - schedules
-  
-  # Optional: Allow manual trigger from GitLab UI
-  when: manual
-  allow_failure: false
