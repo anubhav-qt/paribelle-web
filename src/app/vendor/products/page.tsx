@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import 'react-quill/dist/quill.snow.css';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import ImageUpload from '@/components/ImageUpload';
@@ -10,9 +11,11 @@ import MultiImageUpload from '@/components/MultiImageUpload';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getVendorId, isSuperAdmin } from '@/lib/auth';
 import { handleSortChange, getSortIcon, compareValues, getSortableHeaderClass, SortOrder } from '@/lib/utils/sorting';
-import 'react-quill/dist/quill.snow.css';
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+const ReactQuill = dynamic(() => import('react-quill').then((mod) => mod.default), { 
+  ssr: false,
+  loading: () => <div>Loading editor...</div>
+});
 
 interface Product {
   id: string;
