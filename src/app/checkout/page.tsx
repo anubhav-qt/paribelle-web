@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/lib/currency';
 import { useRazorpay } from '@/hooks/useRazorpay';
@@ -16,24 +16,58 @@ import {
   Edit2,
   Trash2,
   Lock,
-  ArrowLeft
+  ArrowLeft,
+  Calendar,
+  Users,
+  Clock
 } from 'lucide-react';
 import Link from 'next/link';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
+import ThemeRenderer from '@/components/ThemeRenderer';
+import { BookingSuccessDialog } from '@/components/SuccessDialog';
 
-type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
+type CheckoutStep = 'cart' | 'review' | 'address' | 'payment' | 'confirmation';
+type ProductType = 'physical' | 'booking' | 'tour';
 
-export default function CheckoutPage() {
+interface Booking {
+  id: string;
+  bookingDate: string | Date;
+  startTime: string | null;
+  endTime: string | null;
+  totalPrice: number;
+  status: string;
+  product: {
+    id: string;
+    name: string;
+    featuredImage: string;
+  };
+}
+
+function CheckoutContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { items, totalItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const { createOrder: createRazorpayOrder, verifyPayment, openCheckout } = useRazorpay();
   const theme = useThemeClasses();
   
-  const [currentStep, setCurrentStep] = useState<CheckoutStep>('cart');
+  // Detect product type from URL or cart
+  const urlType = searchParams.get('type'); // 'tour' or 'booking'
+  const bookingIds = searchParams.get('bookingIds')?.split(',') || [];
+  const productType: ProductType = urlType === 'tour' ? 'tour' : bookingIds.length > 0 ? 'booking' : 'physical';
+  
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>(productType === 'physical' ? 'cart' : 'review');
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [marketplaceLogo, setMarketplaceLogo] = useState('');
   const [marketplaceName, setMarketplaceName] = useState('GaliCart');
+  const [currency, setCurrency] = useState('INR');
+  
+  // Tour/Booking specific state
+  const [tourBooking, setTourBooking] = useState<any>(null);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookingDate, setBookingDate] = useState('');
+  const [selectedDepartureId, setSelectedDepartureId] = useState('');
+  const [specialRequests, setSpecialRequests] = useState('');
   
   // Shipping Address form
   const [shippingAddress, setShippingAddress] = useState<Address>({
@@ -79,6 +113,10 @@ export default function CheckoutPage() {
   const [confirmedSubtotal, setConfirmedSubtotal] = useState(0);
   const [confirmedTax, setConfirmedTax] = useState(0);
   const [confirmedShipping, setConfirmedShipping] = useState(0);
+  
+  // Success dialog state
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [successBookingDetails, setSuccessBookingDetails] = useState<any>(null);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -122,6 +160,36 @@ export default function CheckoutPage() {
     }
   };
 
+  const fetchBookings = async (bookingIds: string[], token: string) => {
+    try {
+      console.log('Fetching bookings with IDs:', bookingIds);
+      
+      const promises = bookingIds.map(id =>
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${id}`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      );
+      
+      const responses = await Promise.all(promises);
+      
+      const failedResponses = responses.filter(r => !r.ok);
+      if (failedResponses.length > 0) {
+        throw new Error(`Failed to fetch bookings: ${failedResponses[0].status} ${failedResponses[0].statusText}`);
+      }
+      
+      const bookingsData = await Promise.all(responses.map(r => r.json()));
+      console.log('Fetched bookings data:', bookingsData);
+      
+      setBookings(bookingsData);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      alert(`Failed to load booking details: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   useEffect((): void => {
     if (!authInitialized) {
       return;
@@ -141,6 +209,36 @@ export default function CheckoutPage() {
     // Check if user is logged in
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
+    
+    // Load tour/booking data based on product type
+    if (productType === 'tour') {
+      const tourData = sessionStorage.getItem('tourBooking');
+      if (tourData) {
+        try {
+          const parsed = JSON.parse(tourData);
+          setTourBooking(parsed);
+          setSelectedDepartureId(parsed.selectedDeparture?.id || '');
+          setBookingDate(parsed.selectedDeparture?.departureDate || '');
+          setCurrency(parsed.tour?.currency || 'INR');
+        } catch (error) {
+          console.error('Error parsing tour data:', error);
+          alert('Invalid tour data. Please try again.');
+          router.push('/tours');
+        }
+      } else {
+        alert('No tour booking found. Please select a tour first.');
+        router.push('/tours');
+      }
+    } else if (productType === 'booking') {
+      if (bookingIds.length === 0) {
+        alert('No bookings found');
+        router.push('/');
+        return;
+      }
+      if (token) {
+        fetchBookings(bookingIds, token);
+      }
+    }
     
     if (!token || !userStr) {
       alert('Please login to continue checkout');
@@ -182,11 +280,11 @@ export default function CheckoutPage() {
   }, [billingSameAsShipping, shippingAddress, selectedShippingAddressId]);
 
   useEffect(() => {
-    // Redirect if cart is empty
-    if (items.length === 0 && currentStep !== 'confirmation') {
+    // Redirect if cart is empty (only for physical products)
+    if (productType === 'physical' && items.length === 0 && currentStep !== 'confirmation') {
       router.push('/');
     }
-  }, [items.length, currentStep]);
+  }, [productType, items.length, currentStep]);
 
   // Calculate tax by extracting GST from inclusive prices
   const calculateTaxBreakdown = () => {
@@ -258,6 +356,311 @@ export default function CheckoutPage() {
     setCurrentStep('payment');
   }, [shippingAddress, billingAddress, billingSameAsShipping]);
 
+  const handleTourPayment = async (token: string) => {
+    if (!user || !tourBooking) return;
+    
+    try {
+      // Create booking first for tours
+      const bookingResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            productId: tourBooking.productId,
+            userId: user.id,
+            vendorId: tourBooking.vendorId,
+            bookingDate: bookingDate,
+            numberOfGuests: tourBooking.numberOfGuests,
+            totalPrice: tourBooking.totalPrice,
+            specialRequests: specialRequests || null,
+            status: 'pending',
+            departureId: selectedDepartureId,
+          }),
+        }
+      );
+
+      if (!bookingResponse.ok) {
+        const errorData = await bookingResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to create booking');
+      }
+
+      const booking = await bookingResponse.json();
+      console.log('Booking created:', booking);
+      
+      // If payment method is not Razorpay, just confirm the booking
+      if (paymentMethod !== 'razorpay') {
+        // Mark booking as confirmed (pay at venue)
+        await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}/status`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              status: 'confirmed',
+            }),
+          }
+        );
+
+        sessionStorage.removeItem('tourBooking');
+        setSuccessBookingDetails({
+          productName: tourBooking.productName,
+          numberOfGuests: tourBooking.numberOfGuests,
+          departureDate: tourBooking.selectedDeparture?.departureDate || bookingDate,
+          totalPrice: tourBooking.totalPrice,
+          currency: currency,
+        });
+        setLoading(false);
+        setShowSuccessDialog(true);
+        return;
+      }
+      
+      // Create Razorpay order with booking reference
+      try {
+        const razorpayOrder = await createRazorpayOrder(booking.id, tourBooking.totalPrice, 'booking');
+        
+        // Open Razorpay checkout
+        openCheckout(
+        {
+          order_id: razorpayOrder.id,
+          amount: tourBooking.totalPrice * 100,
+          currency: currency,
+          name: marketplaceName,
+          description: tourBooking.productName,
+          prefill: {
+            name: user.firstName + ' ' + user.lastName,
+            email: user.email,
+            contact: user.phone || '',
+          },
+        },
+        async (response) => {
+          try {
+            await verifyPayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              'success'
+            );
+
+            // Update booking status
+            console.log('Updating booking status to confirmed, booking ID:', booking.id);
+            const statusUpdateResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}/status`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  status: 'confirmed',
+                }),
+              }
+            );
+            console.log('Status update response:', statusUpdateResponse.status, await statusUpdateResponse.text());
+            
+            // Update payment reference
+            console.log('Updating payment reference, payment ID:', response.razorpay_payment_id);
+            const paymentUpdateResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}/payment`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  paymentId: response.razorpay_payment_id,
+                }),
+              }
+            );
+            console.log('Payment update response:', paymentUpdateResponse.status, await paymentUpdateResponse.text());
+
+            sessionStorage.removeItem('tourBooking');
+            setSuccessBookingDetails({
+              productName: tourBooking.productName,
+              numberOfGuests: tourBooking.numberOfGuests,
+              departureDate: tourBooking.selectedDeparture?.departureDate || bookingDate,
+              totalPrice: tourBooking.totalPrice,
+              currency: currency,
+            });
+            setLoading(false);
+            setShowSuccessDialog(true);
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            alert('Payment verification failed');
+            setLoading(false);
+          }
+        },
+        (error) => {
+          console.error('Payment failed:', error);
+          alert('Payment failed. Please try again.');
+          setLoading(false);
+        }
+      );
+    } catch (error) {
+      console.error('Tour payment error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      // Check if it's a Razorpay configuration error
+      if (errorMessage.includes('Razorpay is not configured') || errorMessage.includes('Failed to create payment order')) {
+        alert('⚠️ Payment Gateway Not Configured\n\nRazorpay is not set up on this server. This is normal in development mode.\n\nYour booking has been created successfully! In production, you would complete payment here.');
+        // Show success dialog anyway since booking was created
+        sessionStorage.removeItem('tourBooking');
+        setSuccessBookingDetails({
+          productName: tourBooking.productName,
+          numberOfGuests: tourBooking.numberOfGuests,
+          departureDate: tourBooking.selectedDeparture?.departureDate || bookingDate,
+          totalPrice: tourBooking.totalPrice,
+          currency: currency,
+        });
+        setLoading(false);
+        setShowSuccessDialog(true);
+      } else {
+        alert(`Payment failed: ${errorMessage}`);
+      }
+      setLoading(false);
+    }
+  } catch (error) {
+    console.error('Tour payment error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    alert(`Payment failed: ${errorMessage}`);
+      setLoading(false);
+    }
+  };
+
+  const handleBookingPayment = async (token: string) => {
+    if (!user || bookings.length === 0) return;
+    
+    try {
+      const totalAmount = bookings.reduce((sum, b) => sum + Number(b.totalPrice), 0);
+      
+      // If payment method is not Razorpay, just confirm the bookings
+      if (paymentMethod !== 'razorpay') {
+        // Mark all bookings as confirmed (pay at venue)
+        for (const booking of bookings) {
+          await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                status: 'confirmed',
+              }),
+            }
+          );
+        }
+
+        // Check if bookings have time slots (hourly bookings) or are multi-day
+        const hasTimeSlots = bookings.some(b => b.startTime && b.endTime);
+        const isMultiDay = bookings.length > 1;
+        
+        setSuccessBookingDetails({
+          productName: bookings[0]?.product?.name,
+          numberOfDays: isMultiDay && !hasTimeSlots ? bookings.length : undefined,
+          bookingDates: isMultiDay && !hasTimeSlots ? bookings.map(b => b.bookingDate).filter(Boolean) : undefined,
+          bookingDate: !isMultiDay || hasTimeSlots ? bookings[0]?.bookingDate : undefined,
+          startTime: !hasTimeSlots ? bookings[0]?.startTime : undefined,
+          endTime: !hasTimeSlots ? bookings[0]?.endTime : undefined,
+          timeSlots: hasTimeSlots ? bookings.map(b => `${b.startTime} - ${b.endTime}`).filter(Boolean) : undefined,
+          totalPrice: totalAmount,
+          currency: currency,
+        });
+        setLoading(false);
+        setShowSuccessDialog(true);
+        return;
+      }
+      
+      // Create Razorpay order with booking reference
+      const razorpayOrder = await createRazorpayOrder(bookings[0].id, totalAmount, 'booking');
+      
+      // Open Razorpay checkout
+      openCheckout(
+        {
+          order_id: razorpayOrder.id,
+          amount: totalAmount * 100,
+          currency: currency,
+          name: marketplaceName,
+          description: `Booking Payment for ${bookings.length} booking(s)`,
+          prefill: {
+            name: user.firstName + ' ' + user.lastName,
+            email: user.email,
+            contact: user.phone || '',
+          },
+        },
+        async (response) => {
+          try {
+            await verifyPayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              'success'
+            );
+
+            // Update all bookings status
+            for (const booking of bookings) {
+              await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}`,
+                {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                    status: 'confirmed',
+                    paymentId: response.razorpay_payment_id,
+                  }),
+                }
+              );
+            }
+
+            // Check if bookings have time slots (hourly bookings) or are multi-day
+            const hasTimeSlots = bookings.some(b => b.startTime && b.endTime);
+            const isMultiDay = bookings.length > 1;
+            
+            setSuccessBookingDetails({
+              productName: bookings[0]?.product?.name,
+              numberOfDays: isMultiDay && !hasTimeSlots ? bookings.length : undefined,
+              bookingDates: isMultiDay && !hasTimeSlots ? bookings.map(b => b.bookingDate).filter(Boolean) : undefined,
+              bookingDate: !isMultiDay || hasTimeSlots ? bookings[0]?.bookingDate : undefined,
+              startTime: !hasTimeSlots ? bookings[0]?.startTime : undefined,
+              endTime: !hasTimeSlots ? bookings[0]?.endTime : undefined,
+              timeSlots: hasTimeSlots ? bookings.map(b => `${b.startTime} - ${b.endTime}`).filter(Boolean) : undefined,
+              totalPrice: totalAmount,
+              currency: currency,
+            });
+            setLoading(false);
+            setShowSuccessDialog(true);
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            alert('Payment verification failed');
+            setLoading(false);
+          }
+        },
+        (error) => {
+          console.error('Payment failed:', error);
+          alert('Payment failed. Please try again.');
+          setLoading(false);
+        }
+      );
+    } catch (error) {
+      console.error('Booking payment error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Payment failed: ${errorMessage}`);
+      setLoading(false);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     setLoading(true);
     
@@ -286,19 +689,31 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Create order
+      // Handle tour bookings
+      if (productType === 'tour' && tourBooking) {
+        await handleTourPayment(token);
+        return;
+      }
+
+      // Handle service bookings
+      if (productType === 'booking' && bookings.length > 0) {
+        await handleBookingPayment(token);
+        return;
+      }
+
+      // Handle physical products (original logic)
       const orderData = {
         items: items.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
-          price: item.price, // Keep the inclusive price
+          price: item.price,
         })),
         shippingAddress: shippingAddress,
         billingAddress: billingSameAsShipping ? shippingAddress : billingAddress,
         paymentMethod,
-        subtotal: subtotalBeforeTax, // Send base price (without tax)
+        subtotal: subtotalBeforeTax,
         shippingCost,
-        tax, // Send extracted tax amount
+        tax,
         totalAmount: totalBeforeWallet,
         useWalletBalance,
       };
@@ -472,23 +887,33 @@ export default function CheckoutPage() {
 
   const StepIndicator = () => {
     const canNavigateToStep = (step: CheckoutStep): boolean => {
-      // Can always go back to cart
-      if (step === 'cart') return true;
-      
-      // Can go to address if cart has items
-      if (step === 'address') return items.length > 0;
-      
-      // Can go to payment if address is filled
-      if (step === 'payment') {
-        return items.length > 0 && Boolean(
-          shippingAddress.fullName && 
-          shippingAddress.phone && 
-          shippingAddress.addressLine1 && 
-          shippingAddress.city
-        );
+      // For physical products (cart flow)
+      if (productType === 'physical') {
+        if (step === 'cart') return true;
+        if (step === 'address') return items.length > 0;
+        if (step === 'payment') {
+          return items.length > 0 && Boolean(
+            shippingAddress.fullName && 
+            shippingAddress.phone && 
+            shippingAddress.addressLine1 && 
+            shippingAddress.city
+          );
+        }
+        if (step === 'confirmation') return false;
+        return false;
       }
       
-      // Cannot manually navigate to confirmation (only through payment)
+      // For tours/bookings (review flow)
+      if (step === 'review') return true;
+      if (step === 'payment') {
+        // Tours can skip address step
+        if (productType === 'tour') {
+          return Boolean(tourBooking && bookingDate);
+        }
+        // Regular bookings need address
+        return Boolean(shippingAddress.fullName && shippingAddress.addressLine1);
+      }
+      if (step === 'address') return productType === 'booking';
       if (step === 'confirmation') return false;
       
       return false;
@@ -500,21 +925,52 @@ export default function CheckoutPage() {
       }
     };
 
+    // Different step configurations based on product type
+    const steps = productType === 'physical' 
+      ? [
+          { step: 'cart', label: 'Cart', icon: ShoppingBag },
+          { step: 'address', label: 'Address', icon: MapPin },
+          { step: 'payment', label: 'Payment', icon: CreditCard },
+          { step: 'confirmation', label: 'Confirmation', icon: CheckCircle },
+        ]
+      : productType === 'tour'
+      ? [
+          { step: 'review', label: 'Review', icon: Calendar },
+          { step: 'payment', label: 'Payment', icon: CreditCard },
+          { step: 'confirmation', label: 'Confirmation', icon: CheckCircle },
+        ]
+      : [
+          { step: 'review', label: 'Review', icon: Calendar },
+          { step: 'address', label: 'Address', icon: MapPin },
+          { step: 'payment', label: 'Payment', icon: CreditCard },
+          { step: 'confirmation', label: 'Confirmation', icon: CheckCircle },
+        ];
+
     return (
       <div className="mb-8">
         <div className="flex items-center justify-between max-w-3xl mx-auto">
-          {[
-            { step: 'cart', label: 'Cart', icon: ShoppingBag },
-            { step: 'address', label: 'Address', icon: MapPin },
-            { step: 'payment', label: 'Payment', icon: CreditCard },
-            { step: 'confirmation', label: 'Confirmation', icon: CheckCircle },
-          ].map((s, index) => {
+          {steps.map((s, index) => {
             const Icon = s.icon;
             const isActive = currentStep === s.step;
-            const isCompleted = 
-              (s.step === 'cart' && ['address', 'payment', 'confirmation'].includes(currentStep)) ||
-              (s.step === 'address' && ['payment', 'confirmation'].includes(currentStep)) ||
-              (s.step === 'payment' && currentStep === 'confirmation');
+            
+            // Determine if step is completed
+            let isCompleted = false;
+            if (productType === 'physical') {
+              isCompleted = 
+                (s.step === 'cart' && ['address', 'payment', 'confirmation'].includes(currentStep)) ||
+                (s.step === 'address' && ['payment', 'confirmation'].includes(currentStep)) ||
+                (s.step === 'payment' && currentStep === 'confirmation');
+            } else if (productType === 'tour') {
+              isCompleted = 
+                (s.step === 'review' && ['payment', 'confirmation'].includes(currentStep)) ||
+                (s.step === 'payment' && currentStep === 'confirmation');
+            } else {
+              isCompleted = 
+                (s.step === 'review' && ['address', 'payment', 'confirmation'].includes(currentStep)) ||
+                (s.step === 'address' && ['payment', 'confirmation'].includes(currentStep)) ||
+                (s.step === 'payment' && currentStep === 'confirmation');
+            }
+            
             const isClickable = canNavigateToStep(s.step as CheckoutStep);
             
             return (
@@ -549,7 +1005,7 @@ export default function CheckoutPage() {
                     {s.label}
                   </span>
                 </div>
-                {index < 3 && (
+                {index < steps.length - 1 && (
                   <ChevronRight
                     className={`w-6 h-6 mx-2 ${
                       isCompleted ? 'text-green-600' : 'text-muted-foreground'
@@ -674,6 +1130,148 @@ export default function CheckoutPage() {
       </div>
     </div>
   ), [shippingAddress, billingAddress, billingSameAsShipping, selectedShippingAddressId, selectedBillingAddressId, subtotalWithTax, subtotalBeforeTax, shippingCost, tax, finalTotal, walletBalance, useWalletBalance, walletDiscount, handleContinueToPayment]);
+
+  const ReviewStep = () => (
+    <div className="bg-card rounded-lg shadow-sm p-6">
+      <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+        <Calendar className="w-6 h-6" />
+        {productType === 'tour' ? 'Tour Booking' : 'Review Your Bookings'}
+      </h2>
+
+      {productType === 'tour' && tourBooking ? (
+        <div className="space-y-4">
+          <div className="flex gap-4 p-4 border border-border rounded-lg">
+            {tourBooking.productImage && (
+              <img
+                src={tourBooking.productImage}
+                alt={tourBooking.productName}
+                className="w-24 h-24 object-cover rounded"
+              />
+            )}
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground">{tourBooking.productName}</h3>
+              <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                <Users className="w-4 h-4" />
+                {tourBooking.numberOfGuests} {tourBooking.numberOfGuests === 1 ? 'Person' : 'People'}
+              </p>
+              {tourBooking.departureDate && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  Departure: {new Date(tourBooking.departureDate).toLocaleDateString()}
+                </p>
+              )}
+              <p className="text-lg font-bold text-foreground mt-2">
+                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: currency }).format(tourBooking.totalPrice)}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-4 border border-border rounded-lg bg-blue-50 dark:bg-blue-900/20">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Select Departure Date <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Choose from available departure dates</p>
+              {tourBooking.availableDepartures && tourBooking.availableDepartures.length > 0 ? (
+                <select
+                  value={selectedDepartureId}
+                  onChange={(e) => {
+                    const departure = tourBooking.availableDepartures.find(d => d.id === e.target.value);
+                    if (departure) {
+                      setSelectedDepartureId(departure.id);
+                      setBookingDate(departure.departureDate.split('T')[0]);
+                    }
+                  }}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800"
+                >
+                  {tourBooking.availableDepartures.map((departure) => (
+                    <option key={departure.id} value={departure.id}>
+                      {new Date(departure.departureDate).toLocaleDateString('en-US', { 
+                        weekday: 'short',
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })} - {departure.availableSeats} seats available
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div>
+                  <input
+                    type="date"
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800"
+                  />
+                  <p className="text-xs text-amber-600 mt-1">⚠️ No pre-scheduled departures. Please contact vendor to confirm availability.</p>
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Special Requests (Optional)
+              </label>
+              <textarea
+                value={specialRequests}
+                onChange={(e) => setSpecialRequests(e.target.value)}
+                rows={3}
+                placeholder="Any special requirements..."
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={() => setCurrentStep('payment')}
+            disabled={!bookingDate}
+            className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            Proceed to Payment
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {bookings.map((booking) => (
+            <div key={booking.id} className="flex gap-4 p-4 border border-border rounded-lg">
+              <img
+                src={booking.product?.featuredImage || '/placeholder-image.svg'}
+                alt={booking.product?.name || 'Booking'}
+                className="w-24 h-24 object-cover rounded"
+              />
+              <div className="flex-1">
+                <h3 className="font-semibold text-foreground">{booking.product?.name || 'Booking Service'}</h3>
+                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                  <Calendar className="w-4 h-4" />
+                  {booking.bookingDate ? new Date(booking.bookingDate).toLocaleDateString() : 'N/A'}
+                </p>
+                {booking.startTime && booking.endTime && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    {booking.startTime} - {booking.endTime}
+                  </p>
+                )}
+                <p className="text-lg font-bold text-foreground mt-2">
+                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: currency }).format(Number(booking.totalPrice))}
+                </p>
+              </div>
+            </div>
+          ))}
+
+          <button
+            onClick={() => setCurrentStep('address')}
+            className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+          >
+            Proceed to Address
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   const CartStep = () => (
     <div className="max-w-6xl mx-auto">
@@ -913,7 +1511,7 @@ export default function CheckoutPage() {
                 </div>
               </label>
               
-              {/* Cash on Delivery */}
+              {/* Cash on Delivery / Pay at Venue */}
               <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
                 style={{ borderColor: paymentMethod === 'cod' ? 'hsl(var(--primary))' : 'hsl(var(--border))' }}
               >
@@ -927,10 +1525,14 @@ export default function CheckoutPage() {
                 />
                 <div className="ml-3 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">💵 Cash on Delivery</span>
+                    <span className="font-medium text-foreground">
+                      {productType === 'physical' ? '💵 Cash on Delivery' : '🏨 Pay at Venue'}
+                    </span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Pay when you receive your order
+                    {productType === 'physical' 
+                      ? 'Pay when you receive your order' 
+                      : 'Pay when you arrive at the location'}
                   </p>
                 </div>
               </label>
@@ -1104,6 +1706,19 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Success Dialog */}
+      <BookingSuccessDialog
+        isOpen={showSuccessDialog}
+        onClose={() => setShowSuccessDialog(false)}
+        onViewBookings={() => router.push('/profile?tab=bookings')}
+        onContinueShopping={() => {
+          setShowSuccessDialog(false);
+          router.push('/');
+        }}
+        bookingType={productType === 'tour' ? 'tour' : 'booking'}
+        bookingDetails={successBookingDetails}
+      />
+      
       {/* Simple Checkout Header */}
       <div className="bg-card shadow-sm border-b border-border">
         <div className="container mx-auto px-4 py-4">
@@ -1124,11 +1739,27 @@ export default function CheckoutPage() {
       <div className="container mx-auto px-4 pt-8 pb-8">
         <StepIndicator />
         
+        {currentStep === 'review' && <ReviewStep />}
         {currentStep === 'cart' && <CartStep />}
         {currentStep === 'address' && AddressStepContent}
         {currentStep === 'payment' && <PaymentStep />}
         {currentStep === 'confirmation' && <ConfirmationStep />}
       </div>
     </div>
+  );
+}
+
+export default function Checkout() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading checkout...</p>
+        </div>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   );
 }

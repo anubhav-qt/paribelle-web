@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import JSZip from 'jszip';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import ImageUpload from '@/components/ImageUpload';
@@ -11,6 +13,9 @@ import ProductVariationBuilder from '@/components/ProductVariationBuilder';
 import HsnCodeAutocomplete from '@/components/HsnCodeAutocomplete';
 import ProductVariantManager, { VariantOption, VariantCombination } from '@/components/ProductVariantManager';
 import { getVendorId, getUserId, isSuperAdmin, getProductVendorId } from '@/lib/auth';
+import 'react-quill/dist/quill.snow.css';
+
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
 export default function VendorAddProductPage() {
   const router = useRouter();
@@ -48,6 +53,10 @@ export default function VendorAddProductPage() {
   
   // Prevent hydration errors
   const [mounted, setMounted] = useState(false);
+  
+  // Custom pages for easy linking
+  const [customPages, setCustomPages] = useState<Array<{ id: string; title: string; slug: string }>>([]);
+  const [linkableProducts, setLinkableProducts] = useState<Array<{ id: string; name: string; slug: string; productType: string; isTour: boolean }>>([]);
 
   // All category filters are available since we only use custom variants now
   const availableAttributeFilters = useMemo(() => {
@@ -83,6 +92,40 @@ export default function VendorAddProductPage() {
     timeSlots: [{ start: '09:00', end: '17:00' }],
   });
 
+  // Tour-specific fields
+  const [tourMode, setTourMode] = useState(false);
+  const [tourData, setTourData] = useState({
+    departures: [] as Array<{
+      departureDate: string;
+      returnDate: string;
+      availableSeats: number;
+      pricePerPerson: number;
+      status: 'active' | 'full' | 'cancelled';
+    }>,
+    itinerary: [] as Array<{
+      day: number;
+      title: string;
+      description: string;
+      activities: string[];
+      meals: string[];
+      accommodation: string;
+    }>,
+    details: {
+      destinations: [] as string[],
+      tourType: '',
+      difficulty: 'moderate' as 'easy' | 'moderate' | 'challenging' | 'difficult',
+      groupSize: { min: 1, max: 20 },
+      inclusions: [] as string[],
+      exclusions: [] as string[],
+      pickupPoints: [] as Array<{ location: string; time: string }>,
+      dropPoints: [] as Array<{ location: string; time: string }>,
+      accommodation: '',
+      transportation: '',
+      languages: [] as string[],
+      ageRestriction: '',
+    },
+  });
+
   const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const DURATION_UNITS = [
     { value: 'hours', label: 'Hours', description: 'Hourly bookings (e.g., badminton court, meeting room)' },
@@ -94,8 +137,74 @@ export default function VendorAddProductPage() {
     fetchVendorStatus();
     fetchCategories();
     generateSKU();
+    fetchCustomPages();
+    fetchLinkableProducts();
     setMounted(true);
   }, []);
+
+  const fetchCustomPages = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const vendorId = getVendorId();
+      const isAdmin = isSuperAdmin();
+      
+      // For admins, fetch marketplace pages; for vendors, fetch their own pages
+      const endpoint = isAdmin 
+        ? '/api/v1/marketplace/pages'
+        : vendorId ? `/api/v1/vendors/${vendorId}/pages` : null;
+      
+      if (!endpoint) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const publishedPages = data.filter((p: any) => p.status === 'published');
+        setCustomPages(publishedPages);
+      }
+    } catch (error) {
+      console.error('Error fetching custom pages:', error);
+    }
+  };
+
+  const fetchLinkableProducts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const vendorId = getVendorId();
+      const isAdmin = isSuperAdmin();
+
+      const url = isAdmin
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?limit=100&status=active`
+        : vendorId
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?vendorId=${vendorId}&limit=100&status=active`
+        : null;
+
+      if (!url) return;
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const products = data.products || data;
+        const mappedProducts = products.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          productType: p.productType,
+          isTour: p.productType === 'booking' && p.attributes?.tour?.tourMode === true
+        }));
+        setLinkableProducts(mappedProducts);
+      }
+    } catch (error) {
+      console.error('Error fetching linkable products:', error);
+    }
+  };
 
   const fetchVendorStatus = async () => {
     try {
@@ -105,15 +214,15 @@ export default function VendorAddProductPage() {
         return;
       }
       
-      // Super admin doesn't need vendor status check
+      // Super admins don't need vendor status check
       if (isSuperAdmin()) {
         setVendorStatus({
           kycStatus: 'approved',
           storeName: 'Platform Admin',
           contactEmail: 'admin@marketplace.com',
-          contactPhone: '000-000-0000',
+          contactPhone: '+1234567890',
           canAddProducts: true,
-          blockReason: null,
+          blockReason: null
         });
         return;
       }
@@ -178,8 +287,7 @@ export default function VendorAddProductPage() {
 
   const generateSKU = () => {
     const isAdmin = isSuperAdmin();
-    const vendorId = getProductVendorId();
-    const prefix = isAdmin ? 'ADMIN' : vendorId?.substring(0, 8).toUpperCase() || 'VENDOR';
+    const prefix = isAdmin ? 'ADMIN' : getVendorId()?.substring(0, 8).toUpperCase() || 'VENDOR';
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.random().toString(36).substring(2, 5).toUpperCase();
     setFormData(prev => ({ ...prev, sku: `${prefix}-${timestamp}-${random}` }));
@@ -448,9 +556,22 @@ export default function VendorAddProductPage() {
 
       // Add booking metadata if booking type
       if (productType === 'booking') {
-        productData.attributes = {
-          booking: bookingData,
-        };
+        if (tourMode) {
+          // Tour product
+          productData.attributes = {
+            tour: {
+              tourMode: true,
+              departures: tourData.departures,
+              itinerary: tourData.itinerary,
+              details: tourData.details,
+            },
+          };
+        } else {
+          // Regular booking product
+          productData.attributes = {
+            booking: bookingData,
+          };
+        }
         // For bookings, stock is not relevant
         productData.stockQuantity = 0;
         productData.sku = formData.sku || `BOOKING-${Date.now()}`;
@@ -490,9 +611,9 @@ export default function VendorAddProductPage() {
       setExporting(true);
       const token = localStorage.getItem('token');
       
-      const vendorId = getProductVendorId();
+      const vendorId = getVendorId();
       if (!vendorId) {
-        alert(isSuperAdmin() ? 'User ID not found' : 'Vendor ID not found');
+        alert('Vendor ID not found');
         return;
       }
 
@@ -536,9 +657,9 @@ export default function VendorAddProductPage() {
       
       const token = localStorage.getItem('token');
       
-      const vendorId = getProductVendorId();
+      const vendorId = getVendorId();
       if (!vendorId) {
-        setImportMessage({ type: 'error', text: isSuperAdmin() ? 'User ID not found' : 'Vendor ID not found' });
+        setImportMessage({ type: 'error', text: 'Vendor ID not found' });
         return;
       }
 
@@ -581,6 +702,453 @@ export default function VendorAddProductPage() {
     } finally {
       setImporting(false);
       // Reset file input
+      event.target.value = '';
+    }
+  };
+
+  const downloadTourTemplate = async () => {
+    try {
+      setExporting(true);
+      
+      // Create CSV content for tour template with local file references
+      const csvContent = `Tour Name,Price,Compare At Price,Short Description,Description,Departure Date 1,Return Date 1,Available Seats 1,Price Per Person 1,Departure Date 2,Return Date 2,Available Seats 2,Price Per Person 2,Day 1 Title,Day 1 Description,Day 1 Activities,Day 1 Meals,Day 1 Accommodation,Day 2 Title,Day 2 Description,Day 2 Activities,Day 2 Meals,Day 2 Accommodation,Day 3 Title,Day 3 Description,Day 3 Activities,Day 3 Meals,Day 3 Accommodation,Destinations,Tour Type,Difficulty,Group Min,Group Max,Inclusions,Exclusions,Accommodation Type,Transportation,Languages,Age Restriction,Pickup Points,Drop Points,Featured Image,Image 1,Image 2,Image 3,Image 4
+Golden Triangle Tour,25000,30000,"Explore Delhi Agra Jaipur in 5 days","<p>Experience the best of North India with our comprehensive Golden Triangle tour package.</p>",2024-12-01,2024-12-05,20,25000,2024-12-15,2024-12-19,20,25000,Arrival in Delhi,Welcome to Delhi! Check into hotel and evening at leisure,City orientation|Welcome dinner,Dinner,3-star hotel,Agra Sightseeing,Visit Taj Mahal and Agra Fort,Taj Mahal visit|Agra Fort tour|Local market,Breakfast|Lunch|Dinner,3-star hotel,Jaipur Exploration,Explore the Pink City,Amber Fort|City Palace|Hawa Mahal,Breakfast|Lunch|Dinner,3-star hotel,"Delhi, Agra, Jaipur",Cultural,Moderate,2,25,"Accommodation|Transportation|Tour guide|Entry fees|Breakfast and dinner","International flights|Personal expenses|Travel insurance|Lunch on some days",3-star hotels twin sharing,AC coach,English|Hindi,12+ years,"Delhi Airport|09:00|Connaught Place|10:00","Delhi Airport|18:00|Connaught Place|19:00",images/tour1.jpg,images/tour1-1.jpg,images/tour1-2.jpg,images/tour1-3.jpg,images/tour1-4.jpg
+Himalayan Adventure Trek,35000,40000,"7-day trekking adventure in Himalayas","<p>Experience breathtaking mountain views and challenging trails in this week-long Himalayan adventure.</p>",2024-11-01,2024-11-07,15,35000,2024-11-15,2024-11-21,15,35000,Base Camp Arrival,Trek to base camp and acclimatization,Trek to base camp|Evening bonfire,Breakfast|Dinner,Camping,High Altitude Trek,Reach high altitude viewpoints,Mountain climbing|Photography,Breakfast|Packed lunch|Dinner,Camping,Summit Day,Early morning summit attempt,Summit climb|Sunrise viewing,Breakfast|Energy bars,Mountain hut,"Manali, Rohtang Pass, Solang Valley",Adventure,Challenging,4,15,"Camping equipment|Trekking guide|All meals|Safety equipment|Permits","Personal trekking gear|Insurance|Tips|Personal expenses",Camping and mountain huts,Jeep to base camp then trekking,English|Hindi,18+ years,"Manali Bus Stand|06:00","Manali Bus Stand|18:00",images/trek1.jpg,images/trek1-1.jpg,images/trek1-2.jpg,images/trek1-3.jpg,images/trek1-4.jpg`;
+
+      // Create README with instructions
+      const readmeContent = `# Tour Template Package
+
+This package contains a CSV template and sample images for importing tours.
+
+## How to Use
+
+1. **Edit the CSV file**:
+   - Open tour-template.csv in Excel or any spreadsheet application
+   - Modify the tour details, dates, prices, and itineraries
+   - Keep the image filenames in the Image columns (or add your own)
+
+2. **Add Your Images**:
+   - Place your tour images in the 'images' folder
+   - Reference them in the CSV using the format: images/your-image-name.jpg
+   - Supported formats: JPG, PNG, WebP
+   - Recommended size: 1200x800px or larger
+
+3. **Import Your Tours**:
+   - Go to the Vendor Products page
+   - Click "Import Tours" button
+   - Select both the CSV file AND image files together (use Ctrl/Cmd to select multiple files)
+   - The system will automatically upload images and create tours
+
+## CSV Column Reference
+
+### Basic Information
+- **Tour Name**: Name of your tour package
+- **Price**: Base price per person
+- **Compare At Price**: Original price (for showing discounts)
+- **Short Description**: Brief summary (50-100 characters)
+- **Description**: Full HTML description with formatting
+
+### Departures (up to 10)
+- **Departure Date X**: Format: YYYY-MM-DD
+- **Return Date X**: Format: YYYY-MM-DD
+- **Available Seats X**: Number of available seats
+- **Price Per Person X**: Price for this specific departure
+
+### Itinerary (up to 10 days)
+- **Day X Title**: Day heading
+- **Day X Description**: What happens this day
+- **Day X Activities**: Pipe-separated list (Activity 1|Activity 2)
+- **Day X Meals**: Pipe-separated (Breakfast|Lunch|Dinner)
+- **Day X Accommodation**: Where guests stay
+
+### Tour Details
+- **Destinations**: Comma-separated cities/places
+- **Tour Type**: Cultural, Adventure, Leisure, Wildlife, etc.
+- **Difficulty**: Easy, Moderate, Challenging, Difficult
+- **Group Min/Max**: Minimum and maximum group size
+- **Inclusions**: Pipe-separated list of what's included
+- **Exclusions**: Pipe-separated list of what's not included
+- **Accommodation Type**: Description of hotels/camps
+- **Transportation**: Type of transport provided
+- **Languages**: Pipe-separated language list
+- **Age Restriction**: e.g., "12+ years", "18+ years", "All ages"
+
+### Pickup/Drop Points
+- **Pickup Points**: Format: Location|Time|Location2|Time2
+- **Drop Points**: Format: Location|Time|Location2|Time2
+
+### Images
+- **Featured Image**: Main tour image (appears first)
+- **Image 1-4**: Additional gallery images
+- **Format**: Either local path (images/file.jpg) or full URL
+
+## Tips
+
+1. Use relative paths for images: images/tour-name.jpg
+2. Separate multiple values with | (pipe character)
+3. Use HTML in Description for formatting: <p>, <b>, <ul>, <li>
+4. Dates must be in YYYY-MM-DD format
+5. Keep image files under 5MB for faster uploads
+
+## Sample Images
+
+This package includes placeholder images. Replace them with your actual tour photos before importing.
+
+---
+Generated by Marketplace Platform
+`;
+
+      // Create ZIP file
+      const zip = new JSZip();
+      
+      // Add CSV file
+      zip.file('tour-template.csv', csvContent);
+      
+      // Add README
+      zip.file('README.md', readmeContent);
+      
+      // Create sample images folder with placeholder images
+      const imagesFolder = zip.folder('images');
+      
+      // Helper function to create placeholder image
+      const createPlaceholderImage = (width: number, height: number, text: string, bgColor: string) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Background
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, width, height);
+          
+          // Text
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 48px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text, width / 2, height / 2 - 30);
+          
+          // Subtext
+          ctx.font = '24px Arial';
+          ctx.fillText(`${width}x${height}`, width / 2, height / 2 + 30);
+        }
+        return canvas.toDataURL('image/jpeg', 0.8).split(',')[1]; // Return base64 without prefix
+      };
+      
+      // Add placeholder images
+      const placeholderImages = [
+        { name: 'tour1.jpg', text: 'Golden Triangle', color: '#3b82f6' },
+        { name: 'tour1-1.jpg', text: 'Taj Mahal', color: '#8b5cf6' },
+        { name: 'tour1-2.jpg', text: 'Agra Fort', color: '#ec4899' },
+        { name: 'tour1-3.jpg', text: 'Jaipur Palace', color: '#f59e0b' },
+        { name: 'tour1-4.jpg', text: 'Hawa Mahal', color: '#10b981' },
+        { name: 'trek1.jpg', text: 'Himalayan Trek', color: '#6366f1' },
+        { name: 'trek1-1.jpg', text: 'Base Camp', color: '#14b8a6' },
+        { name: 'trek1-2.jpg', text: 'Mountain View', color: '#06b6d4' },
+        { name: 'trek1-3.jpg', text: 'Summit', color: '#84cc16' },
+        { name: 'trek1-4.jpg', text: 'Trek Path', color: '#f97316' },
+      ];
+      
+      placeholderImages.forEach(img => {
+        const imageData = createPlaceholderImage(1200, 800, img.text, img.color);
+        imagesFolder?.file(img.name, imageData, { base64: true });
+      });
+      
+      // Add a text file explaining about images
+      imagesFolder?.file('README.txt', 
+        `Sample placeholder images are included for demonstration.\n\n` +
+        `Replace these with your actual tour photos before importing.\n\n` +
+        `Supported formats: JPG, PNG, WebP\n` +
+        `Recommended size: 1200x800px or larger\n` +
+        `Keep filenames simple (no special characters)\n\n` +
+        `Examples:\n` +
+        `- tour1.jpg\n` +
+        `- trek1-1.png\n` +
+        `- beach-resort.jpg\n\n` +
+        `Then reference them in the CSV as:\n` +
+        `images/tour1.jpg\n` +
+        `images/trek1-1.png\n` +
+        `images/beach-resort.jpg`
+      );
+      
+      // Generate ZIP
+      const blob = await zip.generateAsync({ type: 'blob' });
+      
+      // Download ZIP
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `tour-template-${Date.now()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setExporting(false);
+    } catch (error) {
+      console.error('Error creating tour template:', error);
+      alert('Failed to generate tour template package');
+      setExporting(false);
+    }
+  };
+
+  const handleTourImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      setImporting(true);
+      setImportMessage(null);
+      
+      const token = localStorage.getItem('token');
+      const isAdmin = isSuperAdmin();
+      const PLATFORM_VENDOR_ID = '00000000-0000-0000-0000-000000000001';
+      const vendorId = isAdmin ? PLATFORM_VENDOR_ID : getVendorId();
+      
+      if (!vendorId) {
+        setImportMessage({ type: 'error', text: 'Vendor ID not found' });
+        setImporting(false);
+        return;
+      }
+
+      // Separate CSV file and image files
+      let csvFile: File | null = null;
+      const imageFiles: { [key: string]: File } = {};
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.name.endsWith('.csv')) {
+          csvFile = file;
+        } else if (file.type.startsWith('image/')) {
+          // Store with normalized path for matching
+          const normalizedName = file.name.toLowerCase().replace(/\\/g, '/');
+          imageFiles[normalizedName] = file;
+          // Also store with images/ prefix for direct matching
+          imageFiles[`images/${normalizedName}`] = file;
+        }
+      }
+      
+      if (!csvFile) {
+        setImportMessage({ type: 'error', text: 'No CSV file found. Please select a CSV file.' });
+        setImporting(false);
+        return;
+      }
+
+      // Helper function to upload an image
+      const uploadImage = async (file: File): Promise<string> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/upload`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${file.name}`);
+        }
+        
+        const data = await response.json();
+        return data.url;
+      };
+
+      // Read CSV file
+      const text = await csvFile.text();
+      const lines = text.split('\n');
+      const headers = lines[0].split(',');
+      
+      let created = 0;
+      let errors = [];
+
+      // Process each tour (skip header)
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        try {
+          const values = lines[i].split(',');
+          const tour: any = {};
+          
+          // Map CSV columns to tour object
+          headers.forEach((header, index) => {
+            tour[header.trim()] = values[index]?.trim() || '';
+          });
+
+          // Build departures array
+          const departures = [];
+          for (let d = 1; d <= 10; d++) {
+            const depDate = tour[`Departure Date ${d}`];
+            const retDate = tour[`Return Date ${d}`];
+            if (depDate && retDate) {
+              departures.push({
+                departureDate: depDate,
+                returnDate: retDate,
+                availableSeats: parseInt(tour[`Available Seats ${d}`]) || 20,
+                pricePerPerson: parseFloat(tour[`Price Per Person ${d}`]) || parseFloat(tour.Price) || 0,
+                status: 'active',
+              });
+            }
+          }
+
+          // Build itinerary array
+          const itinerary = [];
+          for (let day = 1; day <= 10; day++) {
+            const title = tour[`Day ${day} Title`];
+            if (title) {
+              itinerary.push({
+                day: day,
+                title: title,
+                description: tour[`Day ${day} Description`] || '',
+                activities: tour[`Day ${day} Activities`] ? tour[`Day ${day} Activities`].split('|') : [],
+                meals: tour[`Day ${day} Meals`] ? tour[`Day ${day} Meals`].split('|') : [],
+                accommodation: tour[`Day ${day} Accommodation`] || '',
+              });
+            }
+          }
+
+          // Build images array - handle both URLs and local file references
+          const images = [];
+          const imageColumns = ['Featured Image', 'Featured Image URL'];
+          for (let img = 1; img <= 10; img++) {
+            imageColumns.push(`Image ${img}`, `Image ${img} URL`);
+          }
+          
+          for (const col of imageColumns) {
+            const imgPath = tour[col];
+            if (!imgPath) continue;
+            
+            // Check if it's a URL (starts with http:// or https://)
+            if (imgPath.startsWith('http://') || imgPath.startsWith('https://')) {
+              images.push(imgPath);
+            } else {
+              // It's a local file reference - try to find and upload it
+              const normalizedPath = imgPath.toLowerCase().replace(/\\/g, '/');
+              const fileName = normalizedPath.split('/').pop() || '';
+              
+              // Try multiple matching strategies
+              const matchedFile = imageFiles[normalizedPath] || 
+                                 imageFiles[fileName] || 
+                                 imageFiles[`images/${fileName}`];
+              
+              if (matchedFile) {
+                try {
+                  const uploadedUrl = await uploadImage(matchedFile);
+                  images.push(uploadedUrl);
+                  // Remove from map to avoid uploading same file twice
+                  delete imageFiles[normalizedPath];
+                  delete imageFiles[fileName];
+                  delete imageFiles[`images/${fileName}`];
+                } catch (uploadError) {
+                  console.warn(`Failed to upload ${imgPath}:`, uploadError);
+                  // Continue without this image
+                }
+              } else {
+                console.warn(`Image file not found: ${imgPath}`);
+              }
+            }
+          }
+
+          // Build pickup/drop points
+          const pickupPoints = tour['Pickup Points'] ? 
+            tour['Pickup Points'].split('|').map((p: string) => {
+              const [location, time] = p.split('|');
+              return { location: location || p, time: time || '09:00' };
+            }) : [];
+
+          const dropPoints = tour['Drop Points'] ? 
+            tour['Drop Points'].split('|').map((p: string) => {
+              const [location, time] = p.split('|');
+              return { location: location || p, time: time || '18:00' };
+            }) : [];
+
+          // Create product payload
+          const productData = {
+            name: tour['Tour Name'],
+            price: parseFloat(tour.Price) || 0,
+            compareAtPrice: tour['Compare At Price'] ? parseFloat(tour['Compare At Price']) : undefined,
+            shortDescription: tour['Short Description'] || '',
+            description: tour.Description || '',
+            productType: 'booking',
+            status: 'active',
+            stockQuantity: 0,
+            sku: `TOUR-${Date.now()}-${i}`,
+            vendorId: vendorId,
+            userId: getUserId(),
+            images: images,
+            attributes: {
+              tour: {
+                tourMode: true,
+                departures: departures,
+                itinerary: itinerary,
+                details: {
+                  destinations: tour.Destinations ? tour.Destinations.split('|') : [],
+                  tourType: tour['Tour Type'] || '',
+                  difficulty: tour.Difficulty || 'moderate',
+                  groupSize: {
+                    min: parseInt(tour['Group Min']) || 1,
+                    max: parseInt(tour['Group Max']) || 20,
+                  },
+                  inclusions: tour.Inclusions ? tour.Inclusions.split('|') : [],
+                  exclusions: tour.Exclusions ? tour.Exclusions.split('|') : [],
+                  pickupPoints: pickupPoints,
+                  dropPoints: dropPoints,
+                  accommodation: tour['Accommodation Type'] || '',
+                  transportation: tour.Transportation || '',
+                  languages: tour.Languages ? tour.Languages.split('|') : [],
+                  ageRestriction: tour['Age Restriction'] || '',
+                },
+              },
+            },
+          };
+
+          // Submit to API
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(productData),
+          });
+
+          if (response.ok) {
+            created++;
+          } else {
+            const errorData = await response.json();
+            errors.push(`Row ${i + 1}: ${errorData.message || 'Failed'}`);
+          }
+        } catch (rowError) {
+          console.error(`Error processing row ${i + 1}:`, rowError);
+          const errorMessage = rowError instanceof Error ? rowError.message : 'Unknown error';
+          errors.push(`Row ${i + 1}: ${errorMessage}`);
+        }
+      }
+
+      // Show results
+      if (created > 0) {
+        setImportMessage({
+          type: 'success',
+          text: `Import successful! Created ${created} tour(s).${
+            errors.length > 0 ? ` Errors: ${errors.length}` : ''
+          }`,
+        });
+        setTimeout(() => {
+          router.push(isSuperAdmin() ? '/admin/products' : '/vendor/products');
+        }, 2000);
+      } else {
+        setImportMessage({
+          type: 'error',
+          text: `Import failed. ${errors.length > 0 ? errors.join(', ') : 'No tours created.'}`,
+        });
+      }
+    } catch (error) {
+      console.error('Tour import error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setImportMessage({ type: 'error', text: 'Failed to import tours: ' + errorMessage });
+    } finally {
+      setImporting(false);
       event.target.value = '';
     }
   };
@@ -640,7 +1208,7 @@ export default function VendorAddProductPage() {
                   : 'Showcase your products and grow your business'}
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               <button
                 onClick={handleExport}
                 disabled={exporting}
@@ -648,7 +1216,7 @@ export default function VendorAddProductPage() {
               >
                 {exporting ? 'Exporting...' : '📥 Export to ZIP'}
               </button>
-              <label className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 cursor-pointer text-sm">
+              <label className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 cursor-pointer text-sm disabled:opacity-50">
                 {importing ? 'Importing...' : '📤 Import from ZIP'}
                 <input
                   type="file"
@@ -658,6 +1226,32 @@ export default function VendorAddProductPage() {
                   className="hidden"
                 />
               </label>
+              
+              {/* Tour Import/Export Buttons */}
+              <div className="flex gap-2 border-l pl-3">
+                <button
+                  onClick={downloadTourTemplate}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm flex items-center gap-2"
+                  title="Download tour template package with CSV and image folder"
+                  disabled={exporting}
+                >
+                  <span>📦</span>
+                  <span>{exporting ? 'Creating...' : 'Export Template'}</span>
+                </button>
+                <label className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer text-sm flex items-center gap-2">
+                  <span>🗺️</span>
+                  <span>{importing ? 'Importing...' : 'Import Tours'}</span>
+                  <input
+                    type="file"
+                    accept=".csv,image/*"
+                    onChange={handleTourImport}
+                    disabled={importing}
+                    className="hidden"
+                    multiple
+                    title="Select CSV file and image files together (Ctrl/Cmd + Click to select multiple)"
+                  />
+                </label>
+              </div>
             </div>
           </div>
           {importMessage && (
@@ -695,6 +1289,98 @@ export default function VendorAddProductPage() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
+              {/* Tour Products Guide */}
+              <div className="bg-white rounded-lg p-6 shadow border-2 border-purple-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="text-2xl">🗺️</span>
+                  Creating Tour & Travel Packages
+                </h3>
+                <div className="space-y-3 text-sm text-gray-700">
+                  <div className="bg-purple-50 border border-purple-200 rounded p-3 mb-3">
+                    <strong>What are tours?</strong> Special booking products for travel packages with dates, itineraries, and multiple departures.
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-purple-600 font-bold">1.</span>
+                    <div>
+                      <strong>Quick Method - Import Tours:</strong> Click "Export Template" button to download a ZIP package with sample CSV and images.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-purple-600 font-bold">2.</span>
+                    <div>
+                      <strong>Edit the Template:</strong> Open the CSV in Excel, edit tour details (name, price, dates, itinerary).
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-purple-600 font-bold">3.</span>
+                    <div>
+                      <strong>Add Your Images:</strong> Replace sample images in the 'images' folder with your tour photos (1200x800px recommended).
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-purple-600 font-bold">4.</span>
+                    <div>
+                      <strong>Import Tours:</strong> Click "Import Tours" button, select CSV file + all images together (Ctrl/Cmd + Click).
+                    </div>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded p-3 mt-3">
+                    <strong>💡 Pro Tip:</strong> The ZIP template includes 10 sample placeholder images you can use for testing or replace with actual tour photos.
+                  </div>
+                </div>
+              </div>
+
+              {/* Manual Tour Creation */}
+              <div className="bg-white rounded-lg p-6 shadow border-2 border-blue-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="text-2xl">✍️</span>
+                  Manual Tour Creation
+                </h3>
+                <div className="space-y-3 text-sm text-gray-700">
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">1.</span>
+                    <div>
+                      <strong>Product Type:</strong> Select "Booking/Service" and enable "Tour Mode".
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">2.</span>
+                    <div>
+                      <strong>Basic Details:</strong> Enter tour name, description, and base price.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">3.</span>
+                    <div>
+                      <strong>Departures:</strong> Add specific departure dates with seats available and price per person.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">4.</span>
+                    <div>
+                      <strong>Day-by-Day Itinerary:</strong> Add each day with title, activities, meals, and accommodation details.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">5.</span>
+                    <div>
+                      <strong>Tour Details:</strong> Set destinations, tour type, difficulty, group size limits.
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">6.</span>
+                    <div>
+                      <strong>Inclusions/Exclusions:</strong> List what's included (accommodation, meals) and what's not (flights, insurance).
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-blue-600 font-bold">7.</span>
+                    <div>
+                      <strong>Pickup/Drop Points:</strong> Add locations and times for passenger pickup and drop-off.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Basic Product Guide */}
               <div className="bg-white rounded-lg p-6 shadow">
                 <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -872,6 +1558,12 @@ export default function VendorAddProductPage() {
               </h3>
               <div className="grid md:grid-cols-3 gap-4 text-sm">
                 <div className="flex items-start gap-2">
+                  <span className="text-purple-600 text-xl">🗺️</span>
+                  <div>
+                    <strong>For Tours:</strong> Use the Export/Import feature - it's the fastest way to add multiple tours with images!
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
                   <span className="text-green-600 text-xl">✓</span>
                   <div>
                     <strong>Use high-quality images:</strong> Clear, well-lit photos sell better
@@ -905,6 +1597,18 @@ export default function VendorAddProductPage() {
                   <span className="text-green-600 text-xl">✓</span>
                   <div>
                     <strong>Regular updates:</strong> Add new photos, update descriptions as needed
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-600 text-xl">📦</span>
+                  <div>
+                    <strong>Tour images:</strong> 1200x800px recommended, include destination highlights and activities
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-600 text-xl">📅</span>
+                  <div>
+                    <strong>Tour dates:</strong> Keep departure dates updated and mark sold-out tours as unavailable
                   </div>
                 </div>
               </div>
@@ -979,27 +1683,74 @@ export default function VendorAddProductPage() {
               />
             </div>
 
+            {/* Quick Links Section - Moved outside of description */}
+            {(customPages.length > 0 || linkableProducts.length > 0) && (
+              <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <p className="text-sm font-semibold text-gray-800 mb-2">🔗 Quick Links - Click to Copy</p>
+                
+                <div className="space-y-2">
+                  {customPages.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 mb-1">Custom Pages:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {customPages.map((page) => (
+                          <button
+                            key={page.id}
+                            type="button"
+                            onClick={() => {
+                              const link = `/${page.slug}`;
+                              navigator.clipboard.writeText(link);
+                              alert(`✓ Link copied: ${link}\n\nPaste it in your description using the link button in the editor.`);
+                            }}
+                            className="text-xs px-2.5 py-1 bg-white border border-blue-300 rounded hover:bg-blue-100 hover:border-blue-400 transition shadow-sm"
+                            title={`Click to copy: /${page.slug}`}
+                          >
+                            📄 {page.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description *
                 <span className="ml-2 text-xs font-normal text-gray-500">💡 Include features, materials, care instructions</span>
               </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={4}
-                placeholder="Example: This premium cotton t-shirt is made from 100% organic cotton. Features include a comfortable crew neck, reinforced stitching, and pre-shrunk fabric. Machine washable."
-                required
-              />
+              {mounted ? (
+                <ReactQuill
+                  theme="snow"
+                  value={formData.description}
+                  onChange={(value) => setFormData({ ...formData, description: value })}
+                  className="bg-white min-h-[350px]"
+                  placeholder="Example: This premium cotton t-shirt is made from 100% organic cotton. Features include a comfortable crew neck, reinforced stitching, and pre-shrunk fabric. Machine washable."
+                />
+              ) : (
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={4}
+                  placeholder="Example: This premium cotton t-shirt is made from 100% organic cotton. Features include a comfortable crew neck, reinforced stitching, and pre-shrunk fabric. Machine washable."
+                  required
+                />
+              )}
               <p className="text-xs text-gray-500 mt-1">💡 Tip: Good descriptions answer: What is it? What's it made of? How to use/care for it?</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categories
+                Categories {tourMode && <span className="text-xs font-normal text-gray-500">(Optional for tours)</span>}
                 <span className="ml-2 text-xs font-normal text-gray-500">💡 Choose the most specific category</span>
               </label>
+              {tourMode && (
+                <div className="mb-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs text-gray-700">
+                  <strong>💡 For Tours:</strong> Categories are optional. Tours are primarily filtered by destinations, tour type, and difficulty. Add a category if you want additional organization (e.g., "Adventure Tours", "Cultural Tours").
+                </div>
+              )}
               <div className="w-full px-4 py-3 border border-gray-300 rounded-lg max-h-48 overflow-y-auto bg-white">
                 {loading ? (
                   <p className="text-sm text-gray-500">Loading categories...</p>
@@ -1505,8 +2256,32 @@ export default function VendorAddProductPage() {
             {/* Booking Product Specific Fields */}
             {productType === 'booking' && (
               <div className="space-y-6 border-t pt-6">
-                <h3 className="text-lg font-semibold">Booking Configuration</h3>
-                
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-300 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Booking Configuration</h3>
+                      <p className="text-sm text-gray-600 mt-1">Choose between regular bookings or tour packages</p>
+                    </div>
+                    <label className="flex items-center gap-3 cursor-pointer bg-white border-2 border-purple-400 rounded-lg px-4 py-3 hover:bg-purple-50 transition-all shadow-sm">
+                      <input
+                        type="checkbox"
+                        checked={tourMode}
+                        onChange={(e) => setTourMode(e.target.checked)}
+                        className="w-6 h-6 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🗺️</span>
+                        <div>
+                          <span className="block text-base font-bold text-gray-900">Tour Package Mode</span>
+                          <span className="block text-xs text-gray-600">Multi-day trips with itineraries</span>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {!tourMode && (
+                  <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Booking Type *
@@ -1729,6 +2504,600 @@ export default function VendorAddProductPage() {
                     Time slots are in 24-hour format (e.g., 09:00 for 9 AM, 18:00 for 6 PM)
                   </p>
                 </div>
+                </>
+                )}
+
+                {/* Tour Mode Fields */}
+                {tourMode && (
+                  <div className="space-y-6 border-t pt-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-2">🗺️ Tour Package Configuration</h4>
+                      <p className="text-sm text-blue-700">Create comprehensive tour packages with itineraries, departures, and detailed information.</p>
+                    </div>
+
+                    {/* Tour Departures */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Tour Departures
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTourData({
+                              ...tourData,
+                              departures: [
+                                ...tourData.departures,
+                                {
+                                  departureDate: '',
+                                  returnDate: '',
+                                  availableSeats: 20,
+                                  pricePerPerson: parseFloat(formData.price) || 0,
+                                  status: 'active' as const,
+                                },
+                              ],
+                            });
+                          }}
+                          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                        >
+                          + Add Departure
+                        </button>
+                      </div>
+                      <div className="space-y-3">
+                        {tourData.departures.map((departure, index) => (
+                          <div key={index} className="grid grid-cols-5 gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Departure Date</label>
+                              <input
+                                type="date"
+                                value={departure.departureDate}
+                                onChange={(e) => {
+                                  const newDepartures = [...tourData.departures];
+                                  newDepartures[index].departureDate = e.target.value;
+                                  setTourData({ ...tourData, departures: newDepartures });
+                                }}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Return Date</label>
+                              <input
+                                type="date"
+                                value={departure.returnDate}
+                                onChange={(e) => {
+                                  const newDepartures = [...tourData.departures];
+                                  newDepartures[index].returnDate = e.target.value;
+                                  setTourData({ ...tourData, departures: newDepartures });
+                                }}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Available Seats</label>
+                              <input
+                                type="number"
+                                value={departure.availableSeats}
+                                onChange={(e) => {
+                                  const newDepartures = [...tourData.departures];
+                                  newDepartures[index].availableSeats = parseInt(e.target.value) || 0;
+                                  setTourData({ ...tourData, departures: newDepartures });
+                                }}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                                min="1"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Price/Person</label>
+                              <input
+                                type="number"
+                                value={departure.pricePerPerson}
+                                onChange={(e) => {
+                                  const newDepartures = [...tourData.departures];
+                                  newDepartures[index].pricePerPerson = parseFloat(e.target.value) || 0;
+                                  setTourData({ ...tourData, departures: newDepartures });
+                                }}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                                min="0"
+                                step="0.01"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newDepartures = tourData.departures.filter((_, i) => i !== index);
+                                  setTourData({ ...tourData, departures: newDepartures });
+                                }}
+                                className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {tourData.departures.length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded">
+                            No departures added yet. Click "+ Add Departure" to add tour dates.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tour Itinerary */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Day-by-Day Itinerary
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTourData({
+                              ...tourData,
+                              itinerary: [
+                                ...tourData.itinerary,
+                                {
+                                  day: tourData.itinerary.length + 1,
+                                  title: '',
+                                  description: '',
+                                  activities: [],
+                                  meals: [],
+                                  accommodation: '',
+                                },
+                              ],
+                            });
+                          }}
+                          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                        >
+                          + Add Day
+                        </button>
+                      </div>
+                      <div className="space-y-4">
+                        {tourData.itinerary.map((day, index) => (
+                          <div key={index} className="p-4 border border-gray-200 rounded-lg bg-white">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold text-gray-900">Day {day.day}</h4>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newItinerary = tourData.itinerary.filter((_, i) => i !== index);
+                                  // Renumber remaining days
+                                  const renumbered = newItinerary.map((d, i) => ({ ...d, day: i + 1 }));
+                                  setTourData({ ...tourData, itinerary: renumbered });
+                                }}
+                                className="text-red-600 hover:text-red-800 text-sm"
+                              >
+                                Remove Day
+                              </button>
+                            </div>
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Day Title *</label>
+                                <input
+                                  type="text"
+                                  value={day.title}
+                                  onChange={(e) => {
+                                    const newItinerary = [...tourData.itinerary];
+                                    newItinerary[index].title = e.target.value;
+                                    setTourData({ ...tourData, itinerary: newItinerary });
+                                  }}
+                                  placeholder="e.g., Arrival in Delhi"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Description *</label>
+                                <textarea
+                                  value={day.description}
+                                  onChange={(e) => {
+                                    const newItinerary = [...tourData.itinerary];
+                                    newItinerary[index].description = e.target.value;
+                                    setTourData({ ...tourData, itinerary: newItinerary });
+                                  }}
+                                  placeholder="Describe the day's activities and highlights"
+                                  rows={3}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Activities (comma-separated)</label>
+                                <input
+                                  type="text"
+                                  value={day.activities.join(', ')}
+                                  onChange={(e) => {
+                                    const newItinerary = [...tourData.itinerary];
+                                    newItinerary[index].activities = e.target.value.split(',').map(a => a.trim()).filter(a => a);
+                                    setTourData({ ...tourData, itinerary: newItinerary });
+                                  }}
+                                  placeholder="e.g., Sightseeing, Museum visit, Local market"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Meals (comma-separated)</label>
+                                  <input
+                                    type="text"
+                                    value={day.meals.join(', ')}
+                                    onChange={(e) => {
+                                      const newItinerary = [...tourData.itinerary];
+                                      newItinerary[index].meals = e.target.value.split(',').map(m => m.trim()).filter(m => m);
+                                      setTourData({ ...tourData, itinerary: newItinerary });
+                                    }}
+                                    placeholder="e.g., Breakfast, Lunch, Dinner"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Accommodation</label>
+                                  <input
+                                    type="text"
+                                    value={day.accommodation}
+                                    onChange={(e) => {
+                                      const newItinerary = [...tourData.itinerary];
+                                      newItinerary[index].accommodation = e.target.value;
+                                      setTourData({ ...tourData, itinerary: newItinerary });
+                                    }}
+                                    placeholder="e.g., 3-star hotel"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {tourData.itinerary.length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded">
+                            No itinerary added yet. Click "+ Add Day" to create day-by-day schedule.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tour Details */}
+                    <div className="space-y-4 border-t pt-4">
+                      <h4 className="font-semibold text-gray-900">Tour Details</h4>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Destinations (comma-separated) *</label>
+                          <input
+                            type="text"
+                            value={tourData.details.destinations.join(', ')}
+                            onChange={(e) => {
+                              setTourData({
+                                ...tourData,
+                                details: {
+                                  ...tourData.details,
+                                  destinations: e.target.value.split(',').map(d => d.trim()).filter(d => d),
+                                },
+                              });
+                            }}
+                            placeholder="e.g., Delhi, Agra, Jaipur"
+                            className="w-full px-3 py-2 border border-gray-300 rounded"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Tour Type</label>
+                          <input
+                            type="text"
+                            value={tourData.details.tourType}
+                            onChange={(e) => {
+                              setTourData({
+                                ...tourData,
+                                details: { ...tourData.details, tourType: e.target.value },
+                              });
+                            }}
+                            placeholder="e.g., Adventure, Cultural, Wildlife"
+                            className="w-full px-3 py-2 border border-gray-300 rounded"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Difficulty Level</label>
+                          <select
+                            value={tourData.details.difficulty}
+                            onChange={(e) => {
+                              setTourData({
+                                ...tourData,
+                                details: { ...tourData.details, difficulty: e.target.value as any },
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded"
+                          >
+                            <option value="easy">Easy</option>
+                            <option value="moderate">Moderate</option>
+                            <option value="challenging">Challenging</option>
+                            <option value="difficult">Difficult</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Group Size</label>
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="number"
+                              value={tourData.details.groupSize.min}
+                              onChange={(e) => {
+                                setTourData({
+                                  ...tourData,
+                                  details: {
+                                    ...tourData.details,
+                                    groupSize: { ...tourData.details.groupSize, min: parseInt(e.target.value) || 1 },
+                                  },
+                                });
+                              }}
+                              placeholder="Min"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded"
+                              min="1"
+                            />
+                            <span className="text-gray-500">to</span>
+                            <input
+                              type="number"
+                              value={tourData.details.groupSize.max}
+                              onChange={(e) => {
+                                setTourData({
+                                  ...tourData,
+                                  details: {
+                                    ...tourData.details,
+                                    groupSize: { ...tourData.details.groupSize, max: parseInt(e.target.value) || 20 },
+                                  },
+                                });
+                              }}
+                              placeholder="Max"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded"
+                              min="1"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Inclusions (one per line)</label>
+                        <textarea
+                          value={tourData.details.inclusions.join('\n')}
+                          onChange={(e) => {
+                            setTourData({
+                              ...tourData,
+                              details: {
+                                ...tourData.details,
+                                inclusions: e.target.value.split('\n').map(i => i.trim()).filter(i => i),
+                              },
+                            });
+                          }}
+                          placeholder="e.g., Accommodation&#10;Transportation&#10;Tour guide&#10;Entry fees"
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 rounded"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Exclusions (one per line)</label>
+                        <textarea
+                          value={tourData.details.exclusions.join('\n')}
+                          onChange={(e) => {
+                            setTourData({
+                              ...tourData,
+                              details: {
+                                ...tourData.details,
+                                exclusions: e.target.value.split('\n').map(i => i.trim()).filter(i => i),
+                              },
+                            });
+                          }}
+                          placeholder="e.g., International flights&#10;Personal expenses&#10;Travel insurance"
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Accommodation</label>
+                          <input
+                            type="text"
+                            value={tourData.details.accommodation}
+                            onChange={(e) => {
+                              setTourData({
+                                ...tourData,
+                                details: { ...tourData.details, accommodation: e.target.value },
+                              });
+                            }}
+                            placeholder="e.g., 3-star hotels, twin sharing"
+                            className="w-full px-3 py-2 border border-gray-300 rounded"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Transportation</label>
+                          <input
+                            type="text"
+                            value={tourData.details.transportation}
+                            onChange={(e) => {
+                              setTourData({
+                                ...tourData,
+                                details: { ...tourData.details, transportation: e.target.value },
+                              });
+                            }}
+                            placeholder="e.g., AC coach, train"
+                            className="w-full px-3 py-2 border border-gray-300 rounded"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Languages (comma-separated)</label>
+                          <input
+                            type="text"
+                            value={tourData.details.languages.join(', ')}
+                            onChange={(e) => {
+                              setTourData({
+                                ...tourData,
+                                details: {
+                                  ...tourData.details,
+                                  languages: e.target.value.split(',').map(l => l.trim()).filter(l => l),
+                                },
+                              });
+                            }}
+                            placeholder="e.g., English, Hindi, Spanish"
+                            className="w-full px-3 py-2 border border-gray-300 rounded"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Age Restriction</label>
+                          <input
+                            type="text"
+                            value={tourData.details.ageRestriction}
+                            onChange={(e) => {
+                              setTourData({
+                                ...tourData,
+                                details: { ...tourData.details, ageRestriction: e.target.value },
+                              });
+                            }}
+                            placeholder="e.g., 12+ years"
+                            className="w-full px-3 py-2 border border-gray-300 rounded"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Pickup Points */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-xs font-medium text-gray-600">Pickup Points</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTourData({
+                                ...tourData,
+                                details: {
+                                  ...tourData.details,
+                                  pickupPoints: [...tourData.details.pickupPoints, { location: '', time: '' }],
+                                },
+                              });
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                          >
+                            + Add Pickup Point
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {tourData.details.pickupPoints.map((point, index) => (
+                            <div key={index} className="flex gap-2">
+                              <input
+                                type="text"
+                                value={point.location}
+                                onChange={(e) => {
+                                  const newPoints = [...tourData.details.pickupPoints];
+                                  newPoints[index].location = e.target.value;
+                                  setTourData({
+                                    ...tourData,
+                                    details: { ...tourData.details, pickupPoints: newPoints },
+                                  });
+                                }}
+                                placeholder="Location"
+                                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded"
+                              />
+                              <input
+                                type="time"
+                                value={point.time}
+                                onChange={(e) => {
+                                  const newPoints = [...tourData.details.pickupPoints];
+                                  newPoints[index].time = e.target.value;
+                                  setTourData({
+                                    ...tourData,
+                                    details: { ...tourData.details, pickupPoints: newPoints },
+                                  });
+                                }}
+                                className="px-3 py-2 text-sm border border-gray-300 rounded"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newPoints = tourData.details.pickupPoints.filter((_, i) => i !== index);
+                                  setTourData({
+                                    ...tourData,
+                                    details: { ...tourData.details, pickupPoints: newPoints },
+                                  });
+                                }}
+                                className="text-red-600 hover:text-red-800 text-sm px-2"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Drop Points */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-xs font-medium text-gray-600">Drop Points</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTourData({
+                                ...tourData,
+                                details: {
+                                  ...tourData.details,
+                                  dropPoints: [...tourData.details.dropPoints, { location: '', time: '' }],
+                                },
+                              });
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                          >
+                            + Add Drop Point
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {tourData.details.dropPoints.map((point, index) => (
+                            <div key={index} className="flex gap-2">
+                              <input
+                                type="text"
+                                value={point.location}
+                                onChange={(e) => {
+                                  const newPoints = [...tourData.details.dropPoints];
+                                  newPoints[index].location = e.target.value;
+                                  setTourData({
+                                    ...tourData,
+                                    details: { ...tourData.details, dropPoints: newPoints },
+                                  });
+                                }}
+                                placeholder="Location"
+                                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded"
+                              />
+                              <input
+                                type="time"
+                                value={point.time}
+                                onChange={(e) => {
+                                  const newPoints = [...tourData.details.dropPoints];
+                                  newPoints[index].time = e.target.value;
+                                  setTourData({
+                                    ...tourData,
+                                    details: { ...tourData.details, dropPoints: newPoints },
+                                  });
+                                }}
+                                className="px-3 py-2 text-sm border border-gray-300 rounded"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newPoints = tourData.details.dropPoints.filter((_, i) => i !== index);
+                                  setTourData({
+                                    ...tourData,
+                                    details: { ...tourData.details, dropPoints: newPoints },
+                                  });
+                                }}
+                                className="text-red-600 hover:text-red-800 text-sm px-2"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

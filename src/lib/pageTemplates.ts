@@ -524,6 +524,556 @@ Our platform has grown to serve thousands of vendors and millions of customers w
     ]
   },
 
+  'tour-listings': {
+    title: 'All Tours',
+    slug: 'tours',
+    description: 'Showcase all available tour packages',
+    icon: '🎫',
+    showInNavigation: true,
+    excerpt: 'Discover amazing travel experiences and tour packages',
+    metaTitle: 'Tour Packages - Explore Destinations',
+    metaDescription: 'Browse our collection of curated tour packages and travel experiences',
+    sections: [
+      {
+        id: generateId(),
+        type: 'hero',
+        title: 'Hero',
+        order: 0,
+        visible: true,
+        settings: {
+          headline: 'Explore Amazing Destinations',
+          subheadline: 'Curated tour packages for unforgettable travel experiences',
+          buttonText: 'Browse All Tours',
+          buttonUrl: '/products?type=tour',
+          backgroundImage: '',
+          backgroundColor: '#9333EA',
+          textColor: '#ffffff',
+          alignment: 'center',
+          height: 'large'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'features',
+        title: 'Why Choose Our Tours',
+        order: 1,
+        visible: true,
+        settings: {
+          title: 'Why Book With Us?',
+          subtitle: 'Experience travel the right way',
+          features: [
+            {
+              icon: '🗺️',
+              title: 'Expert Itineraries',
+              description: 'Carefully planned routes covering the best attractions'
+            },
+            {
+              icon: '👨‍✈️',
+              title: 'Professional Guides',
+              description: 'Experienced local guides who know the destinations inside out'
+            },
+            {
+              icon: '🏨',
+              title: 'Quality Accommodations',
+              description: 'Comfortable stays at verified hotels and resorts'
+            },
+            {
+              icon: '🍽️',
+              title: 'Meals Included',
+              description: 'Enjoy local cuisine with most meals included in the package'
+            },
+            {
+              icon: '🚌',
+              title: 'Comfortable Transport',
+              description: 'Air-conditioned vehicles for all transfers and sightseeing'
+            },
+            {
+              icon: '💰',
+              title: 'Best Price Guarantee',
+              description: 'Competitive pricing with no hidden costs'
+            }
+          ],
+          columns: 3,
+          backgroundColor: '#ffffff'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'textBlock',
+        title: 'Popular Destinations',
+        order: 2,
+        visible: true,
+        settings: {
+          heading: 'Popular Destinations',
+          content: `## Domestic Tours
+
+Explore the beauty of your own country with our carefully curated domestic tour packages. From scenic hill stations to cultural heritage sites, discover destinations that are close yet fascinating.
+
+## International Tours
+
+Venture beyond borders with our international tour packages. Experience different cultures, cuisines, and landscapes with expertly planned itineraries that take care of every detail.
+
+## Adventure Tours
+
+For thrill-seekers and adventure enthusiasts, our adventure tours offer trekking, camping, water sports, and more. Challenge yourself while exploring nature's wonders.
+
+## Family Packages
+
+Family-friendly tours designed for all ages. Create lasting memories with customized itineraries that balance fun, education, and relaxation.`,
+          padding: 'normal',
+          backgroundColor: '#f8f9fa',
+          textColor: '#1f2937'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'cta',
+        title: 'Browse CTA',
+        order: 3,
+        visible: true,
+        settings: {
+          headline: 'Ready for Your Next Adventure?',
+          description: 'Explore hundreds of tour packages across multiple destinations',
+          buttonText: 'Browse All Tours',
+          buttonLink: '/products?type=tour',
+          backgroundColor: '#9333EA',
+          textColor: '#ffffff'
+        }
+      }
+    ]
+  },
+
+  'tour-destinations': {
+    title: 'Tour Destinations',
+    slug: 'destinations',
+    description: 'Featured travel destinations guide',
+    icon: '🌍',
+    showInNavigation: true,
+    excerpt: 'Explore our featured destinations and plan your perfect trip',
+    metaTitle: 'Travel Destinations - Where To Go',
+    metaDescription: 'Discover amazing destinations around the world with our travel guides',
+    sections: [
+      {
+        id: generateId(),
+        type: 'hero',
+        title: 'Hero',
+        order: 0,
+        visible: true,
+        settings: {
+          headline: 'Discover Your Next Destination',
+          subheadline: 'From mountains to beaches, cities to countryside - explore it all',
+          buttonText: 'View All Destinations',
+          buttonUrl: '#destinations',
+          backgroundImage: '',
+          backgroundColor: '#0ea5e9',
+          textColor: '#ffffff',
+          alignment: 'center',
+          height: 'large'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'textBlock',
+        title: 'Featured Destinations',
+        order: 1,
+        visible: true,
+        settings: {
+          heading: 'Featured Destinations',
+          content: `## Hill Stations
+
+**Shimla & Manali** - Experience the Himalayan charm  
+Perfect for: Summer getaways, honeymooners  
+Best time: March to June, December to February
+
+**Ooty & Kodaikanal** - South India's scenic retreats  
+Perfect for: Nature lovers, families  
+Best time: April to June, September to November
+
+## Beach Destinations
+
+**Goa** - Sun, sand, and endless fun  
+Perfect for: Beach lovers, party enthusiasts  
+Best time: November to February
+
+**Andaman & Nicobar** - Tropical paradise  
+Perfect for: Water sports, island hopping  
+Best time: October to May
+
+## Cultural Heritage
+
+**Rajasthan** - Land of kings and palaces  
+Perfect for: History buffs, photographers  
+Best time: October to March
+
+**Kerala** - God's own country  
+Perfect for: Backwater cruises, Ayurveda  
+Best time: September to March`,
+          padding: 'normal',
+          backgroundColor: '#ffffff',
+          textColor: '#1f2937'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'features',
+        title: 'Destination Types',
+        order: 2,
+        visible: true,
+        settings: {
+          title: 'Choose Your Experience',
+          subtitle: 'Different destinations for different moods',
+          features: [
+            {
+              icon: '🏔️',
+              title: 'Mountains',
+              description: 'Scenic hill stations, trekking trails, and snow adventures'
+            },
+            {
+              icon: '🏖️',
+              title: 'Beaches',
+              description: 'Tropical islands, water sports, and coastal relaxation'
+            },
+            {
+              icon: '🏛️',
+              title: 'Heritage',
+              description: 'Historical monuments, museums, and cultural experiences'
+            },
+            {
+              icon: '🌿',
+              title: 'Wildlife',
+              description: 'National parks, safaris, and nature reserves'
+            },
+            {
+              icon: '🏙️',
+              title: 'Cities',
+              description: 'Urban exploration, shopping, and modern attractions'
+            },
+            {
+              icon: '🧘',
+              title: 'Wellness',
+              description: 'Yoga retreats, spa resorts, and spiritual journeys'
+            }
+          ],
+          columns: 3,
+          backgroundColor: '#f8f9fa'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'cta',
+        title: 'Plan CTA',
+        order: 3,
+        visible: true,
+        settings: {
+          headline: 'Start Planning Your Trip',
+          description: 'Browse tour packages for your chosen destination',
+          buttonText: 'View Tours',
+          buttonLink: '/products?type=tour',
+          backgroundColor: '#0ea5e9',
+          textColor: '#ffffff'
+        }
+      }
+    ]
+  },
+
+  'tour-travel-guide': {
+    title: 'Travel Guide',
+    slug: 'travel-guide',
+    description: 'Essential travel tips and information',
+    icon: '📖',
+    showInNavigation: true,
+    excerpt: 'Everything you need to know before you travel',
+    metaTitle: 'Travel Guide - Tips & Information',
+    metaDescription: 'Essential travel tips, packing guides, and destination information',
+    sections: [
+      {
+        id: generateId(),
+        type: 'hero',
+        title: 'Hero',
+        order: 0,
+        visible: true,
+        settings: {
+          headline: 'Your Complete Travel Guide',
+          subheadline: 'Tips, advice, and essential information for travelers',
+          buttonText: '',
+          buttonUrl: '',
+          backgroundImage: '',
+          backgroundColor: '#f8f9fa',
+          textColor: '#1f2937',
+          alignment: 'center',
+          height: 'medium'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'textBlock',
+        title: 'Before You Travel',
+        order: 1,
+        visible: true,
+        settings: {
+          heading: 'Before You Travel',
+          content: `## Essential Documents
+
+- Valid ID proof (Passport for international travel)
+- Travel insurance documents
+- Hotel booking confirmations
+- Tour vouchers and tickets
+- Emergency contact numbers
+
+## Health & Safety
+
+- Get necessary vaccinations
+- Carry prescribed medications
+- Purchase travel insurance
+- Register with your embassy (international travel)
+- Keep digital copies of important documents
+
+## Packing Tips
+
+**Clothing**: Pack according to destination weather and activities  
+**Electronics**: Chargers, power banks, adapters  
+**Toiletries**: Travel-sized essentials in ziplock bags  
+**Money**: Mix of cash and cards, inform bank of travel dates`,
+          padding: 'normal',
+          backgroundColor: '#ffffff',
+          textColor: '#1f2937'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'textBlock',
+        title: 'During Your Tour',
+        order: 2,
+        visible: true,
+        settings: {
+          heading: 'During Your Tour',
+          content: `## Stay Connected
+
+- Share your itinerary with family
+- Keep emergency contacts handy
+- Download offline maps
+- Get local SIM card if needed
+
+## Respect Local Culture
+
+- Dress appropriately for religious sites
+- Learn basic local phrases
+- Follow photography guidelines
+- Respect customs and traditions
+
+## Health & Hygiene
+
+- Drink bottled water
+- Be cautious with street food
+- Carry hand sanitizer and wet wipes
+- Take rest when needed
+
+## Money Management
+
+- Keep cash in multiple locations
+- Use hotel safes for valuables
+- Keep small denominations handy
+- Track your expenses`,
+          padding: 'normal',
+          backgroundColor: '#f8f9fa',
+          textColor: '#1f2937'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'features',
+        title: 'Travel Smart',
+        order: 3,
+        visible: true,
+        settings: {
+          title: 'Travel Smart',
+          subtitle: 'Essential tips for a smooth journey',
+          features: [
+            {
+              icon: '✈️',
+              title: 'Booking Tips',
+              description: 'Book flights and hotels in advance for better deals'
+            },
+            {
+              icon: '💵',
+              title: 'Budget Planning',
+              description: 'Plan for 20% extra budget for unexpected expenses'
+            },
+            {
+              icon: '📱',
+              title: 'Stay Connected',
+              description: 'Download essential apps before traveling'
+            },
+            {
+              icon: '🎒',
+              title: 'Pack Light',
+              description: 'Travel with essentials only, avoid overpacking'
+            }
+          ],
+          columns: 2,
+          backgroundColor: '#ffffff'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'cta',
+        title: 'Questions CTA',
+        order: 4,
+        visible: true,
+        settings: {
+          headline: 'Have Travel Questions?',
+          description: 'Our travel experts are here to help',
+          buttonText: 'Contact Us',
+          buttonLink: '/contact',
+          backgroundColor: '#3b82f6',
+          textColor: '#ffffff'
+        }
+      }
+    ]
+  },
+
+  'tour-faq': {
+    title: 'Tour FAQs',
+    slug: 'tour-faq',
+    description: 'Frequently asked questions about tours',
+    icon: '❓',
+    showInNavigation: true,
+    excerpt: 'Get answers to common questions about booking and traveling',
+    metaTitle: 'Tour FAQs - Your Questions Answered',
+    metaDescription: 'Find answers to frequently asked questions about tours, bookings, and travel',
+    sections: [
+      {
+        id: generateId(),
+        type: 'hero',
+        title: 'Hero',
+        order: 0,
+        visible: true,
+        settings: {
+          headline: 'Tour FAQs',
+          subheadline: 'Find answers to commonly asked questions',
+          buttonText: '',
+          buttonUrl: '',
+          backgroundImage: '',
+          backgroundColor: '#f8f9fa',
+          textColor: '#1f2937',
+          alignment: 'center',
+          height: 'medium'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'textBlock',
+        title: 'Booking & Payment',
+        order: 1,
+        visible: true,
+        settings: {
+          heading: 'Booking & Payment',
+          content: `## How do I book a tour?
+
+Simply browse our tour packages, select your preferred departure date, and click "Book Now". Fill in traveler details and complete payment to confirm your booking.
+
+## What payment methods do you accept?
+
+We accept credit cards, debit cards, net banking, UPI, and digital wallets. All payments are processed through secure payment gateways.
+
+## Can I pay in installments?
+
+Yes, we offer EMI options for bookings above a certain amount. The option will be available during checkout.
+
+## Is my booking confirmed immediately?
+
+Yes, you'll receive instant confirmation via email and SMS once payment is successful. Some tours may require manual confirmation within 24 hours.
+
+## Can I modify or cancel my booking?
+
+Yes, modifications and cancellations are subject to our cancellation policy. Check the specific tour's cancellation terms before booking.`,
+          padding: 'normal',
+          backgroundColor: '#ffffff',
+          textColor: '#1f2937'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'textBlock',
+        title: 'Tour Details',
+        order: 2,
+        visible: true,
+        settings: {
+          heading: 'Tour Details',
+          content: `## What's included in the tour package?
+
+Each tour package clearly lists inclusions like accommodation, meals, transfers, sightseeing, and guide services. Review the "Inclusions" section on the tour page.
+
+## What should I bring on the tour?
+
+A detailed packing list is provided after booking. Generally, bring comfortable clothing, toiletries, medications, valid ID, and travel documents.
+
+## Are meals vegetarian/non-vegetarian?
+
+Most tours offer both options. Specify your preference during booking. Special dietary requirements can be accommodated with advance notice.
+
+## What if I need special assistance?
+
+Please inform us during booking about any special requirements (wheelchair access, medical needs, etc.). We'll do our best to accommodate.
+
+## Can I customize the itinerary?
+
+Some tours offer customization options. Contact our team to discuss your requirements and we'll create a personalized package.`,
+          padding: 'normal',
+          backgroundColor: '#f8f9fa',
+          textColor: '#1f2937'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'textBlock',
+        title: 'Travel & Safety',
+        order: 3,
+        visible: true,
+        settings: {
+          heading: 'Travel & Safety',
+          content: `## Is travel insurance included?
+
+Travel insurance is not automatically included but highly recommended. We can arrange insurance at an additional cost.
+
+## What if there's a medical emergency?
+
+Our tour managers are trained to handle emergencies. We provide 24/7 emergency contact numbers and assistance.
+
+## Are tours suitable for children/elderly?
+
+Tour difficulty levels are clearly marked. Choose tours rated "Easy" or "Moderate" for children and elderly travelers.
+
+## What about COVID-19 safety measures?
+
+We follow all government guidelines including sanitization, social distancing, and health checks. Requirements may vary by destination.
+
+## What if weather affects the tour?
+
+Itineraries may be adjusted for safety. Alternative arrangements are made, and you'll be informed of any changes.`,
+          padding: 'normal',
+          backgroundColor: '#ffffff',
+          textColor: '#1f2937'
+        }
+      },
+      {
+        id: generateId(),
+        type: 'cta',
+        title: 'Contact CTA',
+        order: 4,
+        visible: true,
+        settings: {
+          headline: 'Still Have Questions?',
+          description: 'Our customer support team is ready to help',
+          buttonText: 'Contact Support',
+          buttonLink: '/contact',
+          backgroundColor: '#3b82f6',
+          textColor: '#ffffff'
+        }
+      }
+    ]
+  },
+
   'contact': {
     title: 'Contact Us',
     slug: 'contact',

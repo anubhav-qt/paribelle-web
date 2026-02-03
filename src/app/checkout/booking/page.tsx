@@ -16,7 +16,8 @@ import {
   Clock,
   Plus,
   Edit2,
-  Trash2
+  Trash2,
+  Users
 } from 'lucide-react';
 import Link from 'next/link';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
@@ -79,6 +80,10 @@ function BookingCheckoutContent() {
     postalCode: '',
     country: 'India',
   });
+  const [tourBooking, setTourBooking] = useState<any>(null);
+  const [bookingDate, setBookingDate] = useState('');
+  const [selectedDepartureId, setSelectedDepartureId] = useState('');
+  const [specialRequests, setSpecialRequests] = useState('');
 
   useEffect(() => {
     // Fetch marketplace branding
@@ -111,7 +116,40 @@ function BookingCheckoutContent() {
       const parsedUser = JSON.parse(userStr);
       setUser(parsedUser);
       
-      // Fetch bookings
+      // Fetch saved addresses
+      fetchSavedAddresses(token);
+      
+      // Check if this is a tour booking
+      const bookingType = searchParams.get('type');
+      if (bookingType === 'tour') {
+        const tourBookingData = sessionStorage.getItem('tourBooking');
+        if (tourBookingData) {
+          const tourData = JSON.parse(tourBookingData);
+          console.log('Tour booking data loaded:', tourData);
+          console.log('Available departures:', tourData.availableDepartures);
+          
+          setTourBooking(tourData);
+          if (tourData.selectedDeparture) {
+            setSelectedDepartureId(tourData.selectedDeparture.id);
+            setBookingDate(tourData.selectedDeparture.departureDate.split('T')[0]);
+          } else if (tourData.availableDepartures && tourData.availableDepartures.length > 0) {
+            setSelectedDepartureId(tourData.availableDepartures[0].id);
+            setBookingDate(tourData.availableDepartures[0].departureDate.split('T')[0]);
+          } else {
+            // Fallback: allow manual date selection
+            console.warn('No available departures found, allowing manual date selection');
+            setBookingDate(new Date().toISOString().split('T')[0]);
+          }
+          setLoading(false);
+          return;
+        } else {
+          alert('Tour booking data not found');
+          router.push('/');
+          return;
+        }
+      }
+      
+      // Regular booking flow
       const bookingIds = searchParams.get('bookingIds')?.split(',') || [];
       if (bookingIds.length === 0) {
         alert('No bookings found');
@@ -186,6 +224,32 @@ function BookingCheckoutContent() {
     }
   };
 
+  const fetchSavedAddresses = async (token: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/addresses`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setAddresses(data);
+          // Auto-select default address
+          const defaultAddr = data.find((a: Address) => a.isDefault);
+          if (defaultAddr) {
+            setSelectedAddress(defaultAddr);
+          } else {
+            setSelectedAddress(data[0]);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching saved addresses:', error);
+    }
+  };
+
   const formatDate = (date: string | Date): string => {
     try {
       console.log('Formatting date:', date, 'Type:', typeof date);
@@ -225,7 +289,9 @@ function BookingCheckoutContent() {
     }
   };
 
-  const totalAmount = bookings.reduce((sum, booking) => sum + Number(booking.totalPrice), 0);
+  const totalAmount = tourBooking 
+    ? tourBooking.totalPrice 
+    : bookings.reduce((sum, booking) => sum + Number(booking.totalPrice), 0);
 
   const handlePayment = async () => {
     if (!user) return;
@@ -235,61 +301,150 @@ function BookingCheckoutContent() {
       const token = localStorage.getItem('token');
       
       if (paymentMethod === 'razorpay') {
-        // Create Razorpay order using the first booking ID
-        const razorpayOrder = await createRazorpayOrder(bookings[0].id, totalAmount);
-        
-        // Open Razorpay checkout
-        openCheckout(
-          {
-            order_id: razorpayOrder.id,
-            amount: totalAmount * 100, // Razorpay expects amount in paise
-            currency: currency,
-            name: marketplaceName,
-            description: `Booking Payment for ${bookings.length} booking(s)`,
-            prefill: {
-              name: user.firstName + ' ' + user.lastName,
-              email: user.email,
-              contact: user.phone || '',
-            },
-          },
-          async (response) => {
-            // onSuccess callback - response contains razorpay_order_id, razorpay_payment_id, razorpay_signature
-            try {
-              // Verify payment
-              const verified = await verifyPayment(
-                response.razorpay_order_id,
-                response.razorpay_payment_id,
-                response.razorpay_signature,
-                'success'
-              );
+        // Handle tour booking creation
+        if (tourBooking) {
+          // Create booking first for tours
+          const bookingResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                productId: tourBooking.productId,
+                userId: user.id,
+                vendorId: tourBooking.vendorId,
+                bookingDate: bookingDate,
+                numberOfGuests: tourBooking.numberOfGuests,
+                totalPrice: tourBooking.totalPrice,
+                specialRequests: specialRequests || null,
+                status: 'pending',
+                departureId: selectedDepartureId,
+              }),
+            }
+          );
 
-              if (verified) {
-                // Create payment record and update bookings
-                await handlePaymentSuccess(response.razorpay_payment_id, response.razorpay_order_id);
-              } else {
+          if (!bookingResponse.ok) {
+            const errorData = await bookingResponse.json().catch(() => ({}));
+            throw new Error(errorData.message || 'Failed to create booking');
+          }
+
+          const booking = await bookingResponse.json();
+          console.log('Booking created:', booking);
+          
+          // Create Razorpay order
+          console.log('Creating Razorpay order for booking:', booking.id, 'amount:', tourBooking.totalPrice);
+          const razorpayOrder = await createRazorpayOrder(booking.id, tourBooking.totalPrice);
+          console.log('Razorpay order created:', razorpayOrder);
+          
+          // Open Razorpay checkout
+          openCheckout(
+            {
+              order_id: razorpayOrder.id,
+              amount: tourBooking.totalPrice * 100,
+              currency: currency,
+              name: marketplaceName,
+              description: tourBooking.productName,
+              prefill: {
+                name: user.firstName + ' ' + user.lastName,
+                email: user.email,
+                contact: user.phone || '',
+              },
+            },
+            async (response) => {
+              try {
+                await verifyPayment(
+                  response.razorpay_order_id,
+                  response.razorpay_payment_id,
+                  response.razorpay_signature,
+                  'success'
+                );
+
+                // Update booking status
+                await fetch(
+                  `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}`,
+                  {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                      status: 'confirmed',
+                      paymentId: response.razorpay_payment_id,
+                    }),
+                  }
+                );
+
+                sessionStorage.removeItem('tourBooking');
+                router.push('/profile?tab=bookings&success=true');
+              } catch (error) {
+                console.error('Payment verification error:', error);
                 alert('Payment verification failed');
                 setLoading(false);
               }
-            } catch (error) {
-              console.error('Payment verification error:', error);
-              alert('Payment verification failed');
+            },
+            (error) => {
+              console.error('Payment failed:', error);
+              alert('Payment failed. Please try again.');
               setLoading(false);
             }
-          },
-          (error) => {
-            // onFailure callback
-            console.error('Payment failed:', error);
-            alert('Payment failed. Please try again.');
-            setLoading(false);
-          }
-        );
+          );
+        } else {
+          // Regular booking flow
+          const razorpayOrder = await createRazorpayOrder(bookings[0].id, totalAmount);
+          
+          openCheckout(
+            {
+              order_id: razorpayOrder.id,
+              amount: totalAmount * 100,
+              currency: currency,
+              name: marketplaceName,
+              description: `Booking Payment for ${bookings.length} booking(s)`,
+              prefill: {
+                name: user.firstName + ' ' + user.lastName,
+                email: user.email,
+                contact: user.phone || '',
+              },
+            },
+            async (response) => {
+              try {
+                const verified = await verifyPayment(
+                  response.razorpay_order_id,
+                  response.razorpay_payment_id,
+                  response.razorpay_signature,
+                  'success'
+                );
+
+                if (verified) {
+                  await handlePaymentSuccess(response.razorpay_payment_id, response.razorpay_order_id);
+                } else {
+                  alert('Payment verification failed');
+                  setLoading(false);
+                }
+              } catch (error) {
+                console.error('Payment verification error:', error);
+                alert('Payment verification failed');
+                setLoading(false);
+              }
+            },
+            (error) => {
+              console.error('Payment failed:', error);
+              alert('Payment failed. Please try again.');
+              setLoading(false);
+            }
+          );
+        }
       } else {
         // COD - just confirm bookings
         await confirmBookings();
       }
     } catch (error) {
       console.error('Payment error:', error);
-      alert('Payment failed. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Payment failed: ${errorMessage}\n\nPlease check:\n- Your internet connection\n- Payment gateway configuration\n- Backend server status`);
       setLoading(false);
     }
   };
@@ -419,24 +574,43 @@ function BookingCheckoutContent() {
             
             <div className="bg-muted rounded-lg p-6 mb-6">
               <h2 className="font-semibold text-foreground mb-4">Booking Summary</h2>
-              {bookings.map((booking, index) => (
-                <div key={booking.id} className="mb-4 pb-4 border-b border-border last:border-b-0">
+              {tourBooking ? (
+                <div className="mb-4">
                   <p className="text-sm text-muted-foreground">
-                    <strong>{booking.product?.name || 'Booking Service'}</strong>
+                    <strong>{tourBooking.productName}</strong>
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Date: {formatDate(booking.bookingDate)}
+                    {tourBooking.numberOfGuests} {tourBooking.numberOfGuests === 1 ? 'Person' : 'People'}
                   </p>
-                  {booking.startTime && booking.endTime && (
+                  {tourBooking.departureDate && (
                     <p className="text-sm text-muted-foreground">
-                      Time: {booking.startTime} - {booking.endTime}
+                      Departure: {new Date(tourBooking.departureDate).toLocaleDateString()}
                     </p>
                   )}
                   <p className="text-sm font-semibold text-foreground">
-                    {formatPrice(Number(booking.totalPrice), currency)}
+                    {formatPrice(tourBooking.totalPrice, currency)}
                   </p>
                 </div>
-              ))}
+              ) : (
+                bookings.map((booking) => (
+                  <div key={booking.id} className="mb-4 pb-4 border-b border-border last:border-b-0">
+                    <p className="text-sm text-muted-foreground">
+                      <strong>{booking.product?.name || 'Booking Service'}</strong>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Date: {formatDate(booking.bookingDate)}
+                    </p>
+                    {booking.startTime && booking.endTime && (
+                      <p className="text-sm text-muted-foreground">
+                        Time: {booking.startTime} - {booking.endTime}
+                      </p>
+                    )}
+                    <p className="text-sm font-semibold text-foreground">
+                      {formatPrice(Number(booking.totalPrice), currency)}
+                    </p>
+                  </div>
+                ))
+              )}
               <div className="pt-4 border-t border-border">
                 <p className="text-lg font-bold text-foreground">
                   Total: {formatPrice(totalAmount, currency)}
@@ -452,7 +626,7 @@ function BookingCheckoutContent() {
                 Continue Shopping
               </Link>
               <Link
-                href="/orders"
+                href="/profile"
                 className="px-6 py-3 border border-border text-foreground rounded-lg hover:bg-muted transition"
               >
                 View My Bookings
@@ -469,18 +643,18 @@ function BookingCheckoutContent() {
       <ThemeRenderer component="header" showLocationFilter={false} showBookingsLink={false} />
       
       <div className="container mx-auto px-4 py-8">
-        {/* Progress Steps */}
+        {/* Progress Steps - Skip address step for tours */}
         <div className="max-w-4xl mx-auto mb-8">
           <div className="flex items-center justify-between">
-            {(['review', 'address', 'payment'] as CheckoutStep[]).map((step, index) => (
+            {(tourBooking ? ['review', 'payment'] : ['review', 'address', 'payment']).map((step, index, arr) => (
               <div key={step} className="flex items-center flex-1">
                 <div className="flex items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    isStepCompleted(step) || currentStep === step
+                    isStepCompleted(step as CheckoutStep) || currentStep === step
                       ? 'bg-blue-600 text-white'
                       : 'bg-muted text-muted-foreground'
                   }`}>
-                    {isStepCompleted(step) ? (
+                    {isStepCompleted(step as CheckoutStep) ? (
                       <CheckCircle className="w-6 h-6" />
                     ) : (
                       <span>{index + 1}</span>
@@ -490,9 +664,9 @@ function BookingCheckoutContent() {
                     {step}
                   </span>
                 </div>
-                {index < 2 && (
+                {index < arr.length - 1 && (
                   <div className={`flex-1 h-1 mx-4 ${
-                    isStepCompleted((['review', 'address', 'payment'] as CheckoutStep[])[index + 1])
+                    isStepCompleted(arr[index + 1] as CheckoutStep)
                       ? 'bg-blue-600'
                       : 'bg-muted'
                   }`} />
@@ -509,42 +683,131 @@ function BookingCheckoutContent() {
               <div className="bg-card rounded-lg shadow-sm p-6">
                 <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
                   <Calendar className="w-6 h-6" />
-                  Review Your Bookings
+                  {tourBooking ? 'Tour Booking' : 'Review Your Bookings'}
                 </h2>
 
-                <div className="space-y-4">
-                  {bookings.map((booking) => (
-                    <div key={booking.id} className="flex gap-4 p-4 border border-border rounded-lg">
-                      <img
-                        src={booking.product?.featuredImage || '/placeholder-image.svg'}
-                        alt={booking.product?.name || 'Booking'}
-                        className="w-24 h-24 object-cover rounded"
-                      />
+                {tourBooking ? (
+                  <div className="space-y-4">
+                    <div className="flex gap-4 p-4 border border-border rounded-lg">
+                      {tourBooking.productImage && (
+                        <img
+                          src={tourBooking.productImage}
+                          alt={tourBooking.productName}
+                          className="w-24 h-24 object-cover rounded"
+                        />
+                      )}
                       <div className="flex-1">
-                        <h3 className="font-semibold text-foreground">{booking.product?.name || 'Booking Service'}</h3>
+                        <h3 className="font-semibold text-foreground">{tourBooking.productName}</h3>
                         <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <Calendar className="w-4 h-4" />
-                          {formatDate(booking.bookingDate)}
+                          <Users className="w-4 h-4" />
+                          {tourBooking.numberOfGuests} {tourBooking.numberOfGuests === 1 ? 'Person' : 'People'}
                         </p>
-                        {booking.startTime && booking.endTime && (
+                        {tourBooking.departureDate && (
                           <p className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {booking.startTime} - {booking.endTime}
+                            <Calendar className="w-4 h-4" />
+                            Departure: {new Date(tourBooking.departureDate).toLocaleDateString()}
                           </p>
                         )}
                         <p className="text-lg font-bold text-foreground mt-2">
-                          {formatPrice(Number(booking.totalPrice), currency)}
+                          {formatPrice(tourBooking.totalPrice, currency)}
                         </p>
                       </div>
                     </div>
-                  ))}
-                </div>
+
+                    <div className="space-y-4 p-4 border border-border rounded-lg bg-blue-50">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Select Departure Date <span className="text-red-500">*</span>
+                        </label>
+                        <p className="text-xs text-gray-600 mb-2">Choose from available departure dates</p>
+                        {tourBooking.availableDepartures && tourBooking.availableDepartures.length > 0 ? (
+                          <select
+                            value={selectedDepartureId}
+                            onChange={(e) => {
+                              const departure = tourBooking.availableDepartures.find(d => d.id === e.target.value);
+                              if (departure) {
+                                setSelectedDepartureId(departure.id);
+                                setBookingDate(departure.departureDate.split('T')[0]);
+                              }
+                            }}
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                          >
+                            {tourBooking.availableDepartures.map((departure) => (
+                              <option key={departure.id} value={departure.id}>
+                                {new Date(departure.departureDate).toLocaleDateString('en-US', { 
+                                  weekday: 'short',
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric' 
+                                })} - {departure.availableSeats} seats available
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div>
+                            <input
+                              type="date"
+                              value={bookingDate}
+                              onChange={(e) => setBookingDate(e.target.value)}
+                              min={new Date().toISOString().split('T')[0]}
+                              required
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                            />
+                            <p className="text-xs text-amber-600 mt-1">⚠️ No pre-scheduled departures. Please contact vendor to confirm availability.</p>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Special Requests (Optional)
+                        </label>
+                        <textarea
+                          value={specialRequests}
+                          onChange={(e) => setSpecialRequests(e.target.value)}
+                          rows={3}
+                          placeholder="Any special requirements..."
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => (
+                      <div key={booking.id} className="flex gap-4 p-4 border border-border rounded-lg">
+                        <img
+                          src={booking.product?.featuredImage || '/placeholder-image.svg'}
+                          alt={booking.product?.name || 'Booking'}
+                          className="w-24 h-24 object-cover rounded"
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground">{booking.product?.name || 'Booking Service'}</h3>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <Calendar className="w-4 h-4" />
+                            {formatDate(booking.bookingDate)}
+                          </p>
+                          {booking.startTime && booking.endTime && (
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {booking.startTime} - {booking.endTime}
+                            </p>
+                          )}
+                          <p className="text-lg font-bold text-foreground mt-2">
+                            {formatPrice(Number(booking.totalPrice), currency)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <button
-                  onClick={() => setCurrentStep('address')}
-                  className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                  onClick={() => tourBooking ? setCurrentStep('payment') : setCurrentStep('address')}
+                  disabled={tourBooking && !bookingDate}
+                  className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  Proceed to Address
+                  {tourBooking ? 'Proceed to Payment' : 'Proceed to Address'}
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
@@ -822,14 +1085,32 @@ function BookingCheckoutContent() {
           {/* Order Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-card rounded-lg shadow-sm p-6 sticky top-24">
-              <h3 className="text-lg font-bold text-foreground mb-4">Booking Summary</h3>
+              <h3 className="text-lg font-bold text-foreground mb-4">
+                {tourBooking ? 'Tour Summary' : 'Booking Summary'}
+              </h3>
               
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Bookings ({bookings.length})</span>
-                  <span className="font-semibold">{formatPrice(totalAmount, currency)}</span>
+              {tourBooking ? (
+                <div className="space-y-3 mb-4">
+                  <div className="text-sm text-muted-foreground">
+                    <strong>{tourBooking.productName}</strong>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Number of People</span>
+                    <span className="font-semibold">{tourBooking.numberOfGuests}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Price per Person</span>
+                    <span className="font-semibold">{formatPrice(tourBooking.pricePerPerson, currency)}</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Bookings ({bookings.length})</span>
+                    <span className="font-semibold">{formatPrice(totalAmount, currency)}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="border-t pt-4">
                 <div className="flex justify-between font-bold text-lg">

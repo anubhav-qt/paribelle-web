@@ -8,6 +8,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Star, Heart, Share2, Package, ArrowLeft, Calendar, Clock, CreditCard, ExternalLink, ShoppingCart, Facebook, Twitter, Linkedin, Link as LinkIcon, Check, XCircle } from 'lucide-react';
 import BookingCalendar from '@/components/BookingCalendar';
+import TourDepartureSelector from '@/components/TourDepartureSelector';
 import ProductImageGallery from '@/components/ProductImageGallery';
 import VariationSelector from '@/components/VariationSelector';
 import ProductVariantSelector from '@/components/ProductVariantSelector';
@@ -124,6 +125,7 @@ export default function ProductDetailPage() {
   const [userOrderItemId, setUserOrderItemId] = useState<string | undefined>();
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [tourDepartures, setTourDepartures] = useState<any[]>([]);
 
   // Clamp quantity to available stock whenever stock or variant changes
   useEffect(() => {
@@ -301,7 +303,37 @@ export default function ProductDetailPage() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/slug/${productSlug}`);
       if (response.ok) {
         const productData = await response.json();
+        console.log('Product data:', { 
+          productType: productData.productType, 
+          hasTour: !!productData.attributes?.tour,
+          tourMode: productData.attributes?.tour?.tourMode,
+          productId: productData.id
+        });
         setProduct(productData);
+        
+        // Fetch tour departures with live booking counts if it's a tour
+        if (productData.productType === 'booking' && productData.attributes?.tour?.tourMode) {
+          console.log('Fetching tour departures from API...');
+          try {
+            const departuresResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/tours/${productData.id}/departures`
+            );
+            console.log('Departures response status:', departuresResponse.status);
+            if (departuresResponse.ok) {
+              const departuresData = await departuresResponse.json();
+              console.log('Tour departures with booking counts:', departuresData);
+              setTourDepartures(departuresData);
+            } else {
+              console.error('Failed to fetch departures:', await departuresResponse.text());
+            }
+          } catch (error) {
+            console.error('Error fetching tour departures:', error);
+            // Fallback to product data departures
+            setTourDepartures(productData.attributes?.tour?.departures || []);
+          }
+        } else {
+          console.log('Not fetching departures - not a tour or missing tour mode');
+        }
         
         // Check if user has purchased this product
         if (productData.id) {
@@ -342,26 +374,136 @@ export default function ProductDetailPage() {
     setBookingLoading(true);
 
     try {
+      // Handle tour bookings
+      if (product.attributes?.tour?.tourMode && selectedBooking.departureId) {
+        const bookingData = {
+          productId: product.id,
+          vendorId: product.vendorId || '',
+          userId: user.id,
+          bookingDate: selectedBooking.date, // Already a string in ISO format
+          startTime: null,
+          endTime: null,
+          numberOfGuests: 1, // Default to 1, could be made configurable
+          totalPrice: selectedBooking.totalPrice,
+          status: 'pending',
+          specialRequests: `Tour Departure ID: ${selectedBooking.departureId}`,
+        };
+
+        console.log('Creating tour booking with data:', bookingData);
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(bookingData),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Tour booking created successfully:', result);
+          router.push(`/checkout?bookingIds=${result.id}`);
+        } else {
+          const error = await response.json().catch(() => ({ message: 'Failed to create booking' }));
+          console.error('Booking error:', error);
+          
+          let errorMessage = 'Failed to create booking. ';
+          if (response.status === 401) {
+            errorMessage += 'Your session has expired. Please log out and log back in.';
+          } else if (response.status === 400) {
+            errorMessage += error.message || 'Please check your information and try again.';
+          } else if (response.status === 500) {
+            errorMessage += 'A server error occurred. If you recently reset the database, please log out and log back in.';
+          } else {
+            errorMessage += error.message || 'Please try again later.';
+          }
+          
+          alert(errorMessage);
+        }
+        return;
+      }
+
       // For daily bookings, we might need to create multiple booking records
       if (product.attributes?.booking?.durationUnit === 'days') {
-        const startDate = new Date(selectedBooking.startDate);
-        const endDate = new Date(selectedBooking.endDate);
+        // Use selectedDates if available, otherwise fall back to date range
         const bookings = [];
+        
+        if (selectedBooking.selectedDates && selectedBooking.selectedDates.length > 0) {
+          // Use the individually selected dates
+          for (const date of selectedBooking.selectedDates) {
+            const dateString = new Date(date).toISOString().split('T')[0];
+            const bookingData = {
+              productId: product.id,
+              vendorId: product.vendorId || '',
+              userId: user.id,
+              bookingDate: dateString,
+              startTime: null,
+              endTime: null,
+              customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Guest',
+              customerEmail: user.email || '',
+              customerPhone: user.phone || '',
+              totalPrice: Number(product.price),
+              status: 'pending',
+            };
+            bookings.push(bookingData);
+          }
+        } else {
+          // Fallback to date range (for backward compatibility)
+          const startDate = new Date(selectedBooking.startDate);
+          const endDate = new Date(selectedBooking.endDate);
+          
+          // First, check availability for all dates in the range
+          const startDateStr = startDate.toISOString().split('T')[0];
+          const endDateStr = endDate.toISOString().split('T')[0];
+          
+          const availabilityResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/availability/${product.id}?startDate=${startDateStr}&endDate=${endDateStr}`
+          );
+          
+          if (!availabilityResponse.ok) {
+            alert('Failed to check availability. Please try again.');
+            return;
+          }
+          
+          const availabilityData = await availabilityResponse.json();
+          const unavailableDates: string[] = [];
+          
+          // Check which dates are unavailable
+          availabilityData.forEach((dateInfo: any) => {
+            if (dateInfo.slots && dateInfo.slots.length > 0) {
+              const fullDaySlot = dateInfo.slots.find((s: any) => s.startTime === 'full-day');
+              if (fullDaySlot && !fullDaySlot.available) {
+                unavailableDates.push(dateInfo.date);
+              }
+            }
+          });
+          
+          // If any dates are unavailable, show error and stop
+          if (unavailableDates.length > 0) {
+            const datesList = unavailableDates.map(d => new Date(d).toLocaleDateString()).join(', ');
+            alert(`The following dates are not available:\\n\\n${datesList}\\n\\nPlease select different dates.`);
+            return;
+          }
 
-        // Create a booking for each day in the range with PENDING status
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          const dateString = new Date(d).toISOString().split('T')[0]; // Create snapshot of current date
-          const bookingData = {
-            productId: product.id,
-            vendorId: product.vendorId || '',
-            userId: user.id,
-            bookingDate: dateString,
-            startTime: null,
-            endTime: null,
-            totalPrice: Number(product.price),
-            status: 'pending',
-          };
-          bookings.push(bookingData);
+          // Create a booking for each day in the range with PENDING status
+          for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateString = new Date(d).toISOString().split('T')[0];
+            const bookingData = {
+              productId: product.id,
+              vendorId: product.vendorId || '',
+              userId: user.id,
+              bookingDate: dateString,
+              startTime: null,
+              endTime: null,
+              customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Guest',
+              customerEmail: user.email || '',
+              customerPhone: user.phone || '',
+              totalPrice: Number(product.price),
+              status: 'pending',
+            };
+            bookings.push(bookingData);
+          }
         }
 
         // Create all bookings
@@ -395,9 +537,22 @@ export default function ProductDetailPage() {
           console.log('All bookings created successfully, redirecting to checkout');
           console.log('Booking IDs:', bookingIds);
           // Redirect to checkout with booking IDs
-          router.push(`/checkout/booking?bookingIds=${bookingIds.join(',')}`);
+          router.push(`/checkout?bookingIds=${bookingIds.join(',')}`);
         } else {
-          alert('Some bookings failed. Please try again.');
+          const errors = await Promise.all(responses.map(r => r.ok ? null : r.json().catch(() => ({ message: 'Unknown error' }))));
+          const firstError = errors.find(e => e);
+          console.error('Booking errors:', errors);
+          
+          let errorMessage = 'Failed to create bookings. ';
+          if (responses.some(r => r.status === 401)) {
+            errorMessage += 'Your session has expired. Please log out and log back in.';
+          } else if (responses.some(r => r.status === 500)) {
+            errorMessage += 'A server error occurred. If you recently reset the database, please log out and log back in.';
+          } else {
+            errorMessage += firstError?.message || 'Please check your information and try again.';
+          }
+          
+          alert(errorMessage);
         }
       } else {
         // For hourly/session bookings - handle multiple slots
@@ -414,6 +569,9 @@ export default function ProductDetailPage() {
               bookingDate: selectedBooking.startDate.toISOString().split('T')[0],
               startTime,
               endTime,
+              customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Guest',
+              customerEmail: user.email || '',
+              customerPhone: user.phone || '',
               totalPrice: Number(product.price),
               status: 'pending',
             };
@@ -443,9 +601,22 @@ export default function ProductDetailPage() {
             
             console.log('All bookings created successfully, redirecting to checkout');
             // Redirect to checkout with booking IDs
-            router.push(`/checkout/booking?bookingIds=${bookingIds.join(',')}`);
+            router.push(`/checkout?bookingIds=${bookingIds.join(',')}`);
           } else {
-            alert('Some bookings failed. Please try again.');
+            const errors = await Promise.all(responses.map(r => r.ok ? null : r.json().catch(() => ({ message: 'Unknown error' }))));
+            const firstError = errors.find(e => e);
+            console.error('Booking errors:', errors);
+            
+            let errorMessage = 'Failed to create bookings. ';
+            if (responses.some(r => r.status === 401)) {
+              errorMessage += 'Your session has expired. Please log out and log back in.';
+            } else if (responses.some(r => r.status === 500)) {
+              errorMessage += 'A server error occurred. If you recently reset the database, please log out and log back in.';
+            } else {
+              errorMessage += firstError?.message || 'Please try again later.';
+            }
+            
+            alert(errorMessage);
           }
         } else {
           // Single slot booking with PENDING status
@@ -456,6 +627,9 @@ export default function ProductDetailPage() {
             bookingDate: selectedBooking.startDate.toISOString().split('T')[0],
             startTime: selectedBooking.startTime || null,
             endTime: selectedBooking.endTime || null,
+            customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Guest',
+            customerEmail: user.email || '',
+            customerPhone: user.phone || '',
             totalPrice: selectedBooking.totalPrice,
             status: 'pending',
           };
@@ -475,10 +649,23 @@ export default function ProductDetailPage() {
             const result = await response.json();
             console.log('Booking created successfully:', result);
             // Redirect to checkout with booking ID
-            router.push(`/checkout/booking?bookingIds=${result.id}`);
+            router.push(`/checkout?bookingIds=${result.id}`);
           } else {
-            const error = await response.json();
-            alert(`Failed to create booking: ${JSON.stringify(error)}`);
+            const error = await response.json().catch(() => ({ message: 'Failed to create booking' }));
+            console.error('Booking error:', error);
+            
+            let errorMessage = 'Failed to create booking. ';
+            if (response.status === 401) {
+              errorMessage += 'Your session has expired. Please log out and log back in.';
+            } else if (response.status === 400) {
+              errorMessage += error.message || 'Please check your information and try again.';
+            } else if (response.status === 500) {
+              errorMessage += 'A server error occurred. If you recently reset the database, please log out and log back in.';
+            } else {
+              errorMessage += error.message || 'Please try again later.';
+            }
+            
+            alert(errorMessage);
           }
         }
       }
@@ -907,7 +1094,26 @@ export default function ProductDetailPage() {
                 </div>
               ) : product.productType === 'booking' ? (
                 <div className="mb-6">
-                  {product.attributes?.booking ? (
+                  {product.attributes?.tour?.tourMode ? (
+                    <>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-foreground">
+                        <Calendar className="w-5 h-5 text-primary" />
+                        Select Tour Departure
+                      </h3>
+                      <TourDepartureSelector
+                        departures={tourDepartures.length > 0 ? tourDepartures : product.attributes.tour.departures}
+                        onSelectDeparture={(departure) => {
+                          setSelectedBooking({
+                            date: departure.departureDate,
+                            startTime: null,
+                            endTime: null,
+                            totalPrice: departure.pricePerPerson,
+                            departureId: departure.id,
+                          });
+                        }}
+                      />
+                    </>
+                  ) : product.attributes?.booking ? (
                     <>
                       <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-foreground">
                         <Calendar className="w-5 h-5 text-primary" />
@@ -1171,7 +1377,11 @@ export default function ProductDetailPage() {
           <div className="border-t border-border p-8">
             <h2 className="text-2xl font-bold mb-4 text-foreground">Product Description</h2>
             <div className="prose max-w-none text-muted-foreground">
-              {product.description || product.shortDescription}
+              {product.description ? (
+                <div dangerouslySetInnerHTML={{ __html: product.description }} />
+              ) : (
+                <p>{product.shortDescription}</p>
+              )}
             </div>
           </div>
 

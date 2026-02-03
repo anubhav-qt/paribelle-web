@@ -30,7 +30,9 @@ async function getDefaultTheme() {
     if (response.ok) {
       const data = await response.json();
       if (data.value) {
-        return JSON.parse(data.value);
+        // If value is already an object, return it directly
+        // If it's a string, parse it as JSON
+        return typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
     }
   } catch (error) {
