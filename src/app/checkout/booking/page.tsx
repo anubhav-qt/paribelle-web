@@ -116,48 +116,77 @@ function BookingCheckoutContent() {
       const parsedUser = JSON.parse(userStr);
       setUser(parsedUser);
       
-      // Fetch saved addresses
-      fetchSavedAddresses(token);
-      
-      // Check if this is a tour booking
-      const bookingType = searchParams.get('type');
-      if (bookingType === 'tour') {
-        const tourBookingData = sessionStorage.getItem('tourBooking');
-        if (tourBookingData) {
-          const tourData = JSON.parse(tourBookingData);
-          console.log('Tour booking data loaded:', tourData);
-          console.log('Available departures:', tourData.availableDepartures);
+      // Validate user session by checking if user exists in database
+      const validateAndProceed = async () => {
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/${parsedUser.id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            }
+          );
           
-          setTourBooking(tourData);
-          if (tourData.selectedDeparture) {
-            setSelectedDepartureId(tourData.selectedDeparture.id);
-            setBookingDate(tourData.selectedDeparture.departureDate.split('T')[0]);
-          } else if (tourData.availableDepartures && tourData.availableDepartures.length > 0) {
-            setSelectedDepartureId(tourData.availableDepartures[0].id);
-            setBookingDate(tourData.availableDepartures[0].departureDate.split('T')[0]);
-          } else {
-            // Fallback: allow manual date selection
-            console.warn('No available departures found, allowing manual date selection');
-            setBookingDate(new Date().toISOString().split('T')[0]);
+          if (!response.ok) {
+            // User doesn't exist in database - session is stale
+            alert('Your session has expired or is invalid. Please log in again.');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+            return;
           }
-          setLoading(false);
-          return;
-        } else {
-          alert('Tour booking data not found');
+        } catch (error) {
+          console.error('Error validating user:', error);
+          // Continue anyway if validation fails due to network issues
+        }
+        
+        // Fetch saved addresses
+        fetchSavedAddresses(token);
+        
+        // Check if this is a tour booking
+        const bookingType = searchParams.get('type');
+        if (bookingType === 'tour') {
+          const tourBookingData = sessionStorage.getItem('tourBooking');
+          if (tourBookingData) {
+            const tourData = JSON.parse(tourBookingData);
+            console.log('Tour booking data loaded:', tourData);
+            console.log('Available departures:', tourData.availableDepartures);
+            
+            setTourBooking(tourData);
+            if (tourData.selectedDeparture) {
+              setSelectedDepartureId(tourData.selectedDeparture.id);
+              setBookingDate(tourData.selectedDeparture.departureDate.split('T')[0]);
+            } else if (tourData.availableDepartures && tourData.availableDepartures.length > 0) {
+              setSelectedDepartureId(tourData.availableDepartures[0].id);
+              setBookingDate(tourData.availableDepartures[0].departureDate.split('T')[0]);
+            } else {
+              // Fallback: allow manual date selection
+              console.warn('No available departures found, allowing manual date selection');
+              setBookingDate(new Date().toISOString().split('T')[0]);
+            }
+            setLoading(false);
+            return;
+          } else {
+            alert('Tour booking data not found');
+            router.push('/');
+            return;
+          }
+        }
+        
+        // Regular booking flow
+        const bookingIds = searchParams.get('bookingIds')?.split(',') || [];
+        if (bookingIds.length === 0) {
+          alert('No bookings found');
           router.push('/');
           return;
         }
-      }
+        
+        fetchBookings(bookingIds, token);
+      };
       
-      // Regular booking flow
-      const bookingIds = searchParams.get('bookingIds')?.split(',') || [];
-      if (bookingIds.length === 0) {
-        alert('No bookings found');
-        router.push('/');
-        return;
-      }
-      
-      fetchBookings(bookingIds, token);
+      // Call the async validation and proceed function
+      validateAndProceed();
     } catch (error) {
       console.error('Error parsing user data:', error);
     }
@@ -328,6 +357,18 @@ function BookingCheckoutContent() {
 
           if (!bookingResponse.ok) {
             const errorData = await bookingResponse.json().catch(() => ({}));
+            
+            // Check if it's a USER_NOT_FOUND error (session expired)
+            if (errorData.error === 'USER_NOT_FOUND' || errorData.message?.includes('session has expired')) {
+              alert('Your session has expired. Please log in again.');
+              // Clear localStorage
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              // Redirect to login with return URL
+              router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+              return;
+            }
+            
             throw new Error(errorData.message || 'Failed to create booking');
           }
 

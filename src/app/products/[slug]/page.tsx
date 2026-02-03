@@ -403,7 +403,7 @@ export default function ProductDetailPage() {
         if (response.ok) {
           const result = await response.json();
           console.log('Tour booking created successfully:', result);
-          router.push(`/checkout?bookingIds=${result.id}`);
+          router.push(`/checkout/booking?bookingIds=${result.id}`);
         } else {
           const error = await response.json().catch(() => ({ message: 'Failed to create booking' }));
           console.error('Booking error:', error);
@@ -537,7 +537,7 @@ export default function ProductDetailPage() {
           console.log('All bookings created successfully, redirecting to checkout');
           console.log('Booking IDs:', bookingIds);
           // Redirect to checkout with booking IDs
-          router.push(`/checkout?bookingIds=${bookingIds.join(',')}`);
+          router.push(`/checkout/booking?bookingIds=${bookingIds.join(',')}`);
         } else {
           const errors = await Promise.all(responses.map(r => r.ok ? null : r.json().catch(() => ({ message: 'Unknown error' }))));
           const firstError = errors.find(e => e);
@@ -601,7 +601,7 @@ export default function ProductDetailPage() {
             
             console.log('All bookings created successfully, redirecting to checkout');
             // Redirect to checkout with booking IDs
-            router.push(`/checkout?bookingIds=${bookingIds.join(',')}`);
+            router.push(`/checkout/booking?bookingIds=${bookingIds.join(',')}`);
           } else {
             const errors = await Promise.all(responses.map(r => r.ok ? null : r.json().catch(() => ({ message: 'Unknown error' }))));
             const firstError = errors.find(e => e);
@@ -649,7 +649,7 @@ export default function ProductDetailPage() {
             const result = await response.json();
             console.log('Booking created successfully:', result);
             // Redirect to checkout with booking ID
-            router.push(`/checkout?bookingIds=${result.id}`);
+            router.push(`/checkout/booking?bookingIds=${result.id}`);
           } else {
             const error = await response.json().catch(() => ({ message: 'Failed to create booking' }));
             console.error('Booking error:', error);

@@ -216,6 +216,10 @@ function CheckoutContent() {
       if (tourData) {
         try {
           const parsed = JSON.parse(tourData);
+          console.log('Tour booking data loaded from sessionStorage:', parsed);
+          console.log('Tour totalPrice:', parsed.totalPrice);
+          console.log('Tour pricePerPerson:', parsed.pricePerPerson);
+          console.log('Tour numberOfGuests:', parsed.numberOfGuests);
           setTourBooking(parsed);
           setSelectedDepartureId(parsed.selectedDeparture?.id || '');
           setBookingDate(parsed.selectedDeparture?.departureDate || '');
@@ -326,9 +330,18 @@ function CheckoutContent() {
   };
   
   const { basePrice: subtotalBeforeTax, tax: extractedTax, totalWithTax: subtotalWithTax } = calculateTaxBreakdown();
-  const shippingCost = subtotalWithTax > 500 ? 0 : 50;
-  const tax = extractedTax; // Use extracted tax from inclusive prices
-  const totalBeforeWallet = subtotalWithTax + shippingCost; // Total before wallet discount
+  
+  // For tours and bookings, use their respective totalPrice
+  const orderSubtotal = productType === 'tour' && tourBooking
+    ? tourBooking.totalPrice
+    : productType === 'booking'
+    ? bookings.reduce((sum, b) => sum + Number(b.totalPrice || 0), 0)
+    : subtotalWithTax;
+  
+  // Shipping only applies to physical products
+  const shippingCost = productType === 'physical' && subtotalWithTax > 500 ? 0 : productType === 'physical' ? 50 : 0;
+  const tax = productType === 'physical' ? extractedTax : 0; // Tax only for physical products
+  const totalBeforeWallet = orderSubtotal + shippingCost; // Total before wallet discount
   const walletDiscount = useWalletBalance ? Math.min(walletBalance, totalBeforeWallet) : 0;
   const finalTotal = totalBeforeWallet - walletDiscount; // Final total after wallet discount
 
@@ -1089,21 +1102,25 @@ function CheckoutContent() {
             
             <div className="space-y-3 mb-4">
               <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
-                <span>{formatPrice(subtotalWithTax, 'INR')}</span>
+                <span>Subtotal{productType === 'physical' ? ` (${totalItems} items)` : ''}</span>
+                <span>{formatPrice(orderSubtotal, currency)}</span>
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground/70 -mt-1">
-                <span className="pl-4">• Base Price</span>
-                <span>{formatPrice(subtotalBeforeTax, 'INR')}</span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground/70">
-                <span className="pl-4">• GST (included)</span>
-                <span>{formatPrice(tax, 'INR')}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Shipping</span>
-                <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}</span>
-              </div>
+              {productType === 'physical' && (
+                <>
+                  <div className="flex justify-between text-xs text-muted-foreground/70 -mt-1">
+                    <span className="pl-4">• Base Price</span>
+                    <span>{formatPrice(subtotalBeforeTax, 'INR')}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground/70">
+                    <span className="pl-4">• GST (included)</span>
+                    <span>{formatPrice(tax, 'INR')}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Shipping</span>
+                    <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}</span>
+                  </div>
+                </>
+              )}
               
               {/* Wallet Balance Section */}
               {walletBalance > 0 && useWalletBalance && walletDiscount > 0 && (
@@ -1361,22 +1378,26 @@ function CheckoutContent() {
             <div className="space-y-3 mb-4">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal ({totalItems} items)</span>
-                <span>{formatPrice(subtotalWithTax, 'INR')}</span>
+                <span>{formatPrice(orderSubtotal, currency)}</span>
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground/70 -mt-1">
-                <span className="pl-4">• Base Price</span>
-                <span>{formatPrice(subtotalBeforeTax, 'INR')}</span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground/70">
-                <span className="pl-4">• GST</span>
-                <span>{formatPrice(tax, 'INR')}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Shipping</span>
-                <span className={shippingCost === 0 ? 'text-green-600' : ''}>
-                  {shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}
-                </span>
-              </div>
+              {productType === 'physical' && (
+                <>
+                  <div className="flex justify-between text-xs text-muted-foreground/70 -mt-1">
+                    <span className="pl-4">• Base Price</span>
+                    <span>{formatPrice(subtotalBeforeTax, 'INR')}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground/70">
+                    <span className="pl-4">• GST</span>
+                    <span>{formatPrice(tax, 'INR')}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Shipping</span>
+                    <span className={shippingCost === 0 ? 'text-green-600' : ''}>
+                      {shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}
+                    </span>
+                  </div>
+                </>
+              )}
               
               {/* Wallet Balance Section */}
               {walletBalance > 0 && (
@@ -1546,36 +1567,52 @@ function CheckoutContent() {
             <h3 className="text-lg font-bold mb-4 text-foreground">Order Summary</h3>
             
             <div className="space-y-2 mb-4 text-sm">
-              {items.slice(0, 3).map((item) => (
+              {productType === 'physical' && items.slice(0, 3).map((item) => (
                 <div key={item.id} className="flex justify-between text-muted-foreground">
                   <span className="truncate">{item.name} x{item.quantity}</span>
                   <span>{formatPrice(item.price * item.quantity, 'INR')}</span>
                 </div>
               ))}
-              {items.length > 3 && (
+              {productType === 'physical' && items.length > 3 && (
                 <p className="text-muted-foreground text-xs">
                   +{items.length - 3} more items
                 </p>
               )}
+              {productType === 'tour' && tourBooking && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span className="truncate">{tourBooking.productName}</span>
+                  <span>{formatPrice(tourBooking.totalPrice, currency)}</span>
+                </div>
+              )}
+              {productType === 'booking' && bookings.map((booking) => (
+                <div key={booking.id} className="flex justify-between text-muted-foreground">
+                  <span className="truncate">{booking.product?.name || 'Booking'}</span>
+                  <span>{formatPrice(Number(booking.totalPrice || 0), currency)}</span>
+                </div>
+              ))}
             </div>
             
             <div className="border-t border-border pt-3 space-y-2 mb-4">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
-                <span>{formatPrice(subtotalWithTax, 'INR')}</span>
+                <span>{formatPrice(orderSubtotal, currency)}</span>
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground/70 -mt-1">
-                <span className="pl-4">• Base Price</span>
-                <span>{formatPrice(subtotalBeforeTax, 'INR')}</span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground/70">
-                <span className="pl-4">• GST (included)</span>
-                <span>{formatPrice(tax, 'INR')}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Shipping</span>
-                <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}</span>
-              </div>
+              {productType === 'physical' && (
+                <>
+                  <div className="flex justify-between text-xs text-muted-foreground/70 -mt-1">
+                    <span className="pl-4">• Base Price</span>
+                    <span>{formatPrice(subtotalBeforeTax, 'INR')}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground/70">
+                    <span className="pl-4">• GST (included)</span>
+                    <span>{formatPrice(tax, 'INR')}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Shipping</span>
+                    <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}</span>
+                  </div>
+                </>
+              )}
               <div className="border-t border-border pt-3 flex justify-between font-bold text-lg text-foreground">
                 <span>Total</span>
                 <span>{formatPrice(finalTotal, 'INR')}</span>
