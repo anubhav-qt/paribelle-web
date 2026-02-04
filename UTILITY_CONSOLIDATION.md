@@ -1,11 +1,11 @@
 # Utility Functions Consolidation
 
 ## Overview
-Successfully consolidated duplicate utility functions across the codebase into centralized utility files.
+Successfully consolidated  duplicate utility functions across the codebase into centralized utility files.
 
 ## New Utility Files Created
 
-### 1. `/lib/utils/status.ts`
+### 1. `/lib/utils/status.ts` 
 **Purpose:** Centralized status color management for orders, invoices, vendors, products, and KYC
 
 **Functions:**
