@@ -11,10 +11,6 @@
       "master": true
     }
   },
-  "github": {
-    "silent": false,
-    "autoAlias": true
-  },
   "functions": {
     "app/**/*": {
       "maxDuration": 60
