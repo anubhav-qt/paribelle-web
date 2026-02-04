@@ -22,8 +22,5 @@
   "env": {
     "NEXT_PUBLIC_API_URL": "https://marketplace-backend-prqr.onrender.com/api/v1",
     "NEXT_PUBLIC_APP_URL": "https://marketplace-web-smoky.vercel.app"
-  },
-  "typescript": {
-    "ignoreBuildErrors": false
   }
 }
