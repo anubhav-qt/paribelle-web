@@ -2,7 +2,7 @@
 
 A modern, scalable multi-vendor marketplace built with Next.js, NestJS, and React Native. This platform enables multiple vendors to sell their products while providing customers with a unified shopping experience.
 
-## 🎯 Project Goals are
+## 🎯 Project Goals
 
 - **Multi-Vendor Support**: Enable unlimited vendors to create stores and manage products independently
 - **Unified Customer Experience**: Single platform for customers to browse and purchase from multiple vendors
