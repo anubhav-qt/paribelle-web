@@ -2,18 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MapPin, Plus, Search } from 'lucide-react';
-
-interface City {
-  id: string;
-  name: string;
-  state?: string;
-}
-
-interface SubLocation {
-  id: string;
-  name: string;
-  zipCode?: string;
-}
+import { City, SubLocation } from '@/types/common';
 
 interface VendorLocationSelectorProps {
   initialCityId?: string;

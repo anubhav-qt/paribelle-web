@@ -7,14 +7,11 @@ import { usePathname } from 'next/navigation';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useSettings } from '@/hooks/useSettings';
+import { VendorPage } from '@/types/common';
 
-interface VendorPage {
-  id: string;
-  title: string;
-  slug: string;
+interface ExtendedVendorPage extends VendorPage {
   pageType: string;
   status: string;
-  showInNavigation: boolean;
 }
 
 interface StoreNavProps {

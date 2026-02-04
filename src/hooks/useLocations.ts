@@ -1,19 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-
-interface City {
-  id: string;
-  name: string;
-  state?: string;
-}
-
-interface SubLocation {
-  id: string;
-  name: string;
-  cityId: string;
-  zipCode?: string;
-}
+import { City, SubLocation } from '@/types/common';
 
 export function useCities() {
   return useQuery({

@@ -1,18 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-interface ThemeConfig {
-  primaryColor: string;
-  secondaryColor: string;
-  accentColor: string;
-  backgroundColor: string;
-  textColor: string;
-  fontFamily: string;
-  headingFont: string;
-  cardColor?: string;
-  borderColor?: string;
-}
+import { ThemeConfig } from '@/types/common';
 
 const defaultFallbackTheme: ThemeConfig = {
   primaryColor: '#FF9900',
@@ -22,8 +11,6 @@ const defaultFallbackTheme: ThemeConfig = {
   textColor: '#0F1111',
   fontFamily: 'Amazon Ember, Arial, sans-serif',
   headingFont: 'Amazon Ember, Arial, sans-serif',
-  cardColor: '#FFFFFF',
-  borderColor: '#E2E8F0',
 };
 
 export default function ThemeProvider({ 
@@ -108,24 +95,24 @@ export default function ThemeProvider({
 
   const themeCSS = `
     :root {
-      --primary: ${hexToHSL(theme.primaryColor)};
-      --primary-foreground: ${getContrastColor(theme.primaryColor)};
-      --secondary: ${hexToHSL(theme.secondaryColor)};
-      --secondary-foreground: ${getContrastColor(theme.secondaryColor)};
-      --accent: ${hexToHSL(theme.accentColor)};
-      --background: ${hexToHSL(theme.backgroundColor)};
-      --foreground: ${hexToHSL(theme.textColor)};
-      --card: ${hexToHSL(theme.cardColor || theme.backgroundColor)};
-      --border: ${hexToHSL(theme.borderColor || '#E2E8F0')};
-      --marketplace-primary: ${theme.primaryColor};
-      --marketplace-secondary: ${theme.secondaryColor};
-      --marketplace-accent: ${theme.accentColor};
-      --marketplace-bg: ${theme.backgroundColor};
-      --marketplace-text: ${theme.textColor};
-      --marketplace-font: ${theme.fontFamily};
+      --primary: ${hexToHSL(theme.primaryColor || '#FF9900')};
+      --primary-foreground: ${getContrastColor(theme.primaryColor || '#FF9900')};
+      --secondary: ${hexToHSL(theme.secondaryColor || '#232F3E')};
+      --secondary-foreground: ${getContrastColor(theme.secondaryColor || '#232F3E')};
+      --accent: ${hexToHSL(theme.accentColor || '#FF9900')};
+      --background: ${hexToHSL(theme.backgroundColor || '#FFFFFF')};
+      --foreground: ${hexToHSL(theme.textColor || '#0F1111')};
+      --card: ${hexToHSL(theme.backgroundColor || '#FFFFFF')};
+      --border: ${hexToHSL('#E2E8F0')};
+      --marketplace-primary: ${theme.primaryColor || '#FF9900'};
+      --marketplace-secondary: ${theme.secondaryColor || '#232F3E'};
+      --marketplace-accent: ${theme.accentColor || '#FF9900'};
+      --marketplace-bg: ${theme.backgroundColor || '#FFFFFF'};
+      --marketplace-text: ${theme.textColor || '#0F1111'};
+      --marketplace-font: ${theme.fontFamily || 'Amazon Ember, Arial, sans-serif'};
     }
     body {
-      font-family: ${theme.fontFamily}, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+      font-family: ${theme.fontFamily || 'Amazon Ember, Arial, sans-serif'}, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
   `;
 

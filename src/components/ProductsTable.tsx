@@ -4,29 +4,7 @@ import { useState } from 'react';
 import { handleSortChange, getSortIcon, compareValues, getSortableHeaderClass, SortOrder } from '@/lib/utils/sorting';
 import ProductEditModal from './ProductEditModal';
 import { getCurrencySymbol } from '@/lib/currency';
-
-interface Product {
-  id: string;
-  name: string;
-  description?: string;
-  shortDescription?: string;
-  price: number;
-  compareAtPrice?: number;
-  stockQuantity: number;
-  status: string;
-  sku: string;
-  featuredImage?: string;
-  images?: string[];
-  productType: 'physical' | 'booking';
-  categories?: Array<{ id: string; name: string }>;
-  vendor?: {
-    id: string;
-    storeName: string;
-    businessName: string;
-  };
-  isParent?: boolean;
-  variations?: Product[];
-}
+import { Product } from '@/types/product';
 
 interface ProductsTableProps {
   products: Product[];
@@ -254,14 +232,14 @@ export default function ProductsTable({
                     {product.categories?.[0]?.name || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {currencySymbol}{product.price.toFixed(2)}
+                    {currencySymbol}{typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {product.productType === 'booking' ? (
                       <span className="text-gray-400">N/A</span>
                     ) : (
-                      <span className={product.stockQuantity < 10 ? 'text-red-600 font-semibold' : ''}>
-                        {product.stockQuantity}
+                      <span className={(product.stockQuantity || 0) < 10 ? 'text-red-600 font-semibold' : ''}>
+                        {product.stockQuantity || 0}
                       </span>
                     )}
                   </td>

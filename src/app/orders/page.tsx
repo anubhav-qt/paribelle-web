@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
+import { getStatusColor } from '@/lib/utils/status';
+import { toggleSort } from '@/lib/utils/sort';
 import { Package, Clock, CheckCircle, XCircle, Truck, Eye, Download, Printer } from 'lucide-react';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategoryNav from '@/components/CategoryNav';
@@ -16,65 +18,7 @@ import ReturnRequestModal from '@/components/ReturnRequestModal';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 import { useMarketplaceWebSocket } from '@/contexts/StockWebSocketContext';
-
-interface OrderItem {
-  id: string;
-  productId: string;
-  productName: string;
-  quantity: number;
-  price: number;
-  productImage?: string;
-  returnedQuantity?: number;
-  returnStatus?: 'none' | 'partial' | 'full';
-  product?: {
-    id: string;
-    slug: string;
-    featuredImage?: string;
-    vendor?: {
-      id: string;
-      slug: string;
-      businessName: string;
-      subdomain?: string;
-    };
-  };
-}
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  paymentStatus?: string;
-  total: number;  // Backend uses 'total' not 'totalAmount'
-  subtotal?: number;
-  tax?: number;
-  shippingCost?: number;
-  createdAt: string;
-  deliveredAt?: string;
-  items: OrderItem[];
-  returns?: any[];  // Array of return items
-  returnReason?: string;
-  returnApprovedAt?: string;
-  returnRejectedAt?: string;
-  returnRejectionReason?: string;
-  shippingAddress?: {
-    fullName: string;
-    addressLine1: string;
-    city: string;
-    state: string;
-    postalCode: string;
-  };
-  paymentMethod?: string;
-  invoice?: {
-    id: string;
-    invoiceNumber: string;
-    status: string;
-  };
-  returnPolicy?: {
-    allowReturns: boolean;
-    returnPolicyDays: number;
-    vendorName?: string;
-  };
-}
+import { Order, OrderItem } from '@/types/common';
 
 interface ReturnDetails {
   orderNumber: string;
@@ -525,19 +469,16 @@ export default function OrdersPage() {
           comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
           break;
         case 'amount':
-          comparison = a.total - b.total;
+          comparison = (a.total || 0) - (b.total || 0);
           break;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
   const handleSort = (field: 'date' | 'amount') => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
+    const result = toggleSort(sortBy, field, sortOrder);
+    setSortBy(result.field);
+    setSortOrder(result.order);
   };
 
   if (loading) {
@@ -741,7 +682,7 @@ export default function OrdersPage() {
                     <div className="text-right">
                       <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
                       <p className="text-2xl font-bold text-foreground">
-                        {formatPrice(order.total, 'INR')}
+                        {formatPrice(order.total || 0, 'INR')}
                       </p>
                     </div>
                   </div>

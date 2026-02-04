@@ -4,18 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Settings, ChevronRight, Package } from 'lucide-react';
 import ThemeRenderer from '@/components/ThemeRenderer';
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  isActive: boolean;
-  children?: Category[];
-  filterConfig?: {
-    filters: any[];
-  };
-}
+import { Category } from '@/types/product';
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);

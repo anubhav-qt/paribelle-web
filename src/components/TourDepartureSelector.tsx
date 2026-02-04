@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Calendar, Users, AlertCircle } from 'lucide-react';
+import { formatDateShort } from '@/lib/utils/date';
 
 interface Departure {
   id: string;
@@ -37,13 +38,7 @@ export default function TourDepartureSelector({
     return departure.availableSeats - departure.bookedSeats;
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const formatDate = formatDateShort; // Using centralized utility
 
   const getDuration = (departure: Departure) => {
     const start = new Date(departure.departureDate);

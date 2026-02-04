@@ -7,28 +7,7 @@ import Link from 'next/link';
 import ReviewForm from '@/components/ReviewForm';
 import ReviewCard from '@/components/ReviewCard';
 import RatingDisplay from '@/components/RatingDisplay';
-
-interface OrderItem {
-  id: string;
-  productId: string;
-  productName: string;
-  productImage: string;
-  quantity: number;
-  price: number;
-  review?: any;
-}
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  vendor: {
-    id: string;
-    storeName: string;
-  };
-  items: OrderItem[];
-  vendorReview?: any;
-}
+import { Order, OrderItem } from '@/types/common';
 
 export default function OrderReviewPage() {
   const params = useParams();
@@ -235,7 +214,7 @@ export default function OrderReviewPage() {
                 <Store className="w-5 h-5 text-primary" />
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">
-                    {order.vendor.storeName}
+                    {order.vendor?.storeName || 'Unknown Vendor'}
                   </h2>
                   <p className="text-sm text-muted-foreground">Review this seller</p>
                 </div>
@@ -250,11 +229,11 @@ export default function OrderReviewPage() {
               )}
             </div>
 
-            {reviewingVendor && (
+            {reviewingVendor && order.vendor && (
               <ReviewForm
                 type="vendor"
-                itemId={order.vendor.id}
-                itemName={order.vendor.storeName}
+                itemId={order.vendor.id || ''}
+                itemName={order.vendor.storeName || 'Unknown Vendor'}
                 orderId={order.id}
                 onSubmit={handleSubmitVendorReview}
                 onCancel={() => setReviewingVendor(false)}

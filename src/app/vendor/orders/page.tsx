@@ -6,7 +6,8 @@ import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import { getVendorId } from '@/lib/auth';
 import { useSettings } from '@/hooks/useSettings';
-import { getCurrencySymbol } from '@/lib/currency';
+import { getCurrencySymbol, formatCurrency } from '@/lib/currency';
+import { formatDateTime } from '@/lib/utils/date';
 
 export default function VendorOrdersPage() {
   const { data: settings } = useSettings();
@@ -144,20 +145,9 @@ export default function VendorOrdersPage() {
     setShowDetailsModal(true);
   };
 
-  const formatCurrency = (amount: number) => {
-    const symbol = getCurrencySymbol(currency);
-    return `${symbol}${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-  };
+  // Using centralized formatCurrency from @/lib/currency
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-IN', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = formatDateTime; // Using centralized utility from @/lib/utils/date
 
   return (
     <div className="min-h-screen bg-gray-50">

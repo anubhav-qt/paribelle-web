@@ -2,14 +2,9 @@ import { headers } from 'next/headers';
 import MainPageClient from '@/components/MainPageClient';
 
 // Disable static generation for homepage due to client components
-export const dynamic = 'force-dynamic';
+import { Category } from '@/types/product';
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  children?: Category[];
-}
+export const dynamic = 'force-dynamic';
 
 async function getHomepageData(locale?: string, vendorSlug?: string) {
   try {

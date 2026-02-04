@@ -1,13 +1,21 @@
 // Centralized Product types - use these across the entire application
 
+import { ThemeConfig } from './common';
+
 export interface Category {
   id: string;
   name: string;
   slug: string;
   description?: string;
+  isActive?: boolean;
+  sortOrder?: number;
   level?: number;
+  vendorId?: string | null;
   children?: Category[];
   parent?: Category;
+  _count?: {
+    products: number;
+  };
   primaryProductType?: 'physical' | 'booking' | 'tour';
   productCount?: number;
   typeDistribution?: {
@@ -100,12 +108,33 @@ export interface Vendor {
   storeName?: string;
   businessName?: string;
   name?: string;
+  email?: string;
+  phone?: string;
+  slug?: string;
   contactEmail?: string;
   subdomain?: string;
+  description?: string;
+  logo?: string;
+  banner?: string;
+  city?: string;
+  state?: string;
+  status?: string;
+  totalSales?: number;
+  totalProducts?: number;
+  totalOrders?: number;
+  rating?: number;
+  kycStatus?: 'pending' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+  kycRejectedReason?: string;
+  kycSubmittedAt?: string;
+  kycBusinessRegistration?: string;
+  kycTaxDocument?: string;
+  kycIdentityProof?: string;
+  createdAt?: string;
   cityId?: string | null;
   subLocationId?: string | null;
   locationCity?: { id: string; name: string } | null;
   locationSubLocation?: { id: string; name: string } | null;
+  themeConfig?: ThemeConfig;
 }
 
 export interface Product {

@@ -1,38 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
-
-interface ThemeConfig {
-  primaryColor?: string;
-  secondaryColor?: string;
-  accentColor?: string;
-  backgroundColor?: string;
-  textColor?: string;
-  fontFamily?: string;
-  headingFont?: string;
-  layout?: string;
-  templateId?: string;
-  customCss?: string;
-  showLogo?: boolean;
-  showSearchBar?: boolean;
-  footerText?: string;
-  socialLinks?: {
-    facebook?: string;
-    instagram?: string;
-    twitter?: string;
-    youtube?: string;
-    linkedin?: string;
-  };
-}
-
-interface Vendor {
-  id: string;
-  businessName: string;
-  slug: string;
-  logo?: string;
-  description?: string;
-  themeConfig?: ThemeConfig;
-}
+import { Vendor } from '@/types/product';
+import { ThemeConfig } from '@/types/common';
 
 interface VendorContextType {
   vendor: Vendor | null;

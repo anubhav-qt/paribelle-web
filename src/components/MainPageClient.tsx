@@ -8,13 +8,7 @@ import HomepageContent from '@/components/HomepageContent';
 import { Suspense } from 'react';
 import GoogleAuthHandler from '@/components/GoogleAuthHandler';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  children?: Category[];
-}
+import { Category } from '@/types/product';
 
 interface MainPageClientProps {
   settings: {

@@ -5,21 +5,7 @@ import Link from 'next/link';
 import ImageUpload from '@/components/ImageUpload';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
-
-interface Vendor {
-  id: string;
-  businessName: string;
-  email: string;
-  phone?: string;
-  status: string;
-  rating?: number;
-  totalProducts?: number;
-  totalSales?: number;
-  createdAt: string;
-  kycBusinessRegistration?: string;
-  kycTaxDocument?: string;
-  kycIdentityProof?: string;
-}
+import { Vendor } from '@/types/product';
 
 export default function AdminVendorsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -437,7 +423,7 @@ export default function AdminVendorsPage() {
                           {(vendor as any).storeName || vendor.businessName || 'N/A'}
                         </div>
                         <div className="text-xs text-gray-500">
-                          Joined {new Date(vendor.createdAt).toLocaleDateString()}
+                          Joined {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString() : 'N/A'}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -460,7 +446,7 @@ export default function AdminVendorsPage() {
                           value={vendor.status}
                           onChange={(e) => handleStatusChange(vendor.id, e.target.value)}
                           className={`text-xs px-3 py-1 rounded-full font-semibold ${getStatusColor(
-                            vendor.status
+                            vendor.status || 'pending'
                           )} border-0 cursor-pointer`}
                         >
                           <option value="active">Active</option>

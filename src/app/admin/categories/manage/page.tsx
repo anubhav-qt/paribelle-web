@@ -3,20 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Edit2, Trash2, Save, X, ChevronRight } from 'lucide-react';
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  isActive: boolean;
-  sortOrder: number;
-  parent?: Category;
-  children?: Category[];
-  _count?: {
-    products: number;
-  };
-}
+import { Category } from '@/types/product';
+import { generateSlug } from '@/lib/utils/string';
 
 export default function ManageCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);

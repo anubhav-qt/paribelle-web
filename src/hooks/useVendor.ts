@@ -1,23 +1,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-
-interface Vendor {
-  id: string;
-  storeName: string;
-  slug: string;
-  description?: string;
-  logo?: string;
-  banner?: string;
-}
-
-interface VendorPage {
-  id: string;
-  title: string;
-  slug: string;
-  showInNavigation: boolean;
-  content?: string;
-}
+import { Vendor } from '@/types/product';
+import { VendorPage } from '@/types/common';
 
 export function useVendor(slug: string) {
   return useQuery({

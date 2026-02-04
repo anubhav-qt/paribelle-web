@@ -1,19 +1,7 @@
 'use client';
 
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  price: number;
-  compareAtPrice?: number;
-  featuredImage?: string;
-  stockQuantity: number;
-  vendor?: { storeName: string };
-  categories?: Array<{ name: string }>;
-}
+import { Product } from '@/types/product';
 
 interface UseProductsOptions {
   categoryId?: string;

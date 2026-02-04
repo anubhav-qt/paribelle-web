@@ -6,31 +6,9 @@ import { useAdminAuth } from '@/hooks/useAdminAuth';
 import ThemeBuilder from '@/components/ThemeBuilder';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import ThemeTemplateSelector from '@/components/ThemeTemplateSelector';
+import { ThemeConfig } from '@/types/common';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-interface ThemeConfig {
-  primaryColor: string;
-  secondaryColor: string;
-  accentColor: string;
-  backgroundColor: string;
-  textColor: string;
-  fontFamily: string;
-  headingFont: string;
-  layout?: 'modern' | 'classic' | 'minimal' | 'bold';
-  templateId?: string;
-  customCss?: string;
-  showLogo?: boolean;
-  showSearchBar?: boolean;
-  footerText?: string;
-  socialLinks?: {
-    facebook?: string;
-    instagram?: string;
-    twitter?: string;
-    youtube?: string;
-    linkedin?: string;
-  };
-}
 
 const defaultTheme: ThemeConfig = {
   primaryColor: '#FF9900', // Amazon orange

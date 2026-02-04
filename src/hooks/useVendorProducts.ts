@@ -1,33 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getVendorId } from '@/lib/auth';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  compareAtPrice?: number;
-  stockQuantity: number;
-  status: string;
-  sku: string;
-  featuredImage?: string;
-  images?: string[];
-  productType: 'physical' | 'booking';
-  categories?: Array<{ id: string; name: string }>;
-  isParent?: boolean;
-  parentProductId?: string;
-  variations?: Product[];
-  variationAttributes?: Record<string, string>;
-  variationThemes?: string[];
-  attributes?: {
-    booking?: {
-      duration: number;
-      durationUnit: 'hours' | 'days' | 'sessions';
-      bufferTime: number;
-      availableDays: string[];
-      timeSlots: Array<{ start: string; end: string }>;
-    };
-  };
-}
+import { Product } from '@/types/product';
 
 interface VendorProductsFilters {
   status?: string;

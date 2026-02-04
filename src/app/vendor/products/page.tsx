@@ -512,6 +512,7 @@ export default function VendorProductsPage() {
     setSortBy(result.field);
     setSortOrder(result.order);
   };
+  // Note: Uses handleSortChange from product-helpers.ts which wraps @/lib/utils/sort
 
   return (
     <div className="min-h-screen bg-gray-50">

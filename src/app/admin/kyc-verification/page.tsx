@@ -4,14 +4,9 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Eye, Clock, FileText, ArrowLeft, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Vendor } from '@/types/product';
 
-interface Vendor {
-  id: string;
-  businessName: string;
-  storeName: string;
-  email: string;
-  kycStatus: string;
-  kycSubmittedAt: string;
+interface VendorWithDocuments extends Vendor {
   kycDocuments: Array<{
     type: string;
     documentUrl: string;
@@ -25,9 +20,9 @@ interface Vendor {
 
 export default function AdminKYCVerificationPage() {
   const searchParams = useSearchParams();
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [vendors, setVendors] = useState<VendorWithDocuments[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<VendorWithDocuments | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -67,7 +62,7 @@ export default function AdminKYCVerificationPage() {
     }
   };
 
-  const handleViewDetails = (vendor: Vendor) => {
+  const handleViewDetails = (vendor: VendorWithDocuments) => {
     setSelectedVendor(vendor);
     setShowModal(true);
   };
@@ -242,7 +237,7 @@ export default function AdminKYCVerificationPage() {
                       </td>
                       <td className="px-6 py-4 text-gray-600">{vendor.email}</td>
                       <td className="px-6 py-4 text-gray-600">
-                        {new Date(vendor.kycSubmittedAt).toLocaleDateString()}
+                        {vendor.kycSubmittedAt ? new Date(vendor.kycSubmittedAt).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center gap-1 text-sm text-gray-600">

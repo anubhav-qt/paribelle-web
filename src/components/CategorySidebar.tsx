@@ -6,17 +6,11 @@ import { ChevronRight, Package, Calendar, Layers, Menu, X } from 'lucide-react';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useCategories } from '@/hooks/useCategories';
+import { VendorPage } from '@/types/common';
 
 interface CategorySidebarProps {
   vendorId?: string;
   hideEmptyCategories?: boolean;
-}
-
-interface VendorPage {
-  id: string;
-  title: string;
-  slug: string;
-  showInNavigation: boolean;
 }
 
 export default function CategorySidebar({ 

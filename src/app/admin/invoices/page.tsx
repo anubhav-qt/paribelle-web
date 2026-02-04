@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeRenderer from '@/components/ThemeRenderer';
+import { formatCurrency } from '@/lib/currency';
+import { getStatusColor } from '@/lib/utils/status';
+import { formatDate as formatDateUtil } from '@/lib/utils/date';
 
 interface Invoice {
   id: string;
@@ -287,22 +290,7 @@ export default function AdminInvoicesPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'bg-green-100 text-green-800';
-      case 'sent':
-        return 'bg-blue-100 text-blue-800';
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'overdue':
-        return 'bg-red-100 text-red-800';
-      case 'cancelled':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // Using centralized getStatusColor from @/lib/utils/status
 
   const getTypeLabel = (type: string) => {
     switch (type) {
@@ -324,13 +312,7 @@ export default function AdminInvoicesPage() {
     }).format(amount);
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = formatDateUtil; // Using centralized utility
 
   if (loading && invoices.length === 0) {
     return (
@@ -512,7 +494,7 @@ export default function AdminInvoicesPage() {
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(invoice.status)}`}>
+                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(invoice.status, 'invoice')}`}>
                     {invoice.status.toUpperCase()}
                   </span>
                   {invoice.emailSent && (

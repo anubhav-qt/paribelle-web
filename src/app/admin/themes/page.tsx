@@ -6,37 +6,10 @@ import Link from 'next/link';
 import { ArrowLeft, Palette, Eye, Edit } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import ThemeRenderer from '@/components/ThemeRenderer';
+import { Vendor } from '@/types/product';
+import { ThemeConfig } from '@/types/common';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-interface ThemeConfig {
-  primaryColor: string;
-  secondaryColor: string;
-  accentColor: string;
-  backgroundColor: string;
-  textColor: string;
-  fontFamily: string;
-  headingFont: string;
-  layout: string;
-  customCss: string;
-  showLogo: boolean;
-  showSearchBar: boolean;
-  footerText: string;
-  socialLinks: {
-    facebook: string;
-    instagram: string;
-    twitter: string;
-    youtube: string;
-    linkedin: string;
-  };
-}
-
-interface Vendor {
-  id: string;
-  businessName: string;
-  slug: string;
-  themeConfig?: ThemeConfig;
-}
 
 export default function AdminThemesPage() {
   const router = useRouter();

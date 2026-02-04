@@ -6,18 +6,7 @@ import Link from 'next/link';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import { Plus, Edit, Trash2, Eye, EyeOff, GripVertical } from 'lucide-react';
-
-interface VendorPage {
-  id: string;
-  title: string;
-  slug: string;
-  pageType: string;
-  status: 'draft' | 'published' | 'archived';
-  showInNavigation: boolean;
-  isHomePage: boolean;
-  order: number;
-  updatedAt: string;
-}
+import { VendorPage } from '@/types/common';
 
 export default function VendorPagesPage() {
   console.log('🔵 VendorPagesPage component loaded');
@@ -458,7 +447,7 @@ export default function VendorPagesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => togglePublish(page.id, page.status)}
+                          onClick={() => togglePublish(page.id, page.status || 'draft')}
                           className="p-2 hover:bg-muted rounded transition-colors"
                           title={
                             page.status === 'published' ? 'Unpublish' : 'Publish'

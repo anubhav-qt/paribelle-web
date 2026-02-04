@@ -7,12 +7,7 @@ import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import { Package, XCircle } from 'lucide-react';
 import { useVendorPolicies, useUpdateVendorPolicies } from '@/hooks/useVendorPolicies';
-
-interface Policy {
-  enabled: boolean;
-  text: string;
-  days?: number;
-}
+import { VendorPolicy } from '@/types/common';
 
 export default function VendorPoliciesPage() {
   const router = useRouter();

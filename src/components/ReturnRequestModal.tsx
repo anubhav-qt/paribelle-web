@@ -3,16 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Upload, AlertCircle, Package } from 'lucide-react';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
-
-interface OrderItem {
-  id: string;
-  productName: string;
-  quantity: number;
-  price: number;
-  productImage?: string;
-  returnedQuantity?: number;
-  returnStatus?: string;
-}
+import { OrderItem } from '@/types/common';
 
 interface SelectedItem {
   itemId: string;

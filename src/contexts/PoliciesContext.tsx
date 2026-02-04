@@ -1,18 +1,13 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-
-interface Policy {
-  enabled: boolean;
-  text: string;
-  days?: number;
-}
+import { VendorPolicy } from '@/types/common';
 
 interface PoliciesContextType {
-  returnPolicy: Policy | null;
-  cancellationPolicy: Policy | null;
+  returnPolicy: VendorPolicy | null;
+  cancellationPolicy: VendorPolicy | null;
   loading: boolean;
-  fetchVendorPolicies: (vendorId: string) => Promise<{ returnPolicy: Policy | null; cancellationPolicy: Policy | null }>;
+  fetchVendorPolicies: (vendorId: string) => Promise<{ returnPolicy: VendorPolicy | null; cancellationPolicy: VendorPolicy | null }>;
 }
 
 const PoliciesContext = createContext<PoliciesContextType>({
@@ -41,7 +36,7 @@ function getCachedPolicies(vendorId?: string) {
   return null;
 }
 
-function setCachedPolicies(policies: { return: Policy | null; cancellation: Policy | null }, vendorId?: string) {
+function setCachedPolicies(policies: { return: VendorPolicy | null; cancellation: VendorPolicy | null }, vendorId?: string) {
   const key = vendorId ? `vendor_${vendorId}_policies` : 'marketplace_policies';
   const timestampKey = vendorId ? `vendor_${vendorId}_policies_timestamp` : 'marketplace_policies_timestamp';
   
@@ -50,8 +45,8 @@ function setCachedPolicies(policies: { return: Policy | null; cancellation: Poli
 }
 
 export function PoliciesProvider({ children }: { children: ReactNode }) {
-  const [returnPolicy, setReturnPolicy] = useState<Policy | null>(null);
-  const [cancellationPolicy, setCancellationPolicy] = useState<Policy | null>(null);
+  const [returnPolicy, setReturnPolicy] = useState<VendorPolicy | null>(null);
+  const [cancellationPolicy, setCancellationPolicy] = useState<VendorPolicy | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch marketplace-wide policies

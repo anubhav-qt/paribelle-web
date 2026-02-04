@@ -1,19 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-
-interface Vendor {
-  id: string;
-  storeName: string;
-  status: string;
-  description?: string;
-  city?: string;
-  state?: string;
-  totalSales: number;
-  totalOrders: number;
-  rating: number;
-  kycStatus?: 'pending' | 'submitted' | 'under_review' | 'approved' | 'rejected';
-  kycRejectedReason?: string;
-}
+import { Vendor } from '@/types/product';
 
 interface VendorDashboardData {
   vendor: Vendor;

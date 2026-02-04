@@ -1,18 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-interface ProductVariant {
-  id: string;
-  productId: string;
-  sku: string;
-  variantAttributes: Record<string, string>;
-  price: string | number;
-  compareAtPrice?: string | number;
-  stockQuantity: number;
-  images?: string[];
-  isActive: boolean;
-}
+import { ProductVariant } from '@/types/product';
 
 interface VariantOption {
   id: string;

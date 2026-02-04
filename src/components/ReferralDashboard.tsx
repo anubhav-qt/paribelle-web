@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Share2, Copy, Users, DollarSign, TrendingUp, CheckCircle } from 'lucide-react';
+import { copyToClipboard as copyText } from '@/lib/utils/clipboard';
 
 interface ReferralStats {
   referralCode: string;
@@ -60,8 +61,8 @@ export default function ReferralDashboard({ token }: { token?: string }) {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string) => {
+    await copyText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

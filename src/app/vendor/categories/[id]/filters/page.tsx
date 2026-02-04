@@ -20,14 +20,7 @@ interface Filter {
   step?: number;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  vendorId: string | null;
-  filterConfig?: {
-    filters: Filter[];
-  };
-}
+import { Category } from '@/types/product';
 
 export default function VendorCategoryFiltersPage() {
   const params = useParams();

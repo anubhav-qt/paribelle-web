@@ -103,7 +103,7 @@ export default function LuxuryBoutiqueHeader() {
                 />
               ) : null}
               <h1 className="text-3xl font-serif tracking-[0.3em] text-white mb-1">
-                {isVendorStore ? vendor?.businessName.toUpperCase() : marketplaceName.toUpperCase()}
+                {isVendorStore ? vendor?.businessName?.toUpperCase() : marketplaceName.toUpperCase()}
               </h1>
               <div className="h-px w-32 bg-gradient-to-r from-transparent via-amber-500 to-transparent"></div>
             </Link>

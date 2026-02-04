@@ -3,18 +3,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { useCities, useSubLocations } from '@/hooks/useLocations';
-
-interface City {
-  id: string;
-  name: string;
-  state?: string;
-}
-
-interface SubLocation {
-  id: string;
-  name: string;
-  zipCode?: string;
-}
+import { City, SubLocation } from '@/types/common';
 
 interface LocationFilterProps {
   onFilterChange: (cityId: string | null, subLocationId: string | null) => void;

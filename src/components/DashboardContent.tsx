@@ -14,15 +14,7 @@ import {
   CheckCircle,
   ArrowRight
 } from 'lucide-react';
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  total: number;
-  createdAt: string;
-  items: any[];
-}
+import { Order } from '@/types/common';
 
 interface DashboardContentProps {
   vendorSlug?: string;
@@ -541,7 +533,7 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold mb-2 text-foreground">
-                      {formatPrice(order.total, 'INR')}
+                      {formatPrice(order.total || order.totalAmount || 0, 'INR')}
                     </p>
                     <Link
                       href={`${getRoutePrefix()}/orders`}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
+import { formatCurrency } from '@/lib/currency';
 
 interface AnalyticsData {
   totalRevenue: number;

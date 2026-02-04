@@ -1,15 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getVendorId } from '@/lib/auth';
-
-interface Policy {
-  enabled: boolean;
-  text: string;
-  days?: number;
-}
+import { VendorPolicy } from '@/types/common';
 
 interface MarketplacePolicies {
-  returnPolicy: Policy | null;
-  cancellationPolicy: Policy | null;
+  returnPolicy: VendorPolicy | null;
+  cancellationPolicy: VendorPolicy | null;
 }
 
 interface VendorPoliciesData {
@@ -18,8 +13,8 @@ interface VendorPoliciesData {
 }
 
 interface UpdatePoliciesPayload {
-  returnPolicy: Policy | null;
-  cancellationPolicy: Policy | null;
+  returnPolicy: VendorPolicy | null;
+  cancellationPolicy: VendorPolicy | null;
 }
 
 // Fetch marketplace default policies

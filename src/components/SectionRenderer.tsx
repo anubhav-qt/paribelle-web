@@ -4,6 +4,7 @@ import { PageSection } from '@/lib/pageSections';
 import ReactMarkdown from 'react-markdown';
 import { Star, MapPin, Phone, Mail, CheckCircle, AlertCircle, Info, AlertTriangle, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import { useState } from 'react';
+import { formatDate as formatDateUtil } from '@/lib/utils/date';
 
 interface SectionRendererProps {
   section: PageSection;
@@ -703,14 +704,7 @@ function DividerSection({ settings }: { settings: any }) {
 
 // Last Updated Section
 function LastUpdatedSection({ settings }: { settings: any }) {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
+  const formatDate = formatDateUtil; // Using centralized utility
 
   const alignmentClasses: Record<string, string> = {
     left: 'text-left',

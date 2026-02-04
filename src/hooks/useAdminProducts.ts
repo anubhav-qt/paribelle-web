@@ -1,27 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  compareAtPrice?: number;
-  stockQuantity: number;
-  status: string;
-  sku: string;
-  featuredImage?: string;
-  productType: 'physical' | 'booking';
-  categories: Array<{ id: string; name: string }>;
-  vendor?: { 
-    id: string; 
-    storeName: string;
-    businessName: string; 
-    contactEmail: string;
-  };
-  createdAt: string;
-}
+import { Product } from '@/types/product';
 
 interface UseAdminProductsOptions {
   page?: number;

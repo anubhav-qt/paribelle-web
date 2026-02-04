@@ -20,14 +20,7 @@ interface CategoryFilter {
   step?: number;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  filterConfig?: {
-    filters: CategoryFilter[];
-  };
-}
+import { Category } from '@/types/product';
 
 // Common filter templates
 const COMMON_FILTER_TEMPLATES: CategoryFilter[] = [

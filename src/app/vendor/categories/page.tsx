@@ -6,17 +6,8 @@ import Link from 'next/link';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import { Plus, Edit2, Trash2, ChevronRight, Folder, Settings } from 'lucide-react';
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  isActive: boolean;
-  sortOrder: number;
-  vendorId: string | null;
-  children?: Category[];
-}
+import { Category } from '@/types/product';
+import { generateSlug } from '@/lib/utils/string';
 
 export default function VendorCategoriesPage() {
   const router = useRouter();
@@ -152,7 +143,7 @@ export default function VendorCategoriesPage() {
       slug: category.slug,
       description: category.description || '',
       parentId: '',
-      sortOrder: category.sortOrder,
+      sortOrder: category.sortOrder || 0,
     });
     setShowAddModal(true);
   };
@@ -198,12 +189,7 @@ export default function VendorCategoriesPage() {
     }
   };
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  };
+  // Using centralized generateSlug from @/lib/utils/string
 
   const renderCategory = (category: Category, level: number = 0) => {
     const isVendorOwned = category.vendorId !== null;

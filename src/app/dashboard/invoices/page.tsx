@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatCurrency } from '@/lib/currency';
+import { formatDate as formatDateUtil } from '@/lib/utils/date';
 import { useRouter } from 'next/navigation';
 
 interface Invoice {
@@ -125,20 +127,9 @@ export default function VendorDashboardInvoices() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(amount);
-  };
+  // Using centralized formatCurrency from @/lib/currency
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = formatDateUtil; // Using centralized utility
 
   if (loading && invoices.length === 0) {
     return (

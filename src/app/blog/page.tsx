@@ -6,6 +6,8 @@ import ThemeRenderer from '@/components/ThemeRenderer';
 import CategoryNav from '@/components/CategoryNav';
 import HeroCarousel from '@/components/HeroCarousel';
 import Footer from '@/components/Footer';
+import { formatDate as formatDateUtil } from '@/lib/utils/date';
+import { htmlToText } from '@/lib/utils/string';
 
 interface BlogPost {
   id: string;
@@ -65,19 +67,8 @@ export default function BlogPage() {
     ? posts.filter(post => post.tags?.includes(selectedTag))
     : posts;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const stripHtml = (html: string) => {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
-  };
+  const formatDate = formatDateUtil; // Using centralized utility
+  const stripHtml = htmlToText; // Using centralized utility
 
   return (
     <>

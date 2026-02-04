@@ -7,20 +7,7 @@ import { ArrowLeft, HelpCircle } from 'lucide-react';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import CategorySidebar from '@/components/CategorySidebar';
 import { useVendorDashboard } from '@/hooks/useVendorDashboard';
-
-interface Vendor {
-  id: string;
-  storeName: string;
-  status: string;
-  description?: string;
-  city?: string;
-  state?: string;
-  totalSales: number;
-  totalOrders: number;
-  rating: number;
-  kycStatus?: 'pending' | 'submitted' | 'under_review' | 'approved' | 'rejected';
-  kycRejectedReason?: string;
-}
+import { Vendor } from '@/types/product';
 
 export default function VendorDashboardPage() {
   const router = useRouter();

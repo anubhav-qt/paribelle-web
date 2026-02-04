@@ -4,7 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Printer } from 'lucide-react';
 import { formatPrice } from '@/lib/currency';
+import { formatDateTime } from '@/lib/utils/date';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
+import { Order, OrderItem } from '@/types/common';
 
 // Format return reason from key to human-readable label
 const formatReturnReason = (reason: string): string => {
@@ -19,70 +21,6 @@ const formatReturnReason = (reason: string): string => {
   };
   return reasons[reason] || reason;
 };
-
-interface OrderItem {
-  id: string;
-  productId: string;
-  productName: string;
-  quantity: number;
-  price: number;
-  productImage?: string;
-  returnedQuantity?: number;
-  returnStatus?: 'none' | 'partial' | 'full';
-  product?: {
-    id: string;
-    slug: string;
-    featuredImage?: string;
-    vendor?: {
-      id: string;
-      slug: string;
-      businessName: string;
-      subdomain?: string;
-    };
-  };
-}
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  total: number;
-  subtotal?: number;
-  tax?: number;
-  shippingCost?: number;
-  createdAt: string;
-  deliveredAt?: string;
-  items?: OrderItem[];
-  returns?: any[];
-  returnReason?: string;
-  returnApprovedAt?: string;
-  returnRejectedAt?: string;
-  returnRejectionReason?: string;
-  shippingName?: string;
-  shippingEmail?: string;
-  shippingPhone?: string;
-  shippingAddress?: string | {
-    fullName?: string;
-    addressLine1: string;
-    addressLine2?: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country?: string;
-  };
-  shippingCity?: string;
-  shippingState?: string;
-  paymentStatus?: string;
-  paymentMethod?: string;
-  vendor?: {
-    businessName: string;
-    storeName: string;
-  };
-  user?: {
-    email: string;
-    name: string;
-  };
-}
 
 interface ReturnDetails {
   orderNumber: string;
@@ -133,15 +71,7 @@ export default function OrderDetailsModal({
     }).format(amount);
   };
 
-  const defaultFormatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const defaultFormatDate = formatDateTime; // Using centralized utility
 
   const currencyFormatter = formatCurrency || defaultFormatCurrency;
   const dateFormatter = formatDate || defaultFormatDate;
@@ -652,7 +582,7 @@ export default function OrderDetailsModal({
                 )}
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
-                  <span>{currencyFormatter(order.total)}</span>
+                  <span>{currencyFormatter(order.total || 0)}</span>
                 </div>
               </div>
             </div>

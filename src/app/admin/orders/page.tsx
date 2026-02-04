@@ -2,68 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { formatCurrencyWhole } from '@/lib/currency';
+import { getStatusColor } from '@/lib/utils/status';
+import { formatDateTime } from '@/lib/utils/date';
+import { toggleSort } from '@/lib/utils/sort';
 import { ArrowUpDown, Eye, Search, Filter, Download, Printer } from 'lucide-react';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  userId: string;
-  vendorId: string;
-  status: string;
-  paymentStatus: string;
-  total: number;
-  subtotal: number;
-  tax: number;
-  shippingCost: number;
-  vendorPayout?: number;
-  commissionAmount?: number;
-  commissionRate?: number;
-  shippingName: string;
-  shippingEmail: string;
-  shippingPhone: string;
-  shippingAddress: string | {
-    addressLine1: string;
-    addressLine2?: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country?: string;
-  };
-  shippingCity: string;
-  shippingState: string;
-  createdAt: string;
-  returnReason?: string;
-  returnApprovedAt?: string;
-  returnRejectedAt?: string;
-  returnRejectionReason?: string;
-  vendor?: {
-    businessName: string;
-    storeName: string;
-  };
-  user?: {
-    email: string;
-    name: string;
-  };
-  returns?: any[];
-  items?: Array<{
-    id: string;
-    productId: string;
-    productName: string;
-    quantity: number;
-    price: number;
-  }>;
-  invoices?: Array<{
-    id: string;
-    invoiceNumber: string;
-    type: string;
-    payoutAmount?: number;
-  }>;
-}
+import { Order } from '@/types/common';
 
 type SortField = 'createdAt' | 'orderNumber' | 'total' | 'status';
 type SortDirection = 'asc' | 'desc';
@@ -127,12 +76,9 @@ export default function AdminOrdersPage() {
   };
 
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
+    const result = toggleSort(sortField, field, sortDirection);
+    setSortField(result.field);
+    setSortDirection(result.order);
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
@@ -411,7 +357,7 @@ export default function AdminOrdersPage() {
     let filtered = orders.filter(order => {
       const matchesSearch = 
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.shippingName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.shippingName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.shippingEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.vendor?.businessName?.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -441,21 +387,7 @@ export default function AdminOrdersPage() {
 
   const filteredOrders = getFilteredAndSortedOrders();
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      processing: 'bg-indigo-100 text-indigo-800',
-      shipped: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
-      return_requested: 'bg-amber-100 text-amber-800',
-      return_approved: 'bg-orange-100 text-orange-700',
-      returned: 'bg-orange-100 text-orange-800',
-      refunded: 'bg-gray-100 text-gray-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
+  // Using centralized getStatusColor from @/lib/utils/status
 
   // Get valid next statuses based on current status
   const getValidNextStatuses = (currentStatus: string): string[] => {
@@ -474,13 +406,7 @@ export default function AdminOrdersPage() {
     return statusFlow[currentStatus] || [currentStatus];
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = formatCurrencyWhole; // Using centralized utility
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-IN', {
@@ -725,7 +651,7 @@ export default function AdminOrdersPage() {
                             order.status === 'return_requested' ||
                             order.status === 'return_approved'
                           }
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)} border-0 ${
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status, 'order')} border-0 ${
                             ['delivered', 'cancelled', 'returned', 'refunded', 'return_requested', 'return_approved'].includes(order.status) 
                               ? 'cursor-not-allowed opacity-75' 
                               : 'cursor-pointer'

@@ -1,36 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  total: number;
-  totalAmount?: number;
-  createdAt: string;
-  user?: any;
-  items: Array<{
-    id: string;
-    productName: string;
-    quantity: number;
-    price: number;
-  }>;
-}
-
-interface OrderFilters {
-  status?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-}
-
-interface OrdersResponse {
-  orders: Order[];
-  total: number;
-  page: number;
-  limit: number;
-}
+import { Order, OrderFilters, OrdersResponse } from '@/types/common';
 
 export function useOrders(token?: string) {
   return useQuery({

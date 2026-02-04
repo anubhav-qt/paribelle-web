@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatPrice } from '@/lib/currency';
+import { formatDateShort } from '@/lib/utils/date';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import { 
@@ -21,21 +22,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
+import { Address } from '@/types/common';
 
 type CheckoutStep = 'review' | 'address' | 'payment' | 'confirmation';
-
-interface Address {
-  id?: string;
-  fullName: string;
-  phone: string;
-  addressLine1: string;
-  addressLine2: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-  isDefault?: boolean;
-}
 
 interface Booking {
   id: string;
@@ -78,6 +67,7 @@ function BookingCheckoutContent() {
     city: '',
     state: '',
     postalCode: '',
+    pincode: '',
     country: 'India',
   });
   const [tourBooking, setTourBooking] = useState<any>(null);
@@ -279,44 +269,7 @@ function BookingCheckoutContent() {
     }
   };
 
-  const formatDate = (date: string | Date): string => {
-    try {
-      console.log('Formatting date:', date, 'Type:', typeof date);
-      
-      if (!date) return 'No date';
-      
-      // Handle different date formats
-      let dateObj: Date;
-      
-      if (typeof date === 'string') {
-        // If it's a date string like "2024-12-11", parse it properly
-        if (date.includes('T')) {
-          dateObj = new Date(date);
-        } else {
-          // For date-only strings, add time to avoid timezone issues
-          dateObj = new Date(date + 'T00:00:00');
-        }
-      } else {
-        dateObj = new Date(date);
-      }
-      
-      console.log('Parsed date object:', dateObj);
-      
-      if (isNaN(dateObj.getTime())) {
-        console.error('Invalid date:', date);
-        return 'Invalid Date';
-      }
-      
-      return dateObj.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    } catch (error) {
-      console.error('Error formatting date:', error, date);
-      return 'Invalid Date';
-    }
-  };
+  // Using centralized formatDateShort utility
 
   const totalAmount = tourBooking 
     ? tourBooking.totalPrice 
@@ -639,7 +592,7 @@ function BookingCheckoutContent() {
                       <strong>{booking.product?.name || 'Booking Service'}</strong>
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Date: {formatDate(booking.bookingDate)}
+                      Date: {formatDateShort(booking.bookingDate)}
                     </p>
                     {booking.startTime && booking.endTime && (
                       <p className="text-sm text-muted-foreground">
@@ -826,7 +779,7 @@ function BookingCheckoutContent() {
                           <h3 className="font-semibold text-foreground">{booking.product?.name || 'Booking Service'}</h3>
                           <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                             <Calendar className="w-4 h-4" />
-                            {formatDate(booking.bookingDate)}
+                            {formatDateShort(booking.bookingDate)}
                           </p>
                           {booking.startTime && booking.endTime && (
                             <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -918,6 +871,7 @@ function BookingCheckoutContent() {
                           city: '',
                           state: '',
                           postalCode: '',
+                          pincode: '',
                           country: 'India',
                         });
                       }}
