@@ -13,6 +13,15 @@ const nextConfig = {
   },
   // Faster builds in development
   swcMinify: true,
+  // Prevent build hanging on Vercel
+  experimental: {
+    workerThreads: false,
+    cpus: 1,
+  },
+  // Optimize memory usage
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
+  },
   async rewrites() {
     return [
       {
