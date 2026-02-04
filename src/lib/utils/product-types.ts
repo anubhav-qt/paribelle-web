@@ -73,3 +73,22 @@ export function getPrimaryProductType(typeDistribution?: {
   if (booking > physical) return 'booking';
   return 'physical';
 }
+
+/**
+ * Calculate tour duration in days between departure and return dates
+ */
+export function calculateTourDuration(departureDate: string, returnDate: string): number {
+  const departure = new Date(departureDate);
+  const returnD = new Date(returnDate);
+  const diffTime = Math.abs(returnD.getTime() - departure.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays + 1; // Include both departure and return days
+}
+
+/**
+ * Format tour duration into a readable string
+ */
+export function formatTourDuration(days: number): string {
+  if (days === 1) return '1 day';
+  return `${days} days`;
+}

@@ -123,8 +123,8 @@ export default function TourDetailsPage() {
           console.log('Tour departures with booking counts:', departuresData);
           console.log('First departure full details:', JSON.stringify(departuresData[0], null, 2));
           console.log('Number of departures:', departuresData.length);
-          console.log('Departures with IDs:', departuresData.filter(d => d.id).length);
-          console.log('Departures without IDs:', departuresData.filter(d => !d.id).length);
+          console.log('Departures with IDs:', departuresData.filter((d: any) => d.id).length);
+          console.log('Departures without IDs:', departuresData.filter((d: any) => !d.id).length);
           // Update tour data with live departure data
           data.attributes.tour.departures = departuresData;
         }

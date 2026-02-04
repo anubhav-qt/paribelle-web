@@ -8,27 +8,8 @@ import { useCategories } from '@/hooks/useCategories';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { getProductTypeIcon } from '@/lib/utils/product-types';
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  children?: Category[];
-  productCount?: number;
-  primaryProductType?: 'physical' | 'booking' | 'tour';
-  typeDistribution?: {
-    physical: number;
-    booking: number;
-    tour: number;
-  };
-}
-
-interface VendorPage {
-  id: string;
-  title: string;
-  slug: string;
-  showInNavigation: boolean;
-}
+import { Category } from '@/types/product';
+import { VendorPage as VendorPageType } from '@/types/common';
 
 interface CategoryNavProps {
   vendorId?: string;
@@ -67,8 +48,8 @@ export default function CategoryNav({
     hideEmptyCategories,
   });
   
-  const [vendorPages, setVendorPages] = useState<VendorPage[]>([]);
-  const [customPages, setCustomPages] = useState<VendorPage[]>([]);
+  const [vendorPages, setVendorPages] = useState<VendorPageType[]>([]);
+  const [customPages, setCustomPages] = useState<VendorPageType[]>([]);
   const [showPagesMenu, setShowPagesMenu] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -192,7 +173,7 @@ export default function CategoryNav({
       );
       if (response.ok) {
         const pages = await response.json();
-        setVendorPages(pages.filter((p: VendorPage) => p.showInNavigation));
+        setVendorPages(pages.filter((p: VendorPageType) => p.showInNavigation));
       }
     } catch (error) {
       console.error('Error fetching vendor pages:', error);
@@ -206,7 +187,7 @@ export default function CategoryNav({
       );
       if (response.ok) {
         const pages = await response.json();
-        setCustomPages(pages.filter((p: VendorPage) => p.showInNavigation));
+        setCustomPages(pages.filter((p: VendorPageType) => p.showInNavigation));
       }
     } catch (error) {
       console.error('Error fetching marketplace pages:', error);
@@ -264,7 +245,7 @@ export default function CategoryNav({
         const response = await fetch(url);
         if (response.ok) {
           const pages = await response.json();
-          const publishedPages = pages.filter((p: VendorPage) => p.showInNavigation);
+          const publishedPages = pages.filter((p: VendorPageType) => p.showInNavigation);
           setCustomPages(publishedPages);
         }
       } catch (error) {

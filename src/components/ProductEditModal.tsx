@@ -242,8 +242,8 @@ export default function ProductEditModal({ product, onClose, onSave, categories 
               Featured Image
             </label>
             <ImageUpload
-              currentImage={formData.featuredImage}
-              onImageChange={(url) => setFormData({ ...formData, featuredImage: url })}
+              value={formData.featuredImage}
+              onChange={(url) => setFormData({ ...formData, featuredImage: url })}
             />
           </div>
 
@@ -252,8 +252,8 @@ export default function ProductEditModal({ product, onClose, onSave, categories 
               Additional Images
             </label>
             <MultiImageUpload
-              currentImages={formData.images}
-              onImagesChange={(urls) => setFormData({ ...formData, images: urls })}
+              value={formData.images}
+              onChange={(urls) => setFormData({ ...formData, images: urls })}
             />
           </div>
 

@@ -1193,7 +1193,7 @@ function CheckoutContent() {
                 <select
                   value={selectedDepartureId}
                   onChange={(e) => {
-                    const departure = tourBooking.availableDepartures.find(d => d.id === e.target.value);
+                    const departure = tourBooking.availableDepartures.find((d: any) => d.id === e.target.value);
                     if (departure) {
                       setSelectedDepartureId(departure.id);
                       setBookingDate(departure.departureDate.split('T')[0]);
@@ -1202,7 +1202,7 @@ function CheckoutContent() {
                   required
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800"
                 >
-                  {tourBooking.availableDepartures.map((departure) => (
+                  {tourBooking.availableDepartures.map((departure: any) => (
                     <option key={departure.id} value={departure.id}>
                       {new Date(departure.departureDate).toLocaleDateString('en-US', { 
                         weekday: 'short',

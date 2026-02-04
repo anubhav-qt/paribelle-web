@@ -25,70 +25,18 @@ import RatingDisplay from '@/components/RatingDisplay';
 import ReviewCard from '@/components/ReviewCard';
 import ReviewForm from '@/components/ReviewForm';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
+import { Product as BaseProduct, ProductVariant, BookingAttributes, TourAttributes } from '@/types/product';
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface BookingData {
-  duration: number;
-  durationUnit: 'hours' | 'days' | 'sessions';
-  bufferTime: number;
-  availableDays: string[];
-  timeSlots: { start: string; end: string }[];
-}
-
-interface ProductVariant {
-  id: string;
-  productId: string;
-  sku: string;
-  variantAttributes: Record<string, string>;
-  price: string | number;
-  compareAtPrice?: string | number;
-  stockQuantity: number;
-  images?: string[];
-  isActive: boolean;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  shortDescription: string;
-  description: string;
-  price: string | number;
-  compareAtPrice?: string | number;
-  featuredImage: string;
-  images?: string[];
-  averageRating: string | number;
-  reviewCount: number;
-  categories: Category[];
-  productType: 'physical' | 'booking';
-  stockQuantity?: number;
-  vendorId?: string;
+// Extend the base Product type with additional fields specific to this page
+interface Product extends Omit<BaseProduct, 'attributes'> {
   priceType?: string; // 'mrp_with_gst' | 'selling_price_without_gst'
   gstRate?: number; // GST rate in percentage
-  // Variation support (legacy)
-  isParent?: boolean;
-  variations?: any[];
-  variationThemes?: string[];
-  // Product variants support (new)
-  hasVariants?: boolean;
-  variantOptions?: any[];
-  productVariants?: ProductVariant[];
-  vendor?: {
-    id: string;
-    businessName: string;
-    storeName?: string;
-    subdomain?: string;
-  };
   attributes?: {
-    booking?: BookingData & {
+    booking?: BookingAttributes & {
       durationUnit?: 'hours' | 'days' | 'sessions';
       duration?: number;
     };
+    tour?: TourAttributes;
   };
 }
 
@@ -720,7 +668,7 @@ export default function ProductDetailPage() {
         image: (selectedVariation?.images?.[0] || selectedVariation?.featuredImage) || product.images?.[0] || product.featuredImage || '/placeholder-product.png',
         vendorId: product.vendorId || '',
         vendorName: product.vendor?.storeName || product.vendor?.businessName || 'Unknown Vendor',
-        productType: product.productType,
+        productType: product.productType || 'physical',
         stockQuantity: stockQuantity,
         maxQuantity: stockQuantity,
         variationAttributes: selectedVariation?.variationAttributes,
@@ -753,7 +701,7 @@ export default function ProductDetailPage() {
         name: product.name,
         slug: product.slug,
         price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
-        image: product.featuredImage,
+        image: product.featuredImage || '/placeholder-product.png',
         vendorId: product.vendorId || '',
         vendorName: product.vendor?.businessName || '',
         vendorSlug: product.vendor?.subdomain,
@@ -945,7 +893,7 @@ export default function ProductDetailPage() {
               <div className="grid md:grid-cols-2 gap-8 p-8">
                 {/* Product Image Gallery */}
                 <ProductImageGallery
-                  images={product.images && product.images.length > 0 ? product.images : [product.featuredImage]}
+                  images={product.images && product.images.length > 0 ? product.images : [product.featuredImage || '/placeholder-product.png']}
                   productName={product.name}
                   discount={discount || undefined}
                   layout={thumbnailLayout}
@@ -973,7 +921,7 @@ export default function ProductDetailPage() {
                 <div className="mb-6">
                   <ProductVariantSelector
                     variantOptions={product.variantOptions}
-                    productVariants={product.productVariants}
+                    productVariants={product.productVariants || []}
                     onVariantSelect={setSelectedVariant}
                     currency={currency}
                   />
@@ -1391,10 +1339,10 @@ export default function ProductDetailPage() {
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Customer Reviews</h2>
                 <div className="flex items-center gap-2 mt-2">
-                  {product.reviewCount > 0 ? (
-                    <RatingDisplay 
-                      rating={Number(product.averageRating)} 
-                      count={product.reviewCount}
+                  {(product.reviewCount ?? 0) > 0 ? (
+                    <RatingDisplay
+                      rating={Number(product.averageRating)}
+                      count={product.reviewCount ?? 0}
                       size="lg"
                     />
                   ) : (
@@ -1403,12 +1351,12 @@ export default function ProductDetailPage() {
                 </div>
                 <div className="flex gap-3 mt-3">
                   {/* View Comments Button */}
-                  {product.reviewCount > 0 && (
+                  {(product.reviewCount ?? 0) > 0 && (
                     <button
                       onClick={handleShowReviews}
                       className="text-primary hover:underline font-medium flex items-center gap-2"
                     >
-                      {showReviews ? '▼ Hide Comments' : `▶ View All ${product.reviewCount} Comments`}
+                      {showReviews ? '▼ Hide Comments' : `▶ View All ${product.reviewCount ?? 0} Comments`}
                     </button>
                   )}
                   {/* Write Review Button */}
@@ -1456,9 +1404,9 @@ export default function ProductDetailPage() {
                 <div className="text-center py-12 bg-muted/50 rounded-lg">
                   <Star className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                   <p className="text-muted-foreground">No reviews yet. Be the first to review this product!</p>
-                  {product.reviewCount > 0 && (
+                  {(product.reviewCount ?? 0) > 0 && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      (Review count may be outdated. The database shows {product.reviewCount} reviews but they may have been removed.)
+                      (Review count may be outdated. The database shows {product.reviewCount ?? 0} reviews but they may have been removed.)
                     </p>
                   )}
                 </div>

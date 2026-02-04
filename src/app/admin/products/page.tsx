@@ -10,53 +10,19 @@ import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import { handleSortChange, getSortIcon, compareValues, getSortableHeaderClass, SortOrder } from '@/lib/utils/sorting';
+import { Product, ProductVariant } from '@/types/product';
+import { 
+  productToFormData, 
+  getEmptyFormData, 
+  getStockColor, 
+  getStatusColor, 
+  getVariantPriceDisplay,
+  calculateDiscount,
+  priceToNumber 
+} from '@/lib/product-form-utils';
 import 'react-quill/dist/quill.snow.css';
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
-
-interface ProductVariant {
-  id: string;
-  sku: string;
-  variantAttributes: Record<string, string>;
-  price: number;
-  compareAtPrice?: number;
-  stockQuantity: number;
-  isActive: boolean;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  shortDescription?: string;
-  price: number;
-  compareAtPrice?: number;
-  stockQuantity: number;
-  status: string;
-  sku: string;
-  featuredImage?: string;
-  images?: string[];
-  productType: 'physical' | 'booking';
-  categories: Array<{ id: string; name: string }>;
-  vendor?: { 
-    id: string; 
-    storeName: string;
-    businessName: string; 
-    contactEmail: string;
-  };
-  createdAt: string;
-  // Variation support (legacy)
-  isParent?: boolean;
-  parentProductId?: string;
-  variations?: Product[];
-  variationAttributes?: Record<string, string>;
-  variationThemes?: string[];
-  // Product variants support (new)
-  hasVariants?: boolean;
-  variantOptions?: any[];
-  productVariants?: ProductVariant[];
-}
 
 export default function AdminProductsPage() {
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
@@ -113,64 +79,7 @@ export default function AdminProductsPage() {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [editFormData, setEditFormData] = useState({
-    name: '',
-    description: '',
-    shortDescription: '',
-    price: 0,
-    compareAtPrice: 0,
-    stockQuantity: 0,
-    sku: '',
-    featuredImage: '',
-    images: [] as string[],
-    productType: 'physical' as 'physical' | 'booking',
-    hasVariants: false,
-    variations: [] as any[],
-    variationThemes: [] as string[],
-    productVariants: [] as ProductVariant[],
-    variantOptions: [] as any[],
-    attributes: {
-      booking: {
-        duration: 60,
-        durationUnit: 'hours' as 'hours' | 'days' | 'sessions',
-        bufferTime: 0,
-        availableDays: [] as string[],
-        timeSlots: [{ start: '09:00', end: '17:00' }],
-      },
-      tour: {
-        tourMode: false,
-        departures: [] as Array<{
-          departureDate: string;
-          returnDate: string;
-          availableSeats: number;
-          pricePerPerson: number;
-          status: 'active' | 'full' | 'cancelled';
-        }>,
-        itinerary: [] as Array<{
-          day: number;
-          title: string;
-          description: string;
-          activities: string[];
-          meals: string[];
-          accommodation: string;
-        }>,
-        details: {
-          destinations: [] as string[],
-          tourType: '',
-          difficulty: 'moderate' as 'easy' | 'moderate' | 'challenging' | 'difficult',
-          groupSize: { min: 1, max: 20 },
-          inclusions: [] as string[],
-          exclusions: [] as string[],
-          pickupPoints: [] as Array<{ location: string; time: string }>,
-          dropPoints: [] as Array<{ location: string; time: string }>,
-          accommodation: '',
-          transportation: '',
-          languages: [] as string[],
-          ageRestriction: '',
-        },
-      },
-    },
-  });
+  const [editFormData, setEditFormData] = useState(getEmptyFormData());
   const [newProductFormData, setNewProductFormData] = useState({
     name: '',
     slug: '',
@@ -335,72 +244,12 @@ export default function AdminProductsPage() {
         setEditingProduct(fullProduct);
         // Fetch custom pages - vendor pages if product has vendor, otherwise marketplace pages
         fetchCustomPages(fullProduct.vendor?.id);
-        setEditFormData({
-          name: fullProduct.name,
-          description: fullProduct.description || '',
-          shortDescription: fullProduct.shortDescription || '',
-          price: fullProduct.price,
-          compareAtPrice: fullProduct.compareAtPrice || 0,
-          stockQuantity: fullProduct.stockQuantity,
-          sku: fullProduct.sku,
-          featuredImage: fullProduct.featuredImage || '',
-          images: fullProduct.images || [],
-          productType: fullProduct.productType || 'physical',
-          hasVariants: fullProduct.hasVariants || fullProduct.isParent || false,
-          variations: fullProduct.variations || [],
-          variationThemes: fullProduct.variationThemes || [],
-          productVariants: fullProduct.productVariants || [],
-          variantOptions: fullProduct.variantOptions || [],
-          attributes: {
-            booking: {
-              duration: fullProduct.attributes?.booking?.duration || 60,
-              durationUnit: fullProduct.attributes?.booking?.durationUnit || 'hours',
-              bufferTime: fullProduct.attributes?.booking?.bufferTime || 0,
-              availableDays: fullProduct.attributes?.booking?.availableDays || [],
-              timeSlots: fullProduct.attributes?.booking?.timeSlots || [{ start: '09:00', end: '17:00' }],
-            },
-            tour: {
-              tourMode: fullProduct.attributes?.tour?.tourMode || false,
-              departures: fullProduct.attributes?.tour?.departures || [],
-              itinerary: fullProduct.attributes?.tour?.itinerary || [],
-              details: {
-                destinations: fullProduct.attributes?.tour?.details?.destinations || [],
-                tourType: fullProduct.attributes?.tour?.details?.tourType || '',
-                difficulty: fullProduct.attributes?.tour?.details?.difficulty || 'moderate',
-                groupSize: fullProduct.attributes?.tour?.details?.groupSize || { min: 1, max: 20 },
-                inclusions: fullProduct.attributes?.tour?.details?.inclusions || [],
-                exclusions: fullProduct.attributes?.tour?.details?.exclusions || [],
-                pickupPoints: fullProduct.attributes?.tour?.details?.pickupPoints || [],
-                dropPoints: fullProduct.attributes?.tour?.details?.dropPoints || [],
-                accommodation: fullProduct.attributes?.tour?.details?.accommodation || '',
-                transportation: fullProduct.attributes?.tour?.details?.transportation || '',
-                languages: fullProduct.attributes?.tour?.details?.languages || [],
-                ageRestriction: fullProduct.attributes?.tour?.details?.ageRestriction || '',
-              },
-            },
-          },
-        });
+        setEditFormData(productToFormData(fullProduct));
       } else {
         setEditingProduct(product);
         // Fetch custom pages - vendor pages if product has vendor, otherwise marketplace pages
         fetchCustomPages(product.vendor?.id);
-        setEditFormData({
-          name: product.name,
-          description: product.description || '',
-          shortDescription: product.shortDescription || '',
-          price: product.price,
-          compareAtPrice: product.compareAtPrice || 0,
-          stockQuantity: product.stockQuantity,
-          sku: product.sku,
-          featuredImage: product.featuredImage || '',
-          images: product.images || [],
-          productType: product.productType || 'physical',
-          hasVariants: product.hasVariants || product.isParent || false,
-          variations: product.variations || [],
-          variationThemes: product.variationThemes || [],
-          productVariants: product.productVariants || [],
-          variantOptions: product.variantOptions || [],
-        });
+        setEditFormData(productToFormData(product));
       }
     } catch (error) {
       console.error('Error fetching product details:', error);
@@ -408,23 +257,7 @@ export default function AdminProductsPage() {
       setEditingProduct(product);
       // Fetch custom pages - vendor pages if product has vendor, otherwise marketplace pages
       fetchCustomPages(product.vendor?.id);
-      setEditFormData({
-        name: product.name,
-        description: product.description || '',
-        shortDescription: product.shortDescription || '',
-        price: product.price,
-        compareAtPrice: product.compareAtPrice || 0,
-        stockQuantity: product.stockQuantity,
-        sku: product.sku,
-        featuredImage: product.featuredImage || '',
-        images: product.images || [],
-        productType: product.productType || 'physical',
-        hasVariants: product.hasVariants || product.isParent || false,
-        variations: product.variations || [],
-        variationThemes: product.variationThemes || [],
-        productVariants: product.productVariants || [],
-        variantOptions: product.variantOptions || [],
-      });
+      setEditFormData(productToFormData(product));
     }
   };
 
@@ -460,23 +293,7 @@ export default function AdminProductsPage() {
 
   const handleCancelEdit = () => {
     setEditingProduct(null);
-    setEditFormData({
-      name: '',
-      description: '',
-      shortDescription: '',
-      price: 0,
-      compareAtPrice: 0,
-      stockQuantity: 0,
-      sku: '',
-      featuredImage: '',
-      images: [],
-      productType: 'physical',
-      hasVariants: false,
-      variations: [],
-      variationThemes: [],
-      productVariants: [],
-      variantOptions: [],
-    });
+    setEditFormData(getEmptyFormData());
   };
 
   const handleOpenAddModal = () => {
@@ -1025,47 +842,6 @@ Generated by Marketplace Platform - Admin
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'archived':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-blue-100 text-blue-800';
-    }
-  };
-
-  const getStockColor = (quantity: number) => {
-    if (quantity === 0) return 'text-red-600 font-semibold';
-    if (quantity < 10) return 'text-orange-600 font-semibold';
-    return 'text-green-600';
-  };
-
-  const getPriceDisplay = (product: Product) => {
-    // If product has variants, show variant price range
-    if (product.hasVariants && product.productVariants && product.productVariants.length > 0) {
-      const prices = product.productVariants
-        .map(v => v.price)
-        .filter(p => p !== undefined && p !== null && p > 0);
-      
-      if (prices.length === 0) return { display: '₹0.00', isRange: false };
-      
-      const minPrice = Math.min(...prices);
-      const maxPrice = Math.max(...prices);
-      
-      if (minPrice === maxPrice) {
-        return { display: `₹${minPrice.toFixed(2)}`, isRange: false };
-      }
-      return { display: `₹${minPrice.toFixed(2)} - ₹${maxPrice.toFixed(2)}`, isRange: true };
-    }
-    
-    // Regular product price
-    return { display: `₹${Number(product.price || 0).toFixed(2)}`, isRange: false };
-  };
-
   if (authLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -1171,13 +947,13 @@ Generated by Marketplace Platform - Admin
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Low Stock</div>
             <div className="text-2xl font-bold text-orange-600">
-              {products.filter((p: Product) => p.stockQuantity < 10 && p.stockQuantity > 0).length}
+              {products.filter((p: Product) => (p.stockQuantity ?? 0) < 10 && (p.stockQuantity ?? 0) > 0).length}
             </div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Out of Stock</div>
             <div className="text-2xl font-bold text-red-600">
-              {products.filter((p: Product) => p.stockQuantity === 0).length}
+              {products.filter((p: Product) => (p.stockQuantity ?? 0) === 0).length}
             </div>
           </div>
         </div>
@@ -1438,7 +1214,7 @@ Generated by Marketplace Platform - Admin
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="text-sm font-semibold text-gray-900">
-                                    {getPriceDisplay(product).display}
+                                    {getVariantPriceDisplay(product).display}
                                   </div>
                                   {product.compareAtPrice && (
                                     <div className="text-xs text-gray-500 line-through">
@@ -1447,16 +1223,16 @@ Generated by Marketplace Platform - Admin
                                   )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`text-sm ${getStockColor(product.stockQuantity)}`}>
-                                    {product.stockQuantity}
+                                  <span className={`text-sm ${getStockColor(product.stockQuantity ?? 0)}`}>
+                                    {product.stockQuantity ?? 0}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <select
-                                    value={product.status}
+                                    value={product.status || 'draft'}
                                     onChange={(e) => handleStatusChange(product.id, e.target.value)}
                                     className={`text-xs px-3 py-1 rounded-full font-semibold ${getStatusColor(
-                                      product.status
+                                      product.status || 'draft'
                                     )} border-0 cursor-pointer`}
                                   >
                                     <option value="active">Active</option>
@@ -1526,7 +1302,7 @@ Generated by Marketplace Platform - Admin
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-semibold text-gray-900">
-                              {getPriceDisplay(product).display}
+                              {getVariantPriceDisplay(product).display}
                             </div>
                             {product.compareAtPrice && (
                               <div className="text-xs text-gray-500 line-through">
@@ -1535,16 +1311,16 @@ Generated by Marketplace Platform - Admin
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`text-sm ${getStockColor(product.stockQuantity)}`}>
-                              {product.stockQuantity}
+                            <span className={`text-sm ${getStockColor(product.stockQuantity ?? 0)}`}>
+                              {product.stockQuantity ?? 0}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <select
-                              value={product.status}
+                              value={product.status || 'draft'}
                               onChange={(e) => handleStatusChange(product.id, e.target.value)}
                               className={`text-xs px-3 py-1 rounded-full font-semibold ${getStatusColor(
-                                product.status
+                                product.status || 'draft'
                               )} border-0 cursor-pointer`}
                             >
                               <option value="active">Active</option>
@@ -1801,7 +1577,7 @@ Generated by Marketplace Platform - Admin
               </div>
 
               {/* Booking Configuration - Only show for non-tour booking products */}
-              {editFormData.productType === 'booking' && !editFormData.attributes.tour.tourMode && (
+              {editFormData.productType === 'booking' && !editFormData.attributes.tour?.tourMode && (
                 <div className="border-t pt-4 space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">Booking Configuration</h3>
                   
@@ -1824,14 +1600,14 @@ Generated by Marketplace Platform - Admin
                             attributes: {
                               ...editFormData.attributes,
                               booking: {
-                                ...editFormData.attributes.booking,
+                                ...editFormData.attributes.booking!,
                                 durationUnit: unit.value as 'hours' | 'days' | 'sessions',
                                 duration: unit.value === 'days' ? 1440 : unit.value === 'hours' ? 60 : 60,
                               },
                             },
                           })}
                           className={`p-3 border-2 rounded-lg text-left ${
-                            editFormData.attributes.booking.durationUnit === unit.value
+                            editFormData.attributes.booking!.durationUnit === unit.value
                               ? 'border-blue-600 bg-blue-50'
                               : 'border-gray-300 hover:border-gray-400'
                           }`}
@@ -1847,20 +1623,20 @@ Generated by Marketplace Platform - Admin
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {editFormData.attributes.booking.durationUnit === 'days'
+                        {editFormData.attributes.booking!.durationUnit === 'days'
                           ? 'Duration (days) *'
-                          : editFormData.attributes.booking.durationUnit === 'hours'
+                          : editFormData.attributes.booking!.durationUnit === 'hours'
                           ? 'Duration (hours) *'
                           : 'Duration (minutes) *'}
                       </label>
                       <input
                         type="number"
                         value={
-                          editFormData.attributes.booking.durationUnit === 'days'
-                            ? Math.floor(editFormData.attributes.booking.duration / 1440)
-                            : editFormData.attributes.booking.durationUnit === 'hours'
-                            ? Math.floor(editFormData.attributes.booking.duration / 60)
-                            : editFormData.attributes.booking.duration
+                          editFormData.attributes.booking!.durationUnit === 'days'
+                            ? Math.floor(editFormData.attributes.booking!.duration / 1440)
+                            : editFormData.attributes.booking!.durationUnit === 'hours'
+                            ? Math.floor(editFormData.attributes.booking!.duration / 60)
+                            : editFormData.attributes.booking!.duration
                         }
                         onChange={(e) => {
                           const value = e.target.value === '' ? '' : parseInt(e.target.value);
@@ -1869,27 +1645,27 @@ Generated by Marketplace Platform - Admin
                               ...editFormData,
                               attributes: {
                                 ...editFormData.attributes,
-                                booking: { ...editFormData.attributes.booking, duration: 0 },
+                                booking: { ...editFormData.attributes.booking!, duration: 0 },
                               },
                             });
                           } else {
-                            const minutes = editFormData.attributes.booking.durationUnit === 'days'
+                            const minutes = editFormData.attributes.booking!.durationUnit === 'days'
                               ? value * 1440
-                              : editFormData.attributes.booking.durationUnit === 'hours'
+                              : editFormData.attributes.booking!.durationUnit === 'hours'
                               ? value * 60
                               : value;
                             setEditFormData({
                               ...editFormData,
                               attributes: {
                                 ...editFormData.attributes,
-                                booking: { ...editFormData.attributes.booking, duration: minutes },
+                                booking: { ...editFormData.attributes.booking!, duration: minutes },
                               },
                             });
                           }
                         }}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                        min={editFormData.attributes.booking.durationUnit === 'days' ? '1' : editFormData.attributes.booking.durationUnit === 'hours' ? '1' : '15'}
-                        step={editFormData.attributes.booking.durationUnit === 'days' ? '1' : editFormData.attributes.booking.durationUnit === 'hours' ? '1' : '15'}
+                        min={editFormData.attributes.booking!.durationUnit === 'days' ? '1' : editFormData.attributes.booking!.durationUnit === 'hours' ? '1' : '15'}
+                        step={editFormData.attributes.booking!.durationUnit === 'days' ? '1' : editFormData.attributes.booking!.durationUnit === 'hours' ? '1' : '15'}
                         required
                       />
                     </div>
@@ -1899,12 +1675,12 @@ Generated by Marketplace Platform - Admin
                       </label>
                       <input
                         type="number"
-                        value={editFormData.attributes.booking.bufferTime}
+                        value={editFormData.attributes.booking!.bufferTime}
                         onChange={(e) => setEditFormData({
                           ...editFormData,
                           attributes: {
                             ...editFormData.attributes,
-                            booking: { ...editFormData.attributes.booking, bufferTime: parseInt(e.target.value) || 0 },
+                            booking: { ...editFormData.attributes.booking!, bufferTime: parseInt(e.target.value) || 0 },
                           },
                         })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg"
@@ -1929,7 +1705,7 @@ Generated by Marketplace Platform - Admin
                             attributes: {
                               ...editFormData.attributes,
                               booking: {
-                                ...editFormData.attributes.booking,
+                                ...editFormData.attributes.booking!,
                                 availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                               },
                             },
@@ -1945,7 +1721,7 @@ Generated by Marketplace Platform - Admin
                             ...editFormData,
                             attributes: {
                               ...editFormData.attributes,
-                              booking: { ...editFormData.attributes.booking, availableDays: [] },
+                              booking: { ...editFormData.attributes.booking!, availableDays: [] },
                             },
                           })}
                           className="text-xs text-blue-600 hover:text-blue-800 font-medium"
@@ -1962,7 +1738,7 @@ Generated by Marketplace Platform - Admin
                         >
                           <input
                             type="checkbox"
-                            checked={editFormData.attributes.booking.availableDays.includes(day)}
+                            checked={editFormData.attributes.booking!.availableDays.includes(day)}
                             onChange={(e) => {
                               if (e.target.checked) {
                                 setEditFormData({
@@ -1970,8 +1746,8 @@ Generated by Marketplace Platform - Admin
                                   attributes: {
                                     ...editFormData.attributes,
                                     booking: {
-                                      ...editFormData.attributes.booking,
-                                      availableDays: [...editFormData.attributes.booking.availableDays, day],
+                                      ...editFormData.attributes.booking!,
+                                      availableDays: [...editFormData.attributes.booking!.availableDays, day],
                                     },
                                   },
                                 });
@@ -1981,8 +1757,8 @@ Generated by Marketplace Platform - Admin
                                   attributes: {
                                     ...editFormData.attributes,
                                     booking: {
-                                      ...editFormData.attributes.booking,
-                                      availableDays: editFormData.attributes.booking.availableDays.filter((d) => d !== day),
+                                      ...editFormData.attributes.booking!,
+                                      availableDays: editFormData.attributes.booking!.availableDays.filter((d) => d !== day),
                                     },
                                   },
                                 });
@@ -2010,7 +1786,7 @@ Generated by Marketplace Platform - Admin
                             attributes: {
                               ...editFormData.attributes,
                               booking: {
-                                ...editFormData.attributes.booking,
+                                ...editFormData.attributes.booking!,
                                 timeSlots: [{ start: '00:00', end: '23:59' }],
                               },
                             },
@@ -2021,19 +1797,19 @@ Generated by Marketplace Platform - Admin
                         Set Full Day (00:00 - 23:59)
                       </button>
                     </div>
-                    {editFormData.attributes.booking.timeSlots.map((slot, index) => (
+                    {editFormData.attributes.booking!.timeSlots.map((slot, index) => (
                       <div key={index} className="flex gap-4 mb-2 items-center">
                         <input
                           type="time"
                           value={slot.start}
                           onChange={(e) => {
-                            const newSlots = [...editFormData.attributes.booking.timeSlots];
+                            const newSlots = [...editFormData.attributes.booking!.timeSlots];
                             newSlots[index].start = e.target.value;
                             setEditFormData({
                               ...editFormData,
                               attributes: {
                                 ...editFormData.attributes,
-                                booking: { ...editFormData.attributes.booking, timeSlots: newSlots },
+                                booking: { ...editFormData.attributes.booking!, timeSlots: newSlots },
                               },
                             });
                           }}
@@ -2045,29 +1821,29 @@ Generated by Marketplace Platform - Admin
                           type="time"
                           value={slot.end}
                           onChange={(e) => {
-                            const newSlots = [...editFormData.attributes.booking.timeSlots];
+                            const newSlots = [...editFormData.attributes.booking!.timeSlots];
                             newSlots[index].end = e.target.value;
                             setEditFormData({
                               ...editFormData,
                               attributes: {
                                 ...editFormData.attributes,
-                                booking: { ...editFormData.attributes.booking, timeSlots: newSlots },
+                                booking: { ...editFormData.attributes.booking!, timeSlots: newSlots },
                               },
                             });
                           }}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
                           step="3600"
                         />
-                        {editFormData.attributes.booking.timeSlots.length > 1 && (
+                        {editFormData.attributes.booking!.timeSlots.length > 1 && (
                           <button
                             type="button"
                             onClick={() => {
-                              const newSlots = editFormData.attributes.booking.timeSlots.filter((_, i) => i !== index);
+                              const newSlots = editFormData.attributes.booking!.timeSlots.filter((_, i) => i !== index);
                               setEditFormData({
                                 ...editFormData,
                                 attributes: {
                                   ...editFormData.attributes,
-                                  booking: { ...editFormData.attributes.booking, timeSlots: newSlots },
+                                  booking: { ...editFormData.attributes.booking!, timeSlots: newSlots },
                                 },
                               });
                             }}
@@ -2086,8 +1862,8 @@ Generated by Marketplace Platform - Admin
                           attributes: {
                             ...editFormData.attributes,
                             booking: {
-                              ...editFormData.attributes.booking,
-                              timeSlots: [...editFormData.attributes.booking.timeSlots, { start: '09:00', end: '17:00' }],
+                              ...editFormData.attributes.booking!,
+                              timeSlots: [...editFormData.attributes.booking!.timeSlots, { start: '09:00', end: '17:00' }],
                             },
                           },
                         });
@@ -2104,7 +1880,7 @@ Generated by Marketplace Platform - Admin
               )}
 
               {/* Tour Attributes - Show for tour products */}
-              {editFormData.productType === 'booking' && editFormData.attributes.tour.tourMode && (
+              {editFormData.productType === 'booking' && editFormData.attributes.tour?.tourMode && (
                 <div className="border-t pt-4 space-y-4">
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                     <h4 className="font-semibold text-purple-900 mb-2">🗺️ Tour Package Configuration</h4>
@@ -2115,7 +1891,7 @@ Generated by Marketplace Platform - Admin
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-3">Tour Departures</label>
                         <div className="space-y-3">
-                          {editFormData.attributes.tour.departures.map((departure, index) => (
+                          {editFormData.attributes.tour!.departures.map((departure, index) => (
                             <div key={index} className="grid grid-cols-5 gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
                               <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Departure Date</label>
@@ -2123,13 +1899,13 @@ Generated by Marketplace Platform - Admin
                                   type="date"
                                   value={departure.departureDate}
                                   onChange={(e) => {
-                                    const newDepartures = [...editFormData.attributes.tour.departures];
+                                    const newDepartures = [...editFormData.attributes.tour!.departures];
                                     newDepartures[index].departureDate = e.target.value;
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
-                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                        tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                       },
                                     });
                                   }}
@@ -2142,13 +1918,13 @@ Generated by Marketplace Platform - Admin
                                   type="date"
                                   value={departure.returnDate}
                                   onChange={(e) => {
-                                    const newDepartures = [...editFormData.attributes.tour.departures];
+                                    const newDepartures = [...editFormData.attributes.tour!.departures];
                                     newDepartures[index].returnDate = e.target.value;
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
-                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                        tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                       },
                                     });
                                   }}
@@ -2161,13 +1937,13 @@ Generated by Marketplace Platform - Admin
                                   type="number"
                                   value={departure.availableSeats}
                                   onChange={(e) => {
-                                    const newDepartures = [...editFormData.attributes.tour.departures];
+                                    const newDepartures = [...editFormData.attributes.tour!.departures];
                                     newDepartures[index].availableSeats = parseInt(e.target.value) || 0;
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
-                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                        tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                       },
                                     });
                                   }}
@@ -2181,13 +1957,13 @@ Generated by Marketplace Platform - Admin
                                   type="number"
                                   value={departure.pricePerPerson}
                                   onChange={(e) => {
-                                    const newDepartures = [...editFormData.attributes.tour.departures];
+                                    const newDepartures = [...editFormData.attributes.tour!.departures];
                                     newDepartures[index].pricePerPerson = parseFloat(e.target.value) || 0;
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
-                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                        tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                       },
                                     });
                                   }}
@@ -2199,12 +1975,12 @@ Generated by Marketplace Platform - Admin
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const newDepartures = editFormData.attributes.tour.departures.filter((_, i) => i !== index);
+                                    const newDepartures = editFormData.attributes.tour!.departures.filter((_, i) => i !== index);
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
-                                        tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                        tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                       },
                                     });
                                   }}
@@ -2224,9 +2000,9 @@ Generated by Marketplace Platform - Admin
                               attributes: {
                                 ...editFormData.attributes,
                                 tour: {
-                                  ...editFormData.attributes.tour,
+                                  ...editFormData.attributes.tour!,
                                   departures: [
-                                    ...editFormData.attributes.tour.departures,
+                                    ...editFormData.attributes.tour!.departures,
                                     { departureDate: '', returnDate: '', availableSeats: 20, pricePerPerson: editFormData.price, status: 'active' as const },
                                   ],
                                 },
@@ -2243,20 +2019,20 @@ Generated by Marketplace Platform - Admin
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-3">Tour Itinerary</label>
                         <div className="space-y-3">
-                          {editFormData.attributes.tour.itinerary.map((day, index) => (
+                          {editFormData.attributes.tour!.itinerary.map((day, index) => (
                             <div key={index} className="p-3 border border-gray-200 rounded-lg bg-white">
                               <div className="flex items-center justify-between mb-2">
                                 <strong className="text-sm font-semibold">Day {day.day}</strong>
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const newItinerary = editFormData.attributes.tour.itinerary.filter((_, i) => i !== index);
+                                    const newItinerary = editFormData.attributes.tour!.itinerary.filter((_, i) => i !== index);
                                     const renumbered = newItinerary.map((d, i) => ({ ...d, day: i + 1 }));
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
-                                        tour: { ...editFormData.attributes.tour, itinerary: renumbered },
+                                        tour: { ...editFormData.attributes.tour!, itinerary: renumbered },
                                       },
                                     });
                                   }}
@@ -2271,13 +2047,13 @@ Generated by Marketplace Platform - Admin
                                   placeholder="Day title"
                                   value={day.title}
                                   onChange={(e) => {
-                                    const newItinerary = [...editFormData.attributes.tour.itinerary];
+                                    const newItinerary = [...editFormData.attributes.tour!.itinerary];
                                     newItinerary[index].title = e.target.value;
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
-                                        tour: { ...editFormData.attributes.tour, itinerary: newItinerary },
+                                        tour: { ...editFormData.attributes.tour!, itinerary: newItinerary },
                                       },
                                     });
                                   }}
@@ -2287,13 +2063,13 @@ Generated by Marketplace Platform - Admin
                                   placeholder="Day description"
                                   value={day.description}
                                   onChange={(e) => {
-                                    const newItinerary = [...editFormData.attributes.tour.itinerary];
+                                    const newItinerary = [...editFormData.attributes.tour!.itinerary];
                                     newItinerary[index].description = e.target.value;
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
-                                        tour: { ...editFormData.attributes.tour, itinerary: newItinerary },
+                                        tour: { ...editFormData.attributes.tour!, itinerary: newItinerary },
                                       },
                                     });
                                   }}
@@ -2315,10 +2091,10 @@ Generated by Marketplace Platform - Admin
                               attributes: {
                                 ...editFormData.attributes,
                                 tour: {
-                                  ...editFormData.attributes.tour,
+                                  ...editFormData.attributes.tour!,
                                   itinerary: [
-                                    ...editFormData.attributes.tour.itinerary,
-                                    { day: editFormData.attributes.tour.itinerary.length + 1, title: '', description: '', activities: [], meals: [], accommodation: '' },
+                                    ...editFormData.attributes.tour!.itinerary,
+                                    { day: editFormData.attributes.tour!.itinerary.length + 1, title: '', description: '', activities: [], meals: [], accommodation: '' },
                                   ],
                                 },
                               },
@@ -2342,15 +2118,15 @@ Generated by Marketplace Platform - Admin
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Destinations (comma-separated)</label>
                                 <input
                                   type="text"
-                                  value={editFormData.attributes.tour.details.destinations.join(', ')}
+                                  value={editFormData.attributes.tour!.details.destinations.join(', ')}
                                   onChange={(e) => {
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
                                         tour: {
-                                          ...editFormData.attributes.tour,
-                                          details: { ...editFormData.attributes.tour.details, destinations: e.target.value.split(',').map((d) => d.trim()) },
+                                          ...editFormData.attributes.tour!,
+                                          details: { ...editFormData.attributes.tour!.details, destinations: e.target.value.split(',').map((d) => d.trim()) },
                                         },
                                       },
                                     });
@@ -2363,15 +2139,15 @@ Generated by Marketplace Platform - Admin
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Tour Type</label>
                                 <input
                                   type="text"
-                                  value={editFormData.attributes.tour.details.tourType}
+                                  value={editFormData.attributes.tour!.details.tourType}
                                   onChange={(e) => {
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
                                         tour: {
-                                          ...editFormData.attributes.tour,
-                                          details: { ...editFormData.attributes.tour.details, tourType: e.target.value },
+                                          ...editFormData.attributes.tour!,
+                                          details: { ...editFormData.attributes.tour!.details, tourType: e.target.value },
                                         },
                                       },
                                     });
@@ -2385,15 +2161,15 @@ Generated by Marketplace Platform - Admin
                               <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Difficulty Level</label>
                                 <select
-                                  value={editFormData.attributes.tour.details.difficulty}
+                                  value={editFormData.attributes.tour!.details.difficulty}
                                   onChange={(e) => {
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
                                         tour: {
-                                          ...editFormData.attributes.tour,
-                                          details: { ...editFormData.attributes.tour.details, difficulty: e.target.value },
+                                          ...editFormData.attributes.tour!,
+                                          details: { ...editFormData.attributes.tour!.details, difficulty: e.target.value as 'easy' | 'moderate' | 'challenging' | 'difficult' },
                                         },
                                       },
                                     });
@@ -2411,17 +2187,17 @@ Generated by Marketplace Platform - Admin
                                 <div className="flex gap-2 items-center">
                                   <input
                                     type="number"
-                                    value={editFormData.attributes.tour.details.groupSize.min}
+                                    value={editFormData.attributes.tour!.details.groupSize.min}
                                     onChange={(e) => {
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
                                           tour: {
-                                            ...editFormData.attributes.tour,
+                                            ...editFormData.attributes.tour!,
                                             details: {
-                                              ...editFormData.attributes.tour.details,
-                                              groupSize: { ...editFormData.attributes.tour.details.groupSize, min: parseInt(e.target.value) || 1 },
+                                              ...editFormData.attributes.tour!.details,
+                                              groupSize: { ...editFormData.attributes.tour!.details.groupSize, min: parseInt(e.target.value) || 1 },
                                             },
                                           },
                                         },
@@ -2434,17 +2210,17 @@ Generated by Marketplace Platform - Admin
                                   <span className="text-gray-500">to</span>
                                   <input
                                     type="number"
-                                    value={editFormData.attributes.tour.details.groupSize.max}
+                                    value={editFormData.attributes.tour!.details.groupSize.max}
                                     onChange={(e) => {
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
                                           tour: {
-                                            ...editFormData.attributes.tour,
+                                            ...editFormData.attributes.tour!,
                                             details: {
-                                              ...editFormData.attributes.tour.details,
-                                              groupSize: { ...editFormData.attributes.tour.details.groupSize, max: parseInt(e.target.value) || 20 },
+                                              ...editFormData.attributes.tour!.details,
+                                              groupSize: { ...editFormData.attributes.tour!.details.groupSize, max: parseInt(e.target.value) || 20 },
                                             },
                                           },
                                         },
@@ -2643,8 +2419,10 @@ Generated by Marketplace Platform - Admin
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {editFormData.productVariants.map((variant: ProductVariant, index: number) => {
-                            const discount = variant.compareAtPrice && variant.compareAtPrice > variant.price
-                              ? Math.round(((variant.compareAtPrice - variant.price) / variant.compareAtPrice) * 100)
+                            const variantPrice = typeof variant.price === 'string' ? parseFloat(variant.price) : variant.price;
+                            const variantComparePrice = typeof variant.compareAtPrice === 'string' ? parseFloat(variant.compareAtPrice) : variant.compareAtPrice;
+                            const discount = variantComparePrice && variantComparePrice > variantPrice
+                              ? Math.round(((variantComparePrice - variantPrice) / variantComparePrice) * 100)
                               : null;
                             
                             return (
@@ -2763,9 +2541,9 @@ Generated by Marketplace Platform - Admin
             <div className="p-6 border-t bg-gray-50 flex gap-3 sticky bottom-0">
               <button
                 onClick={handleSaveEdit}
-                disabled={editFormData.hasVariants && editFormData.productVariants.some(v => !v.price || v.price <= 0)}
+                disabled={editFormData.hasVariants && editFormData.productVariants.some(v => !v.price || Number(v.price) <= 0)}
                 className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                title={editFormData.hasVariants && editFormData.productVariants.some(v => !v.price || v.price <= 0) ? 'Please fill all variant prices' : ''}
+                title={editFormData.hasVariants && editFormData.productVariants.some(v => !v.price || Number(v.price) <= 0) ? 'Please fill all variant prices' : ''}
               >
                 Save Changes
               </button>
@@ -2989,3 +2767,6 @@ Generated by Marketplace Platform - Admin
     </>
   );
 }
+
+
+

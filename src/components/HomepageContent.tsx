@@ -12,45 +12,7 @@ import ThemeRenderer from './ThemeRenderer';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useStockWebSocket } from '@/contexts/StockWebSocketContext';
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  children?: Category[];
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  shortDescription: string;
-  price: string | number;
-  compareAtPrice?: string | number;
-  featuredImage: string;
-  images?: string[];
-  averageRating: string | number;
-  reviewCount: number;
-  categories: Category[];
-  productType?: 'physical' | 'booking';
-  stockQuantity?: number;
-  attributes?: {
-    booking?: {
-      durationUnit?: 'hours' | 'days' | 'sessions';
-      duration?: number;
-    };
-  };
-  vendor?: {
-    id: string;
-    name: string;
-    businessName?: string;
-    subdomain?: string;
-    cityId?: string | null;
-    subLocationId?: string | null;
-    locationCity?: { id: string; name: string } | null;
-    locationSubLocation?: { id: string; name: string } | null;
-  };
-}
+import { Product, Category } from '@/types/product';
 
 interface HomepageContentProps {
   initialCategories: Category[];

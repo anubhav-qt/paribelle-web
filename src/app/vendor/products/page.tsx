@@ -11,76 +11,14 @@ import MultiImageUpload from '@/components/MultiImageUpload';
 import { getCurrencySymbol } from '@/lib/currency';
 import { getVendorId, isSuperAdmin } from '@/lib/auth';
 import { handleSortChange, getSortIcon, compareValues, getSortableHeaderClass, SortOrder } from '@/lib/utils/sorting';
+import { Product, TourDeparture, TourItinerary, TourDetails } from '@/types/product';
+import { VendorStatus, VendorPage as VendorPageType, LinkableProduct, ImportMessage } from '@/types/common';
+import { productToFormData, getEmptyFormData } from '@/lib/product-form-utils';
 
 const ReactQuill = dynamic(() => import('react-quill').then((mod) => mod.default), { 
   ssr: false,
   loading: () => <div>Loading editor...</div>
 });
-
-interface Product {
-  id: string;
-  name: string;
-  description?: string;
-  shortDescription?: string;
-  price: number;
-  compareAtPrice?: number;
-  stockQuantity: number;
-  status: string;
-  sku: string;
-  slug?: string;
-  featuredImage?: string;
-  images?: string[];
-  productType: 'physical' | 'booking';
-  categories?: Array<{ id: string; name: string }>;
-  isTour?: boolean;
-  // Variation support
-  isParent?: boolean;
-  parentProductId?: string;
-  variations?: Product[];
-  variationAttributes?: Record<string, string>;
-  variationThemes?: string[];
-  attributes?: {
-    booking?: {
-      duration: number;
-      durationUnit: 'hours' | 'days' | 'sessions';
-      bufferTime: number;
-      availableDays: string[];
-      timeSlots: Array<{ start: string; end: string }>;
-    };
-    tour?: {
-      tourMode: boolean;
-      departures: Array<{
-        departureDate: string;
-        returnDate: string;
-        availableSeats: number;
-        pricePerPerson: number;
-        status: 'available' | 'soldOut' | 'cancelled';
-      }>;
-      itinerary: Array<{
-        day: number;
-        title: string;
-        description: string;
-        activities: string[];
-        meals: string[];
-        accommodation?: string;
-      }>;
-      details: {
-        destinations: string[];
-        tourType: string;
-        difficulty: string;
-        groupSize: { min: number; max: number };
-        inclusions: string[];
-        exclusions: string[];
-        pickupPoints: Array<{ location: string; time: string }>;
-        dropPoints: Array<{ location: string; time: string }>;
-        accommodation: string;
-        transportation: string;
-        languages: string[];
-        ageRestriction?: string;
-      };
-    };
-  };
-}
 
 export default function VendorProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -90,18 +28,11 @@ export default function VendorProductsPage() {
   const [currency, setCurrency] = useState('INR');
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [importMessage, setImportMessage] = useState<ImportMessage | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   
   // Vendor verification status
-  const [vendorStatus, setVendorStatus] = useState<{
-    kycStatus: string;
-    storeName: string | null;
-    contactEmail: string | null;
-    contactPhone: string | null;
-    canAddProducts: boolean;
-    blockReason: string | null;
-  } | null>(null);
+  const [vendorStatus, setVendorStatus] = useState<VendorStatus | null>(null);
   
   // Filtering and sorting states
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,66 +41,10 @@ export default function VendorProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock'>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [customPages, setCustomPages] = useState<Array<{ id: string; title: string; slug: string }>>([]);
-  const [linkableProducts, setLinkableProducts] = useState<Array<{ id: string; name: string; slug: string; productType: string; isTour: boolean }>>([]);
+  const [customPages, setCustomPages] = useState<VendorPageType[]>([]);
+  const [linkableProducts, setLinkableProducts] = useState<LinkableProduct[]>([]);
   
-  const [editFormData, setEditFormData] = useState({
-    name: '',
-    description: '',
-    shortDescription: '',
-    price: 0,
-    compareAtPrice: 0,
-    stockQuantity: 0,
-    sku: '',
-    featuredImage: '',
-    images: [] as string[],
-    productType: 'physical' as 'physical' | 'booking',
-    categoryIds: [] as string[],
-    hasVariants: false,
-    variations: [] as any[],
-    variationThemes: [] as string[],
-    attributes: {
-      booking: {
-        duration: 60,
-        durationUnit: 'hours' as 'hours' | 'days' | 'sessions',
-        bufferTime: 0,
-        availableDays: [] as string[],
-        timeSlots: [{ start: '09:00', end: '17:00' }],
-      },
-      tour: {
-        tourMode: false,
-        departures: [] as Array<{
-          departureDate: string;
-          returnDate: string;
-          availableSeats: number;
-          pricePerPerson: number;
-          status: 'active' | 'full' | 'cancelled';
-        }>,
-        itinerary: [] as Array<{
-          day: number;
-          title: string;
-          description: string;
-          activities: string[];
-          meals: string[];
-          accommodation: string;
-        }>,
-        details: {
-          destinations: [] as string[],
-          tourType: '',
-          difficulty: 'moderate' as 'easy' | 'moderate' | 'challenging' | 'difficult',
-          groupSize: { min: 1, max: 20 },
-          inclusions: [] as string[],
-          exclusions: [] as string[],
-          pickupPoints: [] as Array<{ location: string; time: string }>,
-          dropPoints: [] as Array<{ location: string; time: string }>,
-          accommodation: '',
-          transportation: '',
-          languages: [] as string[],
-          ageRestriction: '',
-        },
-      },
-    },
-  });
+  const [editFormData, setEditFormData] = useState(getEmptyFormData());
 
   useEffect(() => {
     // Fetch currency setting
@@ -384,146 +259,17 @@ export default function VendorProductsPage() {
         console.log('🔍 Description:', fullProduct.description);
         console.log('🔍 Short Description:', fullProduct.shortDescription);
         setEditingProduct(fullProduct);
-        setEditFormData({
-          name: fullProduct.name,
-          description: fullProduct.description || '',
-          shortDescription: fullProduct.shortDescription || '',
-          price: fullProduct.price,
-          compareAtPrice: fullProduct.compareAtPrice || 0,
-          stockQuantity: fullProduct.stockQuantity,
-          sku: fullProduct.sku,
-          featuredImage: fullProduct.featuredImage || '',
-          images: fullProduct.images || [],
-          productType: fullProduct.productType || 'physical',
-          categoryIds: fullProduct.categories?.map((c: any) => c.id) || [],
-          hasVariants: fullProduct.isParent || false,
-          variations: fullProduct.variations || [],
-          variationThemes: fullProduct.variationThemes || [],
-          attributes: {
-            booking: {
-              duration: fullProduct.attributes?.booking?.duration || 60,
-              durationUnit: fullProduct.attributes?.booking?.durationUnit || 'hours',
-              bufferTime: fullProduct.attributes?.booking?.bufferTime || 0,
-              availableDays: fullProduct.attributes?.booking?.availableDays || [],
-              timeSlots: fullProduct.attributes?.booking?.timeSlots || [{ start: '09:00', end: '17:00' }],
-            },
-            tour: {
-              tourMode: fullProduct.attributes?.tour?.tourMode || false,
-              departures: fullProduct.attributes?.tour?.departures || [],
-              itinerary: fullProduct.attributes?.tour?.itinerary || [],
-              details: {
-                destinations: fullProduct.attributes?.tour?.details?.destinations || [],
-                tourType: fullProduct.attributes?.tour?.details?.tourType || '',
-                difficulty: fullProduct.attributes?.tour?.details?.difficulty || 'moderate',
-                groupSize: fullProduct.attributes?.tour?.details?.groupSize || { min: 1, max: 20 },
-                inclusions: fullProduct.attributes?.tour?.details?.inclusions || [],
-                exclusions: fullProduct.attributes?.tour?.details?.exclusions || [],
-                pickupPoints: fullProduct.attributes?.tour?.details?.pickupPoints || [],
-                dropPoints: fullProduct.attributes?.tour?.details?.dropPoints || [],
-                accommodation: fullProduct.attributes?.tour?.details?.accommodation || '',
-                transportation: fullProduct.attributes?.tour?.details?.transportation || '',
-                languages: fullProduct.attributes?.tour?.details?.languages || [],
-                ageRestriction: fullProduct.attributes?.tour?.details?.ageRestriction || '',
-              },
-            },
-          },
-        });
+        setEditFormData(productToFormData(fullProduct));
       } else {
         // Fallback to the product data we already have
         setEditingProduct(product);
-        setEditFormData({
-          name: product.name,
-          description: product.description || '',
-          shortDescription: product.shortDescription || '',
-          price: product.price,
-          compareAtPrice: product.compareAtPrice || 0,
-          stockQuantity: product.stockQuantity,
-          sku: product.sku,
-          featuredImage: product.featuredImage || '',
-          images: product.images || [],
-          productType: product.productType || 'physical',
-          categoryIds: product.categories?.map(c => c.id) || [],
-          hasVariants: product.isParent || false,
-          variations: product.variations || [],
-          variationThemes: product.variationThemes || [],
-          attributes: {
-            booking: {
-              duration: product.attributes?.booking?.duration || 60,
-              durationUnit: product.attributes?.booking?.durationUnit || 'hours',
-              bufferTime: product.attributes?.booking?.bufferTime || 0,
-              availableDays: product.attributes?.booking?.availableDays || [],
-              timeSlots: product.attributes?.booking?.timeSlots || [{ start: '09:00', end: '17:00' }],
-            },
-            tour: {
-              tourMode: product.attributes?.tour?.tourMode || false,
-              departures: product.attributes?.tour?.departures || [],
-              itinerary: product.attributes?.tour?.itinerary || [],
-              details: {
-                destinations: product.attributes?.tour?.details?.destinations || [],
-                tourType: product.attributes?.tour?.details?.tourType || '',
-                difficulty: product.attributes?.tour?.details?.difficulty || 'moderate',
-                groupSize: product.attributes?.tour?.details?.groupSize || { min: 1, max: 20 },
-                inclusions: product.attributes?.tour?.details?.inclusions || [],
-                exclusions: product.attributes?.tour?.details?.exclusions || [],
-                pickupPoints: product.attributes?.tour?.details?.pickupPoints || [],
-                dropPoints: product.attributes?.tour?.details?.dropPoints || [],
-                accommodation: product.attributes?.tour?.details?.accommodation || '',
-                transportation: product.attributes?.tour?.details?.transportation || '',
-                languages: product.attributes?.tour?.details?.languages || [],
-                ageRestriction: product.attributes?.tour?.details?.ageRestriction || '',
-              },
-            },
-          },
-        });
+        setEditFormData(productToFormData(product));
       }
     } catch (error) {
       console.error('Error fetching product details:', error);
       // Fallback to the product data we already have
       setEditingProduct(product);
-      setEditFormData({
-        name: product.name,
-        description: product.description || '',
-        shortDescription: product.shortDescription || '',
-        price: product.price,
-        compareAtPrice: product.compareAtPrice || 0,
-        stockQuantity: product.stockQuantity,
-        sku: product.sku,
-        featuredImage: product.featuredImage || '',
-        images: product.images || [],
-        productType: product.productType || 'physical',
-        categoryIds: product.categories?.map(c => c.id) || [],
-        hasVariants: product.isParent || false,
-        variations: product.variations || [],
-        variationThemes: product.variationThemes || [],
-        attributes: {
-          booking: {
-            duration: product.attributes?.booking?.duration || 60,
-            durationUnit: product.attributes?.booking?.durationUnit || 'hours',
-            bufferTime: product.attributes?.booking?.bufferTime || 0,
-            availableDays: product.attributes?.booking?.availableDays || [],
-            timeSlots: product.attributes?.booking?.timeSlots || [{ start: '09:00', end: '17:00' }],
-          },
-          tour: {
-            tourMode: product.attributes?.tour?.tourMode || false,
-            departures: product.attributes?.tour?.departures || [],
-            itinerary: product.attributes?.tour?.itinerary || [],
-            details: {
-              destinations: product.attributes?.tour?.details?.destinations || [],
-              tourType: product.attributes?.tour?.details?.tourType || '',
-              difficulty: product.attributes?.tour?.details?.difficulty || 'moderate',
-              groupSize: product.attributes?.tour?.details?.groupSize || { min: 1, max: 20 },
-              inclusions: product.attributes?.tour?.details?.inclusions || [],
-              exclusions: product.attributes?.tour?.details?.exclusions || [],
-              pickupPoints: product.attributes?.tour?.details?.pickupPoints || [],
-              dropPoints: product.attributes?.tour?.details?.dropPoints || [],
-              accommodation: product.attributes?.tour?.details?.accommodation || '',
-              transportation: product.attributes?.tour?.details?.transportation || '',
-              languages: product.attributes?.tour?.details?.languages || [],
-              ageRestriction: product.attributes?.tour?.details?.ageRestriction || '',
-            },
-          },
-        },
-      });
+      setEditFormData(productToFormData(product));
     }
   };
 
@@ -591,50 +337,7 @@ export default function VendorProductsPage() {
 
   const handleCancelEdit = () => {
     setEditingProduct(null);
-    setEditFormData({
-      name: '',
-      description: '',
-      shortDescription: '',
-      price: 0,
-      compareAtPrice: 0,
-      stockQuantity: 0,
-      sku: '',
-      featuredImage: '',
-      images: [],
-      productType: 'physical',
-      categoryIds: [],
-      hasVariants: false,
-      variations: [],
-      variationThemes: [],
-      attributes: {
-        booking: {
-          duration: 60,
-          durationUnit: 'hours',
-          bufferTime: 0,
-          availableDays: [],
-          timeSlots: [{ start: '09:00', end: '17:00' }],
-        },
-        tour: {
-          tourMode: false,
-          departures: [],
-          itinerary: [],
-          details: {
-            destinations: [],
-            tourType: '',
-            difficulty: 'moderate',
-            groupSize: { min: 1, max: 20 },
-            inclusions: [],
-            exclusions: [],
-            pickupPoints: [],
-            dropPoints: [],
-            accommodation: '',
-            transportation: '',
-            languages: [],
-            ageRestriction: '',
-          },
-        },
-      },
-    });
+    setEditFormData(getEmptyFormData());
   };
 
   const handleDelete = async (id: string) => {
@@ -770,7 +473,7 @@ export default function VendorProductsPage() {
         const query = searchQuery.toLowerCase();
         if (
           !product.name.toLowerCase().includes(query) &&
-          !product.sku.toLowerCase().includes(query)
+          !(product.sku || '').toLowerCase().includes(query)
         ) {
           return false;
         }
@@ -1365,7 +1068,6 @@ export default function VendorProductsPage() {
         {editingProduct && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-              {console.log('📝 Rendering edit modal with editFormData:', editFormData)}
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Product</h2>
               
               <div className="space-y-4">
@@ -1385,7 +1087,6 @@ export default function VendorProductsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Short Description
                   </label>
-                  {console.log('📝 Short Description value:', editFormData.shortDescription)}
                   {typeof window !== 'undefined' ? (
                     <ReactQuill
                       theme="snow"
@@ -1409,8 +1110,6 @@ export default function VendorProductsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Full Description
                   </label>
-                  {console.log('📝 Full Description value:', editFormData.description)}
-                  {console.log('📝 Window type:', typeof window)}
                   {typeof window !== 'undefined' ? (
                     <div className="border border-gray-300 rounded-lg overflow-hidden">
                       <ReactQuill
@@ -1542,7 +1241,7 @@ export default function VendorProductsPage() {
                 </div>
 
                 {/* Booking Configuration - Only show for non-tour booking products */}
-                {editFormData.productType === 'booking' && !editFormData.attributes.tour.tourMode && (
+                {editFormData.productType === 'booking' && !editFormData.attributes.tour?.tourMode && (
                   <div className="border-t pt-4 space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900">Booking Configuration</h3>
                     
@@ -1563,15 +1262,15 @@ export default function VendorProductsPage() {
                             onClick={() => setEditFormData({
                               ...editFormData,
                               attributes: {
-                                booking: {
-                                  ...editFormData.attributes.booking,
+                                ...editFormData.attributes,
+                                booking: { ...editFormData.attributes.booking!,
                                   durationUnit: unit.value as 'hours' | 'days' | 'sessions',
                                   duration: unit.value === 'days' ? 1440 : unit.value === 'hours' ? 60 : 60,
                                 },
                               },
                             })}
                             className={`p-3 border-2 rounded-lg text-left ${
-                              editFormData.attributes.booking.durationUnit === unit.value
+                              editFormData.attributes.booking!.durationUnit === unit.value
                                 ? 'border-blue-600 bg-blue-50'
                                 : 'border-gray-300 hover:border-gray-400'
                             }`}
@@ -1587,20 +1286,20 @@ export default function VendorProductsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {editFormData.attributes.booking.durationUnit === 'days'
+                          {editFormData.attributes.booking!.durationUnit === 'days'
                             ? 'Duration (days) *'
-                            : editFormData.attributes.booking.durationUnit === 'hours'
+                            : editFormData.attributes.booking!.durationUnit === 'hours'
                             ? 'Duration (hours) *'
                             : 'Duration (minutes) *'}
                         </label>
                         <input
                           type="number"
                           value={
-                            editFormData.attributes.booking.durationUnit === 'days'
-                              ? Math.floor(editFormData.attributes.booking.duration / 1440)
-                              : editFormData.attributes.booking.durationUnit === 'hours'
-                              ? Math.floor(editFormData.attributes.booking.duration / 60)
-                              : editFormData.attributes.booking.duration
+                            editFormData.attributes.booking!.durationUnit === 'days'
+                              ? Math.floor(editFormData.attributes.booking!.duration / 1440)
+                              : editFormData.attributes.booking!.durationUnit === 'hours'
+                              ? Math.floor(editFormData.attributes.booking!.duration / 60)
+                              : editFormData.attributes.booking!.duration
                           }
                           onChange={(e) => {
                             const value = e.target.value === '' ? '' : parseInt(e.target.value);
@@ -1608,26 +1307,26 @@ export default function VendorProductsPage() {
                               setEditFormData({
                                 ...editFormData,
                                 attributes: {
-                                  booking: { ...editFormData.attributes.booking, duration: 0 },
+                                ...editFormData.attributes,                                  booking: { ...editFormData.attributes.booking!, duration: 0 },
                                 },
                               });
                             } else {
-                              const minutes = editFormData.attributes.booking.durationUnit === 'days'
+                              const minutes = editFormData.attributes.booking!.durationUnit === 'days'
                                 ? value * 1440
-                                : editFormData.attributes.booking.durationUnit === 'hours'
+                                : editFormData.attributes.booking!.durationUnit === 'hours'
                                 ? value * 60
                                 : value;
                               setEditFormData({
                                 ...editFormData,
                                 attributes: {
-                                  booking: { ...editFormData.attributes.booking, duration: minutes },
+                                ...editFormData.attributes,                                  booking: { ...editFormData.attributes.booking!, duration: minutes },
                                 },
                               });
                             }
                           }}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                          min={editFormData.attributes.booking.durationUnit === 'days' ? '1' : editFormData.attributes.booking.durationUnit === 'hours' ? '1' : '15'}
-                          step={editFormData.attributes.booking.durationUnit === 'days' ? '1' : editFormData.attributes.booking.durationUnit === 'hours' ? '1' : '15'}
+                          min={editFormData.attributes.booking!.durationUnit === 'days' ? '1' : editFormData.attributes.booking!.durationUnit === 'hours' ? '1' : '15'}
+                          step={editFormData.attributes.booking!.durationUnit === 'days' ? '1' : editFormData.attributes.booking!.durationUnit === 'hours' ? '1' : '15'}
                           required
                         />
                       </div>
@@ -1637,11 +1336,11 @@ export default function VendorProductsPage() {
                         </label>
                         <input
                           type="number"
-                          value={editFormData.attributes.booking.bufferTime}
+                          value={editFormData.attributes.booking!.bufferTime}
                           onChange={(e) => setEditFormData({
                             ...editFormData,
                             attributes: {
-                              booking: { ...editFormData.attributes.booking, bufferTime: parseInt(e.target.value) || 0 },
+                            ...editFormData.attributes,                              booking: { ...editFormData.attributes.booking!, bufferTime: parseInt(e.target.value) || 0 },
                             },
                           })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
@@ -1664,8 +1363,7 @@ export default function VendorProductsPage() {
                             onClick={() => setEditFormData({
                               ...editFormData,
                               attributes: {
-                                booking: {
-                                  ...editFormData.attributes.booking,
+                              ...editFormData.attributes,                                booking: { ...editFormData.attributes.booking!,
                                   availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                                 },
                               },
@@ -1680,7 +1378,7 @@ export default function VendorProductsPage() {
                             onClick={() => setEditFormData({
                               ...editFormData,
                               attributes: {
-                                booking: { ...editFormData.attributes.booking, availableDays: [] },
+                              ...editFormData.attributes,                                booking: { ...editFormData.attributes.booking!, availableDays: [] },
                               },
                             })}
                             className="text-xs text-blue-600 hover:text-blue-800 font-medium"
@@ -1697,15 +1395,14 @@ export default function VendorProductsPage() {
                           >
                             <input
                               type="checkbox"
-                              checked={editFormData.attributes.booking.availableDays.includes(day)}
+                              checked={editFormData.attributes.booking!.availableDays.includes(day)}
                               onChange={(e) => {
                                 if (e.target.checked) {
                                   setEditFormData({
                                     ...editFormData,
                                     attributes: {
-                                      booking: {
-                                        ...editFormData.attributes.booking,
-                                        availableDays: [...editFormData.attributes.booking.availableDays, day],
+                                    ...editFormData.attributes,                                      booking: { ...editFormData.attributes.booking!,
+                                        availableDays: [...editFormData.attributes.booking!.availableDays, day],
                                       },
                                     },
                                   });
@@ -1714,9 +1411,8 @@ export default function VendorProductsPage() {
                                     ...editFormData,
                                     attributes: {
                                       ...editFormData.attributes,
-                                      booking: {
-                                        ...editFormData.attributes.booking,
-                                        availableDays: editFormData.attributes.booking.availableDays.filter((d) => d !== day),
+                                      booking: { ...editFormData.attributes.booking!,
+                                        availableDays: editFormData.attributes.booking!.availableDays.filter((d) => d !== day),
                                       },
                                       tour: editFormData.attributes.tour,
                                     },
@@ -1743,8 +1439,7 @@ export default function VendorProductsPage() {
                             setEditFormData({
                               ...editFormData,
                               attributes: {
-                                booking: {
-                                  ...editFormData.attributes.booking,
+                              ...editFormData.attributes,                                booking: { ...editFormData.attributes.booking!,
                                   timeSlots: [{ start: '00:00', end: '23:59' }],
                                 },
                               },
@@ -1755,18 +1450,18 @@ export default function VendorProductsPage() {
                           Set Full Day (00:00 - 23:59)
                         </button>
                       </div>
-                      {editFormData.attributes.booking.timeSlots.map((slot, index) => (
+                      {editFormData.attributes.booking!.timeSlots.map((slot, index) => (
                         <div key={index} className="flex gap-4 mb-2 items-center">
                           <input
                             type="time"
                             value={slot.start}
                             onChange={(e) => {
-                              const newSlots = [...editFormData.attributes.booking.timeSlots];
+                              const newSlots = [...editFormData.attributes.booking!.timeSlots];
                               newSlots[index].start = e.target.value;
                               setEditFormData({
                                 ...editFormData,
                                 attributes: {
-                                  booking: { ...editFormData.attributes.booking, timeSlots: newSlots },
+                                ...editFormData.attributes,                                  booking: { ...editFormData.attributes.booking!, timeSlots: newSlots },
                                 },
                               });
                             }}
@@ -1778,27 +1473,27 @@ export default function VendorProductsPage() {
                             type="time"
                             value={slot.end}
                             onChange={(e) => {
-                              const newSlots = [...editFormData.attributes.booking.timeSlots];
+                              const newSlots = [...editFormData.attributes.booking!.timeSlots];
                               newSlots[index].end = e.target.value;
                               setEditFormData({
                                 ...editFormData,
                                 attributes: {
-                                  booking: { ...editFormData.attributes.booking, timeSlots: newSlots },
+                                ...editFormData.attributes,                                  booking: { ...editFormData.attributes.booking!, timeSlots: newSlots },
                                 },
                               });
                             }}
                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
                             step="3600"
                           />
-                          {editFormData.attributes.booking.timeSlots.length > 1 && (
+                          {editFormData.attributes.booking!.timeSlots.length > 1 && (
                             <button
                               type="button"
                               onClick={() => {
-                                const newSlots = editFormData.attributes.booking.timeSlots.filter((_, i) => i !== index);
+                                const newSlots = editFormData.attributes.booking!.timeSlots.filter((_, i) => i !== index);
                                 setEditFormData({
                                   ...editFormData,
                                   attributes: {
-                                    booking: { ...editFormData.attributes.booking, timeSlots: newSlots },
+                                  ...editFormData.attributes,                                    booking: { ...editFormData.attributes.booking!, timeSlots: newSlots },
                                   },
                                 });
                               }}
@@ -1815,9 +1510,8 @@ export default function VendorProductsPage() {
                           setEditFormData({
                             ...editFormData,
                             attributes: {
-                              booking: {
-                                ...editFormData.attributes.booking,
-                                timeSlots: [...editFormData.attributes.booking.timeSlots, { start: '09:00', end: '17:00' }],
+                            ...editFormData.attributes,                              booking: { ...editFormData.attributes.booking!,
+                                timeSlots: [...editFormData.attributes.booking!.timeSlots, { start: '09:00', end: '17:00' }],
                               },
                             },
                           });
@@ -1834,7 +1528,7 @@ export default function VendorProductsPage() {
                 )}
 
                 {/* Tour Attributes - Show for tour products */}
-                {editFormData.productType === 'booking' && editFormData.attributes.tour.tourMode && (
+                {editFormData.productType === 'booking' && editFormData.attributes.tour?.tourMode && (
                   <div className="border-t pt-4 space-y-4">
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                       <h4 className="font-semibold text-purple-900 mb-2">🗺️ Tour Package Configuration</h4>
@@ -1845,7 +1539,7 @@ export default function VendorProductsPage() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-3">Tour Departures</label>
                           <div className="space-y-3">
-                            {editFormData.attributes.tour.departures.map((departure, index) => (
+                            {editFormData.attributes.tour!.departures.map((departure, index) => (
                               <div key={index} className="grid grid-cols-5 gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
                                 <div>
                                   <label className="block text-xs font-medium text-gray-600 mb-1">Departure Date</label>
@@ -1853,13 +1547,13 @@ export default function VendorProductsPage() {
                                     type="date"
                                     value={departure.departureDate}
                                     onChange={(e) => {
-                                      const newDepartures = [...editFormData.attributes.tour.departures];
+                                      const newDepartures = [...editFormData.attributes.tour!.departures];
                                       newDepartures[index].departureDate = e.target.value;
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
-                                          tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                          tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                         },
                                       });
                                     }}
@@ -1872,13 +1566,13 @@ export default function VendorProductsPage() {
                                     type="date"
                                     value={departure.returnDate}
                                     onChange={(e) => {
-                                      const newDepartures = [...editFormData.attributes.tour.departures];
+                                      const newDepartures = [...editFormData.attributes.tour!.departures];
                                       newDepartures[index].returnDate = e.target.value;
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
-                                          tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                          tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                         },
                                       });
                                     }}
@@ -1891,13 +1585,13 @@ export default function VendorProductsPage() {
                                     type="number"
                                     value={departure.availableSeats}
                                     onChange={(e) => {
-                                      const newDepartures = [...editFormData.attributes.tour.departures];
+                                      const newDepartures = [...editFormData.attributes.tour!.departures];
                                       newDepartures[index].availableSeats = parseInt(e.target.value) || 0;
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
-                                          tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                          tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                         },
                                       });
                                     }}
@@ -1911,13 +1605,13 @@ export default function VendorProductsPage() {
                                     type="number"
                                     value={departure.pricePerPerson}
                                     onChange={(e) => {
-                                      const newDepartures = [...editFormData.attributes.tour.departures];
+                                      const newDepartures = [...editFormData.attributes.tour!.departures];
                                       newDepartures[index].pricePerPerson = parseFloat(e.target.value) || 0;
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
-                                          tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                          tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                         },
                                       });
                                     }}
@@ -1930,12 +1624,12 @@ export default function VendorProductsPage() {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const newDepartures = editFormData.attributes.tour.departures.filter((_, i) => i !== index);
+                                      const newDepartures = editFormData.attributes.tour!.departures.filter((_, i) => i !== index);
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
-                                          tour: { ...editFormData.attributes.tour, departures: newDepartures },
+                                          tour: { ...editFormData.attributes.tour!, departures: newDepartures },
                                         },
                                       });
                                     }}
@@ -1955,9 +1649,9 @@ export default function VendorProductsPage() {
                                 attributes: {
                                   ...editFormData.attributes,
                                   tour: {
-                                    ...editFormData.attributes.tour,
+                                    ...editFormData.attributes.tour!,
                                     departures: [
-                                      ...editFormData.attributes.tour.departures,
+                                      ...editFormData.attributes.tour!.departures,
                                       { departureDate: '', returnDate: '', availableSeats: 20, pricePerPerson: editFormData.price, status: 'active' as const },
                                     ],
                                   },
@@ -1974,20 +1668,20 @@ export default function VendorProductsPage() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-3">Day-by-Day Itinerary</label>
                           <div className="space-y-4">
-                            {editFormData.attributes.tour.itinerary.map((day, index) => (
+                            {editFormData.attributes.tour!.itinerary.map((day, index) => (
                               <div key={index} className="p-4 border border-gray-200 rounded-lg bg-white">
                                 <div className="flex items-center justify-between mb-3">
                                   <h4 className="font-semibold text-gray-900">Day {day.day}</h4>
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const newItinerary = editFormData.attributes.tour.itinerary.filter((_, i) => i !== index);
+                                      const newItinerary = editFormData.attributes.tour!.itinerary.filter((_, i) => i !== index);
                                       const renumbered = newItinerary.map((d, i) => ({ ...d, day: i + 1 }));
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
-                                          tour: { ...editFormData.attributes.tour, itinerary: renumbered },
+                                          tour: { ...editFormData.attributes.tour!, itinerary: renumbered },
                                         },
                                       });
                                     }}
@@ -2003,13 +1697,13 @@ export default function VendorProductsPage() {
                                       type="text"
                                       value={day.title}
                                       onChange={(e) => {
-                                        const newItinerary = [...editFormData.attributes.tour.itinerary];
+                                        const newItinerary = [...editFormData.attributes.tour!.itinerary];
                                         newItinerary[index].title = e.target.value;
                                         setEditFormData({
                                           ...editFormData,
                                           attributes: {
                                             ...editFormData.attributes,
-                                            tour: { ...editFormData.attributes.tour, itinerary: newItinerary },
+                                            tour: { ...editFormData.attributes.tour!, itinerary: newItinerary },
                                           },
                                         });
                                       }}
@@ -2022,13 +1716,13 @@ export default function VendorProductsPage() {
                                     <textarea
                                       value={day.description}
                                       onChange={(e) => {
-                                        const newItinerary = [...editFormData.attributes.tour.itinerary];
+                                        const newItinerary = [...editFormData.attributes.tour!.itinerary];
                                         newItinerary[index].description = e.target.value;
                                         setEditFormData({
                                           ...editFormData,
                                           attributes: {
                                             ...editFormData.attributes,
-                                            tour: { ...editFormData.attributes.tour, itinerary: newItinerary },
+                                            tour: { ...editFormData.attributes.tour!, itinerary: newItinerary },
                                           },
                                         });
                                       }}
@@ -2049,10 +1743,10 @@ export default function VendorProductsPage() {
                                 attributes: {
                                   ...editFormData.attributes,
                                   tour: {
-                                    ...editFormData.attributes.tour,
+                                    ...editFormData.attributes.tour!,
                                     itinerary: [
-                                      ...editFormData.attributes.tour.itinerary,
-                                      { day: editFormData.attributes.tour.itinerary.length + 1, title: '', description: '', activities: [], meals: [], accommodation: '' },
+                                      ...editFormData.attributes.tour!.itinerary,
+                                      { day: editFormData.attributes.tour!.itinerary.length + 1, title: '', description: '', activities: [], meals: [], accommodation: '' },
                                     ],
                                   },
                                 },
@@ -2075,16 +1769,16 @@ export default function VendorProductsPage() {
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Destinations (comma-separated)</label>
                                 <input
                                   type="text"
-                                  value={editFormData.attributes.tour.details.destinations.join(', ')}
+                                  value={editFormData.attributes.tour!.details.destinations.join(', ')}
                                   onChange={(e) => {
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
                                         tour: {
-                                          ...editFormData.attributes.tour,
+                                          ...editFormData.attributes.tour!,
                                           details: {
-                                            ...editFormData.attributes.tour.details,
+                                            ...editFormData.attributes.tour!.details,
                                             destinations: e.target.value.split(',').map(d => d.trim()).filter(d => d),
                                           },
                                         },
@@ -2099,15 +1793,15 @@ export default function VendorProductsPage() {
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Tour Type</label>
                                 <input
                                   type="text"
-                                  value={editFormData.attributes.tour.details.tourType}
+                                  value={editFormData.attributes.tour!.details.tourType}
                                   onChange={(e) => {
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
                                         tour: {
-                                          ...editFormData.attributes.tour,
-                                          details: { ...editFormData.attributes.tour.details, tourType: e.target.value },
+                                          ...editFormData.attributes.tour!,
+                                          details: { ...editFormData.attributes.tour!.details, tourType: e.target.value },
                                         },
                                       },
                                     });
@@ -2121,15 +1815,15 @@ export default function VendorProductsPage() {
                               <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Difficulty Level</label>
                                 <select
-                                  value={editFormData.attributes.tour.details.difficulty}
+                                  value={editFormData.attributes.tour!.details.difficulty}
                                   onChange={(e) => {
                                     setEditFormData({
                                       ...editFormData,
                                       attributes: {
                                         ...editFormData.attributes,
                                         tour: {
-                                          ...editFormData.attributes.tour,
-                                          details: { ...editFormData.attributes.tour.details, difficulty: e.target.value },
+                                          ...editFormData.attributes.tour!,
+                                          details: { ...editFormData.attributes.tour!.details, difficulty: e.target.value as 'easy' | 'moderate' | 'challenging' | 'difficult' },
                                         },
                                       },
                                     });
@@ -2147,17 +1841,17 @@ export default function VendorProductsPage() {
                                 <div className="flex gap-2 items-center">
                                   <input
                                     type="number"
-                                    value={editFormData.attributes.tour.details.groupSize.min}
+                                    value={editFormData.attributes.tour!.details.groupSize.min}
                                     onChange={(e) => {
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
                                           tour: {
-                                            ...editFormData.attributes.tour,
+                                            ...editFormData.attributes.tour!,
                                             details: {
-                                              ...editFormData.attributes.tour.details,
-                                              groupSize: { ...editFormData.attributes.tour.details.groupSize, min: parseInt(e.target.value) || 1 },
+                                              ...editFormData.attributes.tour!.details,
+                                              groupSize: { ...editFormData.attributes.tour!.details.groupSize, min: parseInt(e.target.value) || 1 },
                                             },
                                           },
                                         },
@@ -2170,17 +1864,17 @@ export default function VendorProductsPage() {
                                   <span className="text-gray-500">to</span>
                                   <input
                                     type="number"
-                                    value={editFormData.attributes.tour.details.groupSize.max}
+                                    value={editFormData.attributes.tour!.details.groupSize.max}
                                     onChange={(e) => {
                                       setEditFormData({
                                         ...editFormData,
                                         attributes: {
                                           ...editFormData.attributes,
                                           tour: {
-                                            ...editFormData.attributes.tour,
+                                            ...editFormData.attributes.tour!,
                                             details: {
-                                              ...editFormData.attributes.tour.details,
-                                              groupSize: { ...editFormData.attributes.tour.details.groupSize, max: parseInt(e.target.value) || 20 },
+                                              ...editFormData.attributes.tour!.details,
+                                              groupSize: { ...editFormData.attributes.tour!.details.groupSize, max: parseInt(e.target.value) || 20 },
                                             },
                                           },
                                         },
@@ -2195,7 +1889,6 @@ export default function VendorProductsPage() {
                             </div>
                           </div>
                         </details>
-                      </div>
                   </div>
                 )}
 
@@ -2431,6 +2124,7 @@ export default function VendorProductsPage() {
             </div>
           </div>
         )}
+          </div>
         </div>
       </div>
     </div>

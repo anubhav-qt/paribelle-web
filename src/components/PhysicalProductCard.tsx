@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
+// import { Card, CardContent } from '@/components/ui/card';
 import { ShoppingCart } from 'lucide-react';
 import {
   ProductCardImage,
@@ -56,7 +56,7 @@ export default function PhysicalProductCard({
 
   return (
     <Link href={`/products/${slug}`}>
-      <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 h-full">
+      <div className="group overflow-hidden hover:shadow-xl transition-all duration-300 h-full">
         <ProductCardImage imageUrl={displayImage} alt={name}>
           {/* Type Badge */}
           <ProductCardBadge 
@@ -78,7 +78,7 @@ export default function PhysicalProductCard({
           {outOfStock && <ProductCardStockBadge stockQuantity={0} />}
         </ProductCardImage>
 
-        <CardContent className="p-4">
+        <div className="p-4">
           {/* Product Name */}
           <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
             {name}
@@ -126,8 +126,8 @@ export default function PhysicalProductCard({
 
           {/* Vendor Name */}
           <ProductCardVendor vendorName={vendorName} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </Link>
   );
 }

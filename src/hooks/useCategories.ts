@@ -1,14 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  children?: Category[];
-  productCount?: number;
-}
+import { Category } from '@/types/product';
 
 interface UseCategoriesOptions {
   vendorId?: string;

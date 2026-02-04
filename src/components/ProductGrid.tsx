@@ -8,48 +8,13 @@ import { calculateDiscount, getStockStatus, formatRating } from '@/lib/product';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
+import { Product as BaseProduct, Category } from '@/types/product';
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  children?: Category[];
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  shortDescription: string;
-  price: string | number;
-  compareAtPrice?: string | number;
-  featuredImage: string;
-  images?: string[];
-  averageRating: string | number;
-  reviewCount: number;
-  categories: Category[];
-  productType?: 'physical' | 'booking';
-  stockQuantity?: number;
-  attributes?: {
-    booking?: {
-      durationUnit?: 'hours' | 'days' | 'sessions';
-      duration?: number;
-    };
-  };
+interface Product extends BaseProduct {
   // Variation support
   isParent?: boolean;
   variations?: any[];
   variationThemes?: string[];
-  vendor?: {
-    id: string;
-    storeName?: string;
-    businessName?: string;
-    subdomain?: string;
-    cityId?: string | null;
-    subLocationId?: string | null;
-    locationCity?: { id: string; name: string } | null;
-    locationSubLocation?: { id: string; name: string } | null;
-  };
 }
 
 interface ProductGridProps {

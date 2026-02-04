@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
+// // import { Badge } from '@/components/ui/badge';
 import { Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,9 +40,9 @@ export function ProductCardBadge({ text, position, className }: BadgeProps) {
   const positionClass = position === 'topLeft' ? 'top-3 left-3' : 'top-3 right-3';
   
   return (
-    <Badge className={cn('absolute', positionClass, className)}>
+    <span className={cn('absolute', positionClass, className)}>
       {text}
-    </Badge>
+    </span>
   );
 }
 
@@ -152,9 +152,9 @@ export function ProductCardStockBadge({ stockQuantity }: StockBadgeProps) {
   if (stockQuantity === 0) {
     return (
       <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-        <Badge variant="destructive" className="text-lg px-4 py-2">
+        <span className="text-lg px-4 py-2">
           Out of Stock
-        </Badge>
+        </span>
       </div>
     );
   }

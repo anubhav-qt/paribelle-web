@@ -11,54 +11,7 @@ import CategoryNav from '@/components/CategoryNav';
 import Footer from '@/components/Footer';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useVendorContext } from '@/contexts/VendorContext';
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  children?: Category[];
-  parent?: Category;
-  filterConfig?: {
-    filters: Array<{
-      id: string;
-      label: string;
-      type: 'select' | 'multiselect' | 'checkbox' | 'range';
-      options?: Array<{ value: string; label: string }>;
-      min?: number;
-      max?: number;
-      step?: number;
-    }>;
-  };
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  shortDescription: string;
-  price: string | number;
-  compareAtPrice?: string | number;
-  featuredImage: string;
-  images?: string[];
-  averageRating: string | number;
-  reviewCount: number;
-  categories: Category[];
-  productType?: 'physical' | 'booking';
-  vendor?: {
-    id: string;
-    name: string;
-    cityId?: string | null;
-    subLocationId?: string | null;
-    locationCity?: { id: string; name: string } | null;
-    locationSubLocation?: { id: string; name: string } | null;
-  };
-  attributes?: {
-    booking?: {
-      durationUnit?: 'hours' | 'days' | 'sessions';
-    };
-  };
-}
+import { Product, Category } from '@/types/product';
 
 type SortOption = 'popularity' | 'price-low' | 'price-high' | 'rating' | 'newest';
 
@@ -234,7 +187,7 @@ export default function CategoryPage() {
           return 0; // Would need createdAt field
         case 'popularity':
         default:
-          return b.reviewCount - a.reviewCount;
+          return (b.reviewCount ?? 0) - (a.reviewCount ?? 0);
       }
     });
 

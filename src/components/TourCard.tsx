@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+// import { Card, CardContent } from '@/components/ui/card';
+// import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, Users, Clock } from 'lucide-react';
 import {
   ProductCardImage,
@@ -73,7 +73,7 @@ export default function TourCard({
 
   return (
     <Link href={`/tours/${slug}`}>
-      <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 h-full">
+      <div className="group overflow-hidden hover:shadow-xl transition-all duration-300 h-full">
         <ProductCardImage imageUrl={displayImage} alt={name}>
           {/* Type Badge */}
           <ProductCardBadge 
@@ -100,7 +100,7 @@ export default function TourCard({
           )}
         </ProductCardImage>
 
-        <CardContent className="p-4">
+        <div className="p-4">
           {/* Tour Name */}
           <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
             {name}
@@ -178,8 +178,8 @@ export default function TourCard({
 
           {/* Vendor Name */}
           <ProductCardVendor vendorName={vendorName} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </Link>
   );
 }

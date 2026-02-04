@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+// // import { Card, CardContent } from '@/components/ui/card';
+// // import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, MapPin } from 'lucide-react';
 import {
   ProductCardImage,
@@ -66,7 +66,7 @@ export default function BookingServiceCard({
 
   return (
     <Link href={`/products/${slug}`}>
-      <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 h-full">
+      <div className="group overflow-hidden hover:shadow-xl transition-all duration-300 h-full border rounded-lg">
         <ProductCardImage imageUrl={displayImage} alt={name}>
           {/* Type Badge */}
           <ProductCardBadge 
@@ -84,7 +84,7 @@ export default function BookingServiceCard({
           )}
         </ProductCardImage>
 
-        <CardContent className="p-4">
+        <div className="p-4">
           {/* Service Name */}
           <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
             {name}
@@ -114,14 +114,14 @@ export default function BookingServiceCard({
               </div>
               <div className="flex flex-wrap gap-1">
                 {visibleDays.map((day) => (
-                  <Badge key={day} variant="secondary" className="text-xs">
+                  <span key={day} className="text-xs bg-gray-200 px-2 py-1 rounded">
                     {day.slice(0, 3)}
-                  </Badge>
+                  </span>
                 ))}
                 {remainingDays > 0 && (
-                  <Badge variant="secondary" className="text-xs">
+                  <span className="text-xs bg-gray-200 px-2 py-1 rounded">
                     +{remainingDays}
-                  </Badge>
+                  </span>
                 )}
               </div>
             </div>
@@ -147,8 +147,8 @@ export default function BookingServiceCard({
 
           {/* Vendor Name */}
           <ProductCardVendor vendorName={vendorName} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </Link>
   );
 }

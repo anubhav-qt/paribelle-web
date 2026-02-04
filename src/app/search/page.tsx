@@ -12,25 +12,7 @@ import Footer from '@/components/Footer';
 import { useSettings } from '@/hooks/useSettings';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useVendorContext } from '@/contexts/VendorContext';
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  shortDescription: string;
-  price: string | number;
-  compareAtPrice?: string | number;
-  featuredImage: string;
-  averageRating: string | number;
-  reviewCount: number;
-  productType?: 'physical' | 'booking';
-  attributes?: {
-    booking?: {
-      durationUnit?: 'hours' | 'days' | 'sessions';
-      duration?: number;
-    };
-  };
-}
+import { Product } from '@/types/product';
 
 function SearchContent() {
   const searchParams = useSearchParams();
