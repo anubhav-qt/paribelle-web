@@ -1,30 +1,10 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "git": {
-    "deploymentEnabled": {
-      "main": true,
-      "master": true
-    }
-  },
   "functions": {
     "app/**/*": {
       "maxDuration": 60
     }
   },
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
-    }
-  ],
   "env": {
     "NEXT_PUBLIC_API_URL": "https://marketplace-backend-prqr.onrender.com/api/v1",
     "NEXT_PUBLIC_APP_URL": "https://marketplace-web-smoky.vercel.app"
