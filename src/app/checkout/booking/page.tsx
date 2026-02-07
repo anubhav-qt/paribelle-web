@@ -532,7 +532,7 @@ function BookingCheckoutContent() {
   };
 
   const getStepNumber = (step: CheckoutStep): number => {
-    const steps: CheckoutStep[] = ['review', 'address', 'payment', 'confirmation'];
+    const steps: CheckoutStep[] = ['review', 'payment', 'confirmation'];
     return steps.indexOf(step) + 1;
   };
 
