@@ -637,10 +637,10 @@ function BookingCheckoutContent() {
       <ThemeRenderer component="header" showLocationFilter={false} showBookingsLink={false} />
       
       <div className="container mx-auto px-4 py-8">
-        {/* Progress Steps - Skip address step for tours */}
+        {/* Progress Steps - Skip address step for all bookings (customer goes to venue) */}
         <div className="max-w-4xl mx-auto mb-8">
           <div className="flex items-center justify-between">
-            {(tourBooking ? ['review', 'payment'] : ['review', 'address', 'payment']).map((step, index, arr) => (
+            {['review', 'payment'].map((step, index, arr) => (
               <div key={step} className="flex items-center flex-1">
                 <div className="flex items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -797,11 +797,11 @@ function BookingCheckoutContent() {
                 )}
 
                 <button
-                  onClick={() => tourBooking ? setCurrentStep('payment') : setCurrentStep('address')}
+                  onClick={() => setCurrentStep('payment')}
                   disabled={tourBooking && !bookingDate}
                   className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {tourBooking ? 'Proceed to Payment' : 'Proceed to Address'}
+                  Proceed to Payment
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
