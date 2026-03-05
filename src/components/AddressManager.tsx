@@ -312,6 +312,11 @@ export default function AddressManager({
         updatedAddresses = addresses.map(addr => 
           addr.id === editingAddressId ? savedAddress : addr
         );
+
+        // If the edited address is currently selected in checkout, propagate updated values.
+        if (showSelection && onAddressSelect && selectedAddressId === editingAddressId) {
+          onAddressSelect(savedAddress);
+        }
       } else {
         // Add new address to list
         updatedAddresses = [...addresses, savedAddress];

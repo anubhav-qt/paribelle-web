@@ -1490,7 +1490,47 @@ function CheckoutContent() {
               {shippingAddress.addressLine2 && <p>{shippingAddress.addressLine2}</p>}
               <p>{shippingAddress.city}, {shippingAddress.state} {shippingAddress.postalCode}</p>
               <p>{shippingAddress.country}</p>
+              {shippingAddress.email && <p>Email: {shippingAddress.email}</p>}
               <p className="mt-2">Phone: {shippingAddress.phone}</p>
+              <p className="text-xs mt-2">
+                Source: {selectedShippingAddressId ? 'Saved address selected' : 'Manual entry'}
+              </p>
+            </div>
+          </div>
+
+          {/* Billing Address Summary */}
+          <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground">Billing Address</h3>
+              <button
+                onClick={() => setCurrentStep('address')}
+                className="text-primary hover:underline flex items-center gap-1 text-sm"
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit
+              </button>
+            </div>
+            <div className="text-muted-foreground">
+              <p className="font-medium text-foreground">
+                {billingSameAsShipping ? shippingAddress.fullName : billingAddress.fullName}
+              </p>
+              <p>{billingSameAsShipping ? shippingAddress.addressLine1 : billingAddress.addressLine1}</p>
+              {(billingSameAsShipping ? shippingAddress.addressLine2 : billingAddress.addressLine2) && (
+                <p>{billingSameAsShipping ? shippingAddress.addressLine2 : billingAddress.addressLine2}</p>
+              )}
+              <p>
+                {billingSameAsShipping ? shippingAddress.city : billingAddress.city}, {' '}
+                {billingSameAsShipping ? shippingAddress.state : billingAddress.state} {' '}
+                {billingSameAsShipping ? shippingAddress.postalCode : billingAddress.postalCode}
+              </p>
+              <p>{billingSameAsShipping ? shippingAddress.country : billingAddress.country}</p>
+              {(billingSameAsShipping ? shippingAddress.email : billingAddress.email) && (
+                <p>Email: {billingSameAsShipping ? shippingAddress.email : billingAddress.email}</p>
+              )}
+              <p className="mt-2">Phone: {billingSameAsShipping ? shippingAddress.phone : billingAddress.phone}</p>
+              <p className="text-xs mt-2">
+                Source: {billingSameAsShipping ? 'Same as shipping' : (selectedBillingAddressId ? 'Saved address selected' : 'Manual entry')}
+              </p>
             </div>
           </div>
           
