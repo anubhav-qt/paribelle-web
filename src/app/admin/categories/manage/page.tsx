@@ -92,11 +92,25 @@ export default function ManageCategoriesPage() {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        await fetchCategories();
+      if (!response.ok) {
+        let message = `Delete failed (${response.status})`;
+        try {
+          const err = await response.json();
+          if (err?.message) {
+            message = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+          }
+        } catch {
+          // Ignore JSON parse errors, keep fallback message.
+        }
+        alert(`Failed to delete category: ${message}`);
+        return;
       }
+
+      await fetchCategories();
+      alert('Category deleted successfully.');
     } catch (error) {
       console.error('Error deleting category:', error);
+      alert('Failed to delete category due to network/server error.');
     }
   };
 
