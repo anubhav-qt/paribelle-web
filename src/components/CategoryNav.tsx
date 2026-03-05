@@ -379,6 +379,7 @@ export default function CategoryNav({
     "border-b sticky top-0 z-30",
     isVendorStore ? 'vendor-nav-bg vendor-border-primary vendor-text' : 'bg-secondary border-secondary-foreground/20'
   );
+  const homeHref = effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}` : '/';
 
   return (
     <div 
@@ -389,7 +390,7 @@ export default function CategoryNav({
         <div className="flex items-center gap-0 flex-wrap">
           {/* Home Link - Left Side */}
           <Link
-            href="/"
+            href={homeHref}
             className={theme.combine(
               "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
               isVendorStore ? 'vendor-border-primary-30 vendor-text' : 'border-secondary-foreground/20 text-secondary-foreground'
@@ -509,42 +510,7 @@ export default function CategoryNav({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('🔴 CATEGORY CLICKED:', category.slug);
-                    console.log('🔴 VendorSlug:', effectiveVendorSlug);
-                    console.log('🔴 Pathname:', pathname);
-                    console.log('🔴 Window search:', window.location.search);
-                    
-                    // If no vendorSlug, we're on main marketplace
-                    if (!effectiveVendorSlug) {
-                      console.log('🔴 NO VENDOR SLUG BRANCH');
-                      // Check if we're on the homepage (ignore query params for filters/search)
-                      const isOnHomepage = pathname === '/' || pathname === '/';
-                      console.log('🔴 isOnHomepage:', isOnHomepage);
-                      
-                      if (!isOnHomepage) {
-                        console.log('🔴 NAVIGATING TO HOME WITH HASH:', `/#category-${category.slug}`);
-                        // Navigate to homepage with hash (clears query params)
-                        window.location.href = `/#category-${category.slug}`;
-                      } else {
-                        console.log('🔴 SCROLLING TO CATEGORY (with or without children)');
-                        handleScrollToCategory(category.slug);
-                      }
-                      return;
-                    }
-                    
-                    console.log('🔴 VENDOR SLUG BRANCH');
-                    // Check if we're on vendor home page (ignore query params for filters/search)
-                    const isOnVendorHome = pathname === '/';
-                    console.log('🔴 isOnVendorHome:', isOnVendorHome);
-                    
-                    if (!isOnVendorHome) {
-                      console.log('🔴 NAVIGATING TO VENDOR HOME WITH HASH:', `/#category-${category.slug}`);
-                      // Navigate to home page with hash (clears query params)
-                      window.location.href = `/#category-${category.slug}`;
-                    } else {
-                      console.log('🔴 SCROLLING TO VENDOR CATEGORY (with or without children)');
-                      handleScrollToCategory(category.slug);
-                    }
+                    handleNavigateToCategory(category.slug, e);
                   }}
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
