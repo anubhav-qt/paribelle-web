@@ -392,6 +392,9 @@ function CheckoutContent() {
             specialRequests: specialRequests || null,
             status: 'pending',
             departureId: selectedDepartureId,
+            shippingAddress,
+            billingAddress: billingSameAsShipping ? shippingAddress : billingAddress,
+            billingAddressSameAsShipping: billingSameAsShipping,
           }),
         }
       );
@@ -553,6 +556,32 @@ function CheckoutContent() {
     
     try {
       const totalAmount = bookings.reduce((sum, b) => sum + Number(b.totalPrice), 0);
+
+      const checkoutAddressPayload = {
+        shippingAddress,
+        billingAddress: billingSameAsShipping ? shippingAddress : billingAddress,
+        billingAddressSameAsShipping: billingSameAsShipping,
+      };
+
+      // Persist checkout address on all booking records before payment/status updates.
+      for (const booking of bookings) {
+        const addressResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/bookings/${booking.id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(checkoutAddressPayload),
+          }
+        );
+
+        if (!addressResponse.ok) {
+          const err = await addressResponse.json().catch(() => ({}));
+          throw new Error(err?.message || 'Failed to save booking address');
+        }
+      }
       
       // If payment method is not Razorpay, just confirm the bookings
       if (paymentMethod !== 'razorpay') {
@@ -568,6 +597,7 @@ function CheckoutContent() {
               },
               body: JSON.stringify({
                 status: 'confirmed',
+                ...checkoutAddressPayload,
               }),
             }
           );
@@ -632,6 +662,7 @@ function CheckoutContent() {
                   body: JSON.stringify({
                     status: 'confirmed',
                     paymentId: response.razorpay_payment_id,
+                    ...checkoutAddressPayload,
                   }),
                 }
               );
