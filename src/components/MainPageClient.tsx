@@ -1,6 +1,4 @@
 'use client';
-
-import ThemeSelector from '@/components/ThemeSelector';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import HeroCarousel from '@/components/HeroCarousel';
 import Footer from '@/components/Footer';
@@ -59,7 +57,6 @@ export default function MainPageClient({
         marketplaceName={settings.marketplaceName}
       />
       
-      <ThemeSelector />
     </div>
   );
 }
