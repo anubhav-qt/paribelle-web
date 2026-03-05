@@ -709,8 +709,12 @@ function CheckoutContent() {
     setLoading(true);
     
     try {
-      const token = localStorage.getItem('token');
+      let token = localStorage.getItem('token');
       const userStr = localStorage.getItem('user');
+
+      if (!token) {
+        token = await initAuthFromCookie();
+      }
       
       if (!token || !userStr) {
         alert('Please login to place order');

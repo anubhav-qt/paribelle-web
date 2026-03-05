@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Edit2, Trash2, Plus, Phone, Home, ChevronDown } from 'lucide-react';
+import { initAuthFromCookie } from '@/lib/cross-domain-auth';
 
 const COUNTRIES = [
   { code: 'IN', name: 'India', flag: '🇮🇳' },
@@ -113,6 +114,16 @@ export default function AddressManager({
   const [selectedPhoneCode, setSelectedPhoneCode] = useState('+91');
   const countryDropdownRef = useRef<HTMLDivElement>(null);
   const phoneDropdownRef = useRef<HTMLDivElement>(null);
+
+  const getAuthToken = async (): Promise<string | null> => {
+    const existingToken = localStorage.getItem('token');
+    if (existingToken) return existingToken;
+
+    const initialized = await initAuthFromCookie();
+    if (!initialized) return null;
+
+    return localStorage.getItem('token');
+  };
   
   const [addressForm, setAddressForm] = useState<Address>({
     fullName: '',
@@ -126,6 +137,15 @@ export default function AddressManager({
     country: 'India',
     isDefault: false,
   });
+
+  const selectInitialAddress = (list: Address[]) => {
+    if (!showSelection || !onAddressSelect || selectedAddressId || list.length === 0) {
+      return;
+    }
+
+    const defaultAddr = list.find((a: Address) => a.isDefault);
+    onAddressSelect(defaultAddr || list[0]);
+  };
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -155,14 +175,40 @@ export default function AddressManager({
   }, [showAddressForm, showCountryDropdown, showPhoneDropdown]);
 
   useEffect(() => {
-    fetchAddresses();
+    let mounted = true;
+    let attempts = 0;
+    const maxAttempts = 12;
+
+    const loadAddressesWithRetry = async () => {
+      while (mounted && attempts < maxAttempts) {
+        attempts++;
+        const loaded = await fetchAddresses();
+        if (loaded) {
+          return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    };
+
+    loadAddressesWithRetry();
+
+    const onFocus = () => {
+      fetchAddresses();
+    };
+
+    window.addEventListener('focus', onFocus);
+    return () => {
+      mounted = false;
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
-  const fetchAddresses = async () => {
-    const token = localStorage.getItem('token');
+  const fetchAddresses = async (): Promise<boolean> => {
+    const token = await getAuthToken();
     if (!token) {
       // Not logged in, no addresses to fetch
-      return;
+      return false;
     }
 
     try {
@@ -179,15 +225,11 @@ export default function AddressManager({
       const data = await response.json();
       if (Array.isArray(data)) {
         setAddresses(data);
-        
-        // Auto-select default address if in selection mode
-        if (showSelection && onAddressSelect && !selectedAddressId) {
-          const defaultAddr = data.find((a: Address) => a.isDefault);
-          if (defaultAddr) {
-            onAddressSelect(defaultAddr);
-          }
-        }
+
+        selectInitialAddress(data);
+        return true;
       }
+      return true;
     } catch (error) {
       console.error('Error fetching addresses:', error);
       // Fallback to localStorage if API fails
@@ -195,14 +237,10 @@ export default function AddressManager({
       if (savedAddresses) {
         const parsed = JSON.parse(savedAddresses);
         setAddresses(parsed);
-        
-        if (showSelection && onAddressSelect && !selectedAddressId) {
-          const defaultAddr = parsed.find((a: Address) => a.isDefault);
-          if (defaultAddr) {
-            onAddressSelect(defaultAddr);
-          }
-        }
+        selectInitialAddress(parsed);
+        return true;
       }
+      return false;
     }
   };
 
@@ -268,7 +306,7 @@ export default function AddressManager({
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = await getAuthToken();
     if (!token) {
       alert('Please login to save address');
       return;
@@ -362,7 +400,7 @@ export default function AddressManager({
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = await getAuthToken();
     if (!token) {
       alert('Please login to delete address');
       return;

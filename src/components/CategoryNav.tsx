@@ -380,6 +380,10 @@ export default function CategoryNav({
     isVendorStore ? 'vendor-nav-bg vendor-border-primary vendor-text' : 'bg-secondary border-secondary-foreground/20'
   );
   const homeHref = effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}` : '/';
+  const hasBookingCategory = categories.some((cat) => {
+    const normalized = (cat.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return normalized === 'bookingservices' || normalized === 'bookingsservices' || normalized === 'services';
+  });
 
   return (
     <div 
@@ -681,7 +685,7 @@ export default function CategoryNav({
           )}
 
           {/* Fallback link for uncategorized booking products */}
-          {hasUncategorizedBookingProducts && (
+          {hasUncategorizedBookingProducts && !hasBookingCategory && (
             <div className="relative flex-shrink-0">
               {mode === 'navigation' ? (
                 <Link
