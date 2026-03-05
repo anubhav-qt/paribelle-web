@@ -54,7 +54,7 @@ export default function CategoryNav({
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pagesMenuRef = useRef<HTMLDivElement>(null);
-  const [hasBookingProducts, setHasBookingProducts] = useState(false);
+  const [hasUncategorizedBookingProducts, setHasUncategorizedBookingProducts] = useState(false);
   const [hasTourProducts, setHasTourProducts] = useState(false);
   
   // Fetch category display mode setting
@@ -197,13 +197,13 @@ export default function CategoryNav({
   const checkBookingProducts = async () => {
     try {
       const url = effectiveVendorId 
-        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?vendorId=${effectiveVendorId}&productType=booking&limit=1`
-        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?productType=booking&limit=1`;
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?vendorId=${effectiveVendorId}&productType=booking&uncategorized=true&limit=1`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products?productType=booking&uncategorized=true&limit=1`;
       
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        setHasBookingProducts(data.total > 0 || (data.products && data.products.length > 0));
+        setHasUncategorizedBookingProducts(data.total > 0 || (data.products && data.products.length > 0));
       }
     } catch (error) {
       console.error('Error checking booking products:', error);
@@ -463,7 +463,7 @@ export default function CategoryNav({
             </button>
           )}
           
-          {categories.filter(cat => cat.slug !== 'tours-travel' && cat.slug !== 'bookings-services').map((category) => (
+          {categories.filter(cat => cat.slug !== 'tours-travel').map((category) => (
             <div
               key={category.id}
               className="relative flex-shrink-0"
@@ -696,18 +696,18 @@ export default function CategoryNav({
             </div>
           )}
 
-          {/* Booking & Services Link */}
-          {hasBookingProducts && (
+          {/* Fallback link for uncategorized booking products */}
+          {hasUncategorizedBookingProducts && (
             <div className="relative flex-shrink-0">
               {mode === 'navigation' ? (
                 <Link
-                  href="/?productType=booking&tourMode=false"
+                  href="/?productType=booking&uncategorized=true"
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
                   )}
                 >
-                  Booking & Services
+                  Bookings
                 </Link>
               ) : mode === 'scroll' ? (
                 <button
@@ -716,38 +716,25 @@ export default function CategoryNav({
                     e.stopPropagation();
                     console.log('🔴 BOOKINGS CLICKED');
                     
-                    if (!effectiveVendorSlug) {
-                      const isOnHomepage = pathname === '/' || pathname === '/';
-                      if (!isOnHomepage) {
-                        window.location.href = '/#category-bookings-services';
-                      } else {
-                        handleScrollToCategory('bookings-services');
-                      }
-                    } else {
-                      const isOnVendorHome = pathname === '/';
-                      if (!isOnVendorHome) {
-                        window.location.href = `/${effectiveVendorSlug}#category-bookings-services`;
-                      } else {
-                        handleScrollToCategory('bookings-services');
-                      }
-                    }
+                    const targetUrl = '/?productType=booking&uncategorized=true';
+                    window.location.href = targetUrl;
                   }}
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
                   )}
                 >
-                  Booking & Services
+                  Bookings
                 </button>
               ) : (
                 <Link
-                  href="/?productType=booking&tourMode=false"
+                  href="/?productType=booking&uncategorized=true"
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap border-b-2 border-transparent hover:opacity-80",
                     isVendorStore ? 'vendor-text hover:vendor-secondary-bg' : 'text-secondary-foreground hover:bg-secondary-foreground/10'
                   )}
                 >
-                  Booking & Services
+                  Bookings
                 </Link>
               )}
             </div>
