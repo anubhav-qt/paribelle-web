@@ -284,11 +284,37 @@ export default function CategoryNav({
     setActiveDropdown(null);
     
     console.log('🟢 handleScrollToCategory called with slug:', categorySlug);
+
+    const normalizedSlug = (categorySlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const candidateSlugs = new Set<string>([categorySlug]);
+
+    // Handle booking/services slug variations used across data and section IDs.
+    if (
+      normalizedSlug === 'bookingservices' ||
+      normalizedSlug === 'bookingsservices' ||
+      normalizedSlug === 'services'
+    ) {
+      candidateSlugs.add('bookings-services');
+      candidateSlugs.add('booking-services');
+      candidateSlugs.add('services');
+    }
+    if (normalizedSlug === 'tourstravel') {
+      candidateSlugs.add('tours-travel');
+    }
     
-    // First, try to find element with the exact category slug
-    let elementId = `category-${categorySlug}`;
-    let element = document.getElementById(elementId);
-    console.log('🟢 Tried to find element:', elementId, 'Found:', !!element);
+    // First, try all candidate slugs (exact + aliases)
+    let elementId = '';
+    let element: HTMLElement | null = null;
+    for (const slug of candidateSlugs) {
+      const candidateId = `category-${slug}`;
+      const candidateElement = document.getElementById(candidateId);
+      console.log('🟢 Tried to find element:', candidateId, 'Found:', !!candidateElement);
+      if (candidateElement) {
+        elementId = candidateId;
+        element = candidateElement;
+        break;
+      }
+    }
     
     // If not found, try to find the parent category
     if (!element) {
@@ -306,14 +332,6 @@ export default function CategoryNav({
           }
         }
       }
-    }
-    
-    // Last resort: check if it might be the bookings section
-    if (!element) {
-      console.log('🟢 Still not found, trying bookings-services fallback');
-      elementId = 'category-bookings-services';
-      element = document.getElementById(elementId);
-      console.log('🟢 Fallback element found:', !!element);
     }
     
     if (element) {
