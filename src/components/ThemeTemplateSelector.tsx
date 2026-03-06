@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Palette, Layout, Navigation, Columns } from 'lucide-react';
 
 interface ThemeTemplate {
@@ -80,6 +80,11 @@ interface ThemeTemplateSelectorProps {
 
 export default function ThemeTemplateSelector({ currentThemeId, onThemeSelect }: ThemeTemplateSelectorProps) {
   const [selectedTheme, setSelectedTheme] = useState<string>(currentThemeId || 'modern-minimal');
+
+  // Keep selector UI in sync when theme config is loaded or changed externally.
+  useEffect(() => {
+    setSelectedTheme(currentThemeId || 'modern-minimal');
+  }, [currentThemeId]);
   
   const handleThemeSelect = (themeId: string) => {
     setSelectedTheme(themeId);

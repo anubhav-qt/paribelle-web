@@ -6,11 +6,13 @@ import { useAdminAuth } from '@/hooks/useAdminAuth';
 import ThemeBuilder from '@/components/ThemeBuilder';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import ThemeTemplateSelector from '@/components/ThemeTemplateSelector';
+import CategoryNav from '@/components/CategoryNav';
 import { ThemeConfig } from '@/types/common';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const defaultTheme: ThemeConfig = {
+  templateId: 'modern-minimal',
   primaryColor: '#FF9900', // Amazon orange
   secondaryColor: '#232F3E', // Amazon dark blue
   accentColor: '#FF9900', // Amazon orange
@@ -55,7 +57,8 @@ export default function AdminDefaultThemePage() {
       if (response.ok) {
         const data = await response.json();
         if (data.value) {
-          const savedTheme = JSON.parse(data.value);
+          const savedTheme =
+            typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
           setThemeConfig({ ...defaultTheme, ...savedTheme });
         }
       }
@@ -68,6 +71,10 @@ export default function AdminDefaultThemePage() {
 
   const handleSave = async (theme: ThemeConfig) => {
     setSaving(true);
+    const normalizedTheme = {
+      ...theme,
+      templateId: theme.templateId || themeConfig.templateId || 'modern-minimal',
+    };
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${BACKEND_URL}/api/v1/settings`, {
@@ -78,13 +85,13 @@ export default function AdminDefaultThemePage() {
         },
         body: JSON.stringify({
           key: 'default-theme',
-          value: JSON.stringify(theme),
+          value: JSON.stringify(normalizedTheme),
           type: 'json',
         }),
       });
 
       if (response.ok) {
-        setThemeConfig(theme);
+        setThemeConfig(normalizedTheme);
         alert('Theme saved successfully! Navigate to the homepage to see the changes.');
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -114,6 +121,7 @@ export default function AdminDefaultThemePage() {
   return (
     <>
       <ThemeRenderer component="header" />
+      <ThemeRenderer component="nav" fallback={<CategoryNav mode="navigation" />} />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
@@ -130,6 +138,7 @@ export default function AdminDefaultThemePage() {
               currentThemeId={themeConfig.templateId}
               onThemeSelect={async (templateId) => {
                 const updatedTheme = { ...themeConfig, templateId };
+                setThemeConfig(updatedTheme);
                 await handleSave(updatedTheme);
               }}
             />

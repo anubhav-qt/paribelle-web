@@ -61,6 +61,21 @@ export default function BoldCreativeHeader() {
     router.push('/login');
   };
 
+  const navigateToSection = (sectionId: string) => {
+    const homePath = isVendorStore && vendor?.slug ? `/vendor/${vendor.slug}` : '/';
+    const isOnHome = window.location.pathname === homePath;
+
+    if (!isOnHome) {
+      window.location.href = `${homePath}#${sectionId}`;
+      return;
+    }
+
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <header className={isVendorStore ? 'vendor-primary-bg text-white py-12 relative overflow-hidden' : 'bg-primary text-primary-foreground py-12 relative overflow-hidden'}>
       {/* Decorative circles */}
@@ -141,6 +156,28 @@ export default function BoldCreativeHeader() {
             </h1>
             <p className="text-purple-100 mt-2 text-lg font-medium">✨ Discover Amazing Products ✨</p>
           </Link>
+
+          {/* Quick links keep booking and tour sections discoverable in this template */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                navigateToSection('category-tours-travel');
+              }}
+              className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white transition hover:bg-white/20"
+            >
+              Tours
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                navigateToSection('category-bookings-services');
+              }}
+              className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white transition hover:bg-white/20"
+            >
+              Bookings
+            </button>
+          </div>
 
           {/* Search Bar - Wide and Prominent */}
           <div className="w-full max-w-3xl mt-6">

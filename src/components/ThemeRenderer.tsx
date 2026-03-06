@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { useVendorContext } from '@/contexts/VendorContext';
 import UnifiedHeader from './UnifiedHeader';
@@ -71,14 +72,31 @@ export default function ThemeRenderer({ component, fallback, ...props }: ThemeRe
 
   // Nav components mapping
   if (component === 'nav') {
-    // Hide nav for themes that have built-in navigation in header
-    const hideNavThemes = ['minimal-sidebar', 'luxury-boutique'];
-    
-    if (hideNavThemes.includes(templateId)) {
+    // Keep CategoryNav visible across templates and wrap for subtle per-theme distinction.
+    const navNode = React.isValidElement(fallback)
+      ? React.cloneElement(fallback, {
+          ...(fallback.props || {}),
+          forceTopDisplay: true,
+        })
+      : fallback;
+
+    if (!navNode) {
       return null;
     }
-    
-    return fallback || null;
+
+    if (templateId === 'bold-creative') {
+      return <div className="relative z-20 bg-gradient-to-r from-fuchsia-50 to-rose-50">{navNode}</div>;
+    }
+
+    if (templateId === 'luxury-boutique') {
+      return <div className="relative z-20 border-y border-amber-900/20 bg-amber-50/30">{navNode}</div>;
+    }
+
+    if (templateId === 'minimal-sidebar') {
+      return <div className="relative z-20 border-t border-slate-200 bg-slate-50">{navNode}</div>;
+    }
+
+    return navNode;
   }
 
   // Footer components mapping  

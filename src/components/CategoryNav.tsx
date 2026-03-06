@@ -20,6 +20,7 @@ interface CategoryNavProps {
   hideEmptyCategories?: boolean;
   themeConfig?: any;
   showCustomPages?: boolean; // Show custom pages instead of categories
+  forceTopDisplay?: boolean;
 }
 
 export default function CategoryNav({ 
@@ -30,7 +31,8 @@ export default function CategoryNav({
   vendorSlug,
   hideEmptyCategories = true,
   themeConfig,
-  showCustomPages = false
+  showCustomPages = false,
+  forceTopDisplay = false
 }: CategoryNavProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -368,8 +370,8 @@ export default function CategoryNav({
     vendorId: vendor?.id,
   });
 
-  // Hide CategoryNav if display mode is sidebar
-  if (categoryDisplayMode !== 'top') {
+  // Hide CategoryNav if display mode is sidebar, unless explicitly forced by theme renderer.
+  if (!forceTopDisplay && categoryDisplayMode !== 'top') {
     console.log('🔴 CategoryNav: HIDING because mode is:', categoryDisplayMode, '(not "top")');
     return null;
   }

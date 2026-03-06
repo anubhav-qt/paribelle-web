@@ -70,6 +70,21 @@ export default function LuxuryBoutiqueHeader() {
     router.push('/login');
   };
 
+  const navigateToSection = (sectionId: string) => {
+    const homePath = isVendorStore && vendor?.slug ? `/vendor/${vendor.slug}` : '/';
+    const isOnHome = window.location.pathname === homePath;
+
+    if (!isOnHome) {
+      window.location.href = `${homePath}#${sectionId}`;
+      return;
+    }
+
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <header className={isVendorStore ? 'vendor-secondary-bg text-white' : 'bg-secondary text-secondary-foreground'}>
       {/* Elegant Top Bar - Gold Accent */}
@@ -111,6 +126,26 @@ export default function LuxuryBoutiqueHeader() {
 
           {/* Middle Row - Navigation Links */}
           <nav className="flex justify-center items-center space-x-12 mb-6 text-sm tracking-widest">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                navigateToSection('category-tours-travel');
+              }}
+              className="hover:text-amber-500 transition-colors uppercase"
+            >
+              Tours
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                navigateToSection('category-bookings-services');
+              }}
+              className="hover:text-amber-500 transition-colors uppercase"
+            >
+              Bookings
+            </button>
+
             {categories.slice(0, 6).map((category: any) => (
               <button
                 key={category.id}

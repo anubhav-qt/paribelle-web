@@ -71,6 +71,21 @@ export default function MinimalSidebarHeader() {
     router.push('/login');
   };
 
+  const navigateToSection = (sectionId: string) => {
+    const homePath = isVendorStore && vendor?.slug ? `/vendor/${vendor.slug}` : '/';
+    const isOnHome = window.location.pathname === homePath;
+
+    if (!isOnHome) {
+      window.location.href = `${homePath}#${sectionId}`;
+      return;
+    }
+
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <>
       {/* Compact Header Bar */}
@@ -211,6 +226,28 @@ export default function MinimalSidebarHeader() {
           {/* Sidebar Navigation */}
           <nav className="flex-1 overflow-y-auto p-6">
             <div className="space-y-1">
+              <button
+                onClick={() => {
+                  setSidebarOpen(false);
+                  navigateToSection('category-tours-travel');
+                }}
+                className={theme.combine('w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors group hover:opacity-90', theme.text)}
+              >
+                <span>Tours & Travel</span>
+                <ChevronRight className={theme.combine('w-4 h-4 group-hover:opacity-100', theme.textMuted)} />
+              </button>
+
+              <button
+                onClick={() => {
+                  setSidebarOpen(false);
+                  navigateToSection('category-bookings-services');
+                }}
+                className={theme.combine('w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors group hover:opacity-90', theme.text)}
+              >
+                <span>Bookings</span>
+                <ChevronRight className={theme.combine('w-4 h-4 group-hover:opacity-100', theme.textMuted)} />
+              </button>
+
               {categories.map((category: any) => (
                 <button
                   key={category.id}

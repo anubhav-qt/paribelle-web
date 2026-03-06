@@ -336,6 +336,39 @@ export default function HomepageContent({
 
   const isLocationFilterActive = locationFilterEnabled && (!!cityId || !!subLocationId);
 
+  const getNormalizedSlug = (slug: string) =>
+    (slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const getBookingProducts = (): Product[] => {
+    const bookingAliasSet = new Set([
+      'booking',
+      'bookings',
+      'services',
+      'bookingservices',
+      'bookingsservices',
+      'bookingandservices',
+      'bookingsandservices',
+    ]);
+
+    const unique = new Map<string, Product>();
+
+    Object.entries(productsByCategory).forEach(([slug, products]) => {
+      if (!bookingAliasSet.has(getNormalizedSlug(slug))) {
+        return;
+      }
+
+      products.forEach((product) => {
+        if (product?.id && !unique.has(product.id)) {
+          unique.set(product.id, product);
+        }
+      });
+    });
+
+    return Array.from(unique.values());
+  };
+
+  const allBookingProducts = getBookingProducts();
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -385,7 +418,6 @@ export default function HomepageContent({
             <div className="flex-1 space-y-8">
             {/* Tours & Travel Section - Show tour products separately */}
             {(() => {
-              const allBookingProducts = productsByCategory['bookings-services'] || [];
               const tourProducts = allBookingProducts.filter(
                 (p: any) => p.attributes?.tour?.tourMode === true
               );
@@ -422,7 +454,6 @@ export default function HomepageContent({
             
             {/* Bookings & Services Section - Show only non-tour booking products */}
             {(() => {
-              const allBookingProducts = productsByCategory['bookings-services'] || [];
               const regularBookingProducts = allBookingProducts.filter(
                 (p: any) => p.attributes?.tour?.tourMode !== true
               );
