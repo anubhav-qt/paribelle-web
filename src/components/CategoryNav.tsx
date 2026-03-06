@@ -386,6 +386,21 @@ export default function CategoryNav({
     isVendorStore ? 'vendor-nav-bg vendor-border-primary vendor-text' : 'bg-secondary border-secondary-foreground/20'
   );
   const homeHref = effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}` : '/';
+  const getCategoryDisplayName = (category: Category) => {
+    const normalized = (category.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (
+      normalized === 'booking' ||
+      normalized === 'bookings' ||
+      normalized === 'bookingservices' ||
+      normalized === 'bookingsservices' ||
+      normalized === 'bookingandservices' ||
+      normalized === 'bookingsandservices' ||
+      normalized === 'services'
+    ) {
+      return 'Bookings';
+    }
+    return category.name;
+  };
   const hasBookingCategory = categories.some((cat) => {
     const normalized = (cat.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     return (
@@ -538,7 +553,7 @@ export default function CategoryNav({
                   {category.primaryProductType && (
                     <span className="text-sm">{getProductTypeIcon(category.primaryProductType)}</span>
                   )}
-                  {category.name}
+                  {getCategoryDisplayName(category)}
                   {category.children && category.children.length > 0 && (
                     <ChevronDown className="w-3 h-3" />
                   )}
@@ -558,7 +573,7 @@ export default function CategoryNav({
                   {category.primaryProductType && (
                     <span className="text-sm">{getProductTypeIcon(category.primaryProductType)}</span>
                   )}
-                  {category.name}
+                  {getCategoryDisplayName(category)}
                   {category.children && category.children.length > 0 && (
                     <ChevronDown className={`w-3 h-3 transition-transform ${
                       activeDropdown === category.id ? 'rotate-180' : ''
@@ -583,7 +598,7 @@ export default function CategoryNav({
                   {category.primaryProductType && (
                     <span className="text-sm mr-1">{getProductTypeIcon(category.primaryProductType)}</span>
                   )}
-                  {category.name}
+                  {getCategoryDisplayName(category)}
                   {category.children && category.children.length > 0 && (
                     <ChevronDown className={`w-3 h-3 transition-transform ${
                       activeDropdown === category.id ? 'rotate-180' : ''
@@ -601,7 +616,7 @@ export default function CategoryNav({
                         onClick={(e) => handleNavigateToCategory(category.slug, e)}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold vendor-text hover:vendor-primary hover:opacity-80 transition-colors border-b vendor-border-primary-30"
                       >
-                        All {category.name}
+                        All {getCategoryDisplayName(category)}
                       </button>
                       {category.children.map((subcat) => (
                         <button
@@ -622,7 +637,7 @@ export default function CategoryNav({
                         }}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold vendor-text hover:vendor-primary hover:opacity-80 transition-colors border-b vendor-border-primary-30"
                       >
-                        All {category.name}
+                        All {getCategoryDisplayName(category)}
                       </button>
                       {category.children.map((subcat) => (
                         <button
@@ -643,7 +658,7 @@ export default function CategoryNav({
                         onClick={() => handleCategoryClick(category.id)}
                         className="block w-full text-left px-4 py-2 text-sm font-semibold vendor-text hover:vendor-primary hover:opacity-80 transition-colors border-b vendor-border-primary-30"
                       >
-                        All {category.name}
+                        All {getCategoryDisplayName(category)}
                       </button>
                       {category.children.map((subcat) => (
                         <button

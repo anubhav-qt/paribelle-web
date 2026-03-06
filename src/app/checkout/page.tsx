@@ -52,8 +52,18 @@ function CheckoutContent() {
   
   // Detect product type from URL or cart
   const urlType = searchParams.get('type'); // 'tour' or 'booking'
-  const bookingIds = searchParams.get('bookingIds')?.split(',') || [];
+  const bookingIdsParam = searchParams.get('bookingIds') || '';
+  const bookingIds = bookingIdsParam ? bookingIdsParam.split(',') : [];
   const productType: ProductType = urlType === 'tour' ? 'tour' : bookingIds.length > 0 ? 'booking' : 'physical';
+  const [redirectingBookingCheckout, setRedirectingBookingCheckout] = useState(false);
+
+  // Keep booking checkout on the dedicated route that skips the address step.
+  useEffect(() => {
+    if (productType === 'booking' && bookingIdsParam) {
+      setRedirectingBookingCheckout(true);
+      router.replace(`/checkout/booking?bookingIds=${bookingIdsParam}`);
+    }
+  }, [productType, bookingIdsParam, router]);
   
   const [currentStep, setCurrentStep] = useState<CheckoutStep>(productType === 'physical' ? 'cart' : 'review');
   const [loading, setLoading] = useState(false);
@@ -1812,6 +1822,17 @@ function CheckoutContent() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (redirectingBookingCheckout) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Redirecting to booking checkout...</p>
+        </div>
       </div>
     );
   }
