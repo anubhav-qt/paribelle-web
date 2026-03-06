@@ -290,6 +290,8 @@ export default function CategoryNav({
 
     // Handle booking/services slug variations used across data and section IDs.
     if (
+      normalizedSlug === 'booking' ||
+      normalizedSlug === 'bookings' ||
       normalizedSlug === 'bookingservices' ||
       normalizedSlug === 'bookingsservices' ||
       normalizedSlug === 'bookingandservices' ||
@@ -384,7 +386,6 @@ export default function CategoryNav({
     isVendorStore ? 'vendor-nav-bg vendor-border-primary vendor-text' : 'bg-secondary border-secondary-foreground/20'
   );
   const homeHref = effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}` : '/';
-  const firstCategorySlug = categories.find((cat) => cat.slug !== 'tours-travel')?.slug;
   const hasBookingCategory = categories.some((cat) => {
     const normalized = (cat.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     return (
@@ -410,12 +411,11 @@ export default function CategoryNav({
                 e.preventDefault();
                 e.stopPropagation();
 
-                if (firstCategorySlug) {
-                  handleNavigateToCategory(firstCategorySlug, e);
-                  return;
-                }
+                const navTop = dropdownRef.current
+                  ? dropdownRef.current.getBoundingClientRect().top + window.scrollY
+                  : 0;
 
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: Math.max(navTop, 0), behavior: 'smooth' });
               }}
               className={theme.combine(
                 "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
@@ -737,9 +737,22 @@ export default function CategoryNav({
                     e.preventDefault();
                     e.stopPropagation();
                     console.log('🔴 BOOKINGS CLICKED');
-                    
-                    const targetUrl = '/?productType=booking&uncategorized=true';
-                    window.location.href = targetUrl;
+
+                    if (!effectiveVendorSlug) {
+                      const isOnHomepage = pathname === '/' || pathname === '/';
+                      if (!isOnHomepage) {
+                        window.location.href = '/#category-bookings-services';
+                      } else {
+                        handleScrollToCategory('bookings-services');
+                      }
+                    } else {
+                      const isOnVendorHome = pathname === `/vendor/${effectiveVendorSlug}`;
+                      if (!isOnVendorHome) {
+                        window.location.href = `/vendor/${effectiveVendorSlug}#category-bookings-services`;
+                      } else {
+                        handleScrollToCategory('bookings-services');
+                      }
+                    }
                   }}
                   className={theme.combine(
                     "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
