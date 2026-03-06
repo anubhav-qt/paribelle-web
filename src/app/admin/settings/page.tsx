@@ -28,6 +28,7 @@ export default function AdminSettingsPage() {
   const [currency, setCurrency] = useState('INR');
   const [categoryDisplayMode, setCategoryDisplayMode] = useState<'top' | 'sidebar'>('sidebar');
   const [thumbnailLayout, setThumbnailLayout] = useState<'vertical' | 'horizontal'>('vertical');
+  const [heroHeight, setHeroHeight] = useState<'compact' | 'standard' | 'tall'>('compact');
   const [marketplaceLogo, setMarketplaceLogo] = useState('');
   const [marketplaceName, setMarketplaceName] = useState('GaliCart');
   const [heroBanners, setHeroBanners] = useState<Array<{
@@ -82,6 +83,14 @@ export default function AdminSettingsPage() {
             const thumbnailLayoutSetting = data.find((s: Setting) => s.key === 'thumbnailLayout');
             if (thumbnailLayoutSetting) {
           setThumbnailLayout(thumbnailLayoutSetting.value === 'horizontal' ? 'horizontal' : 'vertical');
+            }
+
+            const heroHeightSetting = data.find((s: Setting) => s.key === 'hero_height');
+            if (heroHeightSetting) {
+              const value = String(heroHeightSetting.value || '').toLowerCase();
+              if (value === 'compact' || value === 'standard' || value === 'tall') {
+                setHeroHeight(value);
+              }
             }
         
             const heroBannersSetting = data.find((s: Setting) => s.key === 'hero_banners');
@@ -223,6 +232,12 @@ export default function AdminSettingsPage() {
             thumbnailLayout,
             'Product image thumbnail layout orientation. Values: "vertical" (Amazon-style left sidebar) or "horizontal" (bottom strip)'
       );
+
+      const heroHeightSuccess = await updateSetting(
+        'hero_height',
+        heroHeight,
+        'Hero carousel height preset. Values: "compact", "standard", "tall".'
+      );
       
       const heroBannersSuccess = await updateSetting(
             'hero_banners',
@@ -266,7 +281,7 @@ export default function AdminSettingsPage() {
             'Default free shipping threshold amount. Orders above this amount get free shipping.'
       );
 
-      if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroBannersSuccess && logoSuccess && nameSuccess && returnPolicySuccess && cancellationPolicySuccess && commissionRateSuccess && freeShippingThresholdSuccess) {
+      if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroHeightSuccess && heroBannersSuccess && logoSuccess && nameSuccess && returnPolicySuccess && cancellationPolicySuccess && commissionRateSuccess && freeShippingThresholdSuccess) {
             showMessage('success', 'Settings saved successfully!');
             await fetchSettings(); // Refresh settings
       } else {
@@ -715,6 +730,25 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="space-y-4">
+            <div>
+              <label htmlFor="heroHeight" className="block font-medium text-gray-900 mb-2">
+                Hero Height
+              </label>
+              <select
+                id="heroHeight"
+                value={heroHeight}
+                onChange={(e) => setHeroHeight(e.target.value as 'compact' | 'standard' | 'tall')}
+                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="compact">Compact (smallest)</option>
+                <option value="standard">Standard</option>
+                <option value="tall">Tall (largest)</option>
+              </select>
+              <p className="text-sm text-gray-600 mt-2">
+                Controls the hero/banner height on homepage and vendor storefront pages.
+              </p>
+            </div>
+
             {heroBanners.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <p>No banners configured. Click "Add Banner" to create your first hero banner.</p>

@@ -24,39 +24,60 @@ export default function VendorHeroCarousel({ vendorId, vendorName, vendorDescrip
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [heroHeight, setHeroHeight] = useState<'compact' | 'standard' | 'tall'>('compact');
+
+  const heroHeightClasses: Record<'compact' | 'standard' | 'tall', string> = {
+    compact: 'h-[180px] md:h-[240px] lg:h-[300px]',
+    standard: 'h-[240px] md:h-[320px] lg:h-[380px]',
+    tall: 'h-[320px] md:h-[420px] lg:h-[520px]',
+  };
 
   useEffect(() => {
-    // Fetch vendor-specific hero banners
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/hero-banners`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.heroBanners && Array.isArray(data.heroBanners) && data.heroBanners.length > 0) {
-          setBanners(data.heroBanners.sort((a: HeroBanner, b: HeroBanner) => a.order - b.order));
-        } else {
-          // Default fallback banner with vendor info
-          setBanners([{
-            id: 'default',
-            imageUrl: '',
-            title: vendorName || 'Welcome to Our Store',
-            subtitle: vendorDescription || 'Discover our amazing products and exclusive deals',
-            order: 0
-          }]);
+    const fetchHeroData = async () => {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+        const [vendorBannersRes, heightRes] = await Promise.all([
+          fetch(`${baseUrl}/api/v1/vendors/${vendorId}/hero-banners`),
+          fetch(`${baseUrl}/api/v1/settings/hero_height`),
+        ]);
+
+        if (vendorBannersRes.ok) {
+          const data = await vendorBannersRes.json();
+          if (data.heroBanners && Array.isArray(data.heroBanners) && data.heroBanners.length > 0) {
+            setBanners(data.heroBanners.sort((a: HeroBanner, b: HeroBanner) => a.order - b.order));
+          } else {
+            setBanners([{
+              id: 'default',
+              imageUrl: '',
+              title: vendorName || 'Welcome to Our Store',
+              subtitle: vendorDescription || 'Discover our amazing products and exclusive deals',
+              order: 0,
+            }]);
+          }
         }
-      })
-      .catch(err => {
-        console.error('Error fetching vendor hero banners:', err);
-        // Default fallback banner
+
+        if (heightRes.ok) {
+          const heightData = await heightRes.json();
+          const value = String(heightData?.value || '').toLowerCase();
+          if (value === 'compact' || value === 'standard' || value === 'tall') {
+            setHeroHeight(value);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching vendor hero data:', err);
         setBanners([{
           id: 'default',
           imageUrl: '',
           title: vendorName || 'Welcome to Our Store',
           subtitle: vendorDescription || 'Discover our amazing products and exclusive deals',
-          order: 0
+          order: 0,
         }]);
-      })
-      .finally(() => {
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchHeroData();
   }, [vendorId, vendorName, vendorDescription]);
 
   const nextSlide = useCallback(() => {
@@ -85,7 +106,7 @@ export default function VendorHeroCarousel({ vendorId, vendorName, vendorDescrip
 
   if (loading) {
     return (
-      <div className="relative w-full h-[240px] md:h-[320px] lg:h-[380px] bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+      <div className={`relative w-full ${heroHeightClasses[heroHeight]} bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
       </div>
     );
@@ -102,7 +123,7 @@ export default function VendorHeroCarousel({ vendorId, vendorName, vendorDescrip
       onMouseLeave={() => setIsAutoPlaying(true)}
     >
       {/* Slides Container */}
-      <div className="relative h-[240px] md:h-[320px] lg:h-[380px]">
+      <div className={`relative ${heroHeightClasses[heroHeight]}`}>
         {banners.map((banner, index) => (
           <div
             key={banner.id}

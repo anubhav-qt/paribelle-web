@@ -356,7 +356,11 @@ function CheckoutContent() {
   const finalTotal = totalBeforeWallet - walletDiscount; // Final total after wallet discount
 
   const handleContinueToAddress = () => {
-    setCurrentStep('address');
+    if (productType === 'physical') {
+      setCurrentStep('address');
+      return;
+    }
+    setCurrentStep('payment');
   };
 
   const handleContinueToPayment = useCallback(() => {
@@ -968,10 +972,10 @@ function CheckoutContent() {
         if (productType === 'tour') {
           return Boolean(tourBooking && bookingDate);
         }
-        // Regular bookings need address
-        return Boolean(shippingAddress.fullName && shippingAddress.addressLine1);
+        // Booking flow skips address step.
+        return bookings.length > 0;
       }
-      if (step === 'address') return productType === 'booking';
+      if (step === 'address') return false;
       if (step === 'confirmation') return false;
       
       return false;
@@ -999,7 +1003,6 @@ function CheckoutContent() {
         ]
       : [
           { step: 'review', label: 'Review', icon: Calendar },
-          { step: 'address', label: 'Address', icon: MapPin },
           { step: 'payment', label: 'Payment', icon: CreditCard },
           { step: 'confirmation', label: 'Confirmation', icon: CheckCircle },
         ];
@@ -1486,7 +1489,7 @@ function CheckoutContent() {
               onClick={handleContinueToAddress}
               className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
             >
-              Continue to Address
+              {productType === 'physical' ? 'Continue to Address' : 'Proceed to Payment'}
             </button>
             
             <Link
@@ -1506,11 +1509,11 @@ function CheckoutContent() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-foreground">Payment Method</h2>
         <button
-          onClick={() => setCurrentStep('address')}
+          onClick={() => setCurrentStep(productType === 'physical' ? 'address' : 'review')}
           className="text-primary hover:underline flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Address
+          {productType === 'physical' ? 'Back to Address' : 'Back to Review'}
         </button>
       </div>
       
@@ -1522,7 +1525,7 @@ function CheckoutContent() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-foreground">Shipping Address</h3>
               <button
-                onClick={() => setCurrentStep('address')}
+                onClick={() => setCurrentStep(productType === 'physical' ? 'address' : 'review')}
                 className="text-primary hover:underline flex items-center gap-1 text-sm"
               >
                 <Edit2 className="w-4 h-4" />
@@ -1548,7 +1551,7 @@ function CheckoutContent() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-foreground">Billing Address</h3>
               <button
-                onClick={() => setCurrentStep('address')}
+                onClick={() => setCurrentStep(productType === 'physical' ? 'address' : 'review')}
                 className="text-primary hover:underline flex items-center gap-1 text-sm"
               >
                 <Edit2 className="w-4 h-4" />
