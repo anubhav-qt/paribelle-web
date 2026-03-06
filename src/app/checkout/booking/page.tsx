@@ -182,6 +182,13 @@ function BookingCheckoutContent() {
     }
   }, [router, searchParams]);
 
+  // Keep booking flow to review -> payment -> confirmation only.
+  useEffect(() => {
+    if (currentStep === 'address') {
+      setCurrentStep('review');
+    }
+  }, [currentStep]);
+
   const fetchBookings = async (bookingIds: string[], token: string) => {
     try {
       console.log('Fetching bookings with IDs:', bookingIds);
@@ -1058,7 +1065,7 @@ function BookingCheckoutContent() {
 
                 <div className="flex gap-4 mt-6">
                   <button
-                    onClick={() => setCurrentStep('address')}
+                    onClick={() => setCurrentStep('review')}
                     className="flex-1 border border-border text-foreground py-3 rounded-lg hover:bg-muted transition flex items-center justify-center gap-2"
                   >
                     <ArrowLeft className="w-5 h-5" />

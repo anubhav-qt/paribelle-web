@@ -81,7 +81,7 @@ export default function HeroCarousel() {
 
   if (loading) {
     return (
-      <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+      <div className="relative w-full h-[240px] md:h-[320px] lg:h-[380px] bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
         <div className="text-white text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-sm opacity-75">Loading hero banners...</p>
@@ -101,7 +101,7 @@ export default function HeroCarousel() {
       onMouseLeave={() => setIsAutoPlaying(true)}
     >
       {/* Slides Container */}
-      <div className="relative h-[400px] md:h-[500px] lg:h-[600px]">
+      <div className="relative h-[240px] md:h-[320px] lg:h-[380px]">
         {banners.map((banner, index) => (
           <div
             key={banner.id}
@@ -129,19 +129,19 @@ export default function HeroCarousel() {
             <div className="relative h-full container mx-auto px-4 flex items-center">
               <div className="max-w-3xl text-white">
                 {banner.title && (
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 drop-shadow-lg animate-fadeIn">
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 drop-shadow-lg animate-fadeIn">
                     {banner.title}
                   </h1>
                 )}
                 {banner.subtitle && (
-                  <p className="text-lg md:text-xl mb-6 text-white/90 drop-shadow-md animate-fadeIn animation-delay-200">
+                  <p className="text-sm md:text-base mb-4 text-white/90 drop-shadow-md animate-fadeIn animation-delay-200 line-clamp-2">
                     {banner.subtitle}
                   </p>
                 )}
                 {banner.ctaText && banner.ctaLink && (
                   <a
                     href={banner.ctaLink}
-                    className="inline-block bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg animate-fadeIn animation-delay-400"
+                    className="inline-block bg-white text-blue-600 px-5 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg animate-fadeIn animation-delay-400"
                   >
                     {banner.ctaText}
                   </a>
