@@ -292,10 +292,14 @@ export default function CategoryNav({
     if (
       normalizedSlug === 'bookingservices' ||
       normalizedSlug === 'bookingsservices' ||
+      normalizedSlug === 'bookingandservices' ||
+      normalizedSlug === 'bookingsandservices' ||
       normalizedSlug === 'services'
     ) {
       candidateSlugs.add('bookings-services');
       candidateSlugs.add('booking-services');
+      candidateSlugs.add('booking-and-services');
+      candidateSlugs.add('bookings-and-services');
       candidateSlugs.add('services');
     }
     if (normalizedSlug === 'tourstravel') {
@@ -380,9 +384,16 @@ export default function CategoryNav({
     isVendorStore ? 'vendor-nav-bg vendor-border-primary vendor-text' : 'bg-secondary border-secondary-foreground/20'
   );
   const homeHref = effectiveVendorSlug ? `/vendor/${effectiveVendorSlug}` : '/';
+  const firstCategorySlug = categories.find((cat) => cat.slug !== 'tours-travel')?.slug;
   const hasBookingCategory = categories.some((cat) => {
     const normalized = (cat.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    return normalized === 'bookingservices' || normalized === 'bookingsservices' || normalized === 'services';
+    return (
+      normalized === 'bookingservices' ||
+      normalized === 'bookingsservices' ||
+      normalized === 'bookingandservices' ||
+      normalized === 'bookingsandservices' ||
+      normalized === 'services'
+    );
   });
 
   return (
@@ -393,16 +404,39 @@ export default function CategoryNav({
       <div className="container mx-auto">
         <div className="flex items-center gap-0 flex-wrap">
           {/* Home Link - Left Side */}
-          <Link
-            href={homeHref}
-            className={theme.combine(
-              "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
-              isVendorStore ? 'vendor-border-primary-30 vendor-text' : 'border-secondary-foreground/20 text-secondary-foreground'
-            )}
-          >
-            <Home className="w-3.5 h-3.5" />
-            Home
-          </Link>
+          {mode === 'scroll' ? (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (firstCategorySlug) {
+                  handleNavigateToCategory(firstCategorySlug, e);
+                  return;
+                }
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={theme.combine(
+                "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
+                isVendorStore ? 'vendor-border-primary-30 vendor-text' : 'border-secondary-foreground/20 text-secondary-foreground'
+              )}
+            >
+              <Home className="w-3.5 h-3.5" />
+              Home
+            </button>
+          ) : (
+            <Link
+              href={homeHref}
+              className={theme.combine(
+                "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all whitespace-nowrap border-r hover:opacity-80",
+                isVendorStore ? 'vendor-border-primary-30 vendor-text' : 'border-secondary-foreground/20 text-secondary-foreground'
+              )}
+            >
+              <Home className="w-3.5 h-3.5" />
+              Home
+            </Link>
+          )}
 
           {/* Pages Menu Button */}
           {customPages.length > 0 && (
