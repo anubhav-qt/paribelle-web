@@ -190,7 +190,7 @@ marketplace/
 
 ### 1. Clone Repository
 ```bash
-git clone https://gitlab.com/ajaniljoshijobs/marketplace.git
+git clone https://gitlab.com/anubhav.s.joshi/marketplace.git
 cd marketplace
 ```
 
@@ -565,7 +565,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 👥 Team
 
-- **Project Owner**: Ajanil Joshi (ajaniljoshi@gmail.com)
+- **Project Owner**: Ajanil Joshi (anubhav.s.joshi@gmail.com)
 - **Backend Development**: [TBD]
 - **Frontend Development**: [TBD]
 - **Mobile Development**: [TBD]
@@ -574,8 +574,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 For support and questions:
-- **Email**: ajaniljoshi@gmail.com
-- **GitLab Issues**: [Create an issue](https://gitlab.com/ajaniljoshijobs/marketplace/-/issues)
+- **Email**: anubhav.s.joshi@gmail.com
+- **GitLab Issues**: [Create an issue](https://gitlab.com/anubhav.s.joshi/marketplace/-/issues)
 - **Documentation**: See `docs/` folder
 
 ## 🙏 Acknowledgments
