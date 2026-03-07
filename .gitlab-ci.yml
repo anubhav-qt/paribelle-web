@@ -1,8 +1,10 @@
-keep-render-alive:
+keep-stack-alive-via-vercel:
   image: curlimages/curl:latest
+  variables:
+    VERCEL_KEEP_ALIVE_URL: "https://marketplace-web-smoky.vercel.app/api/cron/keep-alive"
   script:
-    - echo "Pinging backend"
-    - curl -s https://marketplace-backend-prqr.onrender.com/api/v1/categories
-    - echo "Backend pinged successfully"
+    - echo "Pinging Vercel keep-alive endpoint"
+    - curl --fail --show-error --silent "$VERCEL_KEEP_ALIVE_URL"
+    - echo "Vercel keep-alive completed"
   only:
     - schedules
