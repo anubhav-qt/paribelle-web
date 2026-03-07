@@ -16,6 +16,8 @@ export default function AdminVendorsPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<any>(null);
+  const [selectedVendorIds, setSelectedVendorIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [newVendorFormData, setNewVendorFormData] = useState({
     storeName: '',
     businessName: '',
@@ -99,12 +101,85 @@ export default function AdminVendorsPage() {
     if (!confirm('Are you sure you want to delete this vendor? This will also remove all their products.')) return;
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${id}`, {
         method: 'DELETE',
       });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to delete vendor');
+      }
+
+      alert('Vendor deleted successfully!');
       fetchVendors();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting vendor:', error);
+      alert(error.message || 'Error deleting vendor');
+    }
+  };
+
+  const deleteVendorById = async (id: string): Promise<void> => {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to delete vendor');
+    }
+  };
+
+  const toggleVendorSelection = (vendorId: string) => {
+    setSelectedVendorIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(vendorId)) {
+        next.delete(vendorId);
+      } else {
+        next.add(vendorId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllVisible = (checked: boolean) => {
+    if (checked) {
+      setSelectedVendorIds(new Set(vendors.map((v) => v.id)));
+      return;
+    }
+    setSelectedVendorIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedVendorIds.size === 0) {
+      alert('Please select at least one vendor to delete.');
+      return;
+    }
+
+    const selectedIds = Array.from(selectedVendorIds);
+    const confirmed = confirm(
+      `Are you sure you want to delete ${selectedIds.length} selected vendor${selectedIds.length > 1 ? 's' : ''}?`
+    );
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    try {
+      const results = await Promise.allSettled(selectedIds.map((id) => deleteVendorById(id)));
+
+      const successCount = results.filter((r) => r.status === 'fulfilled').length;
+      const failedCount = results.length - successCount;
+
+      setSelectedVendorIds(new Set());
+      await fetchVendors();
+
+      if (failedCount === 0) {
+        alert(`Deleted ${successCount} vendor${successCount !== 1 ? 's' : ''} successfully.`);
+      } else {
+        alert(`Deleted ${successCount} vendor${successCount !== 1 ? 's' : ''}. ${failedCount} failed.`);
+      }
+    } catch (error: any) {
+      alert(error.message || 'Bulk delete failed. Please try again.');
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -287,6 +362,21 @@ export default function AdminVendorsPage() {
   };
 
   const stats = calculateStats();
+  const selectedCount = selectedVendorIds.size;
+  const areAllVisibleSelected =
+    vendors.length > 0 && vendors.every((v) => selectedVendorIds.has(v.id));
+
+  useEffect(() => {
+    // Keep selection in sync with current filtered list.
+    setSelectedVendorIds((prev) => {
+      if (prev.size === 0) return prev;
+
+      const visibleIds = new Set(vendors.map((v) => v.id));
+      const next = new Set(Array.from(prev).filter((id) => visibleIds.has(id)));
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [vendors]);
 
   return (
     <>
@@ -374,6 +464,31 @@ export default function AdminVendorsPage() {
           </div>
         </div>
 
+        {/* Bulk actions */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-gray-700">
+            {selectedCount > 0
+              ? `${selectedCount} vendor${selectedCount !== 1 ? 's' : ''} selected`
+              : 'No vendors selected'}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleSelectAllVisible(!areAllVisibleSelected)}
+              className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+              disabled={vendors.length === 0 || bulkDeleting}
+            >
+              {areAllVisibleSelected ? 'Unselect All' : 'Select All'}
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={selectedCount === 0 || bulkDeleting}
+            >
+              {bulkDeleting ? 'Deleting...' : 'Delete Selected'}
+            </button>
+          </div>
+        </div>
+
         {/* Vendors Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {loading ? (
@@ -392,6 +507,15 @@ export default function AdminVendorsPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={areAllVisibleSelected}
+                        onChange={(e) => handleSelectAllVisible(e.target.checked)}
+                        disabled={bulkDeleting}
+                        aria-label="Select all vendors"
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Business Name
                     </th>
@@ -418,6 +542,15 @@ export default function AdminVendorsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {vendors.map((vendor) => (
                     <tr key={vendor.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={selectedVendorIds.has(vendor.id)}
+                          onChange={() => toggleVendorSelection(vendor.id)}
+                          disabled={bulkDeleting}
+                          aria-label={`Select ${((vendor as any).storeName || vendor.businessName || 'vendor')}`}
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {(vendor as any).storeName || vendor.businessName || 'N/A'}
