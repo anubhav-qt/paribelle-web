@@ -28,6 +28,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   } = product;
 
   const vendorName = vendor?.businessName || vendor?.name;
+  const vendorSlug = vendor?.slug || vendor?.subdomain;
 
   // Tour Product
   if (isTourProduct(productType, attributes)) {
@@ -56,6 +57,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         upcomingDeparturesCount={upcomingDepartures.length}
         tourDetails={tourData?.details}
         vendorName={vendorName}
+        vendorSlug={vendorSlug}
       />
     );
   }
@@ -75,6 +77,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         averageRating={averageRating}
         reviewCount={reviewCount}
         vendorName={vendorName}
+        vendorSlug={vendorSlug}
         location={vendor?.city || vendor?.address}
       />
     );
@@ -95,6 +98,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       averageRating={averageRating}
       reviewCount={reviewCount}
       vendorName={vendorName}
+      vendorSlug={vendorSlug}
     />
   );
 }

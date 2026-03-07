@@ -95,18 +95,39 @@ export function ProductCardRating({ rating, reviewCount, className }: RatingProp
 
 interface VendorNameProps {
   vendorName?: string;
+  vendorSlug?: string;
   className?: string;
 }
 
 /**
  * Reusable Vendor Name Component
  */
-export function ProductCardVendor({ vendorName, className }: VendorNameProps) {
+export function ProductCardVendor({ vendorName, vendorSlug, className }: VendorNameProps) {
   if (!vendorName) return null;
+
+  const handleVendorClick = (e: React.MouseEvent) => {
+    if (!vendorSlug) return;
+    // Product cards are wrapped in links; prevent opening product details when vendor is clicked.
+    e.preventDefault();
+    e.stopPropagation();
+    window.location.href = `/vendor/${vendorSlug}`;
+  };
   
   return (
     <p className={cn('text-xs text-gray-500 mt-2', className)}>
-      by {vendorName}
+      by{' '}
+      {vendorSlug ? (
+        <button
+          type="button"
+          onClick={handleVendorClick}
+          className="text-primary hover:underline"
+          aria-label={`View ${vendorName} store`}
+        >
+          {vendorName}
+        </button>
+      ) : (
+        vendorName
+      )}
     </p>
   );
 }

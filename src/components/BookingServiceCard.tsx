@@ -35,6 +35,7 @@ interface BookingServiceCardProps {
   averageRating?: number;
   reviewCount?: number;
   vendorName?: string;
+  vendorSlug?: string;
   location?: string;
 }
 
@@ -50,6 +51,7 @@ export default function BookingServiceCard({
   averageRating = 0,
   reviewCount = 0,
   vendorName,
+  vendorSlug,
   location,
 }: BookingServiceCardProps) {
   const displayImage = getDisplayImage(featuredImage, images) || '/placeholder-service.jpg';
@@ -146,7 +148,7 @@ export default function BookingServiceCard({
           </div>
 
           {/* Vendor Name */}
-          <ProductCardVendor vendorName={vendorName} />
+          <ProductCardVendor vendorName={vendorName} vendorSlug={vendorSlug} />
         </div>
       </div>
     </Link>

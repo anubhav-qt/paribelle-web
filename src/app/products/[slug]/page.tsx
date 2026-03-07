@@ -905,6 +905,22 @@ export default function ProductDetailPage() {
               
                   <p className="text-muted-foreground mb-4">{product.shortDescription}</p>
 
+                  {(product.vendor?.storeName || product.vendor?.businessName) && (
+                    <div className="mb-4 text-sm text-muted-foreground">
+                      Sold by{' '}
+                      {(product.vendor as any)?.slug ? (
+                        <Link
+                          href={`/vendor/${(product.vendor as any).slug}`}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          {product.vendor.storeName || product.vendor.businessName}
+                        </Link>
+                      ) : (
+                        <span className="font-medium text-foreground">{product.vendor.storeName || product.vendor.businessName}</span>
+                      )}
+                    </div>
+                  )}
+
               {/* Rating */}
               <div className="flex items-center gap-3 mb-6">
                 <div className="flex items-center gap-1 bg-accent text-primary-foreground px-3 py-1 rounded">
@@ -1285,18 +1301,16 @@ export default function ProductDetailPage() {
               )}
 
               {/* Vendor Website Link */}
-              {product.vendor && product.vendor.subdomain && (
+              {product.vendor && (product.vendor.slug || product.vendor.subdomain) && (
                 <div className="mt-4 pt-4 border-t border-border">
                   <h3 className="font-semibold mb-2 text-foreground">Sold by:</h3>
-                  <a
-                    href={`http://${product.vendor.subdomain}.localhost:3000`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href={`/vendor/${(product.vendor as any).slug || product.vendor.subdomain}`}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
                   >
                     <span className="font-medium">{product.vendor.storeName || product.vendor.businessName}</span>
                     <ExternalLink className="w-4 h-4" />
-                  </a>
+                  </Link>
                   {vendorStats && (
                     <div className="mt-3 flex items-center gap-4 text-sm">
                       <div className="flex items-center gap-1">

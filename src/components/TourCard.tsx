@@ -42,6 +42,7 @@ interface TourCardProps {
     groupSize?: { min: number; max: number };
   };
   vendorName?: string;
+  vendorSlug?: string;
 }
 
 export default function TourCard({
@@ -56,6 +57,7 @@ export default function TourCard({
   upcomingDeparturesCount = 0,
   tourDetails,
   vendorName,
+  vendorSlug,
 }: TourCardProps) {
   const displayImage = getDisplayImage(featuredImage, images) || '/placeholder-tour.jpg';
   const destinations = formatDestinations(tourDetails?.destinations);
@@ -177,7 +179,7 @@ export default function TourCard({
           </div>
 
           {/* Vendor Name */}
-          <ProductCardVendor vendorName={vendorName} />
+          <ProductCardVendor vendorName={vendorName} vendorSlug={vendorSlug} />
         </div>
       </div>
     </Link>

@@ -32,6 +32,7 @@ interface PhysicalProductCardProps {
   averageRating?: number;
   reviewCount?: number;
   vendorName?: string;
+  vendorSlug?: string;
 }
 
 export default function PhysicalProductCard({
@@ -47,6 +48,7 @@ export default function PhysicalProductCard({
   averageRating = 0,
   reviewCount = 0,
   vendorName,
+  vendorSlug,
 }: PhysicalProductCardProps) {
   const displayImage = getDisplayImage(featuredImage, images) || '/placeholder-product.jpg';
   const discount = hasDiscount(price, compareAtPrice);
@@ -125,7 +127,7 @@ export default function PhysicalProductCard({
           </div>
 
           {/* Vendor Name */}
-          <ProductCardVendor vendorName={vendorName} />
+          <ProductCardVendor vendorName={vendorName} vendorSlug={vendorSlug} />
         </div>
       </div>
     </Link>
