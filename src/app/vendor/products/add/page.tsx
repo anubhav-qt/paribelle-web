@@ -49,7 +49,7 @@ export default function VendorAddProductPage() {
   // Import/Export functionality
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string; errors?: string[] } | null>(null);
   
   // Prevent hydration errors
   const [mounted, setMounted] = useState(false);
