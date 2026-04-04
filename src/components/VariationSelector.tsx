@@ -42,13 +42,15 @@ export default function VariationSelector({
         const attrs = v.variantAttributes || v.variationAttributes;
         if (!attrs) return false;
         
-        // Check if this variation matches the current selections + this option
+        // Check if this variation matches the current selections + this option (case-insensitive)
         const matches = Object.entries(selectedAttributes).every(([key, val]) => {
-          if (key === theme) return true; // Skip the current theme
-          return attrs[key] === val;
+          if (key.toLowerCase() === theme.toLowerCase()) return true; // Skip the current theme
+          const attrEntry = Object.entries(attrs).find(([k]) => k.toLowerCase() === key.toLowerCase());
+          return attrEntry && String(attrEntry[1]).toLowerCase() === String(val).toLowerCase();
         });
-        
-        return matches && attrs[theme] === value && v.stockQuantity > 0;
+
+        const attrEntry = Object.entries(attrs).find(([k]) => k.toLowerCase() === theme.toLowerCase());
+        return matches && attrEntry && String(attrEntry[1]).toLowerCase() === value.toLowerCase() && v.stockQuantity > 0;
       });
 
       return {
@@ -65,9 +67,10 @@ export default function VariationSelector({
       const matchingVariation = variations.find(v => {
         const attrs = v.variantAttributes || v.variationAttributes;
         if (!attrs) return false;
-        return variationThemes.every(
-          theme => attrs[theme] === selectedAttributes[theme]
-        );
+        return variationThemes.every(theme => {
+          const attrEntry = Object.entries(attrs).find(([k]) => k.toLowerCase() === theme.toLowerCase());
+          return attrEntry && String(attrEntry[1]).toLowerCase() === String(selectedAttributes[theme]).toLowerCase();
+        });
       });
 
       setSelectedVariation(matchingVariation);
