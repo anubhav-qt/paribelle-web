@@ -30,23 +30,25 @@ export default function VariationSelector({
   const getThemeOptions = (theme: string): VariationOption[] => {
     const uniqueValues = new Set<string>();
     variations.forEach(variation => {
-      if (variation.variationAttributes && variation.variationAttributes[theme]) {
-        uniqueValues.add(variation.variationAttributes[theme]);
+      const attrs = variation.variantAttributes || variation.variationAttributes;
+      if (attrs && attrs[theme]) {
+        uniqueValues.add(attrs[theme]);
       }
     });
 
     return Array.from(uniqueValues).map(value => {
       // Check if this option is available given current selections
       const isAvailable = variations.some(v => {
-        if (!v.variationAttributes) return false;
+        const attrs = v.variantAttributes || v.variationAttributes;
+        if (!attrs) return false;
         
         // Check if this variation matches the current selections + this option
         const matches = Object.entries(selectedAttributes).every(([key, val]) => {
           if (key === theme) return true; // Skip the current theme
-          return v.variationAttributes[key] === val;
+          return attrs[key] === val;
         });
         
-        return matches && v.variationAttributes[theme] === value && v.stockQuantity > 0;
+        return matches && attrs[theme] === value && v.stockQuantity > 0;
       });
 
       return {
@@ -61,9 +63,10 @@ export default function VariationSelector({
   useEffect(() => {
     if (Object.keys(selectedAttributes).length === variationThemes.length) {
       const matchingVariation = variations.find(v => {
-        if (!v.variationAttributes) return false;
+        const attrs = v.variantAttributes || v.variationAttributes;
+        if (!attrs) return false;
         return variationThemes.every(
-          theme => v.variationAttributes[theme] === selectedAttributes[theme]
+          theme => attrs[theme] === selectedAttributes[theme]
         );
       });
 
