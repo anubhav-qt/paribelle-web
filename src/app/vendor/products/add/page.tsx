@@ -43,7 +43,7 @@ export default function VendorAddProductPage() {
   const [variantOptions, setVariantOptions] = useState<VariantOption[]>([]);
   const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>([]);
   
-  // Help section
+  // Help section 
   const [showHelp, setShowHelp] = useState(false);
   
   // Import/Export functionality
