@@ -384,9 +384,6 @@ export default function HomepageContent({
 
   return (
     <div>
-      {/* Category Navigation Bar */}
-      <ThemeRenderer component="nav" fallback={<CategoryNav mode="scroll" />} />
-
       {/* Main Content with Sidebar */}
       <div className="container mx-auto px-4 pb-8">
         {/* Search Results Header */}

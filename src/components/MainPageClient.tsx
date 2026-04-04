@@ -1,6 +1,7 @@
 'use client';
 import ThemeRenderer from '@/components/ThemeRenderer';
 import HeroCarousel from '@/components/HeroCarousel';
+import CategoryNav from '@/components/CategoryNav';
 import Footer from '@/components/Footer';
 import HomepageContent from '@/components/HomepageContent';
 import { Suspense } from 'react';
@@ -34,10 +35,13 @@ export default function MainPageClient({
         <GoogleAuthHandler />
       </Suspense>
       
-      <ThemeRenderer 
-        component="header" 
-        showLocationFilter={settings.locationFilterEnabled}
-      />
+      <div className="sticky top-0 z-40">
+        <ThemeRenderer 
+          component="header" 
+          showLocationFilter={settings.locationFilterEnabled}
+        />
+        <CategoryNav mode="scroll" />
+      </div>
 
       <HeroCarousel />
 
