@@ -81,7 +81,9 @@ export default function ProductDetailPage() {
     
     const maxStock = product.isParent 
       ? (selectedVariation?.stockQuantity || 999)
-      : (selectedVariant?.stockQuantity || product.stockQuantity || 999);
+      : product.hasVariants
+        ? (selectedVariant?.stockQuantity ?? 999)
+        : (selectedVariant?.stockQuantity || product.stockQuantity || 999);
     
     if (quantity > maxStock) {
       setQuantity(Math.max(1, maxStock));
@@ -640,9 +642,19 @@ export default function ProductDetailPage() {
       return;
     }
 
+    // For hasVariants products (new variant system), require a variant selection
+    if (product.hasVariants && !selectedVariant) {
+      alert('Please select all product options.');
+      return;
+    }
+
     // Use selected variation or main product
     const productToAdd = selectedVariation || product;
-    const stockQuantity = product.isParent ? selectedVariation?.stockQuantity : product.stockQuantity;
+    const stockQuantity = product.isParent
+      ? selectedVariation?.stockQuantity
+      : product.hasVariants
+        ? selectedVariant?.stockQuantity
+        : product.stockQuantity;
 
     // Check stock for physical products
     if (product.productType === 'physical' && stockQuantity !== undefined) {
@@ -659,22 +671,46 @@ export default function ProductDetailPage() {
     setAddToCartLoading(true);
     
     try {
-      addToCart({
-        productId: selectedVariation?.id || product.id,
-        name: selectedVariation ? `${product.name} - ${Object.values(selectedVariation.variationAttributes).join(' ')}` : product.name,
-        slug: selectedVariation?.slug || product.slug,
-        price: Number(selectedVariation?.price || product.price),
-        quantity: quantity,
-        image: (selectedVariation?.images?.[0] || selectedVariation?.featuredImage) || product.images?.[0] || product.featuredImage || '/placeholder-product.png',
-        vendorId: product.vendorId || '',
-        vendorName: product.vendor?.storeName || product.vendor?.businessName || 'Unknown Vendor',
-        productType: product.productType || 'physical',
-        stockQuantity: stockQuantity,
-        maxQuantity: stockQuantity,
-        variationAttributes: selectedVariation?.variationAttributes,
-        priceType: product.priceType || 'mrp_with_gst', // Default to tax-inclusive
-        gstRate: product.gstRate || 18, // Default to 18% GST
-      });
+      if (product.hasVariants && selectedVariant) {
+        // New variant system: always use parent productId + variantId
+        const attrSuffix = Object.values(selectedVariant.variantAttributes || {}).join(' / ');
+        addToCart({
+          productId: product.id,
+          variantId: selectedVariant.id,
+          variantSku: selectedVariant.sku,
+          variantAttributes: selectedVariant.variantAttributes,
+          name: attrSuffix ? `${product.name} — ${attrSuffix}` : product.name,
+          slug: product.slug,
+          price: Number(selectedVariant.price),
+          quantity: quantity,
+          image: selectedVariant.images?.[0] || product.images?.[0] || product.featuredImage || '/placeholder-product.png',
+          vendorId: product.vendorId || '',
+          vendorName: product.vendor?.storeName || product.vendor?.businessName || 'Unknown Vendor',
+          productType: product.productType || 'physical',
+          stockQuantity: selectedVariant.stockQuantity,
+          maxQuantity: selectedVariant.stockQuantity,
+          priceType: product.priceType || 'mrp_with_gst',
+          gstRate: product.gstRate || 18,
+        });
+      } else {
+        // Old variation system (isParent) or plain product
+        addToCart({
+          productId: selectedVariation?.id || product.id,
+          variantAttributes: selectedVariation?.variationAttributes,
+          name: selectedVariation ? `${product.name} - ${Object.values(selectedVariation.variationAttributes).join(' ')}` : product.name,
+          slug: selectedVariation?.slug || product.slug,
+          price: Number(selectedVariation?.price || product.price),
+          quantity: quantity,
+          image: (selectedVariation?.images?.[0] || selectedVariation?.featuredImage) || product.images?.[0] || product.featuredImage || '/placeholder-product.png',
+          vendorId: product.vendorId || '',
+          vendorName: product.vendor?.storeName || product.vendor?.businessName || 'Unknown Vendor',
+          productType: product.productType || 'physical',
+          stockQuantity: stockQuantity,
+          maxQuantity: stockQuantity,
+          priceType: product.priceType || 'mrp_with_gst',
+          gstRate: product.gstRate || 18,
+        });
+      }
 
       // Reset quantity after adding to cart
       setQuantity(1);
@@ -1022,7 +1058,9 @@ export default function ProductDetailPage() {
                       onClick={() => {
                         const maxStock = product.isParent 
                           ? (selectedVariation?.stockQuantity || 999)
-                          : (selectedVariant?.stockQuantity || product.stockQuantity || 999);
+                          : product.hasVariants
+                            ? (selectedVariant?.stockQuantity ?? 999)
+                            : (selectedVariant?.stockQuantity || product.stockQuantity || 999);
                         
                         const newQuantity = quantity + 1;
                         
@@ -1034,7 +1072,9 @@ export default function ProductDetailPage() {
                       }}
                       disabled={quantity >= (product.isParent 
                         ? (selectedVariation?.stockQuantity || 999)
-                        : (selectedVariant?.stockQuantity || product.stockQuantity || 999))}
+                        : product.hasVariants
+                          ? (selectedVariant?.stockQuantity ?? 999)
+                          : (selectedVariant?.stockQuantity || product.stockQuantity || 999))}
                       className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       +
@@ -1045,6 +1085,14 @@ export default function ProductDetailPage() {
                       <p className="text-sm text-muted-foreground mt-2">
                         {selectedVariation.stockQuantity > 0 
                           ? `${selectedVariation.stockQuantity} in stock` 
+                          : 'Out of stock'}
+                      </p>
+                    )
+                  ) : product.hasVariants ? (
+                    selectedVariant && selectedVariant.stockQuantity !== undefined && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {selectedVariant.stockQuantity > 0
+                          ? `${selectedVariant.stockQuantity} in stock`
                           : 'Out of stock'}
                       </p>
                     )
@@ -1127,7 +1175,9 @@ export default function ProductDetailPage() {
                         addToCartLoading || 
                         (product.isParent && !selectedVariation) ||
                         (product.isParent && selectedVariation && selectedVariation.stockQuantity === 0) ||
-                        (!product.isParent && product.stockQuantity !== undefined && product.stockQuantity === 0)
+                        (product.hasVariants && !selectedVariant) ||
+                        (product.hasVariants && selectedVariant && selectedVariant.stockQuantity === 0) ||
+                        (!product.isParent && !product.hasVariants && product.stockQuantity !== undefined && product.stockQuantity === 0)
                       }
                       className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
@@ -1139,10 +1189,12 @@ export default function ProductDetailPage() {
                       ) : (
                         <>
                           <ShoppingCart className="w-5 h-5" />
-                          {product.isParent && !selectedVariation 
-                            ? 'Select Options' 
-                            : (product.isParent && selectedVariation && selectedVariation.stockQuantity === 0) || (!product.isParent && product.stockQuantity === 0)
-                            ? 'Out of Stock' 
+                          {(product.isParent && !selectedVariation) || (product.hasVariants && !selectedVariant)
+                            ? 'Select Options'
+                            : (product.isParent && selectedVariation && selectedVariation.stockQuantity === 0) ||
+                              (product.hasVariants && selectedVariant && selectedVariant.stockQuantity === 0) ||
+                              (!product.isParent && !product.hasVariants && product.stockQuantity === 0)
+                            ? 'Out of Stock'
                             : 'Add to Cart'}
                         </>
                       )}
@@ -1153,7 +1205,9 @@ export default function ProductDetailPage() {
                         addToCartLoading || 
                         (product.isParent && !selectedVariation) ||
                         (product.isParent && selectedVariation && selectedVariation.stockQuantity === 0) ||
-                        (!product.isParent && product.stockQuantity !== undefined && product.stockQuantity === 0)
+                        (product.hasVariants && !selectedVariant) ||
+                        (product.hasVariants && selectedVariant && selectedVariant.stockQuantity === 0) ||
+                        (!product.isParent && !product.hasVariants && product.stockQuantity !== undefined && product.stockQuantity === 0)
                       }
                       className="flex-1 bg-accent text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >

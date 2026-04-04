@@ -11,6 +11,7 @@ import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/ho
 import ThemeRenderer from '@/components/ThemeRenderer';
 import { handleSortChange, getSortIcon, compareValues, getSortableHeaderClass, SortOrder } from '@/lib/utils/sorting';
 import { Product, ProductVariant } from '@/types/product';
+import { ImportMessage } from '@/types/common';
 import { 
   productToFormData, 
   getEmptyFormData, 
@@ -80,7 +81,7 @@ export default function AdminProductsPage() {
   const [linkableProducts, setLinkableProducts] = useState<Array<{ id: string; name: string; slug: string; productType: string; isTour: boolean }>>([]);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [importMessage, setImportMessage] = useState<ImportMessage | null>(null);
   const [editFormData, setEditFormData] = useState(getEmptyFormData());
   const [newProductFormData, setNewProductFormData] = useState({
     name: '',
@@ -468,6 +469,128 @@ export default function AdminProductsPage() {
     });
   };
 
+  const downloadProductTemplate = async () => {
+    try {
+      setExporting(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/template/download`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `product-variant-template-${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Failed to generate product template');
+      }
+    } catch (error) {
+      console.error('Error downloading product template:', error);
+      alert('Failed to generate product template');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const downloadSimpleTemplate = async () => {
+    try {
+      setExporting(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/template-simple/download`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `products-template-${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Failed to generate template');
+      }
+    } catch (error) {
+      console.error('Error downloading simple template:', error);
+      alert('Failed to generate template');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleSimpleExport = async () => {
+    try {
+      setExporting(true);
+      const token = localStorage.getItem('token');
+      const ids = Array.from(selectedProductIds);
+      const idsParam = ids.length > 0 ? `?ids=${ids.join(',')}` : '';
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/export-simple/all${idsParam}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `products-physical-${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Export failed');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleSimpleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = '';
+    try {
+      setImporting(true);
+      setImportMessage(null);
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/import-simple/all`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData },
+      );
+      const result = await response.json();
+      if (response.ok) {
+        setImportMessage({
+          type: result.success && result.errors?.length === 0 ? 'success' : 'error',
+          text: result.message || (result.success ? 'Import complete' : 'Import failed'),
+          errors: result.errors || [],
+        });
+        if (result.success) setTimeout(() => window.location.reload(), 3000);
+      } else {
+        setImportMessage({ type: 'error', text: result.message || 'Import failed', errors: result.errors || [] });
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportMessage({ type: 'error', text: error instanceof Error ? error.message : 'Import failed' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const downloadTourTemplate = async () => {
     try {
       setExporting(true);
@@ -852,22 +975,25 @@ Generated by Marketplace Platform - Admin
 
       if (response.ok) {
         setImportMessage({
-          type: 'success',
-          text: `Import successful! Created: ${result.created}, Updated: ${result.updated}${
-            result.errors.length > 0 ? `, Errors: ${result.errors.length}` : ''
-          }`,
+          type: result.success && result.errors?.length === 0 ? 'success' : 'error',
+          text: result.message || (result.success ? 'Import complete' : 'Import failed'),
+          errors: result.errors || [],
         });
-        // Refresh products list after successful import
-        window.location.reload();
+        // Reload after a short delay so the message is visible
+        if (result.success) setTimeout(() => window.location.reload(), 3000);
       } else {
+        const errors: string[] = result.errors?.length
+          ? result.errors
+          : result.message?.split('; ').filter(Boolean) || [];
         setImportMessage({
           type: 'error',
           text: result.message || 'Failed to import products',
+          errors,
         });
       }
     } catch (error) {
       console.error('Import error:', error);
-      setImportMessage({ type: 'error', text: 'Failed to import products' });
+      setImportMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to import products' });
     } finally {
       setImporting(false);
       // Reset file input
@@ -921,6 +1047,15 @@ Generated by Marketplace Platform - Admin
             {/* Tour Import/Export Buttons */}
             <div className="flex gap-2 border-r pr-3">
               <button
+                onClick={downloadProductTemplate}
+                className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 text-sm flex items-center gap-2"
+                title="Download physical product template ZIP with size × color variants and dummy images"
+                disabled={exporting}
+              >
+                <span>👕</span>
+                <span>{exporting ? 'Creating...' : 'Product Template'}</span>
+              </button>
+              <button
                 onClick={downloadTourTemplate}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm flex items-center gap-2"
                 title="Download tour template package with CSV and image folder"
@@ -944,24 +1079,44 @@ Generated by Marketplace Platform - Admin
               </label>
             </div>
 
-            {/* Regular Product Import/Export Buttons */}
-            <button
-              onClick={handleExport}
-              disabled={exporting || products.length === 0}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {exporting ? 'Exporting...' : '📥 Export to ZIP'}
-            </button>
-            <label className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 cursor-pointer">
-              {importing ? 'Importing...' : '📤 Import from ZIP'}
-              <input
-                type="file"
-                accept=".zip"
-                onChange={handleImport}
-                disabled={importing}
-                className="hidden"
-              />
-            </label>
+            {/* Physical Product Import/Export */}
+            <div className="flex gap-2">
+              <button
+                onClick={downloadSimpleTemplate}
+                disabled={exporting}
+                className="bg-slate-600 text-white px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 text-sm flex items-center gap-2"
+                title="Download simple template ZIP (Products + Variants sheets)"
+              >
+                <span>📋</span>
+                <span>{exporting ? 'Wait...' : 'Template'}</span>
+              </button>
+              <button
+                onClick={handleSimpleExport}
+                disabled={exporting || products.length === 0}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-2"
+                title={selectedProductIds.size > 0 ? `Export ${selectedProductIds.size} selected product(s)` : 'Export all physical products'}
+              >
+                <span>📥</span>
+                <span>
+                  {exporting
+                    ? 'Exporting...'
+                    : selectedProductIds.size > 0
+                    ? `Export ${selectedProductIds.size} Selected`
+                    : 'Export All Physical'}
+                </span>
+              </button>
+              <label className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 cursor-pointer text-sm flex items-center gap-2">
+                <span>📤</span>
+                <span>{importing ? 'Importing...' : 'Import Physical'}</span>
+                <input
+                  type="file"
+                  accept=".zip"
+                  onChange={handleSimpleImport}
+                  disabled={importing}
+                  className="hidden"
+                />
+              </label>
+            </div>
             <Link 
               href="/vendor/products/add"
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition inline-block"
@@ -974,11 +1129,31 @@ Generated by Marketplace Platform - Admin
         {/* Import Message */}
         {importMessage && (
           <div className={`mb-6 p-4 rounded-lg ${
-            importMessage.type === 'success' 
-              ? 'bg-green-50 text-green-800 border border-green-200' 
+            importMessage.type === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
               : 'bg-red-50 text-red-800 border border-red-200'
           }`}>
-            {importMessage.text}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-medium">{importMessage.text}</p>
+                {importMessage.type === 'success' && (
+                  <p className="text-sm mt-1 opacity-75">Page will refresh in 3 seconds&hellip;</p>
+                )}
+                {importMessage.errors && importMessage.errors.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-sm list-disc list-inside">
+                    {importMessage.errors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <button
+                onClick={() => setImportMessage(null)}
+                className="shrink-0 text-sm underline"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 

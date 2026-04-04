@@ -36,7 +36,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addToCart = (newItem: Omit<CartItem, 'id'>) => {
     setItems((prev) => {
-      const existingItem = prev.find((item) => item.productId === newItem.productId);
+      // Deduplicate: same variant = same line item; same product without variant = same line item
+      const existingItem = prev.find((item) =>
+        newItem.variantId
+          ? item.variantId === newItem.variantId
+          : item.productId === newItem.productId && !item.variantId
+      );
       
       if (existingItem) {
         // Check stock limit
@@ -50,7 +55,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         
         // Update quantity if item already exists
         return prev.map((item) =>
-          item.productId === newItem.productId
+          item.id === existingItem.id
             ? {
                 ...item,
                 quantity: Math.min(
@@ -72,7 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Add new item with generated ID
       const cartItem: CartItem = {
         ...newItem,
-        id: `${newItem.productId}-${Date.now()}`,
+        id: `${newItem.productId}-${newItem.variantId || 'base'}-${Date.now()}`,
       };
       
       return [...prev, cartItem];
@@ -82,19 +87,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setIsOpen(true);
   };
 
-  const removeFromCart = (productId: string) => {
-    setItems((prev) => prev.filter((item) => item.productId !== productId));
+  const removeFromCart = (itemId: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (itemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(itemId);
       return;
     }
 
     setItems((prev) =>
       prev.map((item) => {
-        if (item.productId === productId) {
+        if (item.id === itemId) {
           const maxStock = item.maxQuantity || item.stockQuantity || 999;
           const newQuantity = Math.min(quantity, maxStock);
           

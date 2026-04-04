@@ -8,14 +8,7 @@ import { calculateDiscount, getStockStatus, formatRating } from '@/lib/product';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useVendorContext } from '@/contexts/VendorContext';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
-import { Product as BaseProduct, Category } from '@/types/product';
-
-interface Product extends BaseProduct {
-  // Variation support
-  isParent?: boolean;
-  variations?: any[];
-  variationThemes?: string[];
-}
+import { Product, Category } from '@/types/product';
 
 interface ProductGridProps {
   products: Product[];
@@ -99,7 +92,7 @@ export default function ProductGrid({
               Booking
             </span>
           )}
-          {product.productType === 'physical' && product.stockQuantity === 0 && (
+          {product.productType === 'physical' && product.stockQuantity === 0 && !product.hasVariants && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
               <span className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
                 SOLD OUT
@@ -149,9 +142,10 @@ export default function ProductGrid({
           )}
           
           {/* Variation indicator */}
-          {product.isParent && product.variations && product.variations.length > 0 && (
+          {((product.isParent && (product.variations?.length ?? 0) > 0) ||
+            (product.hasVariants && (product.productVariants?.length ?? 0) > 0)) && (
             <div className="mt-2 text-xs text-muted-foreground">
-              {product.variations.length} options available
+              {(product.isParent ? product.variations?.length : product.productVariants?.length) ?? 0} options available
             </div>
           )}
           

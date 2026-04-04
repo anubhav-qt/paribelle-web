@@ -24,6 +24,7 @@ export default function HSNCodesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCode, setEditingCode] = useState<HSNCode | null>(null);
   const [importing, setImporting] = useState(false);
+  const [seedMessage, setSeedMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     code: '',
@@ -145,45 +146,28 @@ export default function HSNCodesPage() {
     setFormData({ code: '', description: '', gstRate: 18 });
   };
 
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      alert('Please select a valid Excel file (.xlsx or .xls)');
-      return;
-    }
-
+  const handleSeedCodes = async () => {
+    if (!confirm('This will import all official CBIC HSN codes from the Indian government GST portal (cbic-gst.gov.in). Existing codes will be updated. Continue?')) return;
     setImporting(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
+    setSeedMessage(null);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/hsn-codes/import`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/hsn-codes/import-preset`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+        headers: { Authorization: `Bearer ${token}` },
       });
-
+      const result = await response.json();
       if (response.ok) {
-        const result = await response.json();
-        alert(`Successfully imported ${result.imported} HSN codes!`);
+        setSeedMessage({ type: 'success', text: `${result.message} — ${result.imported} of ${result.total} codes imported. Source: ${result.source}` });
         fetchHSNCodes();
       } else {
-        const error = await response.json();
-        alert(`Import failed: ${error.message || 'Unknown error'}`);
+        setSeedMessage({ type: 'error', text: result.message || 'Import failed' });
       }
     } catch (error) {
       console.error('Error importing HSN codes:', error);
-      alert('Failed to import HSN codes');
+      setSeedMessage({ type: 'error', text: 'Failed to import codes' });
     } finally {
       setImporting(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     }
   };
 
@@ -238,21 +222,14 @@ export default function HSNCodesPage() {
                   Template
                 </button>
                 <button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={handleSeedCodes}
                   disabled={importing}
                   className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Import from Excel"
+                  title="Import all standard Indian HSN codes into the system"
                 >
                   <Upload className="w-5 h-5" />
-                  {importing ? 'Importing...' : 'Import Excel'}
+                  {importing ? 'Importing...' : 'Import Codes'}
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleImportExcel}
-                  className="hidden"
-                />
                 <button
                   onClick={() => setShowAddModal(true)}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
@@ -266,6 +243,12 @@ export default function HSNCodesPage() {
         </div>
 
         <div className="container mx-auto px-4 py-8">
+          {seedMessage && (
+            <div className={`mb-6 p-4 rounded-lg ${seedMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+              {seedMessage.text}
+              <button onClick={() => setSeedMessage(null)} className="ml-4 text-sm underline">Dismiss</button>
+            </div>
+          )}
           {/* Search Bar */}
           <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
             <div className="relative">

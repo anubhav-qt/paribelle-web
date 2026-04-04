@@ -767,6 +767,9 @@ function CheckoutContent() {
       const orderData = {
         items: items.map(item => ({
           productId: item.productId,
+          variantId: item.variantId || null,
+          variantSku: item.variantSku || null,
+          variantAttributes: item.variantAttributes || null,
           quantity: item.quantity,
           price: item.price,
         })),
@@ -1372,14 +1375,14 @@ function CheckoutContent() {
                   <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         className="w-8 h-8 flex items-center justify-center border border-border rounded hover:bg-muted text-foreground"
                       >
                         -
                       </button>
                       <span className="w-12 text-center font-medium text-foreground">{item.quantity}</span>
                       <button
-                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         className="w-8 h-8 flex items-center justify-center border border-border rounded hover:bg-muted text-foreground"
                         disabled={
                           item.stockQuantity !== undefined && item.quantity >= item.stockQuantity
@@ -1407,7 +1410,7 @@ function CheckoutContent() {
                 </div>
                 
                 <button
-                  onClick={() => removeFromCart(item.productId)}
+                  onClick={() => removeFromCart(item.id)}
                   className="p-2 hover:bg-destructive/10 rounded-full transition-colors h-fit"
                   aria-label="Remove item"
                 >

@@ -1,6 +1,9 @@
 export interface CartItem {
   id: string;
   productId: string;
+  variantId?: string;          // ProductVariant.id (new variant system)
+  variantSku?: string;         // Variant SKU for order display
+  variantAttributes?: Record<string, string>; // e.g. { Size: 'M', Color: 'Red' }
   name: string;
   slug: string;
   price: number; // Tax-inclusive price
@@ -12,7 +15,6 @@ export interface CartItem {
   productType: 'physical' | 'booking';
   stockQuantity?: number;
   maxQuantity?: number;
-  variationAttributes?: Record<string, string>;
   priceType?: string; // 'mrp_with_gst' | 'selling_price_without_gst'
   gstRate?: number; // GST rate (e.g., 18 for 18%)
 }
@@ -20,8 +22,8 @@ export interface CartItem {
 export interface CartContextType {
   items: CartItem[];
   addToCart: (item: Omit<CartItem, 'id'>) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  removeFromCart: (itemId: string) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;

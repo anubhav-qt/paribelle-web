@@ -443,21 +443,24 @@ export default function VendorProductsPage() {
 
       if (response.ok) {
         setImportMessage({
-          type: 'success',
-          text: `Import successful! Created: ${result.created}, Updated: ${result.updated}${
-            result.errors.length > 0 ? `, Errors: ${result.errors.length}` : ''
-          }`,
+          type: result.success && result.errors?.length === 0 ? 'success' : 'error',
+          text: result.message || (result.success ? 'Import complete' : 'Import failed'),
+          errors: result.errors || [],
         });
-        fetchProducts();
+        if (result.success) fetchProducts();
       } else {
+        const errors: string[] = result.errors?.length
+          ? result.errors
+          : result.message?.split('; ').filter(Boolean) || [];
         setImportMessage({
           type: 'error',
           text: result.message || 'Failed to import products',
+          errors,
         });
       }
     } catch (error) {
       console.error('Import error:', error);
-      setImportMessage({ type: 'error', text: 'Failed to import products' });
+      setImportMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to import products' });
     } finally {
       setImporting(false);
       // Reset file input
@@ -872,13 +875,24 @@ export default function VendorProductsPage() {
                 : 'bg-red-100 text-red-800 border border-red-200'
             }`}
           >
-            {importMessage.text}
-            <button
-              onClick={() => setImportMessage(null)}
-              className="ml-4 text-sm underline"
-            >
-              Dismiss
-            </button>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-medium">{importMessage.text}</p>
+                {importMessage.errors && importMessage.errors.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-sm list-disc list-inside">
+                    {importMessage.errors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <button
+                onClick={() => setImportMessage(null)}
+                className="shrink-0 text-sm underline"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 

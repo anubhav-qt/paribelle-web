@@ -219,6 +219,7 @@ export interface LinkableProduct {
 export interface ImportMessage {
   type: 'success' | 'error';
   text: string;
+  errors?: string[];
 }
 
 export interface SortConfig<T extends string = string> {
