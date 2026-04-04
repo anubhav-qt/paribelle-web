@@ -466,24 +466,7 @@ export default function CategoryNav({
           )}
 
           {/* Categories - Middle */}
-          {showCustomPages ? (
-            // Show custom pages instead of categories
-            <>
-              {customPages.map((page) => (
-                <Link
-                  key={page.id}
-                  href={`/${page.slug}`}
-                  className={theme.combine(
-                    "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
-                    isVendorStore ? 'vendor-text' : 'text-secondary-foreground',
-                    pathname === `/${page.slug}` ? 'font-semibold border-b-2 border-primary' : ''
-                  )}
-                >
-                  {page.title}
-                </Link>
-              ))}
-            </>
-          ) : (
+          <>
             <>
               {mode === 'filter' && (
             <button
@@ -754,7 +737,21 @@ export default function CategoryNav({
             </div>
           )}
             </>
-          )}
+            {/* Custom Pages - shown in addition to categories when showCustomPages is true */}
+            {showCustomPages && customPages.map((page) => (
+              <Link
+                key={page.id}
+                href={`/${page.slug}`}
+                className={theme.combine(
+                  "flex items-center gap-1 px-4 py-2.5 text-xs font-normal transition-all whitespace-nowrap hover:opacity-80",
+                  isVendorStore ? 'vendor-text' : 'text-secondary-foreground',
+                  pathname === `/${page.slug}` ? 'font-semibold border-b-2 border-primary' : ''
+                )}
+              >
+                {page.title}
+              </Link>
+            ))}
+          </>
         </div>
       </div>
     </div>
