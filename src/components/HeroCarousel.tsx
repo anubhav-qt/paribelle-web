@@ -41,13 +41,7 @@ export default function HeroCarousel() {
           if (bannersData.value && Array.isArray(bannersData.value) && bannersData.value.length > 0) {
             setBanners(bannersData.value.sort((a: HeroBanner, b: HeroBanner) => a.order - b.order));
           } else {
-            setBanners([{
-              id: 'default',
-              imageUrl: '',
-              title: 'Discover Amazing Products',
-              subtitle: 'Shop from thousands of products across multiple categories. Best prices, fast delivery, and quality guaranteed.',
-              order: 0,
-            }]);
+            setBanners([]);
           }
         }
 
@@ -60,13 +54,7 @@ export default function HeroCarousel() {
         }
       } catch (err) {
         console.error('Error fetching hero data:', err);
-        setBanners([{
-          id: 'default',
-          imageUrl: '',
-          title: 'Discover Amazing Products',
-          subtitle: 'Shop from thousands of products across multiple categories. Best prices, fast delivery, and quality guaranteed.',
-          order: 0,
-        }]);
+        setBanners([]);
       } finally {
         setLoading(false);
       }
@@ -135,7 +123,7 @@ export default function HeroCarousel() {
                 <img
                   src={banner.imageUrl}
                   alt={banner.title || 'Hero banner'}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   loading={index === 0 ? 'eager' : 'lazy'}
                 />
                 {/* Overlay for better text readability */}
