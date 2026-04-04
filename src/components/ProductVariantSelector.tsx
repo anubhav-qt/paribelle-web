@@ -27,30 +27,31 @@ export default function ProductVariantSelector({
 
   // Get available values for a specific option based on current selections
   const getAvailableValues = (optionId: string, optionName: string): string[] => {
-    const option = variantOptions.find(opt => opt.id === optionId);
+    const option = variantOptions.find(opt => opt.name === optionName);
     if (!option) return [];
 
     // Filter to only show values that have available variants
-    return option.values.filter(value => {
-      return productVariants.some(variant => {
+    const result = option.values.filter(value => {
+      const matched = productVariants.some(variant => {
         // Check if this variant has this value (case-insensitive comparison)
         const variantValue = variant.variantAttributes[optionName];
-        if (!variantValue || variantValue.toLowerCase() !== value.toLowerCase()) return false;
-        
-        // Check if variant is in stock
-        if (variant.stockQuantity <= 0) return false;
-        
-        // Check if variant matches other selected attributes
+        const attrMatch = variantValue && variantValue.toLowerCase() === value.toLowerCase();
+        const inStock = variant.stockQuantity > 0;
+
         const otherSelections = Object.entries(selectedAttributes).filter(
           ([key]) => key !== optionName
         );
-        
-        return otherSelections.every(([key, val]) => {
+        const otherMatch = otherSelections.every(([key, val]) => {
           const attrValue = variant.variantAttributes[key];
           return attrValue && attrValue.toLowerCase() === val.toLowerCase();
         });
+
+        return attrMatch && inStock && otherMatch;
       });
+      return matched;
     });
+
+    return result;
   };
 
   // Update selected variant when attributes change

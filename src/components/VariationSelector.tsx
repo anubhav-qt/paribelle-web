@@ -23,6 +23,7 @@ export default function VariationSelector({
   currentPrice,
   currency,
 }: VariationSelectorProps) {
+  debugger;
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
 
@@ -50,7 +51,8 @@ export default function VariationSelector({
         });
 
         const attrEntry = Object.entries(attrs).find(([k]) => k.toLowerCase() === theme.toLowerCase());
-        return matches && attrEntry && String(attrEntry[1]).toLowerCase() === value.toLowerCase() && v.stockQuantity > 0;
+        const inStock = !v.trackInventory || v.stockQuantity == null || v.stockQuantity > 0;
+        return matches && attrEntry && String(attrEntry[1]).toLowerCase() === value.toLowerCase() && inStock;
       });
 
       return {
