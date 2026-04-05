@@ -75,6 +75,7 @@ export async function downloadProductTemplate() {
       { header: 'Booking Buffer Time', key: 'bookingBufferTime', width: 20 },
       { header: 'Booking Available Days', key: 'bookingAvailableDays', width: 35 },
       { header: 'Booking Time Slots', key: 'bookingTimeSlots', width: 30 },
+      { header: 'Attributes', key: 'attributes', width: 40 },
     ];
 
     // Add Electronics sheet
@@ -101,6 +102,7 @@ export async function downloadProductTemplate() {
     electronicsHeaderRow.getCell(17).value = 'Booking Buffer Time';
     electronicsHeaderRow.getCell(18).value = 'Booking Available Days';
     electronicsHeaderRow.getCell(19).value = 'Booking Time Slots';
+    electronicsHeaderRow.getCell(20).value = 'Attributes';
     
     // Style header row
     electronicsHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -127,6 +129,7 @@ export async function downloadProductTemplate() {
     electronicsSheet.getColumn(17).width = 20;
     electronicsSheet.getColumn(18).width = 35;
     electronicsSheet.getColumn(19).width = 30;
+    electronicsSheet.getColumn(20).width = 40;
 
     // Add sample products - manually set each cell
     const electronicsRow2 = electronicsSheet.getRow(2);
@@ -142,6 +145,7 @@ export async function downloadProductTemplate() {
     electronicsRow2.getCell(12).value = 18;
     electronicsRow2.getCell(13).value = 'mrp_with_gst';
     electronicsRow2.getCell(14).value = 'physical';
+    electronicsRow2.getCell(20).value = 'Brand: SoundMax, Connectivity: Bluetooth';
     electronicsRow2.commit();
 
     const electronicsRow3 = electronicsSheet.getRow(3);
@@ -188,6 +192,7 @@ export async function downloadProductTemplate() {
     fashionHeaderRow.getCell(17).value = 'Booking Buffer Time';
     fashionHeaderRow.getCell(18).value = 'Booking Available Days';
     fashionHeaderRow.getCell(19).value = 'Booking Time Slots';
+    fashionHeaderRow.getCell(20).value = 'Attributes';
     
     // Style header row
     fashionHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -214,6 +219,7 @@ export async function downloadProductTemplate() {
     fashionSheet.getColumn(17).width = 20;
     fashionSheet.getColumn(18).width = 35;
     fashionSheet.getColumn(19).width = 30;
+    fashionSheet.getColumn(20).width = 40;
 
     // Add sample product - manually set each cell
     const fashionRow2 = fashionSheet.getRow(2);
@@ -230,6 +236,7 @@ export async function downloadProductTemplate() {
     fashionRow2.getCell(12).value = 12;
     fashionRow2.getCell(13).value = 'mrp_with_gst';
     fashionRow2.getCell(14).value = 'physical';
+    fashionRow2.getCell(20).value = 'Material: Cotton, Fit: Regular';
     fashionRow2.commit();
 
     // Add Product Variants sheet
