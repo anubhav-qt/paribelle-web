@@ -30,7 +30,8 @@ export default function CategoryPage() {
   const [showFilters, setShowFilters] = useState(false);
   
   // Common filter states
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
+  const [maxProductPrice, setMaxProductPrice] = useState<number>(100000);
   const [minRating, setMinRating] = useState<number>(0);
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
   const [showDiscountOnly, setShowDiscountOnly] = useState(false);
@@ -77,6 +78,8 @@ export default function CategoryPage() {
     if (category?.filterConfig) {
       const initialFilters: Record<string, any> = {};
       category.filterConfig.filters.forEach(filter => {
+        if (filter.id === 'price' || filter.id === 'priceRange') return; // handled by static price filter
+        if (['stock', 'stockQuantity', 'isActive', 'active', 'status', 'rating', 'variant attributes'].includes(filter.id)) return; // internal/hidden
         if (filter.type === 'multiselect' || filter.type === 'checkbox') {
           initialFilters[filter.id] = [];
         } else if (filter.type === 'select') {
@@ -112,6 +115,12 @@ export default function CategoryPage() {
       if (productsResponse.ok) {
         const data = await productsResponse.json();
         setProducts(data);
+        if (data.length > 0) {
+          const maxPrice = Math.max(...data.map((p: Product) => Number(p.price) || 0));
+          const roundedMax = Math.ceil(maxPrice / 500) * 500 || 100000;
+          setMaxProductPrice(roundedMax);
+          setPriceRange([0, roundedMax]);
+        }
       }
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -162,15 +171,65 @@ export default function CategoryPage() {
     }
 
     // Dynamic category-specific filters
-    // Note: In a real implementation, product data would include these attributes
-    // For now, this demonstrates the filtering logic structure
+    // Helper: get all variant attribute values for a given key (case-insensitive key lookup)
+    const getVariantAttrValues = (product: Product, key: string): string[] => {
+      const variants = (product as any).productVariants as Array<{ variantAttributes?: Record<string, string> }> | undefined;
+      if (variants && variants.length > 0) {
+        const keyLower = key.toLowerCase();
+        return variants.flatMap(v => {
+          if (!v.variantAttributes) return [];
+          // Find the matching key case-insensitively
+          const matchingKey = Object.keys(v.variantAttributes).find(k => k.toLowerCase() === keyLower);
+          return matchingKey ? [v.variantAttributes[matchingKey]] : [];
+        });
+      }
+      return [];
+    };
+
     Object.entries(dynamicFilters).forEach(([key, value]) => {
-      if (Array.isArray(value) && value.length > 0) {
-        // Multiselect/checkbox filtering (simulated)
-        // In real implementation: filtered = filtered.filter(product => value.includes(product[key]))
+      if (Array.isArray(value) && value.length === 2 && typeof value[0] === 'number') {
+        // Range filter (non-price)
+        if (key === 'price' || key === 'priceRange') return;
+        filtered = filtered.filter(product => {
+          const variantVals = getVariantAttrValues(product, key);
+          if (variantVals.length > 0) {
+            return variantVals.some(v => { const n = Number(v); return n >= value[0] && n <= value[1]; });
+          }
+          const attr = (product as any).variationAttributes?.[key];
+          if (attr === undefined || attr === null) return true;
+          const num = Number(attr);
+          return num >= value[0] && num <= value[1];
+        });
+      } else if (Array.isArray(value) && value.length > 0) {
+        // Multiselect/checkbox — case-insensitive value comparison
+        filtered = filtered.filter(product => {
+          const variantVals = getVariantAttrValues(product, key);
+          if (variantVals.length > 0) {
+            return variantVals.some(v => value.some((sel: string) => sel.toLowerCase() === v.toLowerCase()));
+          }
+          // Legacy variationAttributes fallback
+          const attr = (product as any).variationAttributes?.[key];
+          if (attr !== undefined && attr !== null) {
+            return value.some((sel: string) => sel.toLowerCase() === String(attr).toLowerCase());
+          }
+          // No attribute data found — exclude from filtered results
+          return false;
+        });
       } else if (value && typeof value === 'string') {
-        // Select filtering (simulated)
-        // In real implementation: filtered = filtered.filter(product => product[key] === value)
+        // Select filter — case-insensitive value comparison
+        filtered = filtered.filter(product => {
+          const variantVals = getVariantAttrValues(product, key);
+          if (variantVals.length > 0) {
+            return variantVals.some(v => v.toLowerCase() === value.toLowerCase());
+          }
+          // Legacy variationAttributes fallback
+          const attr = (product as any).variationAttributes?.[key];
+          if (attr !== undefined && attr !== null) {
+            return String(attr).toLowerCase() === value.toLowerCase();
+          }
+          // No attribute data found — exclude from filtered results
+          return false;
+        });
       }
     });
 
@@ -200,7 +259,7 @@ export default function CategoryPage() {
   };
 
   const resetFilters = () => {
-    setPriceRange([0, 1000]);
+    setPriceRange([0, maxProductPrice]);
     setMinRating(0);
     setSortBy('popularity');
     setShowDiscountOnly(false);
@@ -208,6 +267,8 @@ export default function CategoryPage() {
     if (category?.filterConfig) {
       const resetDynamic: Record<string, any> = {};
       category.filterConfig.filters.forEach(filter => {
+        if (filter.id === 'price' || filter.id === 'priceRange') return;
+        if (['stock', 'stockQuantity', 'isActive', 'active', 'status', 'rating', 'variant attributes'].includes(filter.id)) return;
         if (filter.type === 'multiselect' || filter.type === 'checkbox') {
           resetDynamic[filter.id] = [];
         } else if (filter.type === 'select') {
@@ -348,14 +409,15 @@ export default function CategoryPage() {
                     <input
                       type="range"
                       min="0"
-                      max="1000"
+                      max={maxProductPrice}
+                      step={Math.ceil(maxProductPrice / 100)}
                       value={priceRange[1]}
                       onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
                       className="w-full accent-blue-600"
                     />
                     <div className="flex items-center justify-between text-sm font-medium">
-                      <span>${priceRange[0]}</span>
-                      <span>${priceRange[1]}</span>
+                      <span>{getCurrencySymbol(currency)}{priceRange[0].toLocaleString()}</span>
+                      <span>{getCurrencySymbol(currency)}{priceRange[1].toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -404,7 +466,10 @@ export default function CategoryPage() {
                 </div>
 
                 {/* Dynamic Category-Specific Filters */}
-                {category?.filterConfig && category.filterConfig.filters.map((filter) => (
+                {category?.filterConfig && category.filterConfig.filters.filter(f =>
+                  f.id !== 'price' && f.id !== 'priceRange' &&
+                  !['stock', 'stockQuantity', 'isActive', 'active', 'status', 'rating', 'variant attributes'].includes(f.id)
+                ).map((filter) => (
                   <div key={filter.id} className="border-b pb-4 last:border-b-0">
                     <h3 className="font-semibold mb-3 text-sm uppercase">{filter.label}</h3>
                     
@@ -538,14 +603,15 @@ export default function CategoryPage() {
                       <input
                         type="range"
                         min="0"
-                        max="1000"
+                        max={maxProductPrice}
+                        step={Math.ceil(maxProductPrice / 100)}
                         value={priceRange[1]}
                         onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
                         className="w-full accent-blue-600"
                       />
                       <div className="flex justify-between text-sm mt-1">
-                        <span>${priceRange[0]}</span>
-                        <span>${priceRange[1]}</span>
+                        <span>{getCurrencySymbol(currency)}{priceRange[0].toLocaleString()}</span>
+                        <span>{getCurrencySymbol(currency)}{priceRange[1].toLocaleString()}</span>
                       </div>
                     </div>
                     {/* Add more mobile filters as needed */}
@@ -685,14 +751,10 @@ export default function CategoryPage() {
                                         {discount}% OFF
                                       </span>
                                     )}
-                                    {product.productType === 'booking' ? (
+                                    {product.productType === 'booking' && (
                                       <span className="absolute top-2 right-2 bg-secondary text-secondary-foreground px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
                                         Booking
-                                      </span>
-                                    ) : (
-                                      <span className="absolute top-2 right-2 bg-muted text-muted-foreground px-2 py-1 rounded-md text-xs font-semibold">
-                                        Unknown Location
                                       </span>
                                     )}
                                   </div>
