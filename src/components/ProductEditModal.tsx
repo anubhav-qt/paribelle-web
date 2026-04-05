@@ -123,7 +123,11 @@ export default function ProductEditModal({ product, onClose, onSave, categories 
                 <ReactQuill
                   theme="snow"
                   value={formData.description || ''}
-                  onChange={(content) => setFormData({ ...formData, description: content })}
+                  onChange={(content) => {
+                    if (content !== formData.description) {
+                      setFormData({ ...formData, description: content });
+                    }
+                  }}
                   modules={{
                     toolbar: [
                       [{ 'header': [1, 2, 3, false] }],

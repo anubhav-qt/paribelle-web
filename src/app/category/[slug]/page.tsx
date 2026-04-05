@@ -171,18 +171,37 @@ export default function CategoryPage() {
     }
 
     // Dynamic category-specific filters
-    // Helper: get all variant attribute values for a given key (case-insensitive key lookup)
-    const getVariantAttrValues = (product: Product, key: string): string[] => {
+    // Helper: get all attribute values for a given key (checks variants, then product.attributes, then variationAttributes)
+    const getAttrValues = (product: Product, key: string): string[] => {
+      const keyLower = key.toLowerCase();
+
+      // 1. Check productVariants (products with variants like size S/M/L + color)
       const variants = (product as any).productVariants as Array<{ variantAttributes?: Record<string, string> }> | undefined;
       if (variants && variants.length > 0) {
-        const keyLower = key.toLowerCase();
-        return variants.flatMap(v => {
+        const vals = variants.flatMap(v => {
           if (!v.variantAttributes) return [];
-          // Find the matching key case-insensitively
           const matchingKey = Object.keys(v.variantAttributes).find(k => k.toLowerCase() === keyLower);
           return matchingKey ? [v.variantAttributes[matchingKey]] : [];
         });
+        if (vals.length > 0) return vals;
       }
+
+      // 2. Check product.attributes (non-variant physical products where color/size is stored directly)
+      const attrs = (product as any).attributes as Record<string, any> | undefined;
+      if (attrs) {
+        const matchingKey = Object.keys(attrs).find(k => k.toLowerCase() === keyLower);
+        if (matchingKey && attrs[matchingKey] !== null && attrs[matchingKey] !== undefined) {
+          return [String(attrs[matchingKey])];
+        }
+      }
+
+      // 3. Legacy variationAttributes fallback
+      const varAttrs = (product as any).variationAttributes as Record<string, string> | undefined;
+      if (varAttrs) {
+        const matchingKey = Object.keys(varAttrs).find(k => k.toLowerCase() === keyLower);
+        if (matchingKey) return [varAttrs[matchingKey]];
+      }
+
       return [];
     };
 
@@ -191,44 +210,23 @@ export default function CategoryPage() {
         // Range filter (non-price)
         if (key === 'price' || key === 'priceRange') return;
         filtered = filtered.filter(product => {
-          const variantVals = getVariantAttrValues(product, key);
-          if (variantVals.length > 0) {
-            return variantVals.some(v => { const n = Number(v); return n >= value[0] && n <= value[1]; });
-          }
-          const attr = (product as any).variationAttributes?.[key];
-          if (attr === undefined || attr === null) return true;
-          const num = Number(attr);
-          return num >= value[0] && num <= value[1];
+          const vals = getAttrValues(product, key);
+          if (vals.length === 0) return true; // no such attribute on this product — don't filter out
+          return vals.some(v => { const n = Number(v); return n >= value[0] && n <= value[1]; });
         });
       } else if (Array.isArray(value) && value.length > 0) {
         // Multiselect/checkbox — case-insensitive value comparison
         filtered = filtered.filter(product => {
-          const variantVals = getVariantAttrValues(product, key);
-          if (variantVals.length > 0) {
-            return variantVals.some(v => value.some((sel: string) => sel.toLowerCase() === v.toLowerCase()));
-          }
-          // Legacy variationAttributes fallback
-          const attr = (product as any).variationAttributes?.[key];
-          if (attr !== undefined && attr !== null) {
-            return value.some((sel: string) => sel.toLowerCase() === String(attr).toLowerCase());
-          }
-          // No attribute data found — exclude from filtered results
-          return false;
+          const vals = getAttrValues(product, key);
+          if (vals.length === 0) return false; // attribute filter active but product has none — exclude
+          return vals.some(v => value.some((sel: string) => sel.toLowerCase() === v.toLowerCase()));
         });
       } else if (value && typeof value === 'string') {
         // Select filter — case-insensitive value comparison
         filtered = filtered.filter(product => {
-          const variantVals = getVariantAttrValues(product, key);
-          if (variantVals.length > 0) {
-            return variantVals.some(v => v.toLowerCase() === value.toLowerCase());
-          }
-          // Legacy variationAttributes fallback
-          const attr = (product as any).variationAttributes?.[key];
-          if (attr !== undefined && attr !== null) {
-            return String(attr).toLowerCase() === value.toLowerCase();
-          }
-          // No attribute data found — exclude from filtered results
-          return false;
+          const vals = getAttrValues(product, key);
+          if (vals.length === 0) return false; // attribute filter active but product has none — exclude
+          return vals.some(v => v.toLowerCase() === value.toLowerCase());
         });
       }
     });

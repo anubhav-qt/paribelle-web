@@ -44,6 +44,10 @@ export default function VendorProductsPage() {
   const [customPages, setCustomPages] = useState<VendorPageType[]>([]);
   const [linkableProducts, setLinkableProducts] = useState<LinkableProduct[]>([]);
   
+  // Edit modal attribute states
+  const [editCategoryFilters, setEditCategoryFilters] = useState<any[]>([]);
+  const [editProductAttributes, setEditProductAttributes] = useState<Record<string, any>>({});
+  
   const [editFormData, setEditFormData] = useState(getEmptyFormData());
 
   useEffect(() => {
@@ -260,16 +264,53 @@ export default function VendorProductsPage() {
         console.log('🔍 Short Description:', fullProduct.shortDescription);
         setEditingProduct(fullProduct);
         setEditFormData(productToFormData(fullProduct));
+        // Load category filters and existing attributes for physical products
+        if (fullProduct.productType === 'physical' && fullProduct.categories?.length > 0) {
+          fetchEditCategoryFilters(fullProduct.categories[0].id, fullProduct.attributes);
+        } else {
+          setEditCategoryFilters([]);
+          setEditProductAttributes({});
+        }
       } else {
         // Fallback to the product data we already have
         setEditingProduct(product);
         setEditFormData(productToFormData(product));
+        setEditCategoryFilters([]);
+        setEditProductAttributes({});
       }
     } catch (error) {
       console.error('Error fetching product details:', error);
       // Fallback to the product data we already have
       setEditingProduct(product);
       setEditFormData(productToFormData(product));
+      setEditCategoryFilters([]);
+      setEditProductAttributes({});
+    }
+  };
+
+  const fetchEditCategoryFilters = async (categoryId: string, existingAttributes?: Record<string, any>) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/${categoryId}/filters`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const filteredFilters = (data.filters || []).filter(
+          (f: any) => f.id !== 'priceRange' && f.id !== 'price' &&
+            !['stock', 'stockQuantity', 'isActive', 'active', 'status', 'rating', 'variant attributes'].includes(f.id)
+        );
+        setEditCategoryFilters(filteredFilters);
+        // Initialize attributes from existing product data
+        const attrs: Record<string, any> = {};
+        filteredFilters.forEach((filter: any) => {
+          attrs[filter.id] = existingAttributes?.[filter.id] ?? '';
+        });
+        setEditProductAttributes(attrs);
+      }
+    } catch (error) {
+      console.error('Error fetching category filters for edit:', error);
     }
   };
 
@@ -280,11 +321,41 @@ export default function VendorProductsPage() {
       const token = localStorage.getItem('token');
       
       // Update main product
-      const updateData = {
+      const updateData: Record<string, any> = {
         ...editFormData,
         status: editingProduct.status,
         slug: editingProduct.slug,
       };
+
+      // Process physical product attributes
+      if (editFormData.productType === 'physical' && Object.keys(editProductAttributes).length > 0) {
+        const processedAttributes: Record<string, any> = {};
+        const newFilterOptions: Record<string, { value: string; label: string }> = {};
+
+        Object.entries(editProductAttributes).forEach(([key, value]) => {
+          if (key.endsWith('_custom') || value === '' || value === null) return;
+          const customKey = `${key}_custom`;
+          if (value === '__custom__' && editProductAttributes[customKey]) {
+            const customValue = editProductAttributes[customKey] as string;
+            if (customValue.trim()) {
+              const valueSlug = customValue.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+              processedAttributes[key] = valueSlug;
+              newFilterOptions[key] = { value: valueSlug, label: customValue.trim() };
+            }
+          } else if (value !== '__custom__') {
+            processedAttributes[key] = value;
+          }
+        });
+
+        if (Object.keys(processedAttributes).length > 0) {
+          // Merge with existing attributes (preserve booking/tour data if any)
+          updateData.attributes = { ...(editFormData.attributes || {}), ...processedAttributes };
+        }
+        if (Object.keys(newFilterOptions).length > 0) {
+          updateData.newFilterOptions = newFilterOptions;
+          updateData.categoryId = editFormData.categoryIds[0];
+        }
+      }
       
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${editingProduct.id}`, {
         method: 'PATCH',
@@ -338,6 +409,8 @@ export default function VendorProductsPage() {
   const handleCancelEdit = () => {
     setEditingProduct(null);
     setEditFormData(getEmptyFormData());
+    setEditCategoryFilters([]);
+    setEditProductAttributes({});
   };
 
   const handleDelete = async (id: string) => {
@@ -520,10 +593,10 @@ export default function VendorProductsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <ThemeRenderer component="header" showLocationFilter={false} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="mx-auto px-4 py-8">
         <div className="flex gap-6">
           {/* <CategorySidebar /> */}
-          <div className="flex-1 max-w-7xl">
+          <div className="flex-1">
             <div className="mb-8">
               <Link
                 href="/vendor/dashboard"
@@ -919,11 +992,11 @@ export default function VendorProductsPage() {
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[900px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th 
-                      className={getSortableHeaderClass(sortBy === 'name')}
+                      className={`${getSortableHeaderClass(sortBy === 'name')} sticky left-0 z-10 bg-gray-50`}
                       onClick={() => handleSort('name')}
                     >
                       Product {getSortIcon(sortBy, 'name', sortOrder)}
@@ -952,15 +1025,15 @@ export default function VendorProductsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 z-10 bg-gray-50">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white">
                   {filteredAndSortedProducts.map((product: any) => (
-                    <tr key={product.id} className="hover:bg-gray-50 border-b border-gray-200">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr key={product.id} className="group hover:bg-gray-50 border-b border-gray-200">
+                      <td className="px-6 py-4 whitespace-nowrap sticky left-0 z-10 bg-white group-hover:bg-gray-50">
                         <div className="flex items-center">
                           {(product.images?.[0] || product.featuredImage) ? (
                             <img
@@ -1055,7 +1128,7 @@ export default function VendorProductsPage() {
                           {product.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium sticky right-0 z-10 bg-white group-hover:bg-gray-50">
                         <div className="flex gap-2">
                           <button 
                             onClick={() => handleEdit(product)}
@@ -1106,7 +1179,11 @@ export default function VendorProductsPage() {
                     <ReactQuill
                       theme="snow"
                       value={editFormData.shortDescription}
-                      onChange={(value) => setEditFormData({ ...editFormData, shortDescription: value })}
+                      onChange={(value) => {
+                        if (value !== editFormData.shortDescription) {
+                          setEditFormData({ ...editFormData, shortDescription: value });
+                        }
+                      }}
                       className="bg-white"
                       placeholder="Brief product summary with links (e.g., See trip details, View itinerary)"
                     />
@@ -1130,7 +1207,11 @@ export default function VendorProductsPage() {
                       <ReactQuill
                         theme="snow"
                         value={editFormData.description || ''}
-                        onChange={(content) => setEditFormData({ ...editFormData, description: content })}
+                        onChange={(content) => {
+                          if (content !== editFormData.description) {
+                            setEditFormData({ ...editFormData, description: content });
+                          }
+                        }}
                         modules={{
                           toolbar: [
                             [{ 'header': [1, 2, 3, false] }],
@@ -1957,6 +2038,97 @@ export default function VendorProductsPage() {
                       <strong>ℹ️ Booking Product:</strong> Stock quantity and SKU are not applicable for booking/tour products. 
                       Availability is managed through booking configuration and time slots.
                     </p>
+                  </div>
+                )}
+
+                {/* Product Attributes - Physical products only */}
+                {editFormData.productType === 'physical' && editCategoryFilters.length > 0 && (
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                      <h3 className="text-sm font-semibold text-blue-900 mb-1">📋 Product Attributes</h3>
+                      <p className="text-xs text-blue-700">
+                        Set attributes like {editCategoryFilters.map(f => f.label).slice(0, 3).join(', ')}{editCategoryFilters.length > 3 ? ', etc.' : ''} to help customers filter your product.
+                      </p>
+                    </div>
+
+                    {editCategoryFilters.map((filter: any) => {
+                      const isCustomValue = editProductAttributes[filter.id] === '__custom__';
+                      return (
+                        <div key={filter.id}>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {filter.label}
+                            <span className="text-gray-400 font-normal ml-1">(optional)</span>
+                          </label>
+                          {(filter.type === 'select' || filter.type === 'checkbox' || filter.type === 'multiselect') && (
+                            <div className="space-y-2">
+                              <select
+                                value={isCustomValue ? '__custom__' : (editProductAttributes[filter.id] || '')}
+                                onChange={(e) => {
+                                  if (e.target.value === '__custom__') {
+                                    setEditProductAttributes({
+                                      ...editProductAttributes,
+                                      [filter.id]: '__custom__',
+                                      [`${filter.id}_custom`]: ''
+                                    });
+                                  } else {
+                                    const newAttrs = { ...editProductAttributes };
+                                    delete newAttrs[`${filter.id}_custom`];
+                                    setEditProductAttributes({ ...newAttrs, [filter.id]: e.target.value });
+                                  }
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                              >
+                                <option value="">Select {filter.label}</option>
+                                {filter.options?.map((option: any) => (
+                                  <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                                <option value="__custom__">➕ Add custom value...</option>
+                              </select>
+                              {isCustomValue && (
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={editProductAttributes[`${filter.id}_custom`] || ''}
+                                    onChange={(e) => setEditProductAttributes({
+                                      ...editProductAttributes,
+                                      [`${filter.id}_custom`]: e.target.value
+                                    })}
+                                    placeholder={`Enter custom ${filter.label.toLowerCase()}`}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newAttrs = { ...editProductAttributes };
+                                      delete newAttrs[filter.id];
+                                      delete newAttrs[`${filter.id}_custom`];
+                                      setEditProductAttributes(newAttrs);
+                                    }}
+                                    className="px-3 py-2 text-red-600 hover:text-red-800 border border-red-300 rounded-lg text-sm"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {filter.type === 'range' && (
+                            <input
+                              type="number"
+                              value={editProductAttributes[filter.id] || filter.min || 0}
+                              onChange={(e) => setEditProductAttributes({
+                                ...editProductAttributes,
+                                [filter.id]: parseInt(e.target.value) || 0
+                              })}
+                              min={filter.min || 0}
+                              max={filter.max || 1000}
+                              step={filter.step || 1}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
