@@ -1,18 +1,11 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { Providers } from '@/components/providers';
-
-const inter = Inter({ subsets: ['latin'] });
+import { AdminShell } from '@/components/admin/AdminShell';
 
 export const metadata: Metadata = {
-  title: 'Admin Dashboard - GaliCart',
-  description: 'Manage your marketplace',
+  title: 'Admin — PariBelle',
+  description: 'Manage the PariBelle store',
 };
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <>{children}</>;
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <AdminShell>{children}</AdminShell>;
 }

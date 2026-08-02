@@ -1,10 +1,18 @@
 'use client';
 
-import { PageSection } from '@/lib/pageSections';
+import Link from 'next/link';
+import { PageSection, Hotspot } from '@/lib/pageSections';
 import ReactMarkdown from 'react-markdown';
-import { Star, MapPin, Phone, Mail, CheckCircle, AlertCircle, Info, AlertTriangle, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { Star, MapPin, Phone, Mail, CheckCircle, AlertCircle, Info, AlertTriangle, ChevronDown, ChevronUp, Calendar, Plus, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { formatDate as formatDateUtil } from '@/lib/utils/date';
+import { RevealOnScroll } from '@/components/brand/RevealOnScroll';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { PriceTag } from '@/components/ui/PriceTag';
+import { useProductById } from '@/hooks/useProducts';
+import { useCart } from '@/contexts/CartContext';
+import { getProductImageUrl } from '@/lib/image-url';
 
 interface SectionRendererProps {
   section: PageSection;
@@ -51,6 +59,10 @@ export default function SectionRenderer({ section, isPreview = false }: SectionR
       return <DividerSection settings={settings} />;
     case 'lastUpdated':
       return <LastUpdatedSection settings={settings} />;
+    case 'lookbook-hero':
+      return <LookbookHeroSection settings={settings} />;
+    case 'shoppable-image':
+      return <ShoppableImageSection settings={settings} isPreview={isPreview} />;
     default:
       return null;
   }
@@ -728,6 +740,169 @@ function LastUpdatedSection({ settings }: { settings: any }) {
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Lookbook Hero — full-bleed chapter opener
+function LookbookHeroSection({ settings }: { settings: any }) {
+  const heightClasses: Record<string, string> = {
+    small: 'h-[60vh]',
+    medium: 'h-[75vh]',
+    large: 'h-[92vh]',
+  };
+  const heightClass = heightClasses[settings.height] || heightClasses.large;
+
+  return (
+    <section
+      className={`relative flex ${heightClass} items-end overflow-hidden bg-[hsl(var(--pb-wine))]`}
+    >
+      {settings.image && (
+        <img
+          src={settings.image}
+          alt={settings.title || ''}
+          className="absolute inset-0 h-full w-full object-cover opacity-90"
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--pb-wine)/0.85)] via-transparent to-transparent" />
+      <RevealOnScroll className="relative z-10 w-full px-6 pb-16 text-center md:px-12">
+        {settings.subtitle && (
+          <p className="text-eyebrow text-[hsl(var(--pb-gold-soft))]">{settings.subtitle}</p>
+        )}
+        <h2 className="mt-3 text-display-xl italic text-white">{settings.title}</h2>
+        {settings.ctaText && (
+          <a href={settings.ctaLink || '#'} className="mt-8 inline-block">
+            <Button variant="gold-outline" className="border-white/40 text-white hover:bg-white/10">
+              {settings.ctaText}
+            </Button>
+          </a>
+        )}
+      </RevealOnScroll>
+    </section>
+  );
+}
+
+// Shoppable Image — editorial photo with quick-shop hotspots
+function ShoppableImageSection({ settings, isPreview }: { settings: any; isPreview?: boolean }) {
+  const hotspots: Hotspot[] = settings.hotspots || [];
+  const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
+
+  return (
+    <section className="relative mx-auto max-w-3xl px-4 py-8" data-shoppable-image>
+      <div className="relative overflow-hidden rounded-sm">
+        {settings.image && (
+          <img src={settings.image} alt={settings.alt || ''} className="w-full object-cover" />
+        )}
+        {hotspots.map((spot) => (
+          <button
+            key={spot.id}
+            type="button"
+            aria-label="Shop this item"
+            onClick={() => !isPreview && setActiveHotspot(spot)}
+            style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
+            className="group absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[hsl(var(--pb-gold))] shadow-pb-md"
+          >
+            <span className="absolute inset-0 animate-ping rounded-full bg-[hsl(var(--pb-gold))] opacity-75 group-hover:opacity-90" />
+          </button>
+        ))}
+      </div>
+      {settings.caption && (
+        <p className="mt-3 text-center text-caption text-[hsl(var(--pb-ink-faint))]">{settings.caption}</p>
+      )}
+
+      <Modal open={!!activeHotspot} onClose={() => setActiveHotspot(null)} maxWidthClassName="max-w-sm">
+        {activeHotspot && <QuickShopCard productId={activeHotspot.productId} />}
+      </Modal>
+    </section>
+  );
+}
+
+function QuickShopCard({ productId }: { productId: string }) {
+  const { data: product, isLoading } = useProductById(productId);
+  const { addToCart } = useCart();
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>();
+  const [added, setAdded] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--pb-ink-faint))]" />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return <p className="py-8 text-center text-sm text-[hsl(var(--pb-ink-faint))]">Item unavailable.</p>;
+  }
+
+  const variants = product.productVariants?.filter((v) => v.isActive) || [];
+  const activeVariant = variants.find((v) => v.id === selectedVariantId) || variants[0];
+  const price = Number(activeVariant?.price ?? product.price);
+  const compareAtPrice = activeVariant?.compareAtPrice ?? product.compareAtPrice;
+  const image = activeVariant?.featuredImage || getProductImageUrl(product);
+  const outOfStock = variants.length
+    ? variants.every((v) => v.stockQuantity <= 0)
+    : (product.stockQuantity ?? 0) <= 0;
+
+  const handleAddToBag = () => {
+    addToCart({
+      productId: product.id,
+      variantId: activeVariant?.id,
+      variantSku: activeVariant?.sku,
+      variantAttributes: activeVariant?.variantAttributes,
+      name: product.name,
+      slug: product.slug,
+      price,
+      quantity: 1,
+      image,
+      vendorId: product.vendorId || product.vendor?.id || '',
+      stockQuantity: activeVariant?.stockQuantity ?? product.stockQuantity,
+      maxQuantity: activeVariant?.stockQuantity ?? product.stockQuantity,
+    });
+    setAdded(true);
+  };
+
+  return (
+    <div>
+      <div className="aspect-[4/5] w-full overflow-hidden rounded-sm bg-[hsl(var(--pb-shell))]">
+        <img src={image} alt={product.name} className="h-full w-full object-cover" />
+      </div>
+      <h3 className="mt-4 font-display text-lg text-[hsl(var(--pb-ink))]">{product.name}</h3>
+      <PriceTag price={price} compareAtPrice={compareAtPrice} className="mt-1" />
+
+      {variants.length > 1 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {variants.map((v) => {
+            const label = Object.values(v.variantAttributes || {}).join(' / ') || v.sku;
+            const isSelected = v.id === activeVariant?.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setSelectedVariantId(v.id)}
+                disabled={v.stockQuantity <= 0}
+                className={`rounded-sm border px-3 py-1.5 text-xs transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40 ${
+                  isSelected
+                    ? 'border-[hsl(var(--pb-rose))] bg-[hsl(var(--pb-rose)/0.08)] text-[hsl(var(--pb-rose-deep))]'
+                    : 'border-[hsl(var(--pb-linen))] text-[hsl(var(--pb-ink-muted))]'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="mt-5 flex gap-2">
+        <Button variant="primary" fullWidth disabled={outOfStock} onClick={handleAddToBag}>
+          <Plus className="h-4 w-4" />
+          {outOfStock ? 'Sold Out' : added ? 'Added ✓' : 'Add to Bag'}
+        </Button>
+      </div>
+      <Link href={`/products/${product.slug}`} className="mt-3 block text-center text-caption underline text-[hsl(var(--pb-ink-faint))]">
+        View full details
+      </Link>
     </div>
   );
 }

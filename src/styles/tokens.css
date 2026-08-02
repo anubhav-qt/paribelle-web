@@ -1,0 +1,97 @@
+/**
+ * PariBelle design tokens.
+ * HSL triplets (no hsl() wrapper) so existing `hsl(var(--x))` consumers keep working.
+ */
+
+:root {
+  /* Surfaces — blush-tinted ivory, never pure white */
+  --pb-ivory: 350 44% 98%;
+  --pb-shell: 350 44% 96%;
+  --pb-blush-wash: 350 52% 94%;
+  --pb-blush: 349 56% 89%;
+  --pb-linen: 348 24% 90%;
+
+  /* Brand rose — taken off the kurti fabric and the storefront signage */
+  --pb-rose-mist: 350 60% 93%;
+  --pb-rose: 349 48% 70%;
+  --pb-rose-deep: 348 42% 52%;
+  --pb-rose-ink: 344 38% 36%;
+
+  /* Antique gold — accents only, never large fills */
+  --pb-gold: 38 38% 59%;
+  --pb-gold-soft: 40 45% 80%;
+
+  /* Ink — warm plum-black, never pure black */
+  --pb-ink: 340 18% 18%;
+  --pb-ink-muted: 340 10% 42%;
+  --pb-ink-faint: 340 8% 62%;
+
+  /* Wine — the deep end of the rose ramp. Footer, scrims + editorial only */
+  --pb-wine: 345 33% 30%;
+  --pb-wine-deep: 345 40% 19%;
+
+  /* Status — desaturated to sit inside the palette */
+  --pb-success: 152 28% 40%;
+  --pb-warning: 32 60% 52%;
+  --pb-danger: 2 52% 52%;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px hsl(336 16% 18% / 0.04);
+  --shadow-md: 0 4px 16px -4px hsl(336 16% 18% / 0.08);
+  --shadow-lg: 0 18px 48px -12px hsl(336 16% 18% / 0.14);
+
+  /* Motion */
+  --ease-pb: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-micro: 180ms;
+  --duration-panel: 320ms;
+  --duration-reveal: 600ms;
+
+  /* Fonts (assigned via next/font in layout.tsx) */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* shadcn/tailwind alias mapping — keeps every existing component working */
+  --background: var(--pb-ivory);
+  --foreground: var(--pb-ink);
+  --card: 0 0% 100%;
+  --card-foreground: var(--pb-ink);
+  --popover: 0 0% 100%;
+  --popover-foreground: var(--pb-ink);
+  --primary: var(--pb-rose);
+  --primary-foreground: 0 0% 100%;
+  --secondary: var(--pb-shell);
+  --secondary-foreground: var(--pb-ink);
+  --muted: var(--pb-shell);
+  --muted-foreground: var(--pb-ink-muted);
+  --accent: var(--pb-blush-wash);
+  --accent-foreground: var(--pb-rose-ink);
+  --destructive: var(--pb-danger);
+  --destructive-foreground: 0 0% 100%;
+  --border: var(--pb-linen);
+  --input: var(--pb-linen);
+  --ring: var(--pb-rose);
+  --radius: 0.25rem;
+}
+
+/* Shopper UI is light-only by brand decision; dashboards may still opt into .dark */
+.dark {
+  --background: 345 30% 11%;
+  --foreground: 350 24% 93%;
+  --card: 345 26% 16%;
+  --card-foreground: 350 24% 93%;
+  --popover: 345 26% 16%;
+  --popover-foreground: 350 24% 93%;
+  --primary: var(--pb-rose);
+  --primary-foreground: 345 30% 11%;
+  --secondary: 345 22% 20%;
+  --secondary-foreground: 350 24% 93%;
+  --muted: 345 22% 20%;
+  --muted-foreground: 350 14% 72%;
+  --accent: 345 24% 23%;
+  --accent-foreground: 350 24% 93%;
+  --destructive: var(--pb-danger);
+  --destructive-foreground: 0 0% 100%;
+  --border: 345 18% 27%;
+  --input: 345 18% 27%;
+  --ring: var(--pb-rose);
+}

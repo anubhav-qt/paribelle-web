@@ -18,7 +18,17 @@ export type SectionType =
   | 'alert'
   | 'accordion'
   | 'divider'
-  | 'lastUpdated';
+  | 'lastUpdated'
+  | 'lookbook-hero'
+  | 'shoppable-image';
+
+export interface Hotspot {
+  id: string;
+  x: number; // percent, 0-100
+  y: number; // percent, 0-100
+  productId: string;
+  productName?: string; // cached label for the editor
+}
 
 export interface PageSection {
   id: string;
@@ -34,7 +44,7 @@ export interface SectionTemplate {
   name: string;
   description: string;
   icon: string;
-  category: 'header' | 'content' | 'footer';
+  category: 'header' | 'content' | 'footer' | 'lookbook';
   defaultSettings: Record<string, any>;
 }
 
@@ -388,6 +398,37 @@ You can format this text using Markdown for **bold**, *italic*, and other format
     },
   },
 
+  // LOOKBOOK SECTIONS
+  {
+    type: 'lookbook-hero',
+    name: 'Lookbook Hero',
+    description: 'Full-bleed chapter opener for a lookbook story — image, title, CTA',
+    icon: '✨',
+    category: 'lookbook',
+    defaultSettings: {
+      title: 'Styled for the Season',
+      subtitle: 'A story in kurtis and gold',
+      image: 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=1600&h=1400&fit=crop',
+      ctaText: 'Explore the Look',
+      ctaLink: '',
+      height: 'large',
+    },
+  },
+
+  {
+    type: 'shoppable-image',
+    name: 'Shoppable Image',
+    description: 'Editorial photo with tappable hotspots that open a quick-shop card',
+    icon: '📍',
+    category: 'lookbook',
+    defaultSettings: {
+      image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1400&h=1750&fit=crop',
+      alt: '',
+      caption: '',
+      hotspots: [] as Hotspot[],
+    },
+  },
+
   {
     type: 'lastUpdated',
     name: 'Last Updated Date',
@@ -408,6 +449,7 @@ export const SECTION_CATEGORIES = {
   header: { name: 'Header', icon: '🎯', description: 'Top sections for your page' },
   content: { name: 'Content', icon: '📄', description: 'Main content sections' },
   footer: { name: 'Footer', icon: '📍', description: 'Bottom sections and CTAs' },
+  lookbook: { name: 'Lookbook', icon: '✨', description: 'Shoppable editorial storytelling' },
 };
 
 // Helper to create a new section from template

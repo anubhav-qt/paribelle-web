@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
+import { Loader } from '@/components/ui/Loader';
 
 interface HeroBanner {
   id: string;
@@ -91,7 +92,7 @@ export default function HeroCarousel() {
     return (
       <div className={`relative w-full ${heroHeightClasses[heroHeight]} bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center`}>
         <div className="text-white text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <Loader size="md" className="mx-auto mb-4" />
           <p className="text-sm opacity-75">Loading hero banners...</p>
         </div>
       </div>

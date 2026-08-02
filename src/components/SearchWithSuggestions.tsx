@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSearchSuggestions } from '@/hooks/useSearchSuggestions';
-import { Search, Package, Tag, Store, Loader2 } from 'lucide-react';
+import { Search, Package, Tag, Loader2 } from 'lucide-react';
 import { getProductImageUrl } from '@/lib/image-url';
 
 interface SearchWithSuggestionsProps {
@@ -14,7 +14,7 @@ interface SearchWithSuggestionsProps {
 }
 
 export default function SearchWithSuggestions({ 
-  placeholder = "Search products, categories, vendors...",
+  placeholder = "Search products and categories...",
   onSearch,
   initialQuery = ''
 }: SearchWithSuggestionsProps) {
@@ -52,7 +52,7 @@ export default function SearchWithSuggestions({
     router.push(url);
   };
 
-  const hasResults = suggestions.products?.length || suggestions.categories?.length || suggestions.vendors?.length;
+  const hasResults = suggestions.products?.length || suggestions.categories?.length;
 
   return (
     <div ref={wrapperRef} className="relative w-full">
@@ -136,24 +136,6 @@ export default function SearchWithSuggestions({
                 </div>
               )}
 
-              {/* Vendors */}
-              {suggestions.vendors && suggestions.vendors.length > 0 && (
-                <div className="p-2 border-t border-border">
-                  <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase flex items-center gap-2">
-                    <Store className="h-4 w-4" />
-                    Vendors
-                  </div>
-                  {suggestions.vendors.map((vendor) => (
-                    <button
-                      key={vendor.id}
-                      onClick={() => handleSuggestionClick(`/vendor/${vendor.slug}`)}
-                      className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent rounded-md transition-colors"
-                    >
-                      {vendor.storeName}
-                    </button>
-                  ))}
-                </div>
-              )}
             </>
           ) : (
             <div className="p-4 text-center text-muted-foreground">

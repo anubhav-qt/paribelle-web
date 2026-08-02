@@ -15,12 +15,9 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Order } from '@/types/common';
+import { Loader } from '@/components/ui/Loader';
 
-interface DashboardContentProps {
-  vendorSlug?: string;
-}
-
-export default function DashboardContent({ vendorSlug }: DashboardContentProps) {
+export default function DashboardContent() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -46,7 +43,7 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
   
   const loading = isLoading;
 
-  const getRoutePrefix = () => vendorSlug ? `/vendor/${vendorSlug}` : '';
+  const getRoutePrefix = () => '';
 
   useEffect(() => {
     const authToken = localStorage.getItem('token');
@@ -65,7 +62,7 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
       console.error('Error parsing user data:', error);
       router.push(`${getRoutePrefix()}/login`);
     }
-  }, [router, vendorSlug]);
+  }, [router]);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -86,7 +83,7 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <Loader size="md" />
       </div>
     );
   }
@@ -466,7 +463,7 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
         </Link>
 
         <Link
-          href={vendorSlug ? `/vendor/${vendorSlug}` : '/'}
+          href="/"
           className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-shadow group"
         >
           <div className="flex items-center justify-between mb-3">
@@ -500,7 +497,7 @@ export default function DashboardContent({ vendorSlug }: DashboardContentProps) 
             <h3 className="text-lg font-semibold text-foreground mb-2">No orders yet</h3>
             <p className="text-muted-foreground mb-6">Start shopping to see your orders here</p>
             <Link
-              href={vendorSlug ? `/vendor/${vendorSlug}` : '/'}
+              href="/"
               className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
             >
               Start Shopping

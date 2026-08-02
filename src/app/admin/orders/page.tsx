@@ -7,12 +7,12 @@ import { getStatusColor } from '@/lib/utils/status';
 import { formatDateTime } from '@/lib/utils/date';
 import { toggleSort } from '@/lib/utils/sort';
 import { ArrowUpDown, Eye, Search, Filter, Download, Printer } from 'lucide-react';
-import ThemeRenderer from '@/components/ThemeRenderer';
 import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 import { Order } from '@/types/common';
+import { Loader } from '@/components/ui/Loader';
 
 type SortField = 'createdAt' | 'orderNumber' | 'total' | 'status';
 type SortDirection = 'asc' | 'desc';
@@ -444,7 +444,6 @@ export default function AdminOrdersPage() {
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -457,7 +456,7 @@ export default function AdminOrdersPage() {
               ← Back to Dashboard
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">Orders Management</h1>
-            <p className="text-gray-600 mt-1">View and manage all marketplace orders</p>
+            <p className="text-gray-600 mt-1">View and manage all orders</p>
           </div>
           <button
             onClick={exportToCSV}
@@ -560,7 +559,7 @@ export default function AdminOrdersPage() {
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           {loading ? (
             <div className="p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <Loader size="md" className="mx-auto" />
               <p className="mt-4 text-gray-600">Loading orders...</p>
             </div>
           ) : filteredOrders.length === 0 ? (

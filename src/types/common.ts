@@ -212,8 +212,6 @@ export interface LinkableProduct {
   id: string;
   name: string;
   slug: string;
-  productType: string;
-  isTour: boolean;
 }
 
 export interface ImportMessage {

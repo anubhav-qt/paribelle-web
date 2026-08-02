@@ -1,20 +1,39 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { headers } from 'next/headers';
+import { Cormorant_Garamond, Jost } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import ThemeProvider from '@/components/ThemeProvider';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['300', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+const jost = Jost({
+  subsets: ['latin'],
+  weight: ['300', '400', '500'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'GaliCart',
-  description: 'Shop from multiple vendors in one place',
-  keywords: ['marketplace', 'e-commerce', 'multi-vendor', 'online shopping'],
-  authors: [{ name: 'Marketplace Team' }],
+  title: {
+    default: 'PariBelle — Designer Kurtis & Artificial Jewellery',
+    template: '%s | PariBelle',
+  },
+  description: 'Discover PariBelle — our own designer kurtis and artificial jewellery, designed in Jaipur with new pieces added every season.',
+  keywords: ['PariBelle', 'designer kurtis', 'ethnic wear', 'artificial jewellery', 'Indian fashion', 'boutique'],
+  authors: [{ name: 'PariBelle' }],
+  icons: {
+    icon: '/logo-mark.png',
+    apple: '/logo-mark.png',
+  },
   openGraph: {
-    title: 'GaliCart',
-    description: 'Shop from multiple vendors in one place',
+    title: 'PariBelle — Designer Kurtis & Artificial Jewellery',
+    description: 'Discover PariBelle — our own designer kurtis and artificial jewellery, designed in Jaipur with new pieces added every season.',
     type: 'website',
   },
 };
@@ -41,54 +60,18 @@ async function getDefaultTheme() {
   return null;
 }
 
-// Fetch vendor data on server
-async function getVendorData(vendorSlug: string) {
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const response = await fetch(`${apiUrl}/api/v1/vendors/${vendorSlug}`, {
-      cache: 'no-store',
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      return data;
-    }
-  } catch (error) {
-    console.error('[Layout] Error fetching vendor:', error);
-  }
-  return null;
-}
-
-export default async function LocaleLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
-  params: { locale: string };
 }) {
   const defaultTheme = await getDefaultTheme();
-  
-  // Get vendor slug from headers (set by middleware)
-  const headersList = headers();
-  const vendorSlug = headersList.get('x-vendor-slug') || undefined;
-  
-  // Fetch vendor data on server if vendor slug exists
-  const initialVendorData = vendorSlug ? await getVendorData(vendorSlug) : null;
-  
-  console.log('🟣 Layout (server-side):', {
-    vendorSlug,
-    hasVendorSlug: !!vendorSlug,
-    hasVendorData: !!initialVendorData,
-    vendorName: initialVendorData?.businessName,
-    allHeaders: Object.fromEntries(headersList.entries())
-  });
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning className={`${cormorant.variable} ${jost.variable}`}>
+      <body className={jost.className}>
         <ThemeProvider initialTheme={defaultTheme}>
-          <Providers initialVendorSlug={vendorSlug} initialVendorData={initialVendorData}>
-            {children}
-          </Providers>
+          <Providers>{children}</Providers>
         </ThemeProvider>
       </body>
     </html>

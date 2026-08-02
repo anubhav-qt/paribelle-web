@@ -10,7 +10,7 @@ interface SectionLibraryProps {
 }
 
 export default function SectionLibrary({ onSelectSection, onClose }: SectionLibraryProps) {
-  const [selectedCategory, setSelectedCategory] = useState<'header' | 'content' | 'footer' | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'header' | 'content' | 'footer' | 'lookbook' | 'all'>('all');
 
   const filteredTemplates = selectedCategory === 'all' 
     ? SECTION_TEMPLATES 

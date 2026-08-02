@@ -2,60 +2,15 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
-import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { CartProvider } from '@/contexts/CartContext';
 import { WishlistProvider } from '@/contexts/WishlistContext';
 import { PoliciesProvider } from '@/contexts/PoliciesContext';
-import { VendorProvider } from '@/contexts/VendorContext';
 import { StockWebSocketProvider } from '@/contexts/StockWebSocketContext';
-import CartDrawer from './CartDrawer';
+import { ToastProvider } from '@/components/ui/Toast';
+import CartDrawer from './layout/CartDrawer';
 
-export function Providers({ 
-  children,
-  initialVendorSlug,
-  initialVendorData 
-}: { 
-  children: React.ReactNode;
-  initialVendorSlug?: string;
-  initialVendorData?: any;
-}) {
-  const pathname = usePathname();
-  const [vendorSlug, setVendorSlug] = useState<string | undefined>(initialVendorSlug);
-  
-  console.log('🟠 Providers initialized:', { 
-    initialVendorSlug, 
-    vendorSlug, 
-    pathname,
-    hasInitialVendorData: !!initialVendorData,
-    hostname: typeof window !== 'undefined' ? window.location.hostname : 'server'
-  });
-  
-  // Update vendor slug if pathname changes (for /vendor/slug routes)
-  useEffect(() => {
-    console.log('🟠 Providers useEffect:', { initialVendorSlug, pathname });
-    
-    // If we already have a vendor slug from server (subdomain), don't override it
-    if (initialVendorSlug) {
-      console.log('🟠 Using initialVendorSlug from server (subdomain):', initialVendorSlug);
-      setVendorSlug(initialVendorSlug);
-      return;
-    }
-    
-    // Check pathname for /vendor/slug pattern, but exclude vendor dashboard routes
-    const dashboardRoutes = ['dashboard', 'settings', 'products', 'orders', 'analytics', 'profile', 'theme'];
-    const match = pathname?.match(/^\/vendor\/([^\/]+)/);
-    const slug = match?.[1];
-    
-    // Don't treat dashboard routes as vendor slugs
-    if (slug && dashboardRoutes.includes(slug)) {
-      console.log('🟠 Ignoring dashboard route as vendor slug:', slug);
-      setVendorSlug(undefined);
-    } else {
-      console.log('🟠 Pathname check:', { match, slug });
-      setVendorSlug(slug);
-    }
-  }, [pathname, initialVendorSlug]);
+export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -68,23 +23,21 @@ export function Providers({
       })
   );
 
-  console.log('🟠 Providers rendering with vendorSlug:', vendorSlug);
-
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-        <VendorProvider vendorSlug={vendorSlug} initialData={initialVendorData}>
-          <StockWebSocketProvider>
-            <PoliciesProvider>
-              <CartProvider>
-                <WishlistProvider>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
+        <StockWebSocketProvider>
+          <PoliciesProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <ToastProvider>
                   {children}
                   <CartDrawer />
-                </WishlistProvider>
-              </CartProvider>
-            </PoliciesProvider>
-          </StockWebSocketProvider>
-        </VendorProvider>
+                </ToastProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </PoliciesProvider>
+        </StockWebSocketProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

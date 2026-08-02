@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Settings, MapPin, Save, DollarSign, Upload, Trash2, AlertCircle } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
-import ThemeRenderer from '@/components/ThemeRenderer';
-import CategorySidebar from '@/components/CategorySidebar';
+import { Loader } from '@/components/ui/Loader';
 
 interface Setting {
   id: string;
@@ -30,7 +29,7 @@ export default function AdminSettingsPage() {
   const [thumbnailLayout, setThumbnailLayout] = useState<'vertical' | 'horizontal'>('vertical');
   const [heroHeight, setHeroHeight] = useState<'compact' | 'standard' | 'tall'>('compact');
   const [marketplaceLogo, setMarketplaceLogo] = useState('');
-  const [marketplaceName, setMarketplaceName] = useState('GaliCart');
+  const [marketplaceName, setMarketplaceName] = useState('PariBelle');
   const [heroBanners, setHeroBanners] = useState<Array<{
     id: string;
     imageUrl: string;
@@ -107,7 +106,7 @@ export default function AdminSettingsPage() {
         
             const nameSetting = data.find((s: Setting) => s.key === 'marketplace_name');
             if (nameSetting) {
-          setMarketplaceName(nameSetting.value || 'GaliCart');
+          setMarketplaceName(nameSetting.value || 'PariBelle');
             }
 
             const returnPolicySetting = data.find((s: Setting) => s.key === 'return_policy');
@@ -364,14 +363,13 @@ export default function AdminSettingsPage() {
   if (authLoading || !isAuthenticated || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <Loader size="md" />
       </div>
     );
   }
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <div className="bg-white shadow-sm border-b">

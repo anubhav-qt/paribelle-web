@@ -57,21 +57,6 @@ export async function GET(request: NextRequest) {
 
     const googleUser = await userInfoResponse.json();
 
-    // Check if this is vendor registration (from state parameter or session)
-    const isVendorRegistration = state.type === 'vendor-register';
-
-    if (isVendorRegistration) {
-      // Redirect to vendor registration form with Google user data
-      const params = new URLSearchParams({
-        email: googleUser.email,
-        firstName: googleUser.given_name || googleUser.name.split(' ')[0],
-        lastName: googleUser.family_name || googleUser.name.split(' ').slice(1).join(' '),
-        googleAuth: 'true',
-        picture: googleUser.picture || '',
-      });
-      return NextResponse.redirect(new URL(`/vendor/register?${params.toString()}`, request.url));
-    }
-
     // Regular login flow
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     console.log('[Callback] Calling backend google-login at:', `${backendUrl}/api/v1/auth/google-login`);
@@ -113,12 +98,8 @@ export async function GET(request: NextRequest) {
     let redirectUrl = '/';
     if (state.returnUrl) {
       redirectUrl = state.returnUrl;
-    } else if (user) {
-      if (user.role === 'vendor_admin') {
-        redirectUrl = '/vendor/dashboard';
-      } else if (user.role === 'super_admin') {
-        redirectUrl = '/admin';
-      }
+    } else if (user?.role === 'vendor_admin' || user?.role === 'super_admin') {
+      redirectUrl = '/admin';
     }
 
     // Redirect with token as query param so frontend can store it

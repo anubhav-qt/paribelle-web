@@ -13,11 +13,6 @@ interface Suggestion {
     name: string;
     slug: string;
   }>;
-  vendors?: Array<{
-    id: string;
-    storeName: string;
-    slug: string;
-  }>;
 }
 
 export function useSearchSuggestions(query: string, delay = 300) {
@@ -50,8 +45,10 @@ export function useSearchSuggestions(query: string, delay = 300) {
       abortControllerRef.current = new AbortController();
 
       try {
+        const params = new URLSearchParams({ q: query });
+
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/search/suggestions?q=${encodeURIComponent(query)}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/search/suggestions?${params.toString()}`,
           { signal: abortControllerRef.current.signal }
         );
 

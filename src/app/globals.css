@@ -2,52 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-  }
-}
+@import '../styles/tokens.css';
 
 @layer base {
   * {
@@ -55,7 +10,10 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--marketplace-font, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    font-family: var(--marketplace-font, var(--font-sans));
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
   }
 }
 
@@ -67,7 +25,37 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
+  .text-eyebrow {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 0.6875rem;
+    line-height: 1;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .text-display-xl {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: clamp(2.75rem, 6vw, 5rem);
+    line-height: 1.05;
+  }
+
+  .text-display-lg {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1.12;
+  }
+
+  .text-display-md {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -78,19 +66,301 @@
       transform: translateY(0);
     }
   }
-  
+
   .animate-fadeIn {
     animation: fadeIn 0.8s ease-out forwards;
   }
-  
+
   .animation-delay-200 {
     animation-delay: 0.2s;
     opacity: 0;
   }
-  
+
   .animation-delay-400 {
     animation-delay: 0.4s;
     opacity: 0;
+  }
+
+  /* Scroll-reveal primitive used by RevealOnScroll */
+  .pb-reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity var(--duration-reveal) var(--ease-pb),
+      transform var(--duration-reveal) var(--ease-pb);
+  }
+  .pb-reveal.pb-revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pb-reveal {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: none !important;
+    }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Overlay motion — Drawer, Modal, Toast */
+  @keyframes pb-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pb-slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes pb-slide-in-bottom {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes pb-scale-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes pb-toast-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .pb-anim-fade-in {
+    animation: pb-fade-in var(--duration-panel) var(--ease-pb) both;
+  }
+  .pb-anim-slide-right {
+    animation: pb-slide-in-right var(--duration-panel) var(--ease-pb) both;
+  }
+  .pb-anim-slide-bottom {
+    animation: pb-slide-in-bottom var(--duration-panel) var(--ease-pb) both;
+  }
+  .pb-anim-scale-in {
+    animation: pb-scale-in var(--duration-panel) var(--ease-pb) both;
+  }
+  .pb-anim-toast-in {
+    animation: pb-toast-in var(--duration-micro) var(--ease-pb) both;
+  }
+  @keyframes pb-shimmer {
+    100% { transform: translateX(100%); }
+  }
+  @keyframes pb-kenburns {
+    from { transform: scale(1); }
+    to { transform: scale(1.08); }
+  }
+
+  /* Editorial image masks */
+  .pb-mask-arch {
+    border-radius: 999px 999px 4px 4px;
+  }
+  .pb-mask-scallop {
+    clip-path: polygon(
+      0% 4%, 4% 0%, 8% 4%, 12% 0%, 16% 4%, 20% 0%, 24% 4%, 28% 0%, 32% 4%, 36% 0%,
+      40% 4%, 44% 0%, 48% 4%, 52% 0%, 56% 4%, 60% 0%, 64% 4%, 68% 0%, 72% 4%, 76% 0%,
+      80% 4%, 84% 0%, 88% 4%, 92% 0%, 96% 4%, 100% 0%,
+      100% 100%, 0% 100%
+    );
+  }
+
+  /*
+   * Scroll-scrubbed scrapbook hero (components/home/ScrapbookHero.tsx).
+   *
+   * ScrapbookHero writes a single 0→1 scroll progress value to `--p` on the
+   * section once per frame; everything below derives its own motion from that
+   * one number, so no layout work happens per scroll event.
+   *
+   * That progress splits into two beats:
+   *   --pe  frame — the collage rises into its finished framing (first 28%)
+   *   --pz  zoom  — the centre print pushes forward past its neighbours
+   *
+   * The beats are deliberately butt-joined: the moment the collage is fully on
+   * screen, the next scroll starts the zoom. The framing beat only ever
+   * translates — scale belongs to the zoom alone, so the push-in reads as one
+   * continuous motion instead of settling back before it starts.
+   *
+   * The prints assembling themselves is a load-time animation rather than a
+   * scroll-linked one, so the hero is legible on first paint and for visitors
+   * who never scroll.
+   */
+  .pb-scrap {
+    --p: 0;
+    --pe: clamp(0, calc(var(--p) / 0.28), 1);
+    --pz: clamp(0, calc((var(--p) - 0.28) / 0.5), 1);
+  }
+
+  /* Blush paper ground with a faint grain. */
+  .pb-scrap-paper {
+    background:
+      radial-gradient(120% 90% at 50% 0%, hsl(var(--pb-rose-mist) / 0.75), transparent 60%),
+      radial-gradient(90% 70% at 8% 100%, hsl(var(--pb-blush-wash) / 0.9), transparent 62%),
+      hsl(var(--pb-ivory));
+  }
+  .pb-scrap-paper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.5;
+    background-image: radial-gradient(hsl(var(--pb-rose-ink) / 0.05) 1px, transparent 1px);
+    background-size: 4px 4px;
+  }
+
+  /*
+   * The collage stage. Tiles are placed in percentages of this box, so the whole
+   * composition scales as one and the layout never reflows mid-scroll.
+   *
+   * The zoom beat scales about the pinned photo's own centre
+   * (--focus-origin), so that print grows in place instead of sliding toward a
+   * corner, then translates by --focus-y to bring it to true centre. Both are
+   * derived from the tile table and supplied by the component.
+   */
+  .pb-scrap-stage {
+    /* Kept in step with STAGE_RATIO_WIDE in ScrapbookHero.tsx. */
+    aspect-ratio: 7 / 5;
+    width: min(100%, calc(80vh * 1.4));
+    transform-origin: 50% var(--focus-origin, 50%);
+    transform: translate3d(
+        0,
+        calc((1 - var(--pe)) * 4% + var(--pz) * var(--focus-y, 0%)),
+        0
+      )
+      scale(calc(1 + var(--pz) * 0.24));
+    will-change: transform;
+  }
+
+  /*
+   * One pinned print: a white photo border, a soft drop shadow and a resting
+   * tilt. The tilt is set with `rotate` rather than `transform` so the zoom beat
+   * can own `transform` outright.
+   */
+  .pb-scrap-tile {
+    left: var(--l);
+    top: var(--t);
+    width: var(--w);
+    margin: 0;
+    rotate: var(--r);
+    /* Recede behind the pinned print during the zoom beat. */
+    opacity: calc(1 - var(--pz) * 0.62);
+    filter: blur(calc(var(--pz) * 2.5px)) saturate(calc(1 - var(--pz) * 0.35));
+    will-change: opacity, filter;
+  }
+
+  /* The pinned print: stays sharp, straightens up and grows past the others. */
+  .pb-scrap-tile--hero {
+    z-index: 5;
+    rotate: calc(var(--r) * (1 - var(--pz)));
+    transform: scale(calc(1 + var(--pz) * 0.34));
+    opacity: 1;
+    filter: none;
+    will-change: transform;
+  }
+
+  /*
+   * The print itself. Each one drops onto the page on load, from beyond its own
+   * edge and over-rotated, staggered by `--d` so the collage lands piece by
+   * piece rather than all at once.
+   */
+  .pb-scrap-print {
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
+    border: 0.5rem solid #fff;
+    box-shadow: var(--shadow-lg), 0 2px 6px hsl(var(--pb-rose-ink) / 0.12);
+    animation: pb-scrap-drop 850ms var(--ease-pb) both;
+    animation-delay: calc(var(--d, 0) * 900ms);
+  }
+  .pb-scrap-tile--hero .pb-scrap-print {
+    border-width: 0.75rem;
+  }
+  @keyframes pb-scrap-drop {
+    from {
+      opacity: 0;
+      transform: translate3d(var(--ex), var(--ey), 0) rotate(var(--er)) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .pb-scrap-rail {
+    animation: pb-scrap-rail-in 700ms var(--ease-pb) both;
+    animation-delay: 900ms;
+  }
+  @keyframes pb-scrap-rail-in {
+    from { opacity: 0; transform: translate3d(0, 100%, 0); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* Scroll cue retires as soon as the visitor starts moving. */
+  .pb-scrap-cue {
+    opacity: clamp(0, calc(1 - var(--p) * 8), 1);
+  }
+  .pb-scrap-cue span {
+    animation: pb-scrap-cue 2.2s var(--ease-pb) infinite;
+  }
+  @keyframes pb-scrap-cue {
+    0%, 100% { transform: scaleY(0.4); transform-origin: top; opacity: 0.3; }
+    50% { transform: scaleY(1); transform-origin: top; opacity: 1; }
+  }
+
+  /*
+   * Narrow screens get a five-tile edit of the same collage on a taller stage —
+   * seven prints at phone width would each be a thumbnail.
+   */
+  @media (max-width: 767px) {
+    .pb-scrap-stage {
+      /* Portrait, so the collage fills the phone rather than banding across it.
+         Kept in step with STAGE_RATIO_NARROW in ScrapbookHero.tsx. */
+      aspect-ratio: 5 / 9;
+      width: min(100%, calc(84vh * 5 / 9));
+      transform-origin: 50% var(--focus-origin-narrow, 50%);
+      transform: translate3d(
+          0,
+          calc((1 - var(--pe)) * 4% + var(--pz) * var(--focus-y-narrow, 0%)),
+          0
+        )
+        scale(calc(1 + var(--pz) * 0.24));
+    }
+    .pb-scrap-tile {
+      left: var(--ml, var(--l));
+      top: var(--mt, var(--t));
+      width: var(--mw, var(--w));
+    }
+    .pb-scrap-print,
+    .pb-scrap-tile--hero .pb-scrap-print {
+      border-width: 0.375rem;
+    }
+    .pb-scrap-tile--wide-only {
+      display: none;
+    }
+  }
+
+  /*
+   * Reduced motion: present the assembled, un-zoomed collage immediately and
+   * stop every scroll-linked transform, so the hero reads without any movement.
+   */
+  .pb-scrap-static {
+    --pe: 1;
+    --pz: 0;
+  }
+  .pb-scrap-static .pb-scrap-pin {
+    position: static;
+    height: auto;
+    padding: 4rem 0 5rem;
+  }
+  .pb-scrap-static .pb-scrap-stage,
+  .pb-scrap-static .pb-scrap-tile,
+  .pb-scrap-static .pb-scrap-print,
+  .pb-scrap-static .pb-scrap-rail {
+    transform: none;
+    animation: none;
+    opacity: 1;
+    will-change: auto;
+  }
+  .pb-scrap-static .pb-scrap-cue {
+    display: none;
   }
 
   /* Vendor Theme Utilities */

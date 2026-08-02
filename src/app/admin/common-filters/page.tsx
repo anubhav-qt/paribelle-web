@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Edit2, Trash2, Save, X, Copy } from 'lucide-react';
-import ThemeRenderer from '@/components/ThemeRenderer';
 
 type FilterType = 'CHECKBOX' | 'SELECT' | 'MULTISELECT' | 'RANGE';
 
@@ -255,7 +254,6 @@ export default function CommonFiltersPage() {
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
@@ -286,7 +284,7 @@ export default function CommonFiltersPage() {
                 <li>• These are predefined filter templates you can apply to any category</li>
                 <li>• Go to Categories → Configure Filters to assign these to specific categories</li>
                 <li>• Customize filter options per category (e.g., different brands for different categories)</li>
-                <li>• Common filters ensure consistency across your marketplace</li>
+                <li>• Common filters ensure consistency across the catalogue</li>
               </ul>
             </div>
           </div>

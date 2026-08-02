@@ -7,6 +7,7 @@ export interface Category {
   name: string;
   slug: string;
   description?: string;
+  image?: string;
   isActive?: boolean;
   sortOrder?: number;
   level?: number;
@@ -16,13 +17,7 @@ export interface Category {
   _count?: {
     products: number;
   };
-  primaryProductType?: 'physical' | 'booking' | 'tour';
   productCount?: number;
-  typeDistribution?: {
-    physical: number;
-    booking: number;
-    tour: number;
-  };
   filterConfig?: {
     filters: Array<{
       id: string;
@@ -48,59 +43,6 @@ export interface ProductVariant {
   featuredImage?: string;
   images?: string[];
   isActive: boolean;
-}
-
-export interface BookingAttributes {
-  duration: number;
-  durationUnit: 'hours' | 'days' | 'sessions';
-  bufferTime: number;
-  availableDays: string[];
-  timeSlots: Array<{ start: string; end: string }>;
-}
-
-export interface TourDeparture {
-  id?: string;
-  departureDate: string;
-  returnDate: string;
-  availableSeats: number;
-  pricePerPerson: number;
-  status: 'active' | 'full' | 'cancelled' | 'available' | 'soldOut'; // Support both formats
-}
-
-export interface TourItinerary {
-  day: number;
-  title: string;
-  description: string;
-  activities: string[];
-  meals: string[];
-  accommodation: string;
-}
-
-export interface TourDetails {
-  destinations: string[];
-  tourType: string;
-  difficulty: 'easy' | 'moderate' | 'challenging' | 'difficult';
-  groupSize: { min: number; max: number };
-  inclusions: string[];
-  exclusions: string[];
-  pickupPoints: Array<{ location: string; time: string }>;
-  dropPoints: Array<{ location: string; time: string }>;
-  accommodation: string;
-  transportation: string;
-  languages: string[];
-  ageRestriction: string;
-}
-
-export interface TourAttributes {
-  tourMode: boolean;
-  departures: TourDeparture[];
-  itinerary: TourItinerary[];
-  details: TourDetails;
-}
-
-export interface ProductAttributes {
-  booking?: BookingAttributes;
-  tour?: TourAttributes;
 }
 
 export interface Vendor {
@@ -150,7 +92,6 @@ export interface Product {
   sku?: string;
   featuredImage?: string;
   images?: string[];
-  productType?: 'physical' | 'booking';
   categories?: Category[];
   vendor?: Vendor;
   vendorId?: string;
@@ -169,7 +110,6 @@ export interface Product {
   hasVariants?: boolean;
   variantOptions?: any[];
   productVariants?: ProductVariant[];
-  
-  // Booking and tour attributes
-  attributes?: ProductAttributes;
+
+  attributes?: Record<string, any>;
 }

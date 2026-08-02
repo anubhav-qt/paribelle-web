@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Search, CheckCircle } from 'lucide-react';
+import { Loader } from '@/components/ui/Loader';
 
 interface HsnCode {
   id: string;
@@ -169,7 +170,7 @@ export default function HsnCodeAutocomplete({
       {/* Loading State */}
       {loading && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center">
-          <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <Loader size="sm" />
           <p className="text-sm text-gray-600 mt-2">Searching HSN codes...</p>
         </div>
       )}

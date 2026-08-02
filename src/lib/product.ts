@@ -12,7 +12,6 @@ export interface ProductBase {
   featuredImage?: string;
   averageRating?: string | number;
   reviewCount?: number;
-  productType?: 'physical' | 'booking';
   stockQuantity?: number;
   vendor?: {
     id?: string;
@@ -53,7 +52,7 @@ export const parseNumericValue = (value: string | number | undefined): number =>
  * Check if product is out of stock
  */
 export const isOutOfStock = (product: ProductBase): boolean => {
-  return product.productType === 'physical' && product.stockQuantity === 0;
+  return product.stockQuantity === 0;
 };
 
 /**
@@ -61,7 +60,6 @@ export const isOutOfStock = (product: ProductBase): boolean => {
  */
 export const isLowStock = (product: ProductBase): boolean => {
   return (
-    product.productType === 'physical' &&
     product.stockQuantity !== undefined &&
     product.stockQuantity > 0 &&
     product.stockQuantity <= 5
@@ -74,10 +72,6 @@ export const isLowStock = (product: ProductBase): boolean => {
 export const getStockStatus = (
   product: ProductBase
 ): { label: string; severity: 'error' | 'warning' | 'success' | 'info' } | null => {
-  if (product.productType !== 'physical') {
-    return null;
-  }
-
   if (product.stockQuantity === undefined) {
     return null;
   }

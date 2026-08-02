@@ -1,13 +1,17 @@
 'use client';
-import ThemeRenderer from '@/components/ThemeRenderer';
-import HeroCarousel from '@/components/HeroCarousel';
-import CategoryNav from '@/components/CategoryNav';
-import Footer from '@/components/Footer';
-import HomepageContent from '@/components/HomepageContent';
-import { Suspense } from 'react';
+
+import { Suspense, useMemo } from 'react';
 import GoogleAuthHandler from '@/components/GoogleAuthHandler';
-import { useThemeClasses } from '@/hooks/useThemeClasses';
-import { Category } from '@/types/product';
+import { ScrapbookHero } from '@/components/home/ScrapbookHero';
+import { CategoryPortals } from '@/components/home/CategoryPortals';
+import { ProductRail } from '@/components/home/ProductRail';
+import { EditorialSplit } from '@/components/home/EditorialSplit';
+import { ShopByCategorySection } from '@/components/home/ShopByCategorySection';
+import { LookbookTeaser } from '@/components/home/LookbookTeaser';
+import { TrustStrip } from '@/components/home/TrustStrip';
+import { CommunityGrid } from '@/components/home/CommunityGrid';
+import { getDisplayImage } from '@/lib/utils/product-card-helpers';
+import type { Category, Product } from '@/types/product';
 
 interface MainPageClientProps {
   settings: {
@@ -17,50 +21,84 @@ interface MainPageClientProps {
     marketplaceName: string;
   };
   categories: Category[];
-  productsByCategory: Record<string, any[]>;
-  uncategorizedProducts: any[];
+  productsByCategory: Record<string, Product[]>;
+  uncategorizedProducts: Product[];
 }
 
+const BOOKINGS_KEY = 'bookings-services';
+
 export default function MainPageClient({
-  settings,
   categories,
   productsByCategory,
   uncategorizedProducts,
 }: MainPageClientProps) {
-  const theme = useThemeClasses();
-  
+  const bookingProducts = productsByCategory[BOOKINGS_KEY] || [];
+
+  const shopCategories = useMemo(
+    () => categories.filter((c) => c.slug !== BOOKINGS_KEY),
+    [categories]
+  );
+
+  /**
+   * Shop-the-edit sections and the portal grid are keyed on the categories a
+   * shopper actually browses. The root store's tree is one parent (Fashion)
+   * over the real destinations (Kurtis, Jewellery), so flatten to the leaves
+   * wherever a category has children — otherwise both surfaces would show a
+   * single undifferentiated "Fashion" tile.
+   */
+  const browseCategories = useMemo(
+    () => shopCategories.flatMap((cat) => (cat.children?.length ? cat.children : [cat])),
+    [shopCategories]
+  );
+
+  const heroLinks = useMemo(
+    () => [
+      ...browseCategories.slice(0, 3).map((cat) => ({ label: cat.name, href: `/category/${cat.slug}` })),
+      { label: 'New In', href: '/category/new-in' },
+    ],
+    [browseCategories]
+  );
+
+  const newInProducts = useMemo(() => {
+    const all = [
+      ...uncategorizedProducts,
+      ...Object.entries(productsByCategory)
+        .filter(([slug]) => slug !== BOOKINGS_KEY)
+        .flatMap(([, products]) => products),
+    ];
+    const seen = new Set<string>();
+    const unique = all.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
+    return unique
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 12);
+  }, [uncategorizedProducts, productsByCategory]);
+
+  const communityImages = useMemo(
+    () =>
+      newInProducts
+        .map((p) => getDisplayImage(p.featuredImage, p.images))
+        .filter((img): img is string => !!img)
+        .slice(0, 6),
+    [newInProducts]
+  );
+
   return (
-    <div className={theme.combine('min-h-screen', theme.bg)}>
+    <div className="min-h-screen bg-[hsl(var(--pb-ivory))]">
       <Suspense fallback={null}>
         <GoogleAuthHandler />
       </Suspense>
-      
-      <div className="sticky top-0 z-40">
-        <ThemeRenderer 
-          component="header" 
-          showLocationFilter={settings.locationFilterEnabled}
-        />
-        <CategoryNav mode="scroll" />
-      </div>
 
-      <HeroCarousel />
-
-      <HomepageContent
-        initialCategories={categories}
-        initialProductsByCategory={productsByCategory}
-        initialUncategorizedProducts={uncategorizedProducts}
-        categoryDisplayMode={settings.categoryDisplayMode}
-        currency={settings.currency}
-        locationFilterEnabled={settings.locationFilterEnabled}
-      />
-
-      <ThemeRenderer 
-        component="footer" 
-        fallback={<Footer categories={categories} marketplaceName={settings.marketplaceName} />}
-        categories={categories}
-        marketplaceName={settings.marketplaceName}
-      />
-      
+      <ScrapbookHero links={heroLinks} />
+      <CategoryPortals categories={browseCategories} />
+      <ProductRail eyebrow="Just Arrived" title="New In" products={newInProducts} viewAllHref="/category/new-in" />
+      <EditorialSplit />
+      <ShopByCategorySection categories={browseCategories} productsByCategory={productsByCategory} />
+      <LookbookTeaser />
+      {bookingProducts.length > 0 && (
+        <ProductRail eyebrow="Book an Experience" title="Bookings & Services" products={bookingProducts} />
+      )}
+      <TrustStrip />
+      <CommunityGrid images={communityImages} />
     </div>
   );
 }

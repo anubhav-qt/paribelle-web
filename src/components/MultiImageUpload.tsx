@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Loader } from '@/components/ui/Loader';
 
 interface MultiImageUploadProps {
   value?: string[];
@@ -191,7 +192,7 @@ export default function MultiImageUpload({
           >
             {uploading ? (
               <>
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                <Loader size="md" className="mb-4" />
                 <p className="text-gray-600">Uploading images...</p>
               </>
             ) : (

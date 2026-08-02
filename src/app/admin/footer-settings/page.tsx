@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Plus, Trash2, Facebook, Twitter, Instagram, Linkedin, Youtube } from 'lucide-react';
-import ThemeRenderer from '@/components/ThemeRenderer';
+import { Loader } from '@/components/ui/Loader';
 
 interface SocialLink {
   platform: 'facebook' | 'twitter' | 'instagram' | 'linkedin' | 'youtube' | 'tiktok';
@@ -192,14 +192,13 @@ export default function FooterSettingsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <Loader size="md" />
       </div>
     );
   }
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-5xl mx-auto">
           {/* Sticky Save Button */}
@@ -225,7 +224,7 @@ export default function FooterSettingsPage() {
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Footer Settings</h1>
-                <p className="text-sm text-gray-600">Customize your marketplace footer content</p>
+                <p className="text-sm text-gray-600">Customise the storefront footer</p>
               </div>
             </div>
 
@@ -239,7 +238,7 @@ export default function FooterSettingsPage() {
               value={settings.aboutText}
               onChange={(e) => setSettings({ ...settings, aboutText: e.target.value })}
               className="w-full border border-gray-300 rounded-lg p-3 h-24"
-              placeholder="Brief description about your marketplace..."
+              placeholder="Brief description about PariBelle..."
             />
           </div>
 
@@ -323,7 +322,7 @@ export default function FooterSettingsPage() {
                     contactInfo: { ...settings.contactInfo, email: e.target.value }
                   })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  placeholder="support@marketplace.com"
+                  placeholder="hello@paribelle.com"
                 />
               </div>
               <div>
@@ -459,7 +458,7 @@ export default function FooterSettingsPage() {
               placeholder="All rights reserved."
             />
             <p className="text-xs text-gray-500 mt-2">
-              Note: Year and marketplace name will be automatically added
+              Note: Year and store name will be automatically added
             </p>
           </div>
         </div>

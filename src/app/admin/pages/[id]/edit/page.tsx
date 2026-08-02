@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Layout } from 'lucide-react';
-import ThemeRenderer from '@/components/ThemeRenderer';
 import PageBuilder from '@/components/PageBuilder';
 import SectionLibrary from '@/components/SectionLibrary';
 import { PageSection } from '@/lib/pageSections';
+import { Loader } from '@/components/ui/Loader';
 
 export default function EditMarketplacePage() {
   const router = useRouter();
@@ -151,10 +151,9 @@ export default function EditMarketplacePage() {
   if (pageLoading) {
     return (
       <>
-        <ThemeRenderer component="header" />
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <Loader size="md" className="mx-auto mb-4" />
             <p className="text-muted-foreground">Loading page...</p>
           </div>
         </div>
@@ -164,7 +163,6 @@ export default function EditMarketplacePage() {
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-background">
         {showSectionLibrary && (
           <SectionLibrary
@@ -185,7 +183,7 @@ export default function EditMarketplacePage() {
               </Link>
             </div>
             
-            <h1 className="text-3xl font-bold text-foreground mb-2">Edit Marketplace Page</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Edit Page</h1>
             <p className="text-muted-foreground text-sm">
               Modify your page using the visual builder
             </p>

@@ -10,9 +10,6 @@ export interface CartItem {
   quantity: number;
   image: string;
   vendorId: string;
-  vendorName: string;
-  vendorSlug?: string;
-  productType: 'physical' | 'booking';
   stockQuantity?: number;
   maxQuantity?: number;
   priceType?: string; // 'mrp_with_gst' | 'selling_price_without_gst'

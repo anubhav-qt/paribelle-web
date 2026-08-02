@@ -5,8 +5,6 @@ export interface WishlistItem {
   price: number;
   image: string;
   vendorId: string;
-  vendorName: string;
-  vendorSlug?: string;
   addedAt: number;
 }
 

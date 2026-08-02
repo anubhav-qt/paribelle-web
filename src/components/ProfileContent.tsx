@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Loader } from '@/components/ui/Loader';
 import { 
   User, 
   Mail, 
@@ -19,11 +20,7 @@ import {
 } from 'lucide-react';
 import AddressManager from '@/components/AddressManager';
 
-interface ProfileContentProps {
-  vendorSlug?: string;
-}
-
-export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
+export default function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
@@ -42,7 +39,7 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
     phone: '',
   });
 
-  const getRoutePrefix = () => vendorSlug ? `/vendor/${vendorSlug}` : '';
+  const getRoutePrefix = () => '';
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -74,7 +71,7 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
       console.error('Error parsing user data:', error);
       router.push(`${getRoutePrefix()}/login`);
     }
-  }, [router, vendorSlug, searchParams]);
+  }, [router, searchParams]);
 
   const fetchBookings = async (userId: string, token: string) => {
     setLoadingBookings(true);
@@ -190,7 +187,7 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <Loader size="md" />
       </div>
     );
   }
@@ -512,7 +509,7 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
           <div className="space-y-4">
             {loadingBookings ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                <Loader size="md" />
               </div>
             ) : bookings.length === 0 ? (
               <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">
@@ -634,7 +631,7 @@ export default function ProfileContent({ vendorSlug }: ProfileContentProps) {
           <div className="space-y-4">
             {loadingOrders ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                <Loader size="md" />
               </div>
             ) : orders.length === 0 ? (
               <div className="bg-card rounded-lg shadow-sm border border-border p-12 text-center">

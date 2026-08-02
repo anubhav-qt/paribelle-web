@@ -3,14 +3,20 @@
 import { useEffect, useState } from 'react';
 import { ThemeConfig } from '@/types/common';
 
+/**
+ * Hex mirrors of the PariBelle tokens in styles/tokens.css — rose, shell,
+ * blush wash, blush ivory and plum ink respectively. Kept in step with that
+ * file: an unconfigured marketplace should look identical whether these
+ * fallbacks or the tokens win the cascade.
+ */
 const defaultFallbackTheme: ThemeConfig = {
-  primaryColor: '#FF9900',
-  secondaryColor: '#232F3E',
-  accentColor: '#FF9900',
-  backgroundColor: '#FFFFFF',
-  textColor: '#0F1111',
-  fontFamily: 'Amazon Ember, Arial, sans-serif',
-  headingFont: 'Amazon Ember, Arial, sans-serif',
+  primaryColor: '#D78E9B',
+  secondaryColor: '#F9F0F2',
+  accentColor: '#F8E8EA',
+  backgroundColor: '#FCF8F8',
+  textColor: '#36262B',
+  fontFamily: 'Jost, sans-serif',
+  headingFont: 'Cormorant Garamond, serif',
 };
 
 export default function ThemeProvider({ 
@@ -93,26 +99,44 @@ export default function ThemeProvider({
     return luminance > 0.5 ? '0 0% 10%' : '0 0% 98%';
   };
 
+  // This only injects the *marketplace-wide fallback* theme (admin-configurable via
+  // /admin/default-theme). Per-vendor storefronts theme themselves separately via the
+  // `vendor-*` utility layer in globals.css (see ThemeContext / useThemeClasses) and are
+  // unaffected by this. Colors are intentionally NOT forced with `!important` so the
+  // PariBelle design tokens in tokens.css remain the source of truth on the root site;
+  // an admin-configured theme still overrides them, but doesn't fight the CSS cascade.
+  // A partially-filled admin theme falls back per-field rather than wholesale,
+  // so one unset colour can't drag the rest off the brand palette.
+  const c = {
+    primary: theme.primaryColor || defaultFallbackTheme.primaryColor!,
+    secondary: theme.secondaryColor || defaultFallbackTheme.secondaryColor!,
+    accent: theme.accentColor || defaultFallbackTheme.accentColor!,
+    background: theme.backgroundColor || defaultFallbackTheme.backgroundColor!,
+    text: theme.textColor || defaultFallbackTheme.textColor!,
+    font: theme.fontFamily || 'var(--font-sans)',
+    headingFont: theme.headingFont || 'var(--font-display)',
+  };
+
   const themeCSS = `
     :root {
-      --primary: ${hexToHSL(theme.primaryColor || '#FF9900')};
-      --primary-foreground: ${getContrastColor(theme.primaryColor || '#FF9900')};
-      --secondary: ${hexToHSL(theme.secondaryColor || '#232F3E')};
-      --secondary-foreground: ${getContrastColor(theme.secondaryColor || '#232F3E')};
-      --accent: ${hexToHSL(theme.accentColor || '#FF9900')};
-      --background: ${hexToHSL(theme.backgroundColor || '#FFFFFF')};
-      --foreground: ${hexToHSL(theme.textColor || '#0F1111')};
-      --card: ${hexToHSL(theme.backgroundColor || '#FFFFFF')};
-      --border: ${hexToHSL('#E2E8F0')};
-      --marketplace-primary: ${theme.primaryColor || '#FF9900'};
-      --marketplace-secondary: ${theme.secondaryColor || '#232F3E'};
-      --marketplace-accent: ${theme.accentColor || '#FF9900'};
-      --marketplace-bg: ${theme.backgroundColor || '#FFFFFF'};
-      --marketplace-text: ${theme.textColor || '#0F1111'};
-      --marketplace-font: ${theme.fontFamily || 'Amazon Ember, Arial, sans-serif'};
+      --primary: ${hexToHSL(c.primary)};
+      --primary-foreground: ${getContrastColor(c.primary)};
+      --secondary: ${hexToHSL(c.secondary)};
+      --secondary-foreground: ${getContrastColor(c.secondary)};
+      --accent: ${hexToHSL(c.accent)};
+      --background: ${hexToHSL(c.background)};
+      --foreground: ${hexToHSL(c.text)};
+      --card: ${hexToHSL(c.background)};
+      --marketplace-primary: ${c.primary};
+      --marketplace-secondary: ${c.secondary};
+      --marketplace-accent: ${c.accent};
+      --marketplace-bg: ${c.background};
+      --marketplace-text: ${c.text};
+      --marketplace-font: ${c.font};
+      --marketplace-heading-font: ${c.headingFont};
     }
-    body {
-      font-family: ${theme.fontFamily || 'Amazon Ember, Arial, sans-serif'}, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    h1, h2, h3 {
+      font-family: ${c.headingFont};
     }
   `;
 

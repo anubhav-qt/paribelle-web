@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import ThemeRenderer from '@/components/ThemeRenderer';
-import CategorySidebar from '@/components/CategorySidebar';
 import { formatCurrency } from '@/lib/currency';
 
 interface AnalyticsData {
@@ -111,10 +109,9 @@ export default function AdminAnalyticsPage() {
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="flex gap-6">
-          {/* <CategorySidebar hideEmptyCategories={false} /> */}
+          {/* null */}
           <div className="flex-1 max-w-7xl">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
@@ -126,7 +123,7 @@ export default function AdminAnalyticsPage() {
               ← Back to Dashboard
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-            <p className="text-gray-600 mt-2">Monitor your marketplace performance</p>
+            <p className="text-gray-600 mt-2">Monitor your store's performance</p>
           </div>
           <div>
             <select

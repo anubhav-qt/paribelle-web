@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Settings, ChevronRight, Package } from 'lucide-react';
-import ThemeRenderer from '@/components/ThemeRenderer';
 import { Category } from '@/types/product';
+import { Loader } from '@/components/ui/Loader';
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -86,14 +86,13 @@ export default function AdminCategoriesPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <Loader size="md" />
       </div>
     );
   }
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { Loader } from '@/components/ui/Loader';
 
 interface ImageUploadProps {
   value?: string;
@@ -165,7 +166,7 @@ export default function ImageUpload({ value, onChange, label, className = '' }: 
         {uploading && (
           <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <Loader size="sm" className="mx-auto" />
               <p className="text-sm text-gray-600 mt-2">Uploading...</p>
             </div>
           </div>

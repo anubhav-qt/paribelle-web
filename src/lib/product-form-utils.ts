@@ -1,37 +1,5 @@
 // Centralized product form utilities
-import { Product, ProductAttributes } from '@/types/product';
-
-/**
- * Default empty product attributes
- */
-export const getDefaultProductAttributes = (): ProductAttributes => ({
-  booking: {
-    duration: 60,
-    durationUnit: 'hours',
-    bufferTime: 0,
-    availableDays: [],
-    timeSlots: [{ start: '09:00', end: '17:00' }],
-  },
-  tour: {
-    tourMode: false,
-    departures: [],
-    itinerary: [],
-    details: {
-      destinations: [],
-      tourType: '',
-      difficulty: 'moderate',
-      groupSize: { min: 1, max: 20 },
-      inclusions: [],
-      exclusions: [],
-      pickupPoints: [],
-      dropPoints: [],
-      accommodation: '',
-      transportation: '',
-      languages: [],
-      ageRestriction: '',
-    },
-  },
-});
+import { Product } from '@/types/product';
 
 /**
  * Convert Product to form data format
@@ -50,14 +18,13 @@ export const productToFormData = (product: Product) => {
     sku: product.sku || '',
     featuredImage: product.featuredImage || '',
     images: product.images || [],
-    productType: product.productType || 'physical',
     hasVariants: product.hasVariants || product.isParent || false,
     variations: product.variations || [],
     variationThemes: product.variationThemes || [],
     productVariants: product.productVariants || [],
     variantOptions: product.variantOptions || [],
     categoryIds: product.categories?.map(c => c.id) || [],
-    attributes: product.attributes || getDefaultProductAttributes(),
+    attributes: product.attributes || {},
   };
 };
 
@@ -74,14 +41,13 @@ export const getEmptyFormData = () => ({
   sku: '',
   featuredImage: '',
   images: [] as string[],
-  productType: 'physical' as 'physical' | 'booking',
   hasVariants: false,
   variations: [] as any[],
   variationThemes: [] as string[],
   productVariants: [] as any[],
   variantOptions: [] as any[],
   categoryIds: [] as string[],
-  attributes: getDefaultProductAttributes(),
+  attributes: {},
 });
 
 /**

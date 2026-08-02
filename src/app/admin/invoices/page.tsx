@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import ThemeRenderer from '@/components/ThemeRenderer';
 import { formatCurrency } from '@/lib/currency';
 import { getStatusColor } from '@/lib/utils/status';
 import { formatDate as formatDateUtil } from '@/lib/utils/date';
@@ -324,7 +323,6 @@ export default function AdminInvoicesPage() {
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">

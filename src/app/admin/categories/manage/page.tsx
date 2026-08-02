@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Plus, Edit2, Trash2, Save, X, ChevronRight } from 'lucide-react';
 import { Category } from '@/types/product';
 import { generateSlug } from '@/lib/utils/string';
+import { Loader } from '@/components/ui/Loader';
 
 export default function ManageCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -217,7 +218,7 @@ export default function ManageCategoriesPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <Loader size="md" className="mx-auto mb-4" />
           <p className="text-gray-600">Loading categories...</p>
         </div>
       </div>

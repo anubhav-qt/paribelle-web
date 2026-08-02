@@ -21,37 +21,46 @@ interface CategoryFilter {
 }
 
 import { Category } from '@/types/product';
+import { Loader } from '@/components/ui/Loader';
 
-// Common filter templates
+// Filter templates for the two live categories, Kurtis and Jewellery. Ids
+// must match the keys used in the `Attributes` column of the product import
+// sheet — a filter only narrows results if its id matches an attribute key
+// products actually carry.
 const COMMON_FILTER_TEMPLATES: CategoryFilter[] = [
   {
     id: 'price',
     label: 'Price Range',
     type: 'range',
     min: 0,
-    max: 100000,
-    step: 100,
+    max: 20000,
+    step: 200,
   },
   {
-    id: 'brand',
-    label: 'Brand',
-    type: 'checkbox',
-    options: [],
-  },
-  {
-    id: 'color',
-    label: 'Color',
+    id: 'fabric',
+    label: 'Fabric',
     type: 'checkbox',
     options: [
+      { label: 'Cotton', value: 'cotton' },
+      { label: 'Chanderi', value: 'chanderi' },
+      { label: 'Silk', value: 'silk' },
+      { label: 'Rayon', value: 'rayon' },
+      { label: 'Georgette', value: 'georgette' },
+      { label: 'Muslin', value: 'muslin' },
+    ],
+  },
+  {
+    id: 'colour',
+    label: 'Colour',
+    type: 'checkbox',
+    options: [
+      { label: 'Rose', value: 'rose' },
+      { label: 'Ivory', value: 'ivory' },
+      { label: 'Indigo', value: 'indigo' },
       { label: 'Black', value: 'black' },
-      { label: 'White', value: 'white' },
-      { label: 'Red', value: 'red' },
-      { label: 'Blue', value: 'blue' },
+      { label: 'Mustard', value: 'mustard' },
       { label: 'Green', value: 'green' },
-      { label: 'Yellow', value: 'yellow' },
-      { label: 'Pink', value: 'pink' },
-      { label: 'Gray', value: 'gray' },
-      { label: 'Brown', value: 'brown' },
+      { label: 'Maroon', value: 'maroon' },
     ],
   },
   {
@@ -65,6 +74,64 @@ const COMMON_FILTER_TEMPLATES: CategoryFilter[] = [
       { label: 'L', value: 'l' },
       { label: 'XL', value: 'xl' },
       { label: 'XXL', value: 'xxl' },
+      { label: '3XL', value: '3xl' },
+    ],
+  },
+  {
+    id: 'sleeve',
+    label: 'Sleeve',
+    type: 'checkbox',
+    options: [
+      { label: 'Sleeveless', value: 'sleeveless' },
+      { label: 'Short', value: 'short' },
+      { label: 'Three-Quarter', value: 'three-quarter' },
+      { label: 'Full', value: 'full' },
+    ],
+  },
+  {
+    id: 'type',
+    label: 'Type',
+    type: 'checkbox',
+    options: [
+      { label: 'Earrings', value: 'earrings' },
+      { label: 'Necklace', value: 'necklace' },
+      { label: 'Bangles', value: 'bangles' },
+      { label: 'Ring', value: 'ring' },
+      { label: 'Anklet', value: 'anklet' },
+    ],
+  },
+  {
+    id: 'finish',
+    label: 'Finish',
+    type: 'checkbox',
+    options: [
+      { label: 'Gold-tone', value: 'gold-tone' },
+      { label: 'Silver-tone', value: 'silver-tone' },
+      { label: 'Oxidised', value: 'oxidised' },
+      { label: 'Rose Gold', value: 'rose-gold' },
+    ],
+  },
+  {
+    id: 'stone',
+    label: 'Stone / Work',
+    type: 'checkbox',
+    options: [
+      { label: 'Kundan', value: 'kundan' },
+      { label: 'Meenakari', value: 'meenakari' },
+      { label: 'Pearl', value: 'pearl' },
+      { label: 'American Diamond', value: 'american-diamond' },
+      { label: 'Beads', value: 'beads' },
+    ],
+  },
+  {
+    id: 'occasion',
+    label: 'Occasion',
+    type: 'checkbox',
+    options: [
+      { label: 'Everyday', value: 'everyday' },
+      { label: 'Work', value: 'work' },
+      { label: 'Festive', value: 'festive' },
+      { label: 'Wedding', value: 'wedding' },
     ],
   },
   {
@@ -88,40 +155,6 @@ const COMMON_FILTER_TEMPLATES: CategoryFilter[] = [
       { label: '30% or more', value: '30' },
       { label: '20% or more', value: '20' },
       { label: '10% or more', value: '10' },
-    ],
-  },
-  {
-    id: 'condition',
-    label: 'Condition',
-    type: 'select',
-    options: [
-      { label: 'New', value: 'new' },
-      { label: 'Refurbished', value: 'refurbished' },
-      { label: 'Used', value: 'used' },
-    ],
-  },
-  {
-    id: 'warranty',
-    label: 'Warranty',
-    type: 'checkbox',
-    options: [
-      { label: 'No Warranty', value: 'none' },
-      { label: '6 Months', value: '6m' },
-      { label: '1 Year', value: '1y' },
-      { label: '2 Years', value: '2y' },
-      { label: '3+ Years', value: '3y' },
-    ],
-  },
-  {
-    id: 'material',
-    label: 'Material',
-    type: 'checkbox',
-    options: [
-      { label: 'Wood', value: 'wood' },
-      { label: 'Metal', value: 'metal' },
-      { label: 'Plastic', value: 'plastic' },
-      { label: 'Glass', value: 'glass' },
-      { label: 'Fabric', value: 'fabric' },
     ],
   },
 ];
@@ -262,7 +295,7 @@ export default function CategoryFiltersPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <Loader size="md" />
       </div>
     );
   }

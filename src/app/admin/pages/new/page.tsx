@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Layout, FileText } from 'lucide-react';
-import ThemeRenderer from '@/components/ThemeRenderer';
 import PageBuilder from '@/components/PageBuilder';
 import SectionLibrary from '@/components/SectionLibrary';
 import { PageSection } from '@/lib/pageSections';
@@ -119,7 +118,6 @@ export default function NewMarketplacePage() {
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-background">
         {showSectionLibrary && (
           <SectionLibrary
@@ -140,7 +138,7 @@ export default function NewMarketplacePage() {
               </Link>
             </div>
             
-            <h1 className="text-3xl font-bold text-foreground mb-2">Create Marketplace Page</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Create Page</h1>
             <p className="text-muted-foreground text-sm">
               Build your page visually with drag-and-drop sections
             </p>

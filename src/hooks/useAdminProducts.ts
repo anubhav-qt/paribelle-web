@@ -8,7 +8,6 @@ interface UseAdminProductsOptions {
   limit?: number;
   status?: string;
   search?: string;
-  groupBy?: 'none' | 'vendor';
 }
 
 interface ProductsResponse {
@@ -17,23 +16,17 @@ interface ProductsResponse {
 }
 
 export function useAdminProducts(options: UseAdminProductsOptions = {}) {
-  const { page = 1, limit = 20, status, search, groupBy = 'vendor' } = options;
+  const { page = 1, limit = 20, status, search } = options;
   
   return useQuery({
-    queryKey: ['admin-products', page, limit, status, search, groupBy],
+    queryKey: ['admin-products', page, limit, status, search],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (status && status !== 'all') params.append('status', status);
       if (search) params.append('search', search);
       
-      // When grouping by vendor, fetch all products
-      if (groupBy === 'vendor') {
-        params.append('page', '1');
-        params.append('limit', '1000');
-      } else {
-        params.append('page', page.toString());
-        params.append('limit', limit.toString());
-      }
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?${params.toString()}`

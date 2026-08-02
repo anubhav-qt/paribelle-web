@@ -67,6 +67,22 @@ export function useInfiniteProducts(options: UseProductsOptions = {}) {
   });
 }
 
+export function useProductById(id: string | undefined) {
+  return useQuery({
+    queryKey: ['product', 'id', id],
+    queryFn: async () => {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/products/${id}`
+      );
+      if (!response.ok) throw new Error('Product not found');
+      return response.json() as Promise<Product>;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    enabled: !!id,
+  });
+}
+
 export function useProduct(slug: string) {
   return useQuery({
     queryKey: ['product', slug],

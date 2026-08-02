@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import ThemeRenderer from '@/components/ThemeRenderer';
 import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Loader } from '@/components/ui/Loader';
 
 interface MarketplacePage {
   id: string;
@@ -99,10 +99,9 @@ export default function AdminPagesPage() {
   if (loading) {
     return (
       <>
-        <ThemeRenderer component="header" />
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <Loader size="md" className="mx-auto mb-4" />
             <p className="text-muted-foreground">Loading pages...</p>
           </div>
         </div>
@@ -112,15 +111,14 @@ export default function AdminPagesPage() {
 
   return (
     <>
-      <ThemeRenderer component="header" />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-foreground">Marketplace Pages</h1>
+                <h1 className="text-3xl font-bold text-foreground">Custom Pages</h1>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Create custom pages for your marketplace
+                  Create custom pages for the storefront
                 </p>
               </div>
               <div className="flex items-center gap-3">

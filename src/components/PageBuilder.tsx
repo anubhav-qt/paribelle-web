@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { PageSection } from '@/lib/pageSections';
 import SectionRenderer from './SectionRenderer';
+import HotspotEditor from './HotspotEditor';
 import { GripVertical, Settings2, Eye, EyeOff, Trash2, ChevronUp, ChevronDown, Plus } from 'lucide-react';
 
 interface PageBuilderProps {
@@ -175,6 +176,18 @@ function SectionSettingsForm({ section, onUpdate }: { section: PageSection; onUp
     setSettings(updated);
     onUpdate(updated);
   };
+
+  if (section.type === 'shoppable-image') {
+    return (
+      <HotspotEditor
+        settings={settings}
+        onChange={(updated) => {
+          setSettings(updated);
+          onUpdate(updated);
+        }}
+      />
+    );
+  }
 
   const renderField = (key: string, value: any) => {
     // Select dropdowns for specific fields

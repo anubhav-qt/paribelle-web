@@ -13,13 +13,15 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Load saved credentials on mount
+  // Remember the email only. An earlier version also kept the password here in
+  // plain text, so clear any copy left behind on this machine.
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('adminSavedPassword');
+
       const savedEmail = localStorage.getItem('adminSavedEmail');
-      const savedPassword = localStorage.getItem('adminSavedPassword');
-      if (savedEmail && savedPassword) {
-        setFormData({ email: savedEmail, password: savedPassword });
+      if (savedEmail) {
+        setFormData((prev) => ({ ...prev, email: savedEmail }));
         setRememberMe(true);
       }
     }
@@ -48,13 +50,11 @@ export default function AdminLoginPage() {
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      // Save credentials if remember me is checked
+      // Email only — never the password.
       if (rememberMe) {
         localStorage.setItem('adminSavedEmail', formData.email);
-        localStorage.setItem('adminSavedPassword', formData.password);
       } else {
         localStorage.removeItem('adminSavedEmail');
-        localStorage.removeItem('adminSavedPassword');
       }
       
       // Set cookie for middleware (expires in 7 days)
@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
       if (data.user.role === 'super_admin') {
         router.push('/admin');
       } else if (data.user.role === 'vendor_admin') {
-        router.push('/vendor/dashboard');
+        router.push('/admin');
       } else {
         setError('Access denied. Admin privileges required.');
         localStorage.removeItem('token');
@@ -97,7 +97,7 @@ export default function AdminLoginPage() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="admin@marketplace.com"
+              placeholder="admin@paribelle.com"
             />
           </div>
 
@@ -131,7 +131,7 @@ export default function AdminLoginPage() {
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label htmlFor="admin-remember-me" className="ml-2 block text-sm text-gray-700">
-              Remember my credentials
+              Remember my email
             </label>
           </div>
 

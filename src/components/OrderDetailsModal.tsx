@@ -506,9 +506,6 @@ export default function OrderDetailsModal({
                   {order.items.map((item) => {
                     const productImage = item.productImage || item.product?.featuredImage;
                     const productSlug = item.product?.slug;
-                    const vendorSlug = item.product?.vendor?.slug;
-                    const vendorName = item.product?.vendor?.businessName;
-
                     return (
                       <div key={item.id} className="flex items-center gap-4 p-3 bg-muted rounded-lg">
                         {productImage && (
@@ -530,14 +527,6 @@ export default function OrderDetailsModal({
                           <p className="text-sm text-muted-foreground">
                             Qty: {item.quantity} × {formatPrice(item.price, 'INR')}
                           </p>
-                          {vendorName && (
-                            <Link 
-                              href={`/vendors/${vendorSlug}`}
-                              className="text-sm text-primary hover:underline mt-1 inline-block"
-                            >
-                              Sold by {vendorName}
-                            </Link>
-                          )}
                         </div>
                         <p className="font-semibold flex-shrink-0 text-foreground">
                           {formatPrice(item.price * item.quantity, 'INR')}
