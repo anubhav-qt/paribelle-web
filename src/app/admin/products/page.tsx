@@ -164,15 +164,19 @@ export default function AdminProductsPage() {
     if (!confirm('Are you sure you want to delete this product?')) return;
 
     try {
-      await deleteProductMutation.mutateAsync(id);
+      const result = await deleteProductMutation.mutateAsync(id);
+      // A product with order or booking history is archived rather than
+      // deleted — a fixed "deleted successfully" here is how a no-op click on
+      // an already-archived product with history looked like nothing happened
+      // when it had in fact worked exactly as intended.
       setSelectedProductIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
         return next;
       });
-      alert('Product deleted successfully!');
+      alert(result?.message || 'Product deleted successfully!');
     } catch (error) {
-      alert('Failed to delete product. Please try again.');
+      alert(`Failed to delete product: ${errorMessage(error)}`);
     }
   };
 
@@ -214,16 +218,24 @@ export default function AdminProductsPage() {
         selectedIds.map((id) => deleteProductMutation.mutateAsync(id))
       );
 
-      const successCount = results.filter((r) => r.status === 'fulfilled').length;
-      const failedCount = results.length - successCount;
+      // A fulfilled request isn't necessarily a deletion — a product with
+      // order or booking history archives instead, and that split has to be
+      // reported separately or a bulk delete on a mix of products looks like
+      // it silently did nothing for the ones with history.
+      const fulfilled = results.filter(
+        (r) => r.status === 'fulfilled',
+      ) as PromiseFulfilledResult<{ message: string; outcome: string }>[];
+      const deletedCount = fulfilled.filter((r) => r.value.outcome === 'deleted').length;
+      const archivedCount = fulfilled.filter((r) => r.value.outcome !== 'deleted').length;
+      const failedCount = results.length - fulfilled.length;
 
       setSelectedProductIds(new Set());
 
-      if (failedCount === 0) {
-        alert(`Deleted ${successCount} product${successCount !== 1 ? 's' : ''} successfully.`);
-      } else {
-        alert(`Deleted ${successCount} product${successCount !== 1 ? 's' : ''}. ${failedCount} failed.`);
-      }
+      const parts = [];
+      if (deletedCount > 0) parts.push(`${deletedCount} deleted`);
+      if (archivedCount > 0) parts.push(`${archivedCount} archived (order/booking history)`);
+      if (failedCount > 0) parts.push(`${failedCount} failed`);
+      alert(parts.join(', ') + '.');
     } catch (error) {
       alert('Bulk delete failed. Please try again.');
     } finally {

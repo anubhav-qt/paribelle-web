@@ -28,7 +28,14 @@ const filterCategoriesWithProducts = (categories: Category[]): Category[] => {
 export function useCategories({
   vendorId,
   locale = 'en',
-  hideEmptyCategories = true,
+  // Off by default: this storefront's nav (Header, Footer) is built from
+  // exactly two top-level categories, Kurtis and Jewellery, and both should
+  // stay visible as permanent anchors even while a category is temporarily
+  // out of active stock. "Active product count" was never the right signal
+  // for whether a nav item should exist. Pass true explicitly for a caller
+  // that genuinely wants empty branches pruned (e.g. a large multi-vendor
+  // category tree).
+  hideEmptyCategories = false,
 }: UseCategoriesOptions = {}) {
   return useQuery({
     queryKey: ['categories', vendorId, locale, hideEmptyCategories],

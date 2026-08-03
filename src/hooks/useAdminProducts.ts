@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Product } from '@/types/product';
+import { api } from '@/lib/api';
 
 interface UseAdminProductsOptions {
   page?: number;
@@ -78,23 +79,12 @@ export function useUpdateProductStatus() {
 
 export function useDeleteProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async (productId: string) => {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${productId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      
-      if (!response.ok) throw new Error('Failed to delete product');
-      return response.json();
-    },
+    mutationFn: (productId: string) =>
+      api.delete<{ message: string; outcome: 'deleted' | 'archived' | 'already_archived' }>(
+        `/products/${productId}`,
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
     },
