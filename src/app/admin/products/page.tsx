@@ -422,7 +422,7 @@ export default function AdminProductsPage() {
     try {
       setExporting(true);
       const response = await api.raw('GET', '/products/template-simple/download');
-      await downloadBlob(response, `products-template-${Date.now()}.zip`);
+      await downloadBlob(response, 'paribelle-import-template.zip');
     } catch (error) {
       console.error('Error downloading simple template:', error);
       alert(`Failed to generate template: ${errorMessage(error)}`);
