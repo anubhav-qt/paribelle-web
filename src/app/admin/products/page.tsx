@@ -22,6 +22,7 @@ import {
 } from '@/lib/product-form-utils';
 import 'react-quill/dist/quill.snow.css';
 import { Loader } from '@/components/ui/Loader';
+import { api, ApiError, downloadBlob, errorMessage } from '@/lib/api';
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
@@ -104,9 +105,8 @@ export default function AdminProductsPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/tree/all`);
-      const data = await response.json();
-      
+      const data = await api.get<any[]>('/categories/tree/all');
+
       // Flatten the category tree for dropdown display with level info
       const flattenCategories = (categories: any[], level = 0): any[] => {
         let result: any[] = [];
@@ -131,25 +131,12 @@ export default function AdminProductsPage() {
 
   const fetchCustomPages = async (vendorId?: string) => {
     try {
-      const token = localStorage.getItem('token');
-      
       // For admin, fetch both marketplace pages and vendor pages if vendorId is provided
-      const response = await fetch(
-        vendorId 
-          ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}/pages`
-          : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/marketplace/pages`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const data = await api.get<any[]>(
+        vendorId ? `/vendors/${vendorId}/pages` : '/marketplace/pages',
       );
-      if (response.ok) {
-        const data = await response.json();
-        // Only show published pages
-        const publishedPages = data.filter((p: any) => p.status === 'published');
-        setCustomPages(publishedPages);
-      }
+      // Only show published pages
+      setCustomPages((data || []).filter((p: any) => p.status === 'published'));
     } catch (error) {
       console.error('Error fetching custom pages:', error);
       setCustomPages([]);
@@ -158,26 +145,16 @@ export default function AdminProductsPage() {
 
   const fetchLinkableProducts = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?limit=100&status=active`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const products = data.products || data;
-        // Map products with tour detection
-        const mappedProducts = products.map((p: any) => ({
+      const data = await api.get<any>('/products', { params: { limit: 100, status: 'active' } });
+      const products = data.products || data;
+      // Map products with tour detection
+      setLinkableProducts(
+        products.map((p: any) => ({
           id: p.id,
           name: p.name,
           slug: p.slug,
-        }));
-        setLinkableProducts(mappedProducts);
-      }
+        })),
+      );
     } catch (error) {
       console.error('Error fetching linkable products:', error);
     }
@@ -264,24 +241,17 @@ export default function AdminProductsPage() {
 
   const fetchEditCategoryFilters = async (categoryId: string, existingAttributes?: Record<string, any>) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/${categoryId}/filters`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const data = await api.get<any>(`/categories/${categoryId}/filters`);
+      const filteredFilters = (data.filters || []).filter(
+        (f: any) => f.id !== 'priceRange' && f.id !== 'price' &&
+          !['stock', 'stockQuantity', 'isActive', 'active', 'status', 'rating', 'variant attributes'].includes(f.id)
       );
-      if (response.ok) {
-        const data = await response.json();
-        const filteredFilters = (data.filters || []).filter(
-          (f: any) => f.id !== 'priceRange' && f.id !== 'price' &&
-            !['stock', 'stockQuantity', 'isActive', 'active', 'status', 'rating', 'variant attributes'].includes(f.id)
-        );
-        setEditCategoryFilters(filteredFilters);
-        const attrs: Record<string, any> = {};
-        filteredFilters.forEach((filter: any) => {
-          attrs[filter.id] = existingAttributes?.[filter.id] ?? '';
-        });
-        setEditProductAttributes(attrs);
-      }
+      setEditCategoryFilters(filteredFilters);
+      const attrs: Record<string, any> = {};
+      filteredFilters.forEach((filter: any) => {
+        attrs[filter.id] = existingAttributes?.[filter.id] ?? '';
+      });
+      setEditProductAttributes(attrs);
     } catch (error) {
       console.error('Error fetching category filters for edit:', error);
     }
@@ -290,31 +260,15 @@ export default function AdminProductsPage() {
   const handleEdit = async (product: Product) => {
     // Fetch full product details including variants
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${product.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const fullProduct = await response.json();
-        setEditingProduct(fullProduct);
-        // Fetch custom pages - vendor pages if product has vendor, otherwise marketplace pages
-        fetchCustomPages(fullProduct.vendor?.id);
-        setEditFormData(productToFormData(fullProduct));
-        // Load category filters and existing attributes for physical products
-        if (fullProduct.categories?.length > 0) {
-          fetchEditCategoryFilters(fullProduct.categories[0].id, fullProduct.attributes);
-        } else {
-          setEditCategoryFilters([]);
-          setEditProductAttributes({});
-        }
+      const fullProduct = await api.get<any>(`/products/${product.id}`);
+      setEditingProduct(fullProduct);
+      // Fetch custom pages - vendor pages if product has vendor, otherwise marketplace pages
+      fetchCustomPages(fullProduct.vendor?.id);
+      setEditFormData(productToFormData(fullProduct));
+      // Load category filters and existing attributes for physical products
+      if (fullProduct.categories?.length > 0) {
+        fetchEditCategoryFilters(fullProduct.categories[0].id, fullProduct.attributes);
       } else {
-        setEditingProduct(product);
-        // Fetch custom pages - vendor pages if product has vendor, otherwise marketplace pages
-        fetchCustomPages(product.vendor?.id);
-        setEditFormData(productToFormData(product));
         setEditCategoryFilters([]);
         setEditProductAttributes({});
       }
@@ -334,8 +288,6 @@ export default function AdminProductsPage() {
     if (!editingProduct) return;
 
     try {
-      const token = localStorage.getItem('token');
-      
       const updateData: Record<string, any> = { ...editFormData };
 
       // Process physical product attributes
@@ -367,27 +319,14 @@ export default function AdminProductsPage() {
         }
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${editingProduct.id}`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updateData),
-      });
-      
-      if (response.ok) {
-        alert('Product updated successfully!');
-        setEditingProduct(null);
-        // Refetch products using React Query
-        window.location.reload();
-      } else {
-        const error = await response.json();
-        alert(`Failed to update product: ${error.message || 'Unknown error'}`);
-      }
+      await api.patch(`/products/${editingProduct.id}`, updateData);
+      alert('Product updated successfully!');
+      setEditingProduct(null);
+      // Refetch products using React Query
+      window.location.reload();
     } catch (error) {
       console.error('Save error:', error);
-      alert('Failed to update product. Please try again.');
+      alert(`Failed to update product: ${errorMessage(error)}`);
     }
   };
 
@@ -469,50 +408,24 @@ export default function AdminProductsPage() {
         productData.categoryIds = newProductFormData.categoryIds;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productData),
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || JSON.stringify(responseData));
-      }
+      await api.post('/products', productData);
 
       handleCloseAddModal();
       window.location.reload();
       alert('Product created successfully!');
     } catch (error) {
-      alert(`Failed to create product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to create product: ${errorMessage(error)}`);
     }
   };
 
   const downloadSimpleTemplate = async () => {
     try {
       setExporting(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/template-simple/download`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `products-template-${Date.now()}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        alert('Failed to generate template');
-      }
+      const response = await api.raw('GET', '/products/template-simple/download');
+      await downloadBlob(response, `products-template-${Date.now()}.zip`);
     } catch (error) {
       console.error('Error downloading simple template:', error);
-      alert('Failed to generate template');
+      alert(`Failed to generate template: ${errorMessage(error)}`);
     } finally {
       setExporting(false);
     }
@@ -521,29 +434,14 @@ export default function AdminProductsPage() {
   const handleSimpleExport = async () => {
     try {
       setExporting(true);
-      const token = localStorage.getItem('token');
       const ids = Array.from(selectedProductIds);
-      const idsParam = ids.length > 0 ? `?ids=${ids.join(',')}` : '';
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/export-simple/all${idsParam}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `products-physical-${Date.now()}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        alert('Export failed');
-      }
+      const response = await api.raw('GET', '/products/export-simple/all', {
+        params: { ids: ids.length > 0 ? ids.join(',') : undefined },
+      });
+      await downloadBlob(response, `products-physical-${Date.now()}.zip`);
     } catch (error) {
       console.error('Export error:', error);
-      alert('Export failed');
+      alert(`Export failed: ${errorMessage(error)}`);
     } finally {
       setExporting(false);
     }
@@ -556,27 +454,23 @@ export default function AdminProductsPage() {
     try {
       setImporting(true);
       setImportMessage(null);
-      const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('file', file);
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/import-simple/all`,
-        { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData },
-      );
-      const result = await response.json();
-      if (response.ok) {
-        setImportMessage({
-          type: result.success && result.errors?.length === 0 ? 'success' : 'error',
-          text: result.message || (result.success ? 'Import complete' : 'Import failed'),
-          errors: result.errors || [],
-        });
-        if (result.success) setTimeout(() => window.location.reload(), 3000);
-      } else {
-        setImportMessage({ type: 'error', text: result.message || 'Import failed', errors: result.errors || [] });
-      }
+      const result = await api.upload<any>('/products/import-simple/all', formData);
+      setImportMessage({
+        type: result.success && result.errors?.length === 0 ? 'success' : 'error',
+        text: result.message || (result.success ? 'Import complete' : 'Import failed'),
+        errors: result.errors || [],
+      });
+      if (result.success) setTimeout(() => window.location.reload(), 3000);
     } catch (error) {
       console.error('Import error:', error);
-      setImportMessage({ type: 'error', text: error instanceof Error ? error.message : 'Import failed' });
+      const body = error instanceof ApiError ? (error.body as any) : null;
+      setImportMessage({
+        type: 'error',
+        text: errorMessage(error, 'Import failed'),
+        errors: body?.errors || [],
+      });
     } finally {
       setImporting(false);
     }

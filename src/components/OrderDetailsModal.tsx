@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Printer } from 'lucide-react';
 import { formatPrice } from '@/lib/currency';
 import { formatDateTime } from '@/lib/utils/date';
+import { paymentStatusClass, paymentStatusLabel } from '@/lib/utils/payment-status';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 import { Order, OrderItem } from '@/types/common';
 
@@ -116,13 +117,8 @@ export default function OrderDetailsModal({
                 {order.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
               </span>
               {order.paymentStatus && (
-                <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${
-                  order.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                  order.paymentStatus === 'refunded' ? 'bg-purple-100 text-purple-800' :
-                  order.paymentStatus === 'failed' ? 'bg-red-100 text-red-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${paymentStatusClass(order.paymentStatus)}`}>
+                  {paymentStatusLabel(order.paymentStatus)}
                 </span>
               )}
             </div>

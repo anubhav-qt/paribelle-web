@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/currency';
+import { api } from '@/lib/api';
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -56,16 +57,7 @@ export default function AdminAnalyticsPage() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/analytics?range=${dateRange}`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch analytics');
-      }
-      
-      const data = await response.json();
-      setAnalytics(data);
+      setAnalytics(await api.get<any>('/analytics', { params: { range: dateRange } }));
     } catch (error) {
       console.error('Error fetching analytics:', error);
       // Set default empty analytics data

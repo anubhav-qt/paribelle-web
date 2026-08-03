@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Plus, Search } from 'lucide-react';
 import { City, SubLocation } from '@/types/common';
+import { api, errorMessage } from '@/lib/api';
 
 interface StoreLocationSelectorProps {
   initialCityId?: string;
@@ -96,11 +97,7 @@ export default function StoreLocationSelector({
 
   const fetchCities = async (search?: string) => {
     try {
-      const url = search 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations/cities?search=${search}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations/cities`;
-      const response = await fetch(url);
-      const data = await response.json();
+      const data = await api.get<City[]>('/locations/cities', { params: { search } });
       setCities(data);
     } catch (error) {
       console.error('Error fetching cities:', error);
@@ -109,11 +106,9 @@ export default function StoreLocationSelector({
 
   const fetchSubLocations = async (cityId: string, search?: string) => {
     try {
-      const url = search
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations/cities/${cityId}/sub-locations?search=${search}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations/cities/${cityId}/sub-locations`;
-      const response = await fetch(url);
-      const data = await response.json();
+      const data = await api.get<SubLocation[]>(`/locations/cities/${cityId}/sub-locations`, {
+        params: { search },
+      });
       setSubLocations(data);
     } catch (error) {
       console.error('Error fetching sub-locations:', error);
@@ -124,30 +119,20 @@ export default function StoreLocationSelector({
     if (!newCityName.trim()) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations/find-or-create-city`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: newCityName.trim(),
-            state: newCityState.trim() || undefined,
-            country: 'India',
-          }),
-        }
-      );
+      const newCity = await api.post<City>('/locations/find-or-create-city', {
+        name: newCityName.trim(),
+        state: newCityState.trim() || undefined,
+        country: 'India',
+      });
 
-      if (response.ok) {
-        const newCity = await response.json();
-        setCities([...cities, newCity]);
-        setSelectedCity(newCity.id);
-        setNewCityName('');
-        setNewCityState('');
-        setShowAddCity(false);
-      }
+      setCities([...cities, newCity]);
+      setSelectedCity(newCity.id);
+      setNewCityName('');
+      setNewCityState('');
+      setShowAddCity(false);
     } catch (error) {
       console.error('Error creating city:', error);
-      alert('Failed to add city. Please try again.');
+      alert(errorMessage(error, 'Failed to add city. Please try again.'));
     }
   };
 
@@ -155,29 +140,19 @@ export default function StoreLocationSelector({
     if (!newSubLocationName.trim() || !selectedCity) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations/find-or-create-sub-location`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: newSubLocationName.trim(),
-            cityId: selectedCity,
-            zipCode: pincode || undefined,
-          }),
-        }
-      );
+      const newSubLocation = await api.post<SubLocation>('/locations/find-or-create-sub-location', {
+        name: newSubLocationName.trim(),
+        cityId: selectedCity,
+        zipCode: pincode || undefined,
+      });
 
-      if (response.ok) {
-        const newSubLocation = await response.json();
-        setSubLocations([...subLocations, newSubLocation]);
-        setSelectedSubLocation(newSubLocation.id);
-        setNewSubLocationName('');
-        setShowAddSubLocation(false);
-      }
+      setSubLocations([...subLocations, newSubLocation]);
+      setSelectedSubLocation(newSubLocation.id);
+      setNewSubLocationName('');
+      setShowAddSubLocation(false);
     } catch (error) {
       console.error('Error creating sub-location:', error);
-      alert('Failed to add area. Please try again.');
+      alert(errorMessage(error, 'Failed to add area. Please try again.'));
     }
   };
 

@@ -22,6 +22,7 @@ interface CategoryFilter {
 
 import { Category } from '@/types/product';
 import { Loader } from '@/components/ui/Loader';
+import { api, errorMessage } from '@/lib/api';
 
 // Filter templates for the two live categories, Kurtis and Jewellery. Ids
 // must match the keys used in the `Attributes` column of the product import
@@ -178,15 +179,14 @@ export default function CategoryFiltersPage() {
 
   const fetchCategory = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/${categoryId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setCategory(data);
-        setFilters(data.filterConfig?.filters || []);
-      }
+      const data = await api.get<Category & { filterConfig?: { filters?: CategoryFilter[] } }>(
+        `/categories/${categoryId}`,
+      );
+      setCategory(data);
+      setFilters(data.filterConfig?.filters || []);
     } catch (error) {
       console.error('Error fetching category:', error);
-      setError('Failed to load category');
+      setError(errorMessage(error, 'Failed to load category'));
     } finally {
       setLoading(false);
     }
@@ -270,23 +270,12 @@ export default function CategoryFiltersPage() {
     setSuccess('');
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/${categoryId}/filters`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ filters }),
-      });
-
-      if (response.ok) {
-        setSuccess('Filters saved successfully!');
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError('Failed to save filters');
-      }
+      await api.put(`/categories/${categoryId}/filters`, { filters });
+      setSuccess('Filters saved successfully!');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error saving filters:', error);
-      setError('Failed to save filters');
+      setError(`Failed to save filters: ${errorMessage(error)}`);
     } finally {
       setSaving(false);
     }

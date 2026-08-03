@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, CheckCircle } from 'lucide-react';
 import { Loader } from '@/components/ui/Loader';
+import { api } from '@/lib/api';
 
 interface HsnCode {
   id: string;
@@ -54,13 +55,7 @@ export default function HsnCodeAutocomplete({
     if (!code) return;
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${API_URL}/api/v1/hsn-codes/${code}`);
-      
-      if (response.ok) {
-        const hsn = await response.json();
-        setSelectedHsn(hsn);
-      }
+      setSelectedHsn(await api.get<HsnCode>(`/hsn-codes/${code}`));
     } catch (error) {
       console.error('Error fetching HSN details:', error);
     }
@@ -74,16 +69,11 @@ export default function HsnCodeAutocomplete({
 
     setLoading(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(
-        `${API_URL}/api/v1/hsn-codes/search?q=${encodeURIComponent(searchQuery)}&limit=10`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setSuggestions(data);
-        setIsOpen(true);
-      }
+      const data = await api.get<HsnCode[]>('/hsn-codes/search', {
+        params: { q: searchQuery, limit: 10 },
+      });
+      setSuggestions(data);
+      setIsOpen(true);
     } catch (error) {
       console.error('Error searching HSN codes:', error);
     } finally {

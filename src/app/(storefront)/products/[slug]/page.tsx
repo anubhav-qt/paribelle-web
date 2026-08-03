@@ -34,6 +34,28 @@ interface Product extends BaseProduct {
   gstRate?: number; // GST rate in percentage
 }
 
+/**
+ * Stock for whatever the shopper has actually selected — the chosen variation
+ * or variant when the product has them, the product's own figure otherwise.
+ *
+ * `null` means "not known yet": nothing is selected, or the API omitted the
+ * figure. It is deliberately distinct from `0`, which means out of stock. The
+ * three copies of this logic that this replaced each fell back to `999`, which
+ * is why a product with two in stock advertised "999 in stock".
+ */
+function availableStock(
+  product: Pick<Product, 'isParent' | 'hasVariants' | 'stockQuantity'>,
+  selectedVariation: { stockQuantity?: number } | null,
+  selectedVariant: { stockQuantity?: number } | null,
+): number | null {
+  if (product.isParent) return selectedVariation?.stockQuantity ?? null;
+  if (product.hasVariants) return selectedVariant?.stockQuantity ?? null;
+  return product.stockQuantity ?? null;
+}
+
+/** Cap on the quantity stepper while stock is still unknown. */
+const UNKNOWN_STOCK_LIMIT = 99;
+
 export default function ProductDetailPage() {
   const params = useParams();
   const productSlug = params.slug as string;
@@ -68,11 +90,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!product) return;
 
-    const maxStock = product.isParent
-      ? (selectedVariation?.stockQuantity || 999)
-      : product.hasVariants
-        ? (selectedVariant?.stockQuantity ?? 999)
-        : (selectedVariant?.stockQuantity || product.stockQuantity || 999);
+    const maxStock = availableStock(product, selectedVariation, selectedVariant) ?? UNKNOWN_STOCK_LIMIT;
 
     if (quantity > maxStock) {
       setQuantity(Math.max(1, maxStock));
@@ -264,13 +282,9 @@ export default function ProductDetailPage() {
       return;
     }
 
-    const stockQuantity = product.isParent
-      ? selectedVariation?.stockQuantity
-      : product.hasVariants
-        ? selectedVariant?.stockQuantity
-        : product.stockQuantity;
+    const stockQuantity = availableStock(product, selectedVariation, selectedVariant);
 
-    if (stockQuantity !== undefined) {
+    if (stockQuantity !== null) {
       if (stockQuantity === 0) {
         alert('Sorry, this product is out of stock.');
         return;
@@ -312,8 +326,8 @@ export default function ProductDetailPage() {
           quantity: quantity,
           image: (selectedVariation?.images?.[0] || selectedVariation?.featuredImage) || product.images?.[0] || product.featuredImage || '/placeholder-product.png',
           vendorId: product.vendorId || '',
-          stockQuantity: stockQuantity,
-          maxQuantity: stockQuantity,
+          stockQuantity: stockQuantity ?? undefined,
+          maxQuantity: stockQuantity ?? undefined,
           priceType: product.priceType || 'mrp_with_gst',
           gstRate: product.gstRate || 18,
         });
@@ -458,15 +472,9 @@ export default function ProductDetailPage() {
   }
 
   const discount = getBestDiscount();
-  const maxStock = product.isParent
-    ? (selectedVariation?.stockQuantity ?? 999)
-    : product.hasVariants
-      ? (selectedVariant?.stockQuantity ?? 999)
-      : (product.stockQuantity ?? 999);
-  const outOfStock =
-    (product.isParent && selectedVariation && selectedVariation.stockQuantity === 0) ||
-    (product.hasVariants && selectedVariant && selectedVariant.stockQuantity === 0) ||
-    (!product.isParent && !product.hasVariants && product.stockQuantity === 0);
+  const stockOnHand = availableStock(product, selectedVariation, selectedVariant);
+  const maxStock = stockOnHand ?? UNKNOWN_STOCK_LIMIT;
+  const outOfStock = stockOnHand === 0;
   const needsSelection = (product.isParent && !selectedVariation) || (product.hasVariants && !selectedVariant);
 
   const accordionItems = [
@@ -603,11 +611,9 @@ export default function ProductDetailPage() {
                   }}
                   max={maxStock}
                 />
-                {(selectedVariation?.stockQuantity !== undefined ||
-                  selectedVariant?.stockQuantity !== undefined ||
-                  product.stockQuantity !== undefined) && (
+                {stockOnHand !== null && (
                   <p className="mt-2 text-xs text-[hsl(var(--pb-ink-faint))]">
-                    {maxStock > 0 ? `${maxStock} in stock` : 'Out of stock'}
+                    {stockOnHand > 0 ? `${stockOnHand} in stock` : 'Out of stock'}
                   </p>
                 )}
             </div>

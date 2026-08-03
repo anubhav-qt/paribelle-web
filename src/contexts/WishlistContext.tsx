@@ -1,7 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { WishlistItem, WishlistContextType } from '@/lib/types/wishlist';
+import { api, ApiError } from '@/lib/api';
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
@@ -63,6 +64,53 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     setItems([]);
   };
 
+  /**
+   * Drop saved items whose product has been deleted or archived. Same reasoning
+   * as the cart: the list lives in localStorage, so the server cannot prune it
+   * and the list has to check itself on read.
+   */
+  const reconcile = useCallback(async (): Promise<{ removed: WishlistItem[] }> => {
+    const current = itemsRef.current;
+    if (current.length === 0) return { removed: [] };
+
+    const results = await Promise.all(
+      current.map(async (item) => {
+        try {
+          const product = await api.get<any>(`/products/${item.productId}`, { auth: false });
+          const gone = !product || (product.status && product.status !== 'active');
+          return { item, gone, price: Number(product?.price) };
+        } catch (error) {
+          // Only a confirmed 404 removes an item — a network blip must not.
+          if (error instanceof ApiError && error.status === 404) {
+            return { item, gone: true, price: NaN };
+          }
+          return { item, gone: false, price: NaN };
+        }
+      }),
+    );
+
+    const removed = results.filter((r) => r.gone).map((r) => r.item);
+    setItems(
+      results
+        .filter((r) => !r.gone)
+        .map((r) => (Number.isFinite(r.price) ? { ...r.item, price: r.price } : r.item)),
+    );
+
+    return { removed };
+  }, []);
+
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    reconcile().catch((error) => console.error('Wishlist reconciliation failed:', error));
+    // Runs once per mount, not on every wishlist change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
+
   const totalItems = items.length;
 
   return (
@@ -74,6 +122,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         isInWishlist,
         toggleWishlist,
         clearWishlist,
+        reconcile,
         totalItems,
       }}
     >

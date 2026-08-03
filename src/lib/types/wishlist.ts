@@ -15,5 +15,7 @@ export interface WishlistContextType {
   isInWishlist: (productId: string) => boolean;
   toggleWishlist: (item: WishlistItem) => void;
   clearWishlist: () => void;
+  /** Drop saved items whose product has been deleted or archived. */
+  reconcile: () => Promise<{ removed: WishlistItem[] }>;
   totalItems: number;
 }

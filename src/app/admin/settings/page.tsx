@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Settings, MapPin, Save, DollarSign, Upload, Trash2, AlertCircle } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { Loader } from '@/components/ui/Loader';
+import { api, errorMessage } from '@/lib/api';
 
 interface Setting {
   id: string;
@@ -58,9 +59,8 @@ export default function AdminSettingsPage() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/admin/all`);
-      if (response.ok) {
-            const data = await response.json();
+      const data = await api.get<Setting[]>('/settings/admin/all');
+      if (data) {
             setSettings(data);
         
             // Set form values from loaded settings
@@ -160,23 +160,13 @@ export default function AdminSettingsPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/upload/image`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
-
-      if (!response.ok) throw new Error('Upload failed');
-
-      const data = await response.json();
+      const data = await api.upload<{ url: string }>('/upload/image', formData);
       // Store the relative URL (will be prefixed with API URL when fetched)
       setMarketplaceLogo(data.url);
       showMessage('success', 'Logo uploaded successfully. Remember to save settings.');
     } catch (error) {
       console.error('Error uploading logo:', error);
-      showMessage('error', 'Failed to upload logo');
+      showMessage('error', errorMessage(error, 'Failed to upload logo'));
     } finally {
       setUploadingLogo(false);
       if (fileInputRef.current) {
@@ -187,19 +177,11 @@ export default function AdminSettingsPage() {
 
   const updateSetting = async (key: string, value: any, description?: string) => {
     try {
-      const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/${key}`,
-            {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ value, description }),
-            }
-      );
-      
-      if (!response.ok) throw new Error('Failed to update setting');
+      await api.put(`/settings/${key}`, { value, description });
       return true;
     } catch (error) {
-      console.error('Error updating setting:', error);
+      console.error(`Error updating setting "${key}":`, error);
+      showMessage('error', errorMessage(error, `Failed to update "${key}"`));
       return false;
     }
   };
@@ -304,14 +286,7 @@ export default function AdminSettingsPage() {
       setCleanupResults(null);
       setOrphanImages([]);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/admin/cleanup-orphan-images`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      if (!response.ok) throw new Error('Failed to scan orphan images');
-      
-      const data = await response.json();
+      const data = await api.post<any>('/products/admin/cleanup-orphan-images');
       setCleanupResults(data);
       setOrphanImages(data.orphans || []);
       
@@ -322,7 +297,7 @@ export default function AdminSettingsPage() {
       }
     } catch (error) {
       console.error('Error scanning orphan images:', error);
-      showMessage('error', 'Failed to scan orphan images');
+      showMessage('error', errorMessage(error, 'Failed to scan orphan images'));
     } finally {
       setCleanupLoading(false);
     }
@@ -336,14 +311,9 @@ export default function AdminSettingsPage() {
     try {
       setCleanupLoading(true);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/admin/cleanup-orphan-images?delete=true`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const data = await api.post<any>('/products/admin/cleanup-orphan-images', undefined, {
+        params: { delete: true },
       });
-      
-      if (!response.ok) throw new Error('Failed to delete orphan images');
-      
-      const data = await response.json();
       setCleanupResults(data);
       
       if (data.deleted > 0) {
@@ -354,7 +324,7 @@ export default function AdminSettingsPage() {
       }
     } catch (error) {
       console.error('Error deleting orphan images:', error);
-      showMessage('error', 'Failed to delete orphan images');
+      showMessage('error', errorMessage(error, 'Failed to delete orphan images'));
     } finally {
       setCleanupLoading(false);
     }

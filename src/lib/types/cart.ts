@@ -16,12 +16,24 @@ export interface CartItem {
   gstRate?: number; // GST rate (e.g., 18 for 18%)
 }
 
+/** What a pass of `reconcile` changed, for reporting back to the shopper. */
+export interface CartReconciliation {
+  /** Lines dropped because the product is gone, archived, or out of stock. */
+  removed: CartItem[];
+  /** Lines whose price has moved since they were added. */
+  repriced: Array<{ item: CartItem; from: number; to: number }>;
+  /** Lines trimmed because stock no longer covers the requested quantity. */
+  restocked: Array<{ item: CartItem; from: number; to: number }>;
+}
+
 export interface CartContextType {
   items: CartItem[];
   addToCart: (item: Omit<CartItem, 'id'>) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
+  /** Re-check every line against the catalogue. See CartContext. */
+  reconcile: () => Promise<CartReconciliation>;
   totalItems: number;
   totalPrice: number;
   isOpen: boolean;

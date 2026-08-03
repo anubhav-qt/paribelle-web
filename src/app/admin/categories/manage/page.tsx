@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Edit2, Trash2, Save, X, ChevronRight } from 'lucide-re
 import { Category } from '@/types/product';
 import { generateSlug } from '@/lib/utils/string';
 import { Loader } from '@/components/ui/Loader';
+import { api, errorMessage } from '@/lib/api';
 
 export default function ManageCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -28,11 +29,7 @@ export default function ManageCategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/tree/all`);
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data);
-      }
+      setCategories(await api.get<Category[]>('/categories/tree/all'));
     } catch (error) {
       console.error('Error fetching categories:', error);
     } finally {
@@ -43,43 +40,31 @@ export default function ManageCategoriesPage() {
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      await api.post('/categories', formData);
+      await fetchCategories();
+      setShowAddForm(false);
+      setFormData({
+        name: '',
+        slug: '',
+        description: '',
+        parentId: '',
+        sortOrder: 0,
+        isActive: true,
       });
-
-      if (response.ok) {
-        await fetchCategories();
-        setShowAddForm(false);
-        setFormData({
-          name: '',
-          slug: '',
-          description: '',
-          parentId: '',
-          sortOrder: 0,
-          isActive: true,
-        });
-      }
     } catch (error) {
       console.error('Error adding category:', error);
+      alert(`Failed to add category: ${errorMessage(error)}`);
     }
   };
 
   const handleUpdateCategory = async (id: string, updates: Partial<Category>) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-
-      if (response.ok) {
-        await fetchCategories();
-        setEditingId(null);
-      }
+      await api.put(`/categories/${id}`, updates);
+      await fetchCategories();
+      setEditingId(null);
     } catch (error) {
       console.error('Error updating category:', error);
+      alert(`Failed to update category: ${errorMessage(error)}`);
     }
   };
 
@@ -89,29 +74,12 @@ export default function ManageCategoriesPage() {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        let message = `Delete failed (${response.status})`;
-        try {
-          const err = await response.json();
-          if (err?.message) {
-            message = Array.isArray(err.message) ? err.message.join(', ') : err.message;
-          }
-        } catch {
-          // Ignore JSON parse errors, keep fallback message.
-        }
-        alert(`Failed to delete category: ${message}`);
-        return;
-      }
-
+      await api.delete(`/categories/${id}`);
       await fetchCategories();
       alert('Category deleted successfully.');
     } catch (error) {
       console.error('Error deleting category:', error);
-      alert('Failed to delete category due to network/server error.');
+      alert(`Failed to delete category: ${errorMessage(error)}`);
     }
   };
 

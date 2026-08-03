@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/lib/currency';
@@ -21,17 +21,22 @@ import {
 import Link from 'next/link';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { Loader } from '@/components/ui/Loader';
+import { api } from '@/lib/api';
 
 type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
 
 function CheckoutContent() {
   const router = useRouter();
-  const { items, totalItems, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { items, totalItems, updateQuantity, removeFromCart, clearCart, reconcile } = useCart();
   const { createOrder: createRazorpayOrder, verifyPayment, openCheckout } = useRazorpay();
   const theme = useThemeClasses();
 
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('cart');
   const [loading, setLoading] = useState(false);
+  /** Synchronous re-entry guard for the place-order button. */
+  const submittingRef = useRef(false);
+  /** Idempotency key for the in-flight order attempt; null between attempts. */
+  const idempotencyKeyRef = useRef<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [marketplaceLogo, setMarketplaceLogo] = useState('');
   const [marketplaceName, setMarketplaceName] = useState('PariBelle');
@@ -263,9 +268,35 @@ function CheckoutContent() {
 
 
   const handlePlaceOrder = async () => {
+    // `loading` disables the button, but state updates do not land until the
+    // next render — a fast double-click gets two calls in before then. A ref
+    // flips synchronously, so the second click has nothing to do.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
-    
+
     try {
+      // Last chance to catch a product that was deleted or restocked while the
+      // cart sat open. Ordering something that no longer exists fails at the
+      // API with a much less helpful message.
+      const { removed, repriced, restocked } = await reconcile();
+      if (removed.length > 0 || restocked.length > 0) {
+        const lines = [
+          ...removed.map((i) => `• ${i.name} is no longer available and was removed`),
+          ...restocked.map(({ item, to }) => `• ${item.name} is now limited to ${to}`),
+        ];
+        alert(`Your cart changed:\n\n${lines.join('\n')}\n\nPlease review before placing the order.`);
+        return;
+      }
+      if (repriced.length > 0) {
+        const lines = repriced.map(
+          ({ item, from, to }) => `• ${item.name}: ${from.toLocaleString()} → ${to.toLocaleString()}`,
+        );
+        if (!confirm(`Some prices have changed:\n\n${lines.join('\n')}\n\nPlace the order at the new prices?`)) {
+          return;
+        }
+      }
+
       let token = localStorage.getItem('token');
       const userStr = localStorage.getItem('user');
 
@@ -316,11 +347,19 @@ function CheckoutContent() {
       console.log('Order data being sent:', orderData);
       console.log('Total calculations:', { subtotalWithTax, subtotalBeforeTax, shippingCost, tax, finalTotal });
 
+      // Stable for as long as this attempt lasts, so a retry after a timeout
+      // returns the order the first attempt already created instead of placing
+      // a second one. Cleared once the order is confirmed.
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = crypto.randomUUID();
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'Idempotency-Key': idempotencyKeyRef.current,
         },
         body: JSON.stringify(orderData),
       });
@@ -401,10 +440,13 @@ function CheckoutContent() {
         clearCart();
         setCurrentStep('confirmation');
       }
+      // The order exists now; a later attempt is a genuinely new order.
+      idempotencyKeyRef.current = null;
     } catch (error) {
       console.error('Error placing order:', error);
       alert(error instanceof Error ? error.message : 'Failed to place order. Please try again.');
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -453,13 +495,28 @@ function CheckoutContent() {
           }
         },
         async (error) => {
-          // Payment failed or cancelled
+          // Payment failed or cancelled. The order already exists and is
+          // holding stock, so release it rather than leaving it pending
+          // forever — dismissing the modal produces no webhook at all.
           console.error('Payment failed:', error);
-          
-          if (error?.message !== 'Payment cancelled by user') {
-            alert('Payment failed. Please try again.');
+
+          const cancelled = error?.message === 'Payment cancelled by user';
+          try {
+            await api.patch(`/orders/${orderId}/payment-failed`, {
+              reason: cancelled ? 'Payment cancelled by customer' : error?.message || 'Payment failed',
+            });
+          } catch (releaseError) {
+            // Nothing more the page can do; the order stays pending and an
+            // admin (or the webhook) will have to settle it.
+            console.error('Failed to release order after payment failure:', releaseError);
           }
-          
+
+          alert(
+            cancelled
+              ? 'Payment cancelled. Your order was not placed and the items are still in your cart.'
+              : 'Payment failed, so your order was not placed. Your items are still in your cart — please try again.',
+          );
+
           setLoading(false);
         }
       );

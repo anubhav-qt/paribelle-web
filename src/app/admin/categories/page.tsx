@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Settings, ChevronRight, Package } from 'lucide-react';
 import { Category } from '@/types/product';
 import { Loader } from '@/components/ui/Loader';
+import { api } from '@/lib/api';
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -16,11 +17,7 @@ export default function AdminCategoriesPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/root`);
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data);
-      }
+      setCategories(await api.get<Category[]>('/categories/root'));
     } catch (error) {
       console.error('Error fetching categories:', error);
     } finally {

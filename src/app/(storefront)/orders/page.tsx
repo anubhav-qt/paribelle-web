@@ -775,8 +775,9 @@ export default function OrdersPage() {
                       </button>
                     )}
                     {/* Cancel order only allowed before shipping (allows cancellation even if paid - refund will be processed) */}
-                    {['pending', 'confirmed', 'processing'].includes(order.status.toLowerCase()) && 
-                     order.paymentStatus !== 'refunded' && (
+                    {['pending', 'confirmed', 'processing'].includes(order.status.toLowerCase()) &&
+                     order.paymentStatus !== 'refunded' &&
+                     order.paymentStatus !== 'refund_pending' && (
                       <button 
                         onClick={() => {
                           setOrderToAction(order);

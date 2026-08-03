@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { SlidersHorizontal, Package, Star } from 'lucide-react';
+import { SlidersHorizontal, Package, Star, X } from 'lucide-react';
 import LocationFilter from '@/components/LocationFilter';
 import ProductCard from '@/components/product/ProductCard';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
@@ -47,6 +47,213 @@ const VIRTUAL_COLLECTIONS: Record<
       products.filter((p) => p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price)),
   },
 };
+
+type CategoryFilterDef = NonNullable<Category['filterConfig']>['filters'][number];
+
+/**
+ * A range filter's current upper bound. The slider is single-handled, so the
+ * value is a plain number meaning "up to this much"; `max` means unconstrained.
+ * The state used to be seeded with a `[min, max]` tuple but written back as a
+ * scalar, after which the filter matched nothing and rendered its label as
+ * "0,1000".
+ */
+function rangeValueFor(filter: CategoryFilterDef, value: unknown): number {
+  const max = filter.max ?? 100;
+  return typeof value === 'number' && Number.isFinite(value) ? value : max;
+}
+
+/** A range filter set to its maximum imposes no constraint. */
+function rangeIsUnset(filter: CategoryFilterDef, value: unknown): boolean {
+  return rangeValueFor(filter, value) >= (filter.max ?? 100);
+}
+
+interface FilterPanelProps {
+  /** Distinguishes this panel's radio group from the other panel's. */
+  idPrefix: string;
+  category: Category | null;
+  subcategories: Category[];
+  locationFilterEnabled: boolean;
+  currency: string;
+  maxProductPrice: number;
+  priceRange: [number, number];
+  setPriceRange: (range: [number, number]) => void;
+  minRating: number;
+  setMinRating: (rating: number) => void;
+  showDiscountOnly: boolean;
+  setShowDiscountOnly: (value: boolean) => void;
+  setCityId: (id: string | null) => void;
+  setSubLocationId: (id: string | null) => void;
+  dynamicFilterDefs: CategoryFilterDef[];
+  dynamicFilters: Record<string, any>;
+  onDynamicFilterChange: (key: string, value: any, type: string) => void;
+}
+
+/**
+ * The filter sidebar. Deliberately declared at module scope: when this lived
+ * inside the page component React saw a brand-new component type on every
+ * render and threw away the whole subtree, so a click that changed one filter
+ * remounted the panel underneath the pointer and the change appeared not to
+ * take. Everything it needs comes in as props.
+ */
+function FilterPanel({
+  idPrefix,
+  category,
+  subcategories,
+  locationFilterEnabled,
+  currency,
+  maxProductPrice,
+  priceRange,
+  setPriceRange,
+  minRating,
+  setMinRating,
+  showDiscountOnly,
+  setShowDiscountOnly,
+  setCityId,
+  setSubLocationId,
+  dynamicFilterDefs,
+  dynamicFilters,
+  onDynamicFilterChange,
+}: FilterPanelProps) {
+  return (
+    <div className="space-y-6">
+      {subcategories.length > 0 && (
+        <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
+          <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Categories</h3>
+          <div className="space-y-1">
+            <Link
+              href={`/category/${category!.slug}`}
+              className="block py-1.5 text-sm font-medium text-[hsl(var(--pb-rose-deep))]"
+            >
+              All {category!.name}
+            </Link>
+            {subcategories.map((subcat) => (
+              <Link
+                key={subcat.id}
+                href={`/category/${subcat.slug}`}
+                className="block py-1.5 text-sm text-[hsl(var(--pb-ink-muted))] hover:text-[hsl(var(--pb-rose-deep))]"
+              >
+                {subcat.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {locationFilterEnabled && (
+        <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
+          <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Location</h3>
+          <LocationFilter
+            onFilterChange={(c, s) => {
+              setCityId(c);
+              setSubLocationId(s);
+            }}
+            showLabel={false}
+          />
+        </div>
+      )}
+
+      <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
+        <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Price</h3>
+        <input
+          type="range"
+          min="0"
+          max={maxProductPrice}
+          step={Math.ceil(maxProductPrice / 100) || 1}
+          value={priceRange[1]}
+          onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+          className="w-full accent-[hsl(var(--pb-rose))]"
+        />
+        <div className="flex items-center justify-between text-xs text-[hsl(var(--pb-ink-muted))]">
+          <span>{getCurrencySymbol(currency)}{priceRange[0].toLocaleString()}</span>
+          <span>{getCurrencySymbol(currency)}{priceRange[1].toLocaleString()}</span>
+        </div>
+      </div>
+
+      <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
+        <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Customer Rating</h3>
+        <div className="space-y-2">
+          {[4, 3, 2, 1, 0].map((rating) => (
+            <Radio
+              key={rating}
+              name={`${idPrefix}-rating`}
+              checked={minRating === rating}
+              onChange={() => setMinRating(rating)}
+              label={
+                rating > 0 ? (
+                  <span className="flex items-center gap-1">
+                    {rating} <Star className="h-3.5 w-3.5 fill-[hsl(var(--pb-gold))] text-[hsl(var(--pb-gold))]" /> &amp; up
+                  </span>
+                ) : (
+                  'All ratings'
+                )
+              }
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
+        <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Discount</h3>
+        <Checkbox
+          checked={showDiscountOnly}
+          onChange={(e) => setShowDiscountOnly(e.target.checked)}
+          label="Show only discounted"
+        />
+      </div>
+
+      {dynamicFilterDefs.map((filter) => (
+        <div key={filter.id} className="border-b border-[hsl(var(--pb-linen))] pb-5 last:border-b-0">
+          <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">{filter.label}</h3>
+          {filter.type === 'select' && (
+            <Select
+              value={dynamicFilters[filter.id] || ''}
+              onChange={(e) => onDynamicFilterChange(filter.id, e.target.value, filter.type)}
+            >
+              <option value="">All</option>
+              {filter.options?.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          )}
+          {(filter.type === 'multiselect' || filter.type === 'checkbox') && (
+            <div className="max-h-48 space-y-1.5 overflow-y-auto">
+              {filter.options?.slice(0, 10).map((option) => (
+                <Checkbox
+                  key={option.value}
+                  checked={(dynamicFilters[filter.id] || []).includes(option.value)}
+                  onChange={() => onDynamicFilterChange(filter.id, option.value, filter.type)}
+                  label={option.label}
+                />
+              ))}
+            </div>
+          )}
+          {filter.type === 'range' && (
+            <div className="space-y-2">
+              <input
+                type="range"
+                min={filter.min ?? 0}
+                max={filter.max ?? 100}
+                step={filter.step || 1}
+                value={rangeValueFor(filter, dynamicFilters[filter.id])}
+                onChange={(e) => onDynamicFilterChange(filter.id, Number(e.target.value), filter.type)}
+                className="w-full accent-[hsl(var(--pb-rose))]"
+              />
+              <div className="flex items-center justify-between text-xs text-[hsl(var(--pb-ink-muted))]">
+                <span>{(filter.min ?? 0).toLocaleString()}</span>
+                <span className="font-medium text-[hsl(var(--pb-ink))]">
+                  Up to {rangeValueFor(filter, dynamicFilters[filter.id]).toLocaleString()}
+                </span>
+                <span>{(filter.max ?? 100).toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function CategoryPage() {
   const params = useParams();
@@ -94,7 +301,7 @@ export default function CategoryPage() {
         if (HIDDEN_FILTER_IDS.includes(filter.id)) return;
         if (filter.type === 'multiselect' || filter.type === 'checkbox') initialFilters[filter.id] = [];
         else if (filter.type === 'select') initialFilters[filter.id] = '';
-        else if (filter.type === 'range') initialFilters[filter.id] = [filter.min || 0, filter.max || 1000];
+        else if (filter.type === 'range') initialFilters[filter.id] = filter.max ?? 100;
       });
       setDynamicFilters(initialFilters);
     }
@@ -222,14 +429,18 @@ export default function CategoryPage() {
     }
 
     Object.entries(dynamicFilters).forEach(([key, value]) => {
-      if (Array.isArray(value) && value.length === 2 && typeof value[0] === 'number') {
+      if (typeof value === 'number') {
         if (key === 'price' || key === 'priceRange') return;
+        const def = dynamicFilterDefs.find((f) => f.id === key);
+        // At its maximum the slider means "no upper bound" — skip it entirely
+        // so it doesn't exclude products that carry no value for the attribute.
+        if (!def || rangeIsUnset(def, value)) return;
         filtered = filtered.filter((product) => {
           const vals = getAttrValues(product, key);
           if (vals.length === 0) return true;
           return vals.some((v) => {
             const n = Number(v);
-            return n >= value[0] && n <= value[1];
+            return Number.isFinite(n) && n <= value;
           });
         });
       } else if (Array.isArray(value) && value.length > 0) {
@@ -278,7 +489,7 @@ export default function CategoryPage() {
         if (HIDDEN_FILTER_IDS.includes(filter.id)) return;
         if (filter.type === 'multiselect' || filter.type === 'checkbox') resetDynamic[filter.id] = [];
         else if (filter.type === 'select') resetDynamic[filter.id] = '';
-        else if (filter.type === 'range') resetDynamic[filter.id] = [filter.min || 0, filter.max || 1000];
+        else if (filter.type === 'range') resetDynamic[filter.id] = filter.max ?? 100;
       });
       setDynamicFilters(resetDynamic);
     }
@@ -301,145 +512,97 @@ export default function CategoryPage() {
     (f) => f.id !== 'price' && f.id !== 'priceRange' && !HIDDEN_FILTER_IDS.includes(f.id)
   );
 
-  const FilterPanel = () => (
-    <div className="space-y-6">
-      {subcategories.length > 0 && (
-        <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
-          <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Categories</h3>
-          <div className="space-y-1">
-            <Link
-              href={`/category/${category!.slug}`}
-              className="block py-1.5 text-sm font-medium text-[hsl(var(--pb-rose-deep))]"
-            >
-              All {category!.name}
-            </Link>
-            {subcategories.map((subcat) => (
-              <Link
-                key={subcat.id}
-                href={`/category/${subcat.slug}`}
-                className="block py-1.5 text-sm text-[hsl(var(--pb-ink-muted))] hover:text-[hsl(var(--pb-rose-deep))]"
-              >
-                {subcat.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+  /** Clear one filter without disturbing the others. */
+  const clearDynamicFilter = (filterId: string, optionValue?: string) => {
+    const def = dynamicFilterDefs.find((f) => f.id === filterId);
+    setDynamicFilters((prev) => {
+      const current = prev[filterId];
+      if (optionValue !== undefined && Array.isArray(current)) {
+        return { ...prev, [filterId]: current.filter((v: string) => v !== optionValue) };
+      }
+      if (def?.type === 'range') return { ...prev, [filterId]: def.max ?? 100 };
+      if (Array.isArray(current)) return { ...prev, [filterId]: [] };
+      return { ...prev, [filterId]: '' };
+    });
+  };
 
-      {locationFilterEnabled && (
-        <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
-          <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Location</h3>
-          <LocationFilter
-            onFilterChange={(c, s) => {
-              setCityId(c);
-              setSubLocationId(s);
-            }}
-            showLabel={false}
-          />
-        </div>
-      )}
+  /**
+   * One chip per applied filter, each individually removable. Without these
+   * the only way to undo a selection was to find the control again, which on
+   * the storefront reads as the filter being stuck.
+   */
+  const activeFilterChips: Array<{ key: string; label: string; onRemove: () => void }> = [];
 
-      <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
-        <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Price</h3>
-        <input
-          type="range"
-          min="0"
-          max={maxProductPrice}
-          step={Math.ceil(maxProductPrice / 100) || 1}
-          value={priceRange[1]}
-          onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-          className="w-full accent-[hsl(var(--pb-rose))]"
-        />
-        <div className="flex items-center justify-between text-xs text-[hsl(var(--pb-ink-muted))]">
-          <span>{getCurrencySymbol(currency)}{priceRange[0].toLocaleString()}</span>
-          <span>{getCurrencySymbol(currency)}{priceRange[1].toLocaleString()}</span>
-        </div>
-      </div>
+  for (const def of dynamicFilterDefs) {
+    const value = dynamicFilters[def.id];
 
-      <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
-        <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Customer Rating</h3>
-        <div className="space-y-2">
-          {[4, 3, 2, 1, 0].map((rating) => (
-            <Radio
-              key={rating}
-              name="rating"
-              checked={minRating === rating}
-              onChange={() => setMinRating(rating)}
-              label={
-                rating > 0 ? (
-                  <span className="flex items-center gap-1">
-                    {rating} <Star className="h-3.5 w-3.5 fill-[hsl(var(--pb-gold))] text-[hsl(var(--pb-gold))]" /> &amp; up
-                  </span>
-                ) : (
-                  'All ratings'
-                )
-              }
-            />
-          ))}
-        </div>
-      </div>
+    if (Array.isArray(value)) {
+      for (const selected of value) {
+        const option = def.options?.find((o) => o.value === selected);
+        activeFilterChips.push({
+          key: `${def.id}:${selected}`,
+          label: `${def.label}: ${option?.label ?? selected}`,
+          onRemove: () => clearDynamicFilter(def.id, selected),
+        });
+      }
+    } else if (def.type === 'range') {
+      if (!rangeIsUnset(def, value)) {
+        activeFilterChips.push({
+          key: def.id,
+          label: `${def.label}: up to ${rangeValueFor(def, value).toLocaleString()}`,
+          onRemove: () => clearDynamicFilter(def.id),
+        });
+      }
+    } else if (typeof value === 'string' && value) {
+      const option = def.options?.find((o) => o.value === value);
+      activeFilterChips.push({
+        key: def.id,
+        label: `${def.label}: ${option?.label ?? value}`,
+        onRemove: () => clearDynamicFilter(def.id),
+      });
+    }
+  }
 
-      <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
-        <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Discount</h3>
-        <Checkbox
-          checked={showDiscountOnly}
-          onChange={(e) => setShowDiscountOnly(e.target.checked)}
-          label="Show only discounted"
-        />
-      </div>
+  if (minRating > 0) {
+    activeFilterChips.push({
+      key: 'rating',
+      label: `Rating: ${minRating}★ & up`,
+      onRemove: () => setMinRating(0),
+    });
+  }
+  if (showDiscountOnly) {
+    activeFilterChips.push({
+      key: 'discount',
+      label: 'Discounted only',
+      onRemove: () => setShowDiscountOnly(false),
+    });
+  }
+  if (priceRange[1] < maxProductPrice) {
+    activeFilterChips.push({
+      key: 'price',
+      label: `Price: up to ${getCurrencySymbol(currency)}${priceRange[1].toLocaleString()}`,
+      onRemove: () => setPriceRange([0, maxProductPrice]),
+    });
+  }
 
-      {dynamicFilterDefs.map((filter) => (
-        <div key={filter.id} className="border-b border-[hsl(var(--pb-linen))] pb-5 last:border-b-0">
-          <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">{filter.label}</h3>
-          {filter.type === 'select' && (
-            <Select
-              value={dynamicFilters[filter.id] || ''}
-              onChange={(e) => handleDynamicFilterChange(filter.id, e.target.value, filter.type)}
-            >
-              <option value="">All</option>
-              {filter.options?.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          )}
-          {(filter.type === 'multiselect' || filter.type === 'checkbox') && (
-            <div className="max-h-48 space-y-1.5 overflow-y-auto">
-              {filter.options?.slice(0, 10).map((option) => (
-                <Checkbox
-                  key={option.value}
-                  checked={(dynamicFilters[filter.id] || []).includes(option.value)}
-                  onChange={() => handleDynamicFilterChange(filter.id, option.value, filter.type)}
-                  label={option.label}
-                />
-              ))}
-            </div>
-          )}
-          {filter.type === 'range' && (
-            <div className="space-y-2">
-              <input
-                type="range"
-                min={filter.min || 0}
-                max={filter.max || 100}
-                step={filter.step || 1}
-                value={dynamicFilters[filter.id] || filter.min || 0}
-                onChange={(e) => handleDynamicFilterChange(filter.id, Number(e.target.value), filter.type)}
-                className="w-full accent-[hsl(var(--pb-rose))]"
-              />
-              <div className="flex items-center justify-between text-xs text-[hsl(var(--pb-ink-muted))]">
-                <span>{filter.min?.toLocaleString()}</span>
-                <span className="font-medium text-[hsl(var(--pb-ink))]">
-                  {(dynamicFilters[filter.id] || filter.min || 0).toLocaleString()}
-                </span>
-                <span>{filter.max?.toLocaleString()}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
+  const filterPanelProps = {
+    category,
+    subcategories,
+    locationFilterEnabled,
+    currency,
+    maxProductPrice,
+    priceRange,
+    setPriceRange,
+    minRating,
+    setMinRating,
+    showDiscountOnly,
+    setShowDiscountOnly,
+    setCityId,
+    setSubLocationId,
+    dynamicFilterDefs,
+    dynamicFilters,
+    onDynamicFilterChange: handleDynamicFilterChange,
+  };
 
   if (loading) {
     return (
@@ -500,7 +663,7 @@ export default function CategoryPage() {
                   Clear all
                 </button>
               </div>
-              <FilterPanel />
+              <FilterPanel idPrefix="desktop" {...filterPanelProps} />
             </div>
           </aside>
 
@@ -520,6 +683,28 @@ export default function CategoryPage() {
                 </Select>
               </div>
             </div>
+
+            {activeFilterChips.length > 0 && (
+              <div className="mb-6 flex flex-wrap items-center gap-2">
+                {activeFilterChips.map((chip) => (
+                  <button
+                    key={chip.key}
+                    onClick={chip.onRemove}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--pb-linen))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))] transition-colors hover:border-[hsl(var(--pb-rose))] hover:text-[hsl(var(--pb-ink))]"
+                  >
+                    {chip.label}
+                    <X className="h-3 w-3" />
+                    <span className="sr-only">Remove filter</span>
+                  </button>
+                ))}
+                <button
+                  onClick={resetFilters}
+                  className="text-xs text-[hsl(var(--pb-rose-deep))] hover:underline"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
 
             {filteredProducts.length === 0 ? (
               <EmptyState
@@ -545,7 +730,14 @@ export default function CategoryPage() {
 
       <Drawer open={showFilters} onClose={() => setShowFilters(false)} side="bottom" title="Filters">
         <div className="p-6">
-          <FilterPanel />
+          {activeFilterChips.length > 0 && (
+            <div className="mb-4 flex justify-end">
+              <button onClick={resetFilters} className="text-xs text-[hsl(var(--pb-rose-deep))] hover:underline">
+                Clear all
+              </button>
+            </div>
+          )}
+          <FilterPanel idPrefix="drawer" {...filterPanelProps} />
         </div>
       </Drawer>
     </div>

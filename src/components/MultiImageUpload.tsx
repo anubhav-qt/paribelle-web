@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { X, Upload, Image as ImageIcon } from 'lucide-react';
 import { Loader } from '@/components/ui/Loader';
+import { api, errorMessage } from '@/lib/api';
 
 interface MultiImageUploadProps {
   value?: string[];
@@ -46,22 +47,13 @@ export default function MultiImageUpload({
         formData.append('files', file);
       });
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/upload/images`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
+      const data = await api.upload<{ url: string }[]>('/upload/images', formData);
       // Store relative paths, not full URLs
-      const imagePaths = data.map((item: any) => item.url);
+      const imagePaths = data.map((item) => item.url);
       onChange([...value, ...imagePaths]);
     } catch (err) {
       console.error('Upload error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to upload images. Please try again.');
+      setError(errorMessage(err, 'Failed to upload images. Please try again.'));
     } finally {
       setUploading(false);
     }

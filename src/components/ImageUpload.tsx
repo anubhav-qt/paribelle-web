@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Loader } from '@/components/ui/Loader';
+import { api, errorMessage } from '@/lib/api';
 
 interface ImageUploadProps {
   value?: string;
@@ -33,21 +34,12 @@ export default function ImageUpload({ value, onChange, label, className = '' }: 
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/upload/image`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
+      const data = await api.upload<{ url: string }>('/upload/image', formData);
       // Store relative path, not full URL
       onChange(data.url);
     } catch (err) {
       console.error('Upload error:', err);
-      setError('Failed to upload image. Please try again.');
+      setError(errorMessage(err, 'Failed to upload image. Please try again.'));
     } finally {
       setUploading(false);
     }

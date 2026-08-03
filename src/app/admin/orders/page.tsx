@@ -6,6 +6,7 @@ import { formatCurrencyWhole } from '@/lib/currency';
 import { getStatusColor } from '@/lib/utils/status';
 import { formatDateTime } from '@/lib/utils/date';
 import { toggleSort } from '@/lib/utils/sort';
+import { paymentStatusClass } from '@/lib/utils/payment-status';
 import { ArrowUpDown, Eye, Search, Filter, Download, Printer } from 'lucide-react';
 import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
@@ -669,12 +670,7 @@ export default function AdminOrdersPage() {
                           onChange={(e) => handlePaymentStatusChange(order.id, e.target.value)}
                           disabled={order.status === 'refunded' || order.paymentStatus === 'paid'}
                           title={order.paymentStatus === 'paid' ? 'Online payments cannot be changed' : ''}
-                          className={`px-3 py-1 rounded-full text-xs font-medium border-0 ${
-                            order.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                            order.paymentStatus === 'refunded' ? 'bg-purple-100 text-purple-800' :
-                            order.paymentStatus === 'failed' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          } ${
+                          className={`px-3 py-1 rounded-full text-xs font-medium border-0 ${paymentStatusClass(order.paymentStatus)} ${
                             order.status === 'refunded' || order.paymentStatus === 'paid'
                               ? 'cursor-not-allowed opacity-75' 
                               : 'cursor-pointer'
@@ -683,6 +679,10 @@ export default function AdminOrdersPage() {
                           <option value="pending">Pending (COD)</option>
                           <option value="paid">Paid</option>
                           <option value="failed">Failed</option>
+                          {/* Refund pending is set by the system when a paid
+                              order is cancelled; only the gateway webhook
+                              promotes it to Refunded. */}
+                          <option value="refund_pending">Refund pending</option>
                           <option value="refunded">Refunded</option>
                         </select>
                       </td>
