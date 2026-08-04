@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ProductVariant } from '@/types/product';
 
 interface VariantOption {
   id: string;
+  /** The attribute key as the variants actually spell it. */
   name: string;
+  /** What to show above the buttons. Falls back to `name`. */
+  label?: string;
   values: string[];
 }
 
@@ -16,6 +19,32 @@ interface ProductVariantSelectorProps {
   currency: string;
 }
 
+/** Case- and whitespace-insensitive comparison, for values typed by hand. */
+function same(a: unknown, b: unknown): boolean {
+  if (a == null || b == null) return false;
+  return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+}
+
+/**
+ * Read an attribute off a variant by key, tolerating a difference in case.
+ *
+ * Attribute keys are typed into the admin and into the import sheet, so the
+ * same product can hold both `Colour` and `colour`. An exact-key lookup finds
+ * one and misses the other.
+ */
+function attributeOf(variant: ProductVariant, key: string): string | undefined {
+  const attributes = variant.variantAttributes || {};
+  const direct = attributes[key];
+  if (direct != null) return String(direct);
+
+  const match = Object.keys(attributes).find((k) => same(k, key));
+  return match ? String(attributes[match]) : undefined;
+}
+
+function inStock(variant: ProductVariant): boolean {
+  return Number(variant.stockQuantity) > 0;
+}
+
 export default function ProductVariantSelector({
   variantOptions,
   productVariants,
@@ -23,120 +52,127 @@ export default function ProductVariantSelector({
   currency,
 }: ProductVariantSelectorProps) {
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
-  // Get available values for a specific option based on current selections
-  const getAvailableValues = (optionId: string, optionName: string): string[] => {
-    const option = variantOptions.find(opt => opt.name === optionName);
-    if (!option) return [];
+  const selectedVariant = useMemo(() => {
+    const allChosen = variantOptions.every((option) => selectedAttributes[option.name]);
+    if (!allChosen) return null;
 
-    // Filter to only show values that have available variants
-    const result = option.values.filter(value => {
-      const matched = productVariants.some(variant => {
-        // Check if this variant has this value (case-insensitive comparison)
-        const variantValue = variant.variantAttributes[optionName];
-        const attrMatch = variantValue && variantValue.toLowerCase() === value.toLowerCase();
-        const inStock = variant.stockQuantity > 0;
-
-        const otherSelections = Object.entries(selectedAttributes).filter(
-          ([key]) => key !== optionName
-        );
-        const otherMatch = otherSelections.every(([key, val]) => {
-          const attrValue = variant.variantAttributes[key];
-          return attrValue && attrValue.toLowerCase() === val.toLowerCase();
-        });
-
-        return attrMatch && inStock && otherMatch;
-      });
-      return matched;
-    });
-
-    return result;
-  };
-
-  // Update selected variant when attributes change
-  useEffect(() => {
-    // Check if all options are selected
-    const allSelected = variantOptions.every(option => 
-      selectedAttributes[option.name]
+    return (
+      productVariants.find((variant) =>
+        variantOptions.every((option) =>
+          same(attributeOf(variant, option.name), selectedAttributes[option.name]),
+        ),
+      ) || null
     );
+  }, [selectedAttributes, variantOptions, productVariants]);
 
-    if (allSelected) {
-      // Find matching variant (case-insensitive comparison)
-      const matchingVariant = productVariants.find(variant => {
-        return Object.entries(selectedAttributes).every(
-          ([key, value]) => {
-            const attrValue = variant.variantAttributes[key];
-            return attrValue && attrValue.toLowerCase() === value.toLowerCase();
-          }
+  useEffect(() => {
+    onVariantSelect(selectedVariant);
+  }, [selectedVariant, onVariantSelect]);
+
+  /**
+   * Whether any in-stock variant carries this value at all — ignoring what
+   * else is currently selected.
+   *
+   * This is deliberately not "available given the current selection". Judging
+   * availability against the other choices, and then disabling everything that
+   * failed, is what locked shoppers in: pick Size L and Colour Red on a
+   * catalogue holding only (L, Red) and (M, Blue) and every other size *and*
+   * every other colour greys out, because each is only stocked alongside the
+   * value the shopper would have to change first. Both were in stock; neither
+   * could be reached. Only genuinely unbuyable values are disabled here, and
+   * `select` below repairs a combination that does not exist.
+   */
+  const isSellable = useCallback(
+    (optionName: string, value: string) =>
+      productVariants.some(
+        (variant) => same(attributeOf(variant, optionName), value) && inStock(variant),
+      ),
+    [productVariants],
+  );
+
+  /**
+   * Choosing a value always takes effect. If no in-stock variant matches the
+   * resulting combination, the other choices are dropped and re-derived: the
+   * shopper's newest click is the one they meant, so it is kept and the rest
+   * give way.
+   */
+  const select = (optionName: string, value: string) => {
+    setSelectedAttributes((previous) => {
+      const wanted = { ...previous, [optionName]: value };
+
+      const matches = (candidate: Record<string, string>) =>
+        productVariants.some(
+          (variant) =>
+            inStock(variant) &&
+            Object.entries(candidate).every(([key, val]) =>
+              same(attributeOf(variant, key), val),
+            ),
         );
-      });
 
-      setSelectedVariant(matchingVariant || null);
-      onVariantSelect(matchingVariant || null);
-    } else {
-      setSelectedVariant(null);
-      onVariantSelect(null);
-    }
-  }, [selectedAttributes, productVariants, variantOptions, onVariantSelect]);
+      if (matches(wanted)) return wanted;
 
-  const handleAttributeSelect = (optionName: string, value: string) => {
-    setSelectedAttributes(prev => ({
-      ...prev,
-      [optionName]: value,
-    }));
+      // Keep the clicked value, then add back as many of the previous choices
+      // as still lead somewhere buyable.
+      const repaired: Record<string, string> = { [optionName]: value };
+      for (const option of variantOptions) {
+        if (option.name === optionName) continue;
+        const previousValue = previous[option.name];
+        if (!previousValue) continue;
+        if (matches({ ...repaired, [option.name]: previousValue })) {
+          repaired[option.name] = previousValue;
+        }
+      }
+      return repaired;
+    });
   };
 
   const getCurrencySymbol = (curr: string) => {
     const symbols: Record<string, string> = {
-      'INR': '₹',
-      'USD': '$',
-      'EUR': '€',
-      'GBP': '£',
+      INR: '₹',
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
     };
     return symbols[curr] || curr;
   };
 
   return (
     <div className="space-y-4">
-      {/* Variant Options */}
-      {variantOptions.map(option => {
-        const availableValues = getAvailableValues(option.id, option.name);
+      {variantOptions.map((option) => {
         const selectedValue = selectedAttributes[option.name];
 
         return (
-          <div key={option.id} className="space-y-2">
+          <div key={option.id || option.name} className="space-y-2">
             <label className="text-sm font-semibold text-foreground">
-              {option.name}: 
+              {option.label || option.name}:
               {selectedValue && (
                 <span className="ml-2 font-normal text-primary">{selectedValue}</span>
               )}
             </label>
             <div className="flex flex-wrap gap-2">
-              {option.values.map(value => {
-                const isAvailable = availableValues.includes(value);
-                const isSelected = selectedValue === value;
+              {option.values.map((value) => {
+                const sellable = isSellable(option.name, value);
+                const isSelected = same(selectedValue, value);
 
                 return (
                   <button
                     key={value}
                     type="button"
-                    onClick={() => isAvailable && handleAttributeSelect(option.name, value)}
-                    disabled={!isAvailable}
+                    onClick={() => sellable && select(option.name, value)}
+                    disabled={!sellable}
                     className={`
                       px-4 py-2 rounded-lg border-2 font-medium text-sm transition-all
                       ${isSelected
                         ? 'border-primary bg-primary text-primary-foreground'
-                        : isAvailable
+                        : sellable
                         ? 'border-border hover:border-primary bg-card text-foreground'
                         : 'border-border bg-muted text-muted-foreground cursor-not-allowed opacity-50'
                       }
                     `}
                   >
                     {value}
-                    {!isAvailable && (
-                      <span className="ml-1 text-xs">(Out of Stock)</span>
-                    )}
+                    {!sellable && <span className="ml-1 text-xs">(Out of Stock)</span>}
                   </button>
                 );
               })}

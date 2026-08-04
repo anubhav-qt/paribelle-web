@@ -64,73 +64,83 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, isLoaded]);
 
-  // Lets `reconcile` read the current lines without being rebuilt on every
-  // cart change (and so re-running its effect).
+  // The current lines, readable synchronously. `reconcile` uses it to avoid
+  // being rebuilt on every cart change (and so re-running its effect), and
+  // `addToCart` uses it to decide the outcome before React re-renders.
   const itemsRef = useRef(items);
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
 
-  const addToCart = (newItem: Omit<CartItem, 'id'>) => {
-    setItems((prev) => {
-      // Deduplicate: same variant = same line item; same product without variant = same line item
-      const existingItem = prev.find((item) =>
-        newItem.variantId
-          ? item.variantId === newItem.variantId
-          : item.productId === newItem.productId && !item.variantId
-      );
-      
-      if (existingItem) {
-        // Trust the incoming stock figure over the one saved in localStorage,
-        // which may be weeks old.
-        const merged = {
-          ...existingItem,
-          stockQuantity: newItem.stockQuantity ?? existingItem.stockQuantity,
-          maxQuantity: newItem.maxQuantity ?? existingItem.maxQuantity,
-        };
-        const maxStock = stockLimitFor(merged);
+  /**
+   * Add a line to the cart. Returns whether it went in.
+   *
+   * The stock checks can refuse the line, and the caller needs to know: "Buy
+   * Now" used to navigate to checkout on a 500ms timer no matter what, so
+   * refusing an out-of-stock item still sent the shopper to a checkout that
+   * had nothing new in it. The decision is made here, against `itemsRef`,
+   * rather than inside the `setItems` updater — that updater runs during the
+   * next render, long after this function has returned its answer.
+   */
+  const addToCart = (newItem: Omit<CartItem, 'id'>): boolean => {
+    const current = itemsRef.current;
 
-        if (maxStock === 0) {
-          alert(`${newItem.name} is out of stock.`);
-          return prev;
-        }
+    // Deduplicate: same variant = same line item; same product without variant = same line item
+    const existingItem = current.find((item) =>
+      newItem.variantId
+        ? item.variantId === newItem.variantId
+        : item.productId === newItem.productId && !item.variantId
+    );
 
-        const newQuantity = existingItem.quantity + newItem.quantity;
-        if (newQuantity > maxStock) {
-          alert(`Cannot add more. Only ${maxStock} items available in stock.`);
-          return prev;
-        }
+    let next: CartItem[];
 
-        // Update quantity if item already exists
-        return prev.map((item) =>
-          item.id === existingItem.id
-            ? { ...merged, quantity: newQuantity }
-            : item
-        );
+    if (existingItem) {
+      // Trust the incoming stock figure over the one saved in localStorage,
+      // which may be weeks old.
+      const merged = {
+        ...existingItem,
+        stockQuantity: newItem.stockQuantity ?? existingItem.stockQuantity,
+        maxQuantity: newItem.maxQuantity ?? existingItem.maxQuantity,
+      };
+      const maxStock = stockLimitFor(merged);
+
+      if (maxStock === 0) {
+        alert(`${newItem.name} is out of stock.`);
+        return false;
       }
 
-      // Check stock for new item
+      const newQuantity = existingItem.quantity + newItem.quantity;
+      if (newQuantity > maxStock) {
+        alert(`Cannot add more. Only ${maxStock} items available in stock.`);
+        return false;
+      }
+
+      next = current.map((item) =>
+        item.id === existingItem.id ? { ...merged, quantity: newQuantity } : item,
+      );
+    } else {
       const maxStock = stockLimitFor(newItem);
       if (maxStock === 0) {
         alert(`${newItem.name} is out of stock.`);
-        return prev;
+        return false;
       }
       if (newItem.quantity > maxStock) {
         alert(`Cannot add ${newItem.quantity} items. Only ${maxStock} available in stock.`);
-        return prev;
+        return false;
       }
 
-      // Add new item with generated ID
       const cartItem: CartItem = {
         ...newItem,
         id: `${newItem.productId}-${newItem.variantId || 'base'}-${Date.now()}`,
       };
-      
-      return [...prev, cartItem];
-    });
-    
-    // Open cart drawer when item is added
+      next = [...current, cartItem];
+    }
+
+    // Keep the ref ahead of the effect so two adds in the same tick compose.
+    itemsRef.current = next;
+    setItems(next);
     setIsOpen(true);
+    return true;
   };
 
   const removeFromCart = (itemId: string) => {
@@ -266,6 +276,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       next.push(updated);
     }
 
+    itemsRef.current = next;
     setItems(next);
     return { removed, repriced, restocked };
   }, []);

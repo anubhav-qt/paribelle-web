@@ -23,73 +23,104 @@ export default function VariationSelector({
   currentPrice,
   currency,
 }: VariationSelectorProps) {
-  debugger;
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
 
-  // Get unique values for each theme
+  const attributesOf = (variation: any): Record<string, any> =>
+    variation.variantAttributes || variation.variationAttributes || {};
+
+  /** Attribute keys are hand-entered, so `Colour` and `colour` both occur. */
+  const attributeOf = (variation: any, key: string): string | undefined => {
+    const entry = Object.entries(attributesOf(variation)).find(
+      ([k]) => k.toLowerCase() === key.toLowerCase(),
+    );
+    return entry ? String(entry[1]) : undefined;
+  };
+
+  const inStock = (v: any) =>
+    !v.trackInventory || v.stockQuantity == null || v.stockQuantity > 0;
+
+  /** Does any in-stock variation match every one of these attributes? */
+  const hasMatch = (wanted: Record<string, string>) =>
+    variations.some(
+      (v) =>
+        inStock(v) &&
+        Object.entries(wanted).every(
+          ([key, val]) => attributeOf(v, key)?.toLowerCase() === String(val).toLowerCase(),
+        ),
+    );
+
+  /**
+   * Every value this theme offers, marked unavailable only when no in-stock
+   * variation carries it *at all*.
+   *
+   * Availability used to be judged against the other themes' current
+   * selections, which meant a complete selection greyed out every alternative
+   * in every theme — each one is only stocked next to a value the shopper
+   * would have to change first, and there was no way to change it. Clashes are
+   * resolved in `handleAttributeSelect` instead, by giving way on the older
+   * choices rather than blocking the new one.
+   */
   const getThemeOptions = (theme: string): VariationOption[] => {
-    const uniqueValues = new Set<string>();
-    variations.forEach(variation => {
-      const attrs = variation.variantAttributes || variation.variationAttributes;
-      if (attrs && attrs[theme]) {
-        uniqueValues.add(attrs[theme]);
+    const uniqueValues: string[] = [];
+    variations.forEach((variation) => {
+      const value = attributeOf(variation, theme);
+      if (value && !uniqueValues.some((v) => v.toLowerCase() === value.toLowerCase())) {
+        uniqueValues.push(value);
       }
     });
 
-    return Array.from(uniqueValues).map(value => {
-      // Check if this option is available given current selections
-      const isAvailable = variations.some(v => {
-        const attrs = v.variantAttributes || v.variationAttributes;
-        if (!attrs) return false;
-        
-        // Check if this variation matches the current selections + this option (case-insensitive)
-        const matches = Object.entries(selectedAttributes).every(([key, val]) => {
-          if (key.toLowerCase() === theme.toLowerCase()) return true; // Skip the current theme
-          const attrEntry = Object.entries(attrs).find(([k]) => k.toLowerCase() === key.toLowerCase());
-          return attrEntry && String(attrEntry[1]).toLowerCase() === String(val).toLowerCase();
-        });
-
-        const attrEntry = Object.entries(attrs).find(([k]) => k.toLowerCase() === theme.toLowerCase());
-        const inStock = !v.trackInventory || v.stockQuantity == null || v.stockQuantity > 0;
-        return matches && attrEntry && String(attrEntry[1]).toLowerCase() === value.toLowerCase() && inStock;
-      });
-
-      return {
-        value,
-        label: value,
-        available: isAvailable,
-      };
-    });
+    return uniqueValues.map((value) => ({
+      value,
+      label: value,
+      available: hasMatch({ [theme]: value }),
+    }));
   };
 
   // Update selected variation when attributes change
   useEffect(() => {
-    if (Object.keys(selectedAttributes).length === variationThemes.length) {
-      const matchingVariation = variations.find(v => {
-        const attrs = v.variantAttributes || v.variationAttributes;
-        if (!attrs) return false;
-        return variationThemes.every(theme => {
-          const attrEntry = Object.entries(attrs).find(([k]) => k.toLowerCase() === theme.toLowerCase());
-          return attrEntry && String(attrEntry[1]).toLowerCase() === String(selectedAttributes[theme]).toLowerCase();
-        });
-      });
+    const allChosen = variationThemes.every((theme) => selectedAttributes[theme]);
 
-      setSelectedVariation(matchingVariation);
-      if (matchingVariation) {
-        onVariationSelect(matchingVariation);
-      }
+    if (allChosen) {
+      const matchingVariation = variations.find((v) =>
+        variationThemes.every(
+          (theme) =>
+            attributeOf(v, theme)?.toLowerCase() ===
+            String(selectedAttributes[theme]).toLowerCase(),
+        ),
+      );
+
+      // Report the miss too: leaving the previous variation selected meant the
+      // buy button stayed armed for a combination that no longer applied.
+      setSelectedVariation(matchingVariation ?? null);
+      onVariationSelect(matchingVariation ?? null);
     } else {
       setSelectedVariation(null);
       onVariationSelect(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAttributes, variations, variationThemes]);
 
+  /**
+   * The clicked value always wins. Earlier choices that no longer lead to a
+   * stocked variation are dropped so the shopper can pick them again, rather
+   * than the click being refused.
+   */
   const handleAttributeSelect = (theme: string, value: string) => {
-    setSelectedAttributes(prev => ({
-      ...prev,
-      [theme]: value,
-    }));
+    setSelectedAttributes((prev) => {
+      const wanted = { ...prev, [theme]: value };
+      if (hasMatch(wanted)) return wanted;
+
+      const repaired: Record<string, string> = { [theme]: value };
+      for (const other of variationThemes) {
+        if (other === theme) continue;
+        const previous = prev[other];
+        if (previous && hasMatch({ ...repaired, [other]: previous })) {
+          repaired[other] = previous;
+        }
+      }
+      return repaired;
+    });
   };
 
   const getThemeLabel = (theme: string) => {

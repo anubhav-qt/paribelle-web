@@ -28,7 +28,8 @@ export interface CartReconciliation {
 
 export interface CartContextType {
   items: CartItem[];
-  addToCart: (item: Omit<CartItem, 'id'>) => void;
+  /** Adds a line; `false` means a stock check refused it. */
+  addToCart: (item: Omit<CartItem, 'id'>) => boolean;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;

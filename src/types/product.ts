@@ -111,5 +111,15 @@ export interface Product {
   variantOptions?: any[];
   productVariants?: ProductVariant[];
 
-  attributes?: Record<string, any>;
+  /**
+   * The attributes every one of this product's variants agrees on — its
+   * Fabric, its Finish. Computed by the API on each read from
+   * `productVariants`, never stored: attributes live on the variants, and a
+   * second copy on the product is what let filters and the variant picker
+   * disagree. Send it back on a write and the API folds it into the variants.
+   */
+  attributes?: Record<string, string>;
+
+  /** Non-filterable extras (booking and tour blocks). */
+  metadata?: Record<string, any>;
 }

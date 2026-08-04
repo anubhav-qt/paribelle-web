@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { Loader } from '@/components/ui/Loader';
-import { api } from '@/lib/api';
+import { api, ApiError, errorMessage } from '@/lib/api';
 
 type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
 
@@ -354,43 +354,27 @@ function CheckoutContent() {
         idempotencyKeyRef.current = crypto.randomUUID();
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Idempotency-Key': idempotencyKeyRef.current,
-        },
-        body: JSON.stringify(orderData),
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
-      if (!response.ok) {
-        let errorMessage = 'Failed to create order';
-        try {
-          const error = await response.json();
-          errorMessage = error.message || errorMessage;
-          console.error('Error response:', error);
-        } catch (e) {
-          console.error('Could not parse error response');
-        }
-        
-        // If unauthorized, clear session and redirect to login
-        if (response.status === 401) {
+      let orders: any;
+      try {
+        orders = await api.post<any>('/orders', orderData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Idempotency-Key': idempotencyKeyRef.current,
+          },
+        });
+      } catch (error) {
+        // Session gone: clearing it and sending them back to log in is more
+        // use than an error banner they can do nothing about.
+        if (error instanceof ApiError && error.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           alert('Session expired. Please login again.');
           router.push('/login');
           return;
         }
-        
-        throw new Error(errorMessage);
+        throw error;
       }
 
-      const orders = await response.json();
-      
       // Handle both single order (backward compatibility) and multiple orders
       const ordersArray = Array.isArray(orders) ? orders : [orders];
       
@@ -444,7 +428,9 @@ function CheckoutContent() {
       idempotencyKeyRef.current = null;
     } catch (error) {
       console.error('Error placing order:', error);
-      alert(error instanceof Error ? error.message : 'Failed to place order. Please try again.');
+      // `errorMessage` turns a bare network TypeError ("Failed to fetch") into
+      // something a shopper can act on, and passes real API messages through.
+      alert(errorMessage(error, 'Failed to place order. Please try again.'));
     } finally {
       submittingRef.current = false;
       setLoading(false);

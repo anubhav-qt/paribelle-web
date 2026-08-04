@@ -20,6 +20,14 @@ interface CategoryFilter {
   step?: number;
 }
 
+/** A filter the API derived from the attributes this category's variants carry. */
+interface SuggestedFilter {
+  id: string;
+  label: string;
+  type: 'checkbox';
+  options: Array<{ value: string; label: string; productCount: number }>;
+}
+
 import { Category } from '@/types/product';
 import { Loader } from '@/components/ui/Loader';
 import { api, errorMessage } from '@/lib/api';
@@ -172,9 +180,12 @@ export default function CategoryFiltersPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
+  const [suggested, setSuggested] = useState<SuggestedFilter[]>([]);
 
   useEffect(() => {
     fetchCategory();
+    fetchSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId]);
 
   const fetchCategory = async () => {
@@ -192,6 +203,23 @@ export default function CategoryFiltersPage() {
     }
   };
 
+  /**
+   * What this category's products actually carry. A hand-typed filter only
+   * narrows results if its options match values products really have, so
+   * these are worth more than the generic templates below them.
+   */
+  const fetchSuggestions = async () => {
+    try {
+      const data = await api.get<{ filters: SuggestedFilter[] }>(
+        `/categories/${categoryId}/filter-suggestions`,
+      );
+      setSuggested(data.filters || []);
+    } catch (error) {
+      // Not worth an error banner — the templates still work.
+      console.error('Error fetching filter suggestions:', error);
+    }
+  };
+
   const addFilter = () => {
     const newFilter: CategoryFilter = {
       id: `filter_${Date.now()}`,
@@ -203,14 +231,37 @@ export default function CategoryFiltersPage() {
     setShowTemplates(false);
   };
 
+  /**
+   * Deep copy, not shallow. `[...template.options]` copied the array but left
+   * every option object shared with `COMMON_FILTER_TEMPLATES`, so editing a
+   * label here rewrote the module-level template — and every category
+   * configured afterwards in the same session inherited the edit.
+   */
   const addFilterFromTemplate = (template: CategoryFilter) => {
-    // Create a deep copy of the template
-    const newFilter: CategoryFilter = {
-      ...template,
-      id: template.id,
-      options: template.options ? [...template.options] : undefined,
+    setFilters([
+      ...filters,
+      {
+        ...template,
+        options: template.options?.map((option) => ({ ...option })),
+      },
+    ]);
+    setShowTemplates(false);
+  };
+
+  /** Add a derived filter, replacing any existing filter with the same id. */
+  const addFilterFromSuggestion = (suggestion: SuggestedFilter) => {
+    const next: CategoryFilter = {
+      id: suggestion.id,
+      label: suggestion.label,
+      type: 'checkbox',
+      options: suggestion.options.map(({ value, label }) => ({ value, label })),
     };
-    setFilters([...filters, newFilter]);
+
+    setFilters((current) => {
+      const existing = current.findIndex((f) => f.id === next.id);
+      if (existing === -1) return [...current, next];
+      return current.map((f, i) => (i === existing ? next : f));
+    });
     setShowTemplates(false);
   };
 
@@ -243,25 +294,40 @@ export default function CategoryFiltersPage() {
     setFilters(newFilters);
   };
 
+  /** Replace one filter, leaving the rest — and the objects inside them — alone. */
+  const replaceFilter = (filterIndex: number, next: CategoryFilter) => {
+    setFilters((current) => current.map((f, i) => (i === filterIndex ? next : f)));
+  };
+
   const addOption = (filterIndex: number) => {
-    const newFilters = [...filters];
-    if (!newFilters[filterIndex].options) {
-      newFilters[filterIndex].options = [];
-    }
-    newFilters[filterIndex].options!.push({ label: '', value: '' });
-    setFilters(newFilters);
+    const filter = filters[filterIndex];
+    replaceFilter(filterIndex, {
+      ...filter,
+      options: [...(filter.options || []), { label: '', value: '' }],
+    });
   };
 
   const removeOption = (filterIndex: number, optionIndex: number) => {
-    const newFilters = [...filters];
-    newFilters[filterIndex].options = newFilters[filterIndex].options!.filter((_, i) => i !== optionIndex);
-    setFilters(newFilters);
+    const filter = filters[filterIndex];
+    replaceFilter(filterIndex, {
+      ...filter,
+      options: (filter.options || []).filter((_, i) => i !== optionIndex),
+    });
   };
 
-  const updateOption = (filterIndex: number, optionIndex: number, field: 'label' | 'value', value: string) => {
-    const newFilters = [...filters];
-    newFilters[filterIndex].options![optionIndex][field] = value;
-    setFilters(newFilters);
+  const updateOption = (
+    filterIndex: number,
+    optionIndex: number,
+    field: 'label' | 'value',
+    value: string,
+  ) => {
+    const filter = filters[filterIndex];
+    replaceFilter(filterIndex, {
+      ...filter,
+      options: (filter.options || []).map((option, i) =>
+        i === optionIndex ? { ...option, [field]: value } : option,
+      ),
+    });
   };
 
   const handleSave = async () => {
@@ -294,11 +360,48 @@ export default function CategoryFiltersPage() {
       {/* Left Sidebar - Common Filter Templates */}
       <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
-          <h2 className="font-semibold text-gray-900 mb-2">Common Filter Templates</h2>
+          <h2 className="font-semibold text-gray-900 mb-2">Filter Templates</h2>
           <p className="text-xs text-gray-600">Click to add to category</p>
         </div>
-        
+
+        {suggested.length > 0 && (
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900">From your products</h3>
+            <p className="mb-3 text-xs text-gray-600">
+              Attributes your products in this category actually carry. These are
+              guaranteed to match something.
+            </p>
+            <div className="space-y-2">
+              {suggested.map((suggestion) => (
+                <button
+                  key={suggestion.id}
+                  onClick={() => addFilterFromSuggestion(suggestion)}
+                  className="group w-full rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-left transition-colors hover:border-emerald-500 hover:bg-emerald-50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900 group-hover:text-emerald-700">
+                        {suggestion.label}
+                      </div>
+                      <div className="mt-1 text-xs text-gray-600">
+                        {suggestion.options
+                          .slice(0, 4)
+                          .map((o) => `${o.label} (${o.productCount})`)
+                          .join(', ')}
+                        {suggestion.options.length > 4 &&
+                          ` +${suggestion.options.length - 4} more`}
+                      </div>
+                    </div>
+                    <Plus className="ml-2 h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-emerald-600" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="p-4 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-900">Common templates</h3>
           {COMMON_FILTER_TEMPLATES.map((template) => (
             <button
               key={template.id}

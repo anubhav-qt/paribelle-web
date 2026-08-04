@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, Heart, User, Package } from 'lucide-react';
+import { ChevronDown, Heart, User, Package, LogOut, LogIn } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Monogram } from '@/components/brand/Monogram';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import type { Category } from '@/types/product';
 import { useState } from 'react';
 
@@ -15,6 +16,7 @@ export interface MobileNavProps {
 
 export function MobileNav({ open, onClose, categories }: MobileNavProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const { user, isLoggedIn, logout } = useCurrentUser();
 
   return (
     <Drawer open={open} onClose={onClose} side="right" title={<Monogram className="h-6 w-6 text-[hsl(var(--pb-rose))]" />}>
@@ -72,6 +74,11 @@ export function MobileNav({ open, onClose, categories }: MobileNavProps) {
         </Link>
 
         <div className="mt-6 flex flex-col gap-1">
+          {isLoggedIn && (
+            <p className="truncate pb-1 text-xs text-[hsl(var(--pb-ink-faint))]">
+              Signed in as {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email}
+            </p>
+          )}
           <Link href="/profile" onClick={onClose} className="flex items-center gap-3 py-2.5 text-sm text-[hsl(var(--pb-ink-muted))]">
             <User className="h-4 w-4" /> My Account
           </Link>
@@ -81,6 +88,25 @@ export function MobileNav({ open, onClose, categories }: MobileNavProps) {
           <Link href="/orders" onClick={onClose} className="flex items-center gap-3 py-2.5 text-sm text-[hsl(var(--pb-ink-muted))]">
             <Package className="h-4 w-4" /> Orders
           </Link>
+
+          {/* The drawer is the whole account menu on small screens — the
+              header pill has no room for one — so signing out has to be
+              reachable from here. */}
+          {isLoggedIn ? (
+            <button
+              onClick={() => {
+                onClose();
+                logout();
+              }}
+              className="flex items-center gap-3 py-2.5 text-left text-sm text-[hsl(var(--pb-rose-deep))]"
+            >
+              <LogOut className="h-4 w-4" /> Sign Out
+            </button>
+          ) : (
+            <Link href="/login" onClick={onClose} className="flex items-center gap-3 py-2.5 text-sm text-[hsl(var(--pb-rose-deep))]">
+              <LogIn className="h-4 w-4" /> Sign In
+            </Link>
+          )}
         </div>
       </nav>
     </Drawer>

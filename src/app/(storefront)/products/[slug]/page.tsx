@@ -270,16 +270,17 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleAddToCart = () => {
-    if (!product) return;
+  /** Returns whether the line actually made it into the cart. */
+  const handleAddToCart = (): boolean => {
+    if (!product) return false;
 
     if (product.isParent && !selectedVariation) {
       alert('Please select all product options.');
-      return;
+      return false;
     }
     if (product.hasVariants && !selectedVariant) {
       alert('Please select all product options.');
-      return;
+      return false;
     }
 
     const stockQuantity = availableStock(product, selectedVariation, selectedVariant);
@@ -287,20 +288,21 @@ export default function ProductDetailPage() {
     if (stockQuantity !== null) {
       if (stockQuantity === 0) {
         alert('Sorry, this product is out of stock.');
-        return;
+        return false;
       }
       if (quantity > stockQuantity) {
         alert(`Sorry, only ${stockQuantity} items available.`);
-        return;
+        return false;
       }
     }
 
     setAddToCartLoading(true);
 
     try {
+      let added: boolean;
       if (product.hasVariants && selectedVariant) {
         const attrSuffix = Object.values(selectedVariant.variantAttributes || {}).join(' / ');
-        addToCart({
+        added = addToCart({
           productId: product.id,
           variantId: selectedVariant.id,
           variantSku: selectedVariant.sku,
@@ -317,7 +319,7 @@ export default function ProductDetailPage() {
           gstRate: product.gstRate || 18,
         });
       } else {
-        addToCart({
+        added = addToCart({
           productId: selectedVariation?.id || product.id,
           variantAttributes: selectedVariation?.variationAttributes,
           name: selectedVariation ? `${product.name} - ${Object.values(selectedVariation.variationAttributes).join(' ')}` : product.name,
@@ -333,20 +335,25 @@ export default function ProductDetailPage() {
         });
       }
 
-      setQuantity(1);
+      if (added) setQuantity(1);
+      return added;
     } catch (error) {
       console.error('Error adding to cart:', error);
       alert('Failed to add item to cart. Please try again.');
+      return false;
     } finally {
       setAddToCartLoading(false);
     }
   };
 
+  /**
+   * Add, then go straight to checkout — but only if the add succeeded. This
+   * used to fire a 500ms timer and a hard `window.location` assignment
+   * unconditionally, which navigated away from an out-of-stock warning nobody
+   * had read yet and tore down whatever requests the page still had open.
+   */
   const handleBuyNow = () => {
-    handleAddToCart();
-    setTimeout(() => {
-      window.location.href = '/checkout';
-    }, 500);
+    if (handleAddToCart()) router.push('/checkout');
   };
 
   const handleWishlistToggle = () => {

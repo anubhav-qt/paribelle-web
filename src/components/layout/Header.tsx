@@ -3,10 +3,11 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, Heart, ShoppingBag, User, Menu } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, Menu, Package, LogOut } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { MegaMenu } from './MegaMenu';
 import { MobileNav } from './MobileNav';
 import { SearchOverlay } from './SearchOverlay';
@@ -53,11 +54,13 @@ export function Header() {
   const { data: categories = [] } = useCategories();
   const { totalItems, openCart } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
+  const { user, isLoggedIn, logout } = useCurrentUser();
 
   const [scrolled, setScrolled] = React.useState(false);
   const [activeMenu, setActiveMenu] = React.useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const [accountOpen, setAccountOpen] = React.useState(false);
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -68,6 +71,7 @@ export function Header() {
 
   React.useEffect(() => {
     setActiveMenu(null);
+    setAccountOpen(false);
   }, [pathname]);
 
   const activeCategory = categories.find((c) => c.id === activeMenu);
@@ -152,9 +156,62 @@ export function Header() {
           <button onClick={() => setSearchOpen(true)} aria-label="Search" className={ICON_BUTTON}>
             <Search className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
           </button>
-          <Link href="/login" aria-label="Account" className={`${ICON_BUTTON} hidden md:inline-flex`}>
-            <User className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
-          </Link>
+          {/* Signed out, the icon is a shortcut to the login page. Signed in,
+              it opens the account menu — which is the only place on the
+              storefront a customer can sign out from. */}
+          {isLoggedIn ? (
+            <div className="relative hidden md:block">
+              <button
+                onClick={() => setAccountOpen((open) => !open)}
+                aria-label="Account"
+                aria-expanded={accountOpen}
+                aria-haspopup="menu"
+                className={ICON_BUTTON}
+              >
+                <User className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
+              </button>
+              {accountOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setAccountOpen(false)} />
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-20 mt-2 min-w-[220px] rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory))] p-2 shadow-pb-md"
+                  >
+                    <p className="truncate px-3 py-2 text-xs text-[hsl(var(--pb-ink-faint))]">
+                      {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email}
+                    </p>
+                    <Link
+                      href="/profile"
+                      onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-3 rounded-sm px-3 py-2 text-sm text-[hsl(var(--pb-ink))] hover:bg-[hsl(var(--pb-shell))]"
+                    >
+                      <User className="h-4 w-4" /> My Account
+                    </Link>
+                    <Link
+                      href="/orders"
+                      onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-3 rounded-sm px-3 py-2 text-sm text-[hsl(var(--pb-ink))] hover:bg-[hsl(var(--pb-shell))]"
+                    >
+                      <Package className="h-4 w-4" /> My Orders
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setAccountOpen(false);
+                        logout();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm text-[hsl(var(--pb-rose-deep))] hover:bg-[hsl(var(--pb-shell))]"
+                    >
+                      <LogOut className="h-4 w-4" /> Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <Link href="/login" aria-label="Account" className={`${ICON_BUTTON} hidden md:inline-flex`}>
+              <User className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
+            </Link>
+          )}
           <Link href="/wishlist" aria-label="Wishlist" className={ICON_BUTTON}>
             <Heart className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
             <CountBadge count={wishlistCount} />

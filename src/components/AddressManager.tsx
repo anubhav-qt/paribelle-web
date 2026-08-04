@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Edit2, Trash2, Plus, Phone, Home, ChevronDown } from 'lucide-react';
+import { MapPin, Edit2, Trash2, Plus, Phone, Home, ChevronDown, Loader2 } from 'lucide-react';
 import { initAuthFromCookie } from '@/lib/cross-domain-auth';
+import { api, errorMessage } from '@/lib/api';
 
 const COUNTRIES = [
   { code: 'IN', name: 'India', flag: '🇮🇳' },
@@ -112,6 +113,9 @@ export default function AddressManager({
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [showPhoneDropdown, setShowPhoneDropdown] = useState(false);
   const [selectedPhoneCode, setSelectedPhoneCode] = useState('+91');
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState('');
   const countryDropdownRef = useRef<HTMLDivElement>(null);
   const phoneDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -176,22 +180,21 @@ export default function AddressManager({
 
   useEffect(() => {
     let mounted = true;
-    let attempts = 0;
-    const maxAttempts = 12;
 
-    const loadAddressesWithRetry = async () => {
-      while (mounted && attempts < maxAttempts) {
-        attempts++;
-        const loaded = await fetchAddresses();
-        if (loaded) {
-          return;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 500));
+    /**
+     * The token may still be arriving from the cross-domain cookie when this
+     * mounts, so a first miss is worth a retry — but only a couple. Twelve
+     * attempts half a second apart meant a signed-out visitor spent six
+     * seconds re-answering a question already settled by the first attempt.
+     */
+    const loadAddresses = async () => {
+      for (let attempt = 0; attempt < 3 && mounted; attempt++) {
+        if (await fetchAddresses()) return;
+        await new Promise((resolve) => setTimeout(resolve, 400));
       }
     };
 
-    loadAddressesWithRetry();
+    loadAddresses();
 
     const onFocus = () => {
       fetchAddresses();
@@ -202,6 +205,7 @@ export default function AddressManager({
       mounted = false;
       window.removeEventListener('focus', onFocus);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAddresses = async (): Promise<boolean> => {
@@ -284,66 +288,70 @@ export default function AddressManager({
     });
   };
 
+  /**
+   * Save the form.
+   *
+   * The button reports its own progress and stays disabled for the duration.
+   * It used to do neither: the click had no visible effect until the round
+   * trip finished — which on a cold-started API is many seconds — and then
+   * announced itself with a modal `alert` that blocked the page until it was
+   * dismissed. Nothing was slow that isn't still slow; it just never said so.
+   */
   const handleSaveAddress = async () => {
+    if (saving) return;
+    setFormError('');
+
     // Validate address
-    if (!addressForm.fullName || !addressForm.phone || !addressForm.addressLine1 || 
+    if (!addressForm.fullName || !addressForm.phone || !addressForm.addressLine1 ||
         !addressForm.city || !addressForm.state || !addressForm.postalCode || !addressForm.country) {
-      alert('Please fill in all required fields');
+      setFormError('Please fill in all required fields.');
       return;
     }
 
     // Validate phone (international format: 5-15 digits)
     const phoneRegex = /^\d{5,15}$/;
     if (!phoneRegex.test(addressForm.phone)) {
-      alert('Please enter a valid phone number (5-15 digits)');
+      setFormError('Please enter a valid phone number (5-15 digits).');
       return;
     }
 
     // Validate postal code (international format: 3-10 alphanumeric characters)
     const postalRegex = /^[A-Za-z0-9\s-]{3,10}$/;
     if (!postalRegex.test(addressForm.postalCode)) {
-      alert('Please enter a valid postal code (3-10 characters)');
+      setFormError('Please enter a valid postal code (3-10 characters).');
       return;
     }
 
+    setSaving(true);
+
     const token = await getAuthToken();
     if (!token) {
-      alert('Please login to save address');
+      setFormError('Please log in to save an address.');
+      setSaving(false);
       return;
     }
 
     try {
-      const url = editingAddressId 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/addresses/${editingAddressId}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/addresses`;
-      
-      const method = editingAddressId ? 'PUT' : 'POST';
+      const path = editingAddressId
+        ? `/user/addresses/${editingAddressId}`
+        : '/user/addresses';
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fullName: addressForm.fullName,
-          phone: addressForm.phone,
-          addressLine1: addressForm.addressLine1,
-          addressLine2: addressForm.addressLine2,
-          city: addressForm.city,
-          state: addressForm.state,
-          postalCode: addressForm.postalCode,
-          country: addressForm.country,
-          isDefault: addresses.length === 0 ? true : addressForm.isDefault,
-        }),
-      });
+      const body = {
+        fullName: addressForm.fullName,
+        phone: addressForm.phone,
+        addressLine1: addressForm.addressLine1,
+        addressLine2: addressForm.addressLine2,
+        city: addressForm.city,
+        state: addressForm.state,
+        postalCode: addressForm.postalCode,
+        country: addressForm.country,
+        isDefault: addresses.length === 0 ? true : addressForm.isDefault,
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to save address');
-      }
+      const savedAddress = editingAddressId
+        ? await api.put<Address>(path, body)
+        : await api.post<Address>(path, body);
 
-      const savedAddress = await response.json();
-      
       let updatedAddresses: Address[];
       if (editingAddressId) {
         // Update existing address in list
@@ -369,11 +377,11 @@ export default function AddressManager({
       setShowAddressForm(false);
       setEditingAddressId(null);
       resetAddressForm();
-      
-      alert(editingAddressId ? 'Address updated successfully!' : 'Address saved successfully!');
     } catch (error) {
       console.error('Error saving address:', error);
-      alert('Failed to save address. Please try again.');
+      setFormError(errorMessage(error, 'Failed to save address. Please try again.'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -406,17 +414,10 @@ export default function AddressManager({
       return;
     }
 
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/addresses/${addressId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+    setDeletingId(addressId);
 
-      if (!response.ok) {
-        throw new Error('Failed to delete address');
-      }
+    try {
+      await api.delete(`/user/addresses/${addressId}`);
 
       const updatedAddresses = addresses.filter(addr => addr.id !== addressId);
       setAddresses(updatedAddresses);
@@ -431,10 +432,11 @@ export default function AddressManager({
         }
       }
       
-      alert('Address deleted successfully!');
     } catch (error) {
       console.error('Error deleting address:', error);
-      alert('Failed to delete address. Please try again.');
+      alert(errorMessage(error, 'Failed to delete address. Please try again.'));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -668,24 +670,38 @@ export default function AddressManager({
             </div>
           )}
 
+          {formError && (
+            <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+              {formError}
+            </p>
+          )}
+
           <div className="flex gap-4 pt-4">
             <button
               type="button"
+              disabled={saving}
               onClick={() => {
                 setShowAddressForm(false);
                 setEditingAddressId(null);
+                setFormError('');
                 resetAddressForm();
               }}
-              className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
+              className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSaveAddress}
-              className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              disabled={saving}
+              className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-70"
             >
-              {editingAddressId ? 'Update Address' : 'Save Address'}
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving
+                ? 'Saving…'
+                : editingAddressId
+                ? 'Update Address'
+                : 'Save Address'}
             </button>
           </div>
         </form>
@@ -777,10 +793,15 @@ export default function AddressManager({
                 </button>
                 <button
                   onClick={(e) => handleDeleteAddress(addr.id || '', e)}
-                  className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                  disabled={deletingId === addr.id}
+                  className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50"
                   title="Delete address"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {deletingId === addr.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>

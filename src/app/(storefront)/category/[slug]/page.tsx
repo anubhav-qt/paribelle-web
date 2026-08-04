@@ -388,28 +388,34 @@ export default function CategoryPage() {
     }
   };
 
+  /**
+   * Every value this product offers for an attribute, across its variants.
+   *
+   * Variants are the only place attributes live — a product's Fabric sits on
+   * each of its variants, and its Sizes are one per variant — so a product
+   * matches a filter when any of its variants does. Keys are compared
+   * case-insensitively because they are typed by hand in the admin and in the
+   * import sheet, and the same catalogue holds both `Colour` and `colour`.
+   *
+   * `variationAttributes` covers the older parent/child variation model, whose
+   * children are products in their own right.
+   */
   const getAttrValues = (product: Product, key: string): string[] => {
     const keyLower = key.toLowerCase();
-    const variants = (product as any).productVariants as Array<{ variantAttributes?: Record<string, string> }> | undefined;
-    if (variants && variants.length > 0) {
-      const vals = variants.flatMap((v) => {
-        if (!v.variantAttributes) return [];
-        const matchingKey = Object.keys(v.variantAttributes).find((k) => k.toLowerCase() === keyLower);
-        return matchingKey ? [v.variantAttributes[matchingKey]] : [];
-      });
-      if (vals.length > 0) return vals;
-    }
-    const attrs = (product as any).attributes as Record<string, any> | undefined;
-    if (attrs) {
+
+    const readFrom = (attrs?: Record<string, any>): string[] => {
+      if (!attrs) return [];
       const matchingKey = Object.keys(attrs).find((k) => k.toLowerCase() === keyLower);
-      if (matchingKey && attrs[matchingKey] != null) return [String(attrs[matchingKey])];
-    }
-    const varAttrs = (product as any).variationAttributes as Record<string, string> | undefined;
-    if (varAttrs) {
-      const matchingKey = Object.keys(varAttrs).find((k) => k.toLowerCase() === keyLower);
-      if (matchingKey) return [varAttrs[matchingKey]];
-    }
-    return [];
+      return matchingKey && attrs[matchingKey] != null ? [String(attrs[matchingKey])] : [];
+    };
+
+    const variants = (product as any).productVariants as
+      | Array<{ variantAttributes?: Record<string, string> }>
+      | undefined;
+    const fromVariants = (variants || []).flatMap((v) => readFrom(v.variantAttributes));
+    if (fromVariants.length > 0) return fromVariants;
+
+    return readFrom((product as any).variationAttributes);
   };
 
   const applyFilters = () => {
