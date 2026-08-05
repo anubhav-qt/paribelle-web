@@ -22,10 +22,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=oauth_failed', request.url));
     }
 
-    // Dynamically construct redirect_uri (must match what was sent to Google)
-    const protocol = request.headers.get('x-forwarded-proto') || 'http';
-    const host = request.headers.get('host') || 'localhost:3000';
-    const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+    // Must be byte-for-byte identical to the redirect_uri sent in the initial
+    // authorization request (see /api/auth/google/route.ts) — Google's token
+    // endpoint rejects a mismatch. Pinned to the same configured origin for
+    // the same reason: deriving it from the incoming Host header meant this
+    // and the initiate step could disagree if the request arrived on a
+    // different hostname than the one Google was actually told about.
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const redirectUri = `${appUrl.replace(/\/$/, '')}/api/auth/google/callback`;
 
     // Exchange code for token with Google
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
