@@ -441,8 +441,9 @@ function CheckoutContent() {
     try {
       setLoading(true);
 
-      // Create Razorpay order
-      const razorpayOrder = await createRazorpayOrder(orderId, finalTotal);
+      // The amount charged is derived server-side from the order's stored
+      // total, not from anything sent here.
+      const razorpayOrder = await createRazorpayOrder(orderId);
 
       // Open Razorpay checkout
       openCheckout(

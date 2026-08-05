@@ -65,7 +65,11 @@ export const useRazorpay = () => {
     }
   };
 
-  const createOrder = async (orderId: string, amount: number, referenceType: 'order' | 'booking' = 'order') => {
+  // The backend derives the charge from the order's own stored total — it
+  // does not trust a client-supplied amount, since that would let a crafted
+  // request pay whatever it likes for whatever it ordered. Nothing here
+  // needs to send one.
+  const createOrder = async (orderId: string, referenceType: 'order' | 'booking' = 'order') => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
@@ -78,7 +82,6 @@ export const useRazorpay = () => {
           },
           body: JSON.stringify({
             orderId,
-            amount,
             currency: 'INR',
             referenceType,
           }),
