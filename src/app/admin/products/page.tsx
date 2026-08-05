@@ -7,7 +7,7 @@ import JSZip from 'jszip';
 import ImageUpload from '@/components/ImageUpload';
 import MultiImageUpload from '@/components/MultiImageUpload';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
-import { useAdminProducts, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
+import { useAdminProducts, useAdminProductStats, useUpdateProductStatus, useDeleteProduct } from '@/hooks/useAdminProducts';
 import { handleSortChange, getSortIcon, compareValues, getSortableHeaderClass, SortOrder } from '@/lib/utils/sorting';
 import { Product, ProductVariant } from '@/types/product';
 import { ImportMessage } from '@/types/common';
@@ -46,7 +46,10 @@ export default function AdminProductsPage() {
   
   const products = productsData?.products || [];
   const totalProducts = productsData?.total || 0;
-  
+
+  // Counted over the whole catalogue, not this one page — see useAdminProductStats.
+  const { data: stats } = useAdminProductStats();
+
   // Sort products based on current sort settings
   const sortedProducts = [...products].sort((a, b) => {
     switch (sortBy) {
@@ -609,29 +612,24 @@ export default function AdminProductsPage() {
           </div>
         )}
 
-        {/* Stats Cards */}
+        {/* Stats Cards — counted over the whole catalogue via /products/admin/stats,
+            not over whichever page of 20 happens to be loaded below. */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Total Products</div>
-            <div className="text-2xl font-bold text-gray-900">{totalProducts}</div>
+            <div className="text-2xl font-bold text-gray-900">{stats?.total ?? totalProducts}</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Active</div>
-            <div className="text-2xl font-bold text-green-600">
-              {products.filter((p: Product) => p.status === 'active').length}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{stats?.active ?? '…'}</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Low Stock</div>
-            <div className="text-2xl font-bold text-orange-600">
-              {products.filter((p: Product) => (p.stockQuantity ?? 0) < 10 && (p.stockQuantity ?? 0) > 0).length}
-            </div>
+            <div className="text-2xl font-bold text-orange-600">{stats?.lowStock ?? '…'}</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Out of Stock</div>
-            <div className="text-2xl font-bold text-red-600">
-              {products.filter((p: Product) => (p.stockQuantity ?? 0) === 0).length}
-            </div>
+            <div className="text-2xl font-bold text-red-600">{stats?.outOfStock ?? '…'}</div>
           </div>
         </div>
 

@@ -12,6 +12,8 @@ import { MegaMenu } from './MegaMenu';
 import { MobileNav } from './MobileNav';
 import { SearchOverlay } from './SearchOverlay';
 import { cn } from '@/lib/utils';
+import { LOOKBOOK_ENABLED } from '@/lib/features';
+import { NotificationBell } from '@/components/NotificationBell';
 
 const STATIC_LINKS = [{ label: 'New In', href: '/category/new-in' }];
 
@@ -61,6 +63,28 @@ export function Header() {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [accountOpen, setAccountOpen] = React.useState(false);
+  const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCloseTimer = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+
+  const openMegaMenu = (categoryId: string) => {
+    clearCloseTimer();
+    setActiveMenu(categoryId);
+  };
+
+  // A short delay rather than closing the instant the pointer leaves the nav
+  // item — without it, a mouse moving diagonally from the trigger down into
+  // the panel crosses a gap of no element and closes the menu before it
+  // arrives.
+  const scheduleCloseMegaMenu = () => {
+    clearCloseTimer();
+    closeTimer.current = setTimeout(() => setActiveMenu(null), 120);
+  };
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -74,12 +98,22 @@ export function Header() {
     setAccountOpen(false);
   }, [pathname]);
 
-  const activeCategory = categories.find((c) => c.id === activeMenu);
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveMenu(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  React.useEffect(() => () => clearCloseTimer(), []);
+
+  const activeCategory = categories.find((c) => c.id === activeMenu && c.children?.length);
 
   return (
     <>
       <header
-        onMouseLeave={() => setActiveMenu(null)}
+        onMouseLeave={scheduleCloseMegaMenu}
         className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-3"
       >
         <div
@@ -118,31 +152,38 @@ export function Header() {
               </Link>
             ))}
 
-            {categories.map((cat) => (
-              // A link, not a button: hovering opens the mega menu, but the
-              // category name itself has to be clickable and keyboard-reachable.
-              <Link
-                key={cat.id}
-                href={`/category/${cat.slug}`}
-                onMouseEnter={() => setActiveMenu(cat.id)}
-                onFocus={() => setActiveMenu(cat.id)}
-                className={cn(
-                  NAV_LINK,
-                  activeMenu === cat.id
-                    ? 'bg-[hsl(var(--pb-blush-wash))] text-[hsl(var(--pb-rose-deep))]'
-                    : 'text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]'
-                )}
-              >
-                {cat.name}
-              </Link>
-            ))}
+            {categories.map((cat) => {
+              const hasChildren = !!cat.children?.length;
+              return (
+                // A link, not a button: hovering opens the mega menu, but the
+                // category name itself has to be clickable and keyboard-reachable.
+                <Link
+                  key={cat.id}
+                  href={`/category/${cat.slug}`}
+                  // A category with no children has nothing for the panel to
+                  // show — opening it anyway is the empty-white-panel bug.
+                  onMouseEnter={hasChildren ? () => openMegaMenu(cat.id) : undefined}
+                  onFocus={hasChildren ? () => openMegaMenu(cat.id) : undefined}
+                  className={cn(
+                    NAV_LINK,
+                    activeMenu === cat.id
+                      ? 'bg-[hsl(var(--pb-blush-wash))] text-[hsl(var(--pb-rose-deep))]'
+                      : 'text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]'
+                  )}
+                >
+                  {cat.name}
+                </Link>
+              );
+            })}
 
-            <Link
-              href="/lookbook"
-              className={`${NAV_LINK} text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]`}
-            >
-              Lookbook
-            </Link>
+            {LOOKBOOK_ENABLED && (
+              <Link
+                href="/lookbook"
+                className={`${NAV_LINK} text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]`}
+              >
+                Lookbook
+              </Link>
+            )}
             <Link
               href="/about"
               className={`${NAV_LINK} text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]`}
@@ -212,6 +253,9 @@ export function Header() {
               <User className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
             </Link>
           )}
+          {isLoggedIn && (
+            <NotificationBell buttonClassName={ICON_BUTTON} iconClassName="h-5 w-5 text-[hsl(var(--pb-ink))]" />
+          )}
           <Link href="/wishlist" aria-label="Wishlist" className={ICON_BUTTON}>
             <Heart className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
             <CountBadge count={wishlistCount} />
@@ -222,9 +266,18 @@ export function Header() {
           </button>
 
           {/* Mega menu hangs off the pill rather than spanning the viewport, so
-              it stays visually attached to the object it belongs to. */}
+              it stays visually attached to the object it belongs to. The
+              wrapper sizes to the panel's own content (via MegaMenu's
+              `w-fit`) instead of always claiming a fixed 60rem, capped so it
+              never overflows a narrow viewport; `onMouseEnter` cancels the
+              pending close so moving the pointer down into the panel doesn't
+              dismiss it. */}
           {activeCategory && (
-            <div className="absolute left-1/2 top-full hidden w-[min(60rem,calc(100vw-2rem))] -translate-x-1/2 pt-3 md:block">
+            <div
+              onMouseEnter={clearCloseTimer}
+              onMouseLeave={scheduleCloseMegaMenu}
+              className="absolute left-1/2 top-full hidden max-w-[calc(100vw-2rem)] -translate-x-1/2 pt-3 md:block"
+            >
               <MegaMenu category={activeCategory} onNavigate={() => setActiveMenu(null)} />
             </div>
           )}

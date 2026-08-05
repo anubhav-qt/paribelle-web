@@ -1,0 +1,208 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { X } from 'lucide-react';
+
+interface ExchangeRequest {
+  id: string;
+  returnNumber: string;
+  status: string;
+  quantity: number;
+  reason: string;
+  productName: string;
+  customerNotes: string | null;
+  customerTrackingNumber: string | null;
+  inspectionResult: string | null;
+  inspectionNotes: string | null;
+  rejectionReason: string | null;
+  replacementTrackingNumber: string | null;
+  requestedAt: string;
+}
+
+interface AdminExchangePanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  orderId: string;
+  orderNumber: string;
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  requested: 'Requested — awaiting your decision',
+  approved: 'Approved — waiting for the customer to ship it back',
+  in_transit: 'Customer has shipped it back',
+  received: 'Received — inspection passed, ready to ship replacement',
+  replacement_shipped: 'Replacement shipped',
+  rejected: 'Rejected',
+};
+
+/**
+ * The admin side of the exchange sub-machine — see Task 8 in the
+ * implementation plan for the full diagram. Every action here calls an
+ * `@AdminOnly()` endpoint.
+ */
+export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumber }: AdminExchangePanelProps) {
+  const [exchanges, setExchanges] = useState<ExchangeRequest[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderId}/exchanges`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to load exchange requests');
+      setExchanges(await res.json());
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load exchange requests');
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId]);
+
+  useEffect(() => {
+    if (isOpen) load();
+  }, [isOpen, load]);
+
+  if (!isOpen) return null;
+
+  const call = async (path: string, body?: any) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Action failed');
+    }
+    await load();
+  };
+
+  const withBusy = async (id: string, action: () => Promise<void>) => {
+    setBusyId(id);
+    setError('');
+    try {
+      await action();
+    } catch (err: any) {
+      setError(err?.message || 'Action failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b p-4">
+          <h2 className="text-lg font-bold text-gray-900">Exchange Requests — Order #{orderNumber}</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          {error && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          )}
+          {loading ? (
+            <p className="text-sm text-gray-500">Loading…</p>
+          ) : exchanges.length === 0 ? (
+            <p className="text-sm text-gray-500">No exchange requests on this order.</p>
+          ) : (
+            exchanges.map((exc) => (
+              <div key={exc.id} className="rounded-lg border p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="font-medium text-gray-900">{exc.returnNumber}</span>
+                  <span className="text-xs text-gray-500">{new Date(exc.requestedAt).toLocaleDateString()}</span>
+                </div>
+                <p className="text-sm text-gray-700">{exc.productName} — Qty {exc.quantity}</p>
+                <p className="text-sm text-gray-600">Reason: {exc.reason}</p>
+                {exc.customerNotes && <p className="text-sm text-gray-500">Notes: {exc.customerNotes}</p>}
+                <p className="mt-2 text-sm font-medium text-blue-700">
+                  {STATUS_LABEL[exc.status] || exc.status}
+                </p>
+                {exc.customerTrackingNumber && (
+                  <p className="text-xs text-gray-500">Customer tracking: {exc.customerTrackingNumber}</p>
+                )}
+                {exc.inspectionNotes && (
+                  <p className="text-xs text-gray-500">Inspection notes: {exc.inspectionNotes}</p>
+                )}
+                {exc.rejectionReason && (
+                  <p className="text-xs text-red-600">Rejected: {exc.rejectionReason}</p>
+                )}
+                {exc.replacementTrackingNumber && (
+                  <p className="text-xs text-gray-500">Replacement tracking: {exc.replacementTrackingNumber}</p>
+                )}
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {exc.status === 'requested' && (
+                    <>
+                      <button
+                        disabled={busyId === exc.id}
+                        onClick={() => withBusy(exc.id, () => call(`exchanges/${exc.id}/approve`))}
+                        className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        disabled={busyId === exc.id}
+                        onClick={() => {
+                          const reason = prompt('Reason for rejecting this exchange request:');
+                          if (reason) withBusy(exc.id, () => call(`exchanges/${exc.id}/reject`, { reason }));
+                        }}
+                        className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                  {exc.status === 'in_transit' && (
+                    <>
+                      <button
+                        disabled={busyId === exc.id}
+                        onClick={() => {
+                          const notes = prompt('Inspection notes (optional):') || undefined;
+                          withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'passed', notes }));
+                        }}
+                        className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
+                      >
+                        Passed Inspection
+                      </button>
+                      <button
+                        disabled={busyId === exc.id}
+                        onClick={() => {
+                          const notes = prompt('Why did it fail inspection?') || undefined;
+                          withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'failed', notes }));
+                        }}
+                        className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                      >
+                        Failed Inspection
+                      </button>
+                    </>
+                  )}
+                  {exc.status === 'received' && exc.inspectionResult === 'passed' && (
+                    <button
+                      disabled={busyId === exc.id}
+                      onClick={() => {
+                        const trackingNumber = prompt('Replacement tracking number (optional):') || undefined;
+                        withBusy(exc.id, () => call(`exchanges/${exc.id}/ship-replacement`, { trackingNumber }));
+                      }}
+                      className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      Ship Replacement
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

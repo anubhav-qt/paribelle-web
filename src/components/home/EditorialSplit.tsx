@@ -4,7 +4,13 @@ import { RevealOnScroll } from '@/components/brand/RevealOnScroll';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 
-export function EditorialSplit() {
+export interface EditorialSplitProps {
+  /** Defaults suit the homepage teaser; /about passes its own since it can't link to itself. */
+  ctaHref?: string;
+  ctaLabel?: string;
+}
+
+export function EditorialSplit({ ctaHref = '/about', ctaLabel = 'Our Story' }: EditorialSplitProps) {
   return (
     <section className="bg-[hsl(var(--pb-blush-wash))]">
       <div className="mx-auto grid max-w-7xl items-center gap-0 md:grid-cols-2">
@@ -23,8 +29,8 @@ export function EditorialSplit() {
             before it ships. We pair considered fabrics with modern cuts, so every piece feels
             as good as it looks.
           </p>
-          <Link href="/about" className="mt-8 inline-block">
-            <Button variant="gold-outline">Our Story</Button>
+          <Link href={ctaHref} className="mt-8 inline-block">
+            <Button variant="gold-outline">{ctaLabel}</Button>
           </Link>
         </RevealOnScroll>
       </div>

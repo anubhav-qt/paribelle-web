@@ -42,6 +42,19 @@ interface ProductRatingUpdate {
   timestamp: string;
 }
 
+interface NotificationEvent {
+  id: string;
+  userId: string | null;
+  audience: 'user' | 'admin';
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  orderId: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
 interface MarketplaceWebSocketContextType {
   socket: Socket | null;
   isConnected: boolean;
@@ -52,6 +65,8 @@ interface MarketplaceWebSocketContextType {
   subscribeToNewVendorOrders: (callback: (update: NewVendorOrder) => void) => () => void;
   subscribeToPriceUpdates: (callback: (update: PriceUpdate) => void) => () => void;
   subscribeToRatingUpdates: (callback: (update: ProductRatingUpdate) => void) => () => void;
+  /** The notification bell — see NotificationsContext, which is the actual consumer. */
+  subscribeToNotifications: (callback: (notification: NotificationEvent) => void) => () => void;
 }
 
 const MarketplaceWebSocketContext = createContext<MarketplaceWebSocketContextType | undefined>(undefined);
@@ -203,6 +218,14 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
     };
   }, [socket]);
 
+  const subscribeToNotifications = useCallback((callback: (notification: NotificationEvent) => void) => {
+    if (!socket) return () => {};
+    socket.on('notification', callback);
+    return () => {
+      socket.off('notification', callback);
+    };
+  }, [socket]);
+
   const value: MarketplaceWebSocketContextType = {
     socket,
     isConnected,
@@ -213,6 +236,7 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
     subscribeToNewVendorOrders,
     subscribeToPriceUpdates,
     subscribeToRatingUpdates,
+    subscribeToNotifications,
   };
 
   return (

@@ -49,6 +49,38 @@ export function useAdminProducts(options: UseAdminProductsOptions = {}) {
   });
 }
 
+export interface AdminProductStats {
+  total: number;
+  active: number;
+  draft: number;
+  archived: number;
+  lowStock: number;
+  outOfStock: number;
+}
+
+/**
+ * Counts over the whole catalogue. The stat tiles used to filter whichever
+ * 20-row page was loaded, which is why "Active" could never read above the
+ * page size no matter how many products actually qualified.
+ */
+export function useAdminProductStats() {
+  return useQuery({
+    queryKey: ['admin-products-stats'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/admin/stats`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json() as Promise<AdminProductStats>;
+    },
+    staleTime: 30000,
+  });
+}
+
 export function useUpdateProductStatus() {
   const queryClient = useQueryClient();
   

@@ -12,6 +12,7 @@ import { PageSection, Hotspot } from '@/lib/pageSections';
 import { Product } from '@/types/product';
 import { getProductImageUrl } from '@/lib/image-url';
 import { useCart } from '@/contexts/CartContext';
+import { LOOKBOOK_ENABLED } from '@/lib/features';
 
 interface MarketplacePage {
   id: string;
@@ -22,6 +23,8 @@ interface MarketplacePage {
 }
 
 export default function LookbookDetailPage({ params }: { params: { slug: string } }) {
+  if (!LOOKBOOK_ENABLED) notFound();
+
   const [page, setPage] = useState<MarketplacePage | null>(null);
   const [loading, setLoading] = useState(true);
 

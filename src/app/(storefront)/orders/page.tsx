@@ -12,7 +12,7 @@ import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import ReturnRequestModal from '@/components/ReturnRequestModal';
+import ExchangeRequestModal from '@/components/ExchangeRequestModal';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 import { useMarketplaceWebSocket } from '@/contexts/StockWebSocketContext';
@@ -47,8 +47,8 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [returnDetails, setReturnDetails] = useState<ReturnDetails | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showReturnModal, setShowReturnModal] = useState(false);
-  const [showReturnConfirmation, setShowReturnConfirmation] = useState(false);
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
+  const [itemForExchange, setItemForExchange] = useState<OrderItem | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelReasonOther, setCancelReasonOther] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -234,49 +234,19 @@ export default function OrdersPage() {
     }
   };
 
-  // Check if order can be returned based on vendor's return policy
-  const canReturnOrder = (order: Order): boolean => {
-    // Only allow returns for delivered orders
-    const isDelivered = order.status.toLowerCase() === 'delivered';
-    
-    if (!isDelivered) return false;
-    
-    // Ensure deliveredAt date exists
-    if (!order.deliveredAt) return false;
-    
-    // Default to allowing returns if returnPolicy is not present (backward compatibility)
-    const allowReturns = order.returnPolicy?.allowReturns ?? true;
-    const returnPolicyDays = order.returnPolicy?.returnPolicyDays ?? 7;
-    
-    if (!allowReturns || returnPolicyDays === 0) return false;
-    
-    // Check if within return window
-    const deliveryDate = new Date(order.deliveredAt);
-    const currentDate = new Date();
-    const daysSinceDelivery = Math.floor((currentDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysSinceDelivery <= returnPolicyDays;
-  };
-
-  const getReturnPolicyMessage = (order: Order): string => {
-    const allowReturns = order.returnPolicy?.allowReturns ?? true;
-    const returnPolicyDays = order.returnPolicy?.returnPolicyDays ?? 7;
-    
-    if (!allowReturns) return 'Vendor does not accept returns';
-    if (returnPolicyDays === 0) return 'Returns not allowed';
-    
-    // For COD orders, allow returns after delivery. For online payments, allow after payment or delivery
-    const isDeliveredOrPaid = order.deliveredAt || (order.paymentStatus === 'paid');
-    if (!isDeliveredOrPaid) return 'Order not yet delivered or paid';
-    
-    const deliveryDate = order.deliveredAt ? new Date(order.deliveredAt) : new Date();
-    const currentDate = new Date();
-    const daysSinceDelivery = Math.floor((currentDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
-    const remainingDays = returnPolicyDays - daysSinceDelivery;
-    
-    if (remainingDays <= 0) {
-      return `Return period has expired (${returnPolicyDays} days from delivery)`;
-    }
-    return `Return within ${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+  /**
+   * Whether an exchange window message should show under the button — a
+   * courtesy hint, not the source of truth. `order.canExchange` (computed
+   * server-side by OrdersService.transformOrder) is what actually gates the
+   * button; this only formats `exchangeWindowExpiresAt` for display.
+   */
+  const getExchangeWindowMessage = (order: Order): string => {
+    if (!order.exchangeWindowExpiresAt) return '';
+    const remainingDays = Math.ceil(
+      (new Date(order.exchangeWindowExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+    if (remainingDays <= 0) return 'Exchange window has expired';
+    return `Exchange within ${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
   };
 
   const handleDownloadInvoice = async (orderId: string, orderNumber: string) => {
@@ -341,55 +311,39 @@ export default function OrdersPage() {
     }
   };
 
-  const handleReturnOrder = async (returnData: {
-    orderItemId: string;
+  const handleExchangeRequest = async (data: {
     quantity: number;
     reason: string;
+    exchangeVariantId: string;
     customerNotes?: string;
-    images?: string[];
   }) => {
-    if (!orderToAction) {
+    if (!orderToAction || !itemForExchange) {
       showToast('No order selected', 'error');
       return;
     }
 
-    setActionLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderToAction.id}/items/${returnData.orderItemId}/return`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            quantity: returnData.quantity,
-            reason: returnData.reason,
-            customerNotes: returnData.customerNotes,
-            images: returnData.images
-          }),
-        }
-      );
-
-      if (response.ok) {
-        hideConfirm();
-        showToast('Return request submitted successfully', 'success');
-        setShowReturnModal(false);
-        setOrderToAction(null);
-        fetchOrders();
-      } else {
-        const error = await response.json();
-        hideConfirm();
-        showToast(error.message || 'Failed to submit return request', 'error');
+    const token = localStorage.getItem('token');
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderToAction.id}/items/${itemForExchange.id}/exchange`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
       }
-    } catch (error) {
-      console.error('Error requesting return:', error);
-      hideConfirm();
-      showToast('Failed to submit return request. Please try again.', 'error');
-    } finally {
-      setActionLoading(false);
+    );
+
+    if (response.ok) {
+      showToast('Exchange request submitted successfully', 'success');
+      setShowExchangeModal(false);
+      setOrderToAction(null);
+      setItemForExchange(null);
+      fetchOrders();
+    } else {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to submit exchange request');
     }
   };
 
@@ -762,23 +716,28 @@ export default function OrdersPage() {
                         Download Invoice
                       </button>
                     )}
-                    {order.status.toLowerCase() === 'delivered' && canReturnOrder(order) && (
-                      <button 
+                    {/* Server-computed — see OrdersService.transformOrder. No
+                        returns or refunds any more, only an exchange for a
+                        different variant of the same item once delivered.
+                        Targets the first item; an order with several items
+                        exchanges them one request at a time. */}
+                    {order.canExchange && order.items?.[0] && (
+                      <button
                         onClick={() => {
                           setOrderToAction(order);
-                          setShowReturnConfirmation(true);
+                          setItemForExchange(order.items[0]);
+                          setShowExchangeModal(true);
                         }}
                         className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium"
-                        title={getReturnPolicyMessage(order)}
+                        title={getExchangeWindowMessage(order)}
                       >
-                        Return Order
+                        Request Exchange
                       </button>
                     )}
-                    {/* Cancel order only allowed before shipping (allows cancellation even if paid - refund will be processed) */}
-                    {['pending', 'confirmed', 'processing'].includes(order.status.toLowerCase()) &&
-                     order.paymentStatus !== 'refunded' &&
-                     order.paymentStatus !== 'refund_pending' && (
-                      <button 
+                    {/* Cancel is only offered while the server says it's still
+                        allowed — unpaid and not yet shipped. See Task 8. */}
+                    {order.canCancel && (
+                      <button
                         onClick={() => {
                           setOrderToAction(order);
                           setShowCancelModal(true);
@@ -875,40 +834,22 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Return Request Modal - Item-based returns */}
-      {showReturnModal && orderToAction && (
-        <ReturnRequestModal
-          isOpen={showReturnModal}
+      {/* Exchange Request Modal — same product, a different variant only */}
+      {showExchangeModal && orderToAction && itemForExchange && (
+        <ExchangeRequestModal
+          isOpen={showExchangeModal}
           onClose={() => {
-            setShowReturnModal(false);
+            setShowExchangeModal(false);
             setOrderToAction(null);
+            setItemForExchange(null);
           }}
           orderId={orderToAction.id}
           orderNumber={orderToAction.orderNumber}
-          items={orderToAction.items}
-          onSubmit={handleReturnOrder}
+          item={itemForExchange}
+          onSubmit={handleExchangeRequest}
         />
       )}
 
-      {/* Return Confirmation Dialog */}
-      {showReturnConfirmation && orderToAction && (
-        <ConfirmDialog
-          title="Confirm Return Request"
-          message={`Are you sure you want to request a return for order #${orderToAction.orderNumber}? Returns are accepted within ${orderToAction.returnPolicy?.returnPolicyDays || 7} days of delivery. Items must be unused and in original packaging. You cannot cancel a return request once submitted.`}
-          confirmText="Continue"
-          cancelText="Cancel"
-          confirmVariant="warning"
-          onConfirm={() => {
-            setShowReturnConfirmation(false);
-            setShowReturnModal(true);
-          }}
-          onCancel={() => {
-            setShowReturnConfirmation(false);
-            setOrderToAction(null);
-          }}
-        />
-      )}
-      
       {/* Toast Notification */}
       {toast && (
         <Toast

@@ -2,15 +2,12 @@
 
 import { Suspense, useMemo } from 'react';
 import GoogleAuthHandler from '@/components/GoogleAuthHandler';
-import { ScrapbookHero } from '@/components/home/ScrapbookHero';
-import { CategoryPortals } from '@/components/home/CategoryPortals';
+import { FabricWeaveHero } from '@/components/home/FabricWeaveHero';
 import { ProductRail } from '@/components/home/ProductRail';
-import { EditorialSplit } from '@/components/home/EditorialSplit';
 import { ShopByCategorySection } from '@/components/home/ShopByCategorySection';
 import { LookbookTeaser } from '@/components/home/LookbookTeaser';
 import { TrustStrip } from '@/components/home/TrustStrip';
-import { CommunityGrid } from '@/components/home/CommunityGrid';
-import { getDisplayImage } from '@/lib/utils/product-card-helpers';
+import { LOOKBOOK_ENABLED } from '@/lib/features';
 import type { Category, Product } from '@/types/product';
 
 interface MainPageClientProps {
@@ -51,14 +48,6 @@ export default function MainPageClient({
     [shopCategories]
   );
 
-  const heroLinks = useMemo(
-    () => [
-      ...browseCategories.slice(0, 3).map((cat) => ({ label: cat.name, href: `/category/${cat.slug}` })),
-      { label: 'New In', href: '/category/new-in' },
-    ],
-    [browseCategories]
-  );
-
   const newInProducts = useMemo(() => {
     const all = [
       ...uncategorizedProducts,
@@ -73,32 +62,20 @@ export default function MainPageClient({
       .slice(0, 12);
   }, [uncategorizedProducts, productsByCategory]);
 
-  const communityImages = useMemo(
-    () =>
-      newInProducts
-        .map((p) => getDisplayImage(p.featuredImage, p.images))
-        .filter((img): img is string => !!img)
-        .slice(0, 6),
-    [newInProducts]
-  );
-
   return (
     <div className="min-h-screen bg-[hsl(var(--pb-ivory))]">
       <Suspense fallback={null}>
         <GoogleAuthHandler />
       </Suspense>
 
-      <ScrapbookHero links={heroLinks} />
-      <CategoryPortals categories={browseCategories} />
+      <FabricWeaveHero />
       <ProductRail eyebrow="Just Arrived" title="New In" products={newInProducts} viewAllHref="/category/new-in" />
-      <EditorialSplit />
       <ShopByCategorySection categories={browseCategories} productsByCategory={productsByCategory} />
-      <LookbookTeaser />
+      {LOOKBOOK_ENABLED && <LookbookTeaser />}
       {bookingProducts.length > 0 && (
         <ProductRail eyebrow="Book an Experience" title="Bookings & Services" products={bookingProducts} />
       )}
       <TrustStrip />
-      <CommunityGrid images={communityImages} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Monogram } from '@/components/brand/Monogram';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import type { Category } from '@/types/product';
 import { useState } from 'react';
+import { LOOKBOOK_ENABLED } from '@/lib/features';
 
 export interface MobileNavProps {
   open: boolean;
@@ -66,9 +67,11 @@ export function MobileNav({ open, onClose, categories }: MobileNavProps) {
             </div>
           );
         })}
-        <Link href="/lookbook" onClick={onClose} className="py-3 text-sm font-medium text-[hsl(var(--pb-ink))] border-b border-[hsl(var(--pb-linen))]">
-          Lookbook
-        </Link>
+        {LOOKBOOK_ENABLED && (
+          <Link href="/lookbook" onClick={onClose} className="py-3 text-sm font-medium text-[hsl(var(--pb-ink))] border-b border-[hsl(var(--pb-linen))]">
+            Lookbook
+          </Link>
+        )}
         <Link href="/about" onClick={onClose} className="py-3 text-sm font-medium text-[hsl(var(--pb-ink))] border-b border-[hsl(var(--pb-linen))]">
           About
         </Link>

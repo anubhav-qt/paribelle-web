@@ -62,6 +62,7 @@ export interface OrderItem {
   subtotal?: number;
   image?: string;
   productImage?: string;
+  variantId?: string | null;
   returnedQuantity?: number;
   returnStatus?: 'none' | 'partial' | 'full';
   review?: any;
@@ -141,6 +142,16 @@ export interface Order {
     returnPolicyDays?: number;
   };
   invoice?: any;
+  /**
+   * Computed server-side (see OrdersService.transformOrder) so the client
+   * never re-implements the cancellation/exchange policy — a rule duplicated
+   * in two places drifts. Cancel is only true while unpaid and not yet
+   * shipped; exchange is only true once delivered, paid, and inside the
+   * configured exchange window.
+   */
+  canCancel?: boolean;
+  canExchange?: boolean;
+  exchangeWindowExpiresAt?: string | null;
 }
 
 export interface OrderFilters {

@@ -374,7 +374,10 @@ export default function AdminInvoicesPage() {
               <option value="">All Types</option>
               <option value="customer">Customer Invoices</option>
               <option value="vendor">Vendor Payouts</option>
-              <option value="platform">Commission Invoices</option>
+              {/* "Commission Invoices" removed from the filter — platform
+                  commission is 0 (see plan Task 1), so this type is no longer
+                  generated for new orders. Historic `platform` invoices still
+                  render if visited directly; the type value itself is untouched. */}
             </select>
           </div>
 

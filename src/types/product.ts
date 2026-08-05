@@ -98,7 +98,8 @@ export interface Product {
   createdAt?: string;
   averageRating?: string | number;
   reviewCount?: number;
-  
+  salesCount?: number;
+
   // Variation support (legacy)
   isParent?: boolean;
   parentProductId?: string;

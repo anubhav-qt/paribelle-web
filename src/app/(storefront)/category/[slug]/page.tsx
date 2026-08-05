@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { SlidersHorizontal, Package, Star, X } from 'lucide-react';
-import LocationFilter from '@/components/LocationFilter';
 import ProductCard from '@/components/product/ProductCard';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { Select } from '@/components/ui/Select';
@@ -18,9 +17,24 @@ import { SectionHeading } from '@/components/brand/SectionHeading';
 import { getCurrencySymbol } from '@/lib/currency';
 import { Product, Category } from '@/types/product';
 
-type SortOption = 'popularity' | 'price-low' | 'price-high' | 'rating' | 'newest';
+type SortOption = 'popularity' | 'price-low' | 'price-high' | 'newest';
 
 const HIDDEN_FILTER_IDS = ['stock', 'stockQuantity', 'isActive', 'active', 'status', 'rating', 'variant attributes'];
+
+/**
+ * Built-in filter sections not part of a category's `filterConfig` — Price,
+ * Discount and (until now) Location and Customer Rating. This store sells one
+ * brand's clothing rather than many local vendors, so Location is marketplace
+ * furniture with nothing to filter by; Rating is dead because the catalogue
+ * carries effectively no reviews, so every option but "All ratings" returns an
+ * empty grid. Whether these come back is an open question for the team — see
+ * the "Still open" section of the implementation plan — so this is a toggle,
+ * not a deletion: removing 'rating' here restores the sidebar section with no
+ * other change needed. Location's removal goes further (state and a network
+ * fetch came out with it, see below) since restoring that filter is a bigger
+ * job than flipping a flag regardless.
+ */
+const HIDDEN_STOREFRONT_FILTERS = ['rating'];
 
 /**
  * Curated collections that live at /category/<slug> but have no row in the
@@ -72,7 +86,6 @@ interface FilterPanelProps {
   idPrefix: string;
   category: Category | null;
   subcategories: Category[];
-  locationFilterEnabled: boolean;
   currency: string;
   maxProductPrice: number;
   priceRange: [number, number];
@@ -81,8 +94,6 @@ interface FilterPanelProps {
   setMinRating: (rating: number) => void;
   showDiscountOnly: boolean;
   setShowDiscountOnly: (value: boolean) => void;
-  setCityId: (id: string | null) => void;
-  setSubLocationId: (id: string | null) => void;
   dynamicFilterDefs: CategoryFilterDef[];
   dynamicFilters: Record<string, any>;
   onDynamicFilterChange: (key: string, value: any, type: string) => void;
@@ -99,7 +110,6 @@ function FilterPanel({
   idPrefix,
   category,
   subcategories,
-  locationFilterEnabled,
   currency,
   maxProductPrice,
   priceRange,
@@ -108,8 +118,6 @@ function FilterPanel({
   setMinRating,
   showDiscountOnly,
   setShowDiscountOnly,
-  setCityId,
-  setSubLocationId,
   dynamicFilterDefs,
   dynamicFilters,
   onDynamicFilterChange,
@@ -139,19 +147,6 @@ function FilterPanel({
         </div>
       )}
 
-      {locationFilterEnabled && (
-        <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
-          <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Location</h3>
-          <LocationFilter
-            onFilterChange={(c, s) => {
-              setCityId(c);
-              setSubLocationId(s);
-            }}
-            showLabel={false}
-          />
-        </div>
-      )}
-
       <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
         <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Price</h3>
         <input
@@ -169,28 +164,30 @@ function FilterPanel({
         </div>
       </div>
 
-      <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
-        <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Customer Rating</h3>
-        <div className="space-y-2">
-          {[4, 3, 2, 1, 0].map((rating) => (
-            <Radio
-              key={rating}
-              name={`${idPrefix}-rating`}
-              checked={minRating === rating}
-              onChange={() => setMinRating(rating)}
-              label={
-                rating > 0 ? (
-                  <span className="flex items-center gap-1">
-                    {rating} <Star className="h-3.5 w-3.5 fill-[hsl(var(--pb-gold))] text-[hsl(var(--pb-gold))]" /> &amp; up
-                  </span>
-                ) : (
-                  'All ratings'
-                )
-              }
-            />
-          ))}
+      {!HIDDEN_STOREFRONT_FILTERS.includes('rating') && (
+        <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
+          <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Customer Rating</h3>
+          <div className="space-y-2">
+            {[4, 3, 2, 1, 0].map((rating) => (
+              <Radio
+                key={rating}
+                name={`${idPrefix}-rating`}
+                checked={minRating === rating}
+                onChange={() => setMinRating(rating)}
+                label={
+                  rating > 0 ? (
+                    <span className="flex items-center gap-1">
+                      {rating} <Star className="h-3.5 w-3.5 fill-[hsl(var(--pb-gold))] text-[hsl(var(--pb-gold))]" /> &amp; up
+                    </span>
+                  ) : (
+                    'All ratings'
+                  )
+                }
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
         <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Discount</h3>
@@ -272,18 +269,14 @@ export default function CategoryPage() {
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
   const [showDiscountOnly, setShowDiscountOnly] = useState(false);
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, any>>({});
+  // The filters this category's live catalogue actually offers — derived on
+  // the server from `variant_attributes`, not a snapshot copied at import
+  // time. See CategoriesService.getEffectiveFilters.
+  const [effectiveFilters, setEffectiveFilters] = useState<CategoryFilterDef[]>([]);
 
-  const [cityId, setCityId] = useState<string | null>(null);
-  const [subLocationId, setSubLocationId] = useState<string | null>(null);
-  const [locationFilterEnabled, setLocationFilterEnabled] = useState(false);
   const [currency, setCurrency] = useState('INR');
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/location_filter_enabled`)
-      .then((res) => res.json())
-      .then((data) => setLocationFilterEnabled(data.value === true || data.value === 'true'))
-      .catch(() => {});
-
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/currency`)
       .then((res) => res.json())
       .then((data) => setCurrency(data.value || 'INR'))
@@ -294,9 +287,22 @@ export default function CategoryPage() {
   }, [categorySlug]);
 
   useEffect(() => {
-    if (category?.filterConfig) {
+    // Virtual collections (New In, Sale) have no category row to derive
+    // attribute filters from.
+    if (!category || category.id.startsWith('collection-')) {
+      setEffectiveFilters([]);
+      return;
+    }
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/${category.id}/filters/effective`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setEffectiveFilters(data?.filters || []))
+      .catch(() => setEffectiveFilters([]));
+  }, [category?.id]);
+
+  useEffect(() => {
+    if (effectiveFilters.length > 0) {
       const initialFilters: Record<string, any> = {};
-      category.filterConfig.filters.forEach((filter) => {
+      effectiveFilters.forEach((filter) => {
         if (filter.id === 'price' || filter.id === 'priceRange') return;
         if (HIDDEN_FILTER_IDS.includes(filter.id)) return;
         if (filter.type === 'multiselect' || filter.type === 'checkbox') initialFilters[filter.id] = [];
@@ -305,24 +311,16 @@ export default function CategoryPage() {
       });
       setDynamicFilters(initialFilters);
     }
-  }, [category]);
+  }, [effectiveFilters]);
 
   useEffect(() => {
     applyFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, priceRange, minRating, sortBy, showDiscountOnly, dynamicFilters]);
 
-  useEffect(() => {
-    // Virtual collections have no category row to refetch against.
-    if (category && !VIRTUAL_COLLECTIONS[categorySlug]) fetchProducts(category.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cityId, subLocationId]);
-
   const fetchProducts = async (categoryId: string) => {
     try {
       const searchParams = new URLSearchParams({ categoryId });
-      if (cityId) searchParams.append('cityId', cityId);
-      if (subLocationId) searchParams.append('subLocationId', subLocationId);
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?${searchParams.toString()}`);
       if (res.ok) {
@@ -470,13 +468,17 @@ export default function CategoryPage() {
           return Number(a.price) - Number(b.price);
         case 'price-high':
           return Number(b.price) - Number(a.price);
-        case 'rating':
-          return Number(b.averageRating) - Number(a.averageRating);
         case 'newest':
           return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         case 'popularity':
-        default:
-          return (b.reviewCount ?? 0) - (a.reviewCount ?? 0);
+        default: {
+          // Real sales, not review count — see Task 4. Ties (including the
+          // common case of everything at 0 sales) fall back to newest first
+          // rather than leaving the order arbitrary.
+          const salesDiff = (b.salesCount ?? 0) - (a.salesCount ?? 0);
+          if (salesDiff !== 0) return salesDiff;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        }
       }
     });
 
@@ -488,9 +490,9 @@ export default function CategoryPage() {
     setMinRating(0);
     setSortBy('popularity');
     setShowDiscountOnly(false);
-    if (category?.filterConfig) {
+    if (effectiveFilters.length > 0) {
       const resetDynamic: Record<string, any> = {};
-      category.filterConfig.filters.forEach((filter) => {
+      effectiveFilters.forEach((filter) => {
         if (filter.id === 'price' || filter.id === 'priceRange') return;
         if (HIDDEN_FILTER_IDS.includes(filter.id)) return;
         if (filter.type === 'multiselect' || filter.type === 'checkbox') resetDynamic[filter.id] = [];
@@ -514,7 +516,7 @@ export default function CategoryPage() {
     });
   };
 
-  const dynamicFilterDefs = (category?.filterConfig?.filters || []).filter(
+  const dynamicFilterDefs = effectiveFilters.filter(
     (f) => f.id !== 'price' && f.id !== 'priceRange' && !HIDDEN_FILTER_IDS.includes(f.id)
   );
 
@@ -594,7 +596,6 @@ export default function CategoryPage() {
   const filterPanelProps = {
     category,
     subcategories,
-    locationFilterEnabled,
     currency,
     maxProductPrice,
     priceRange,
@@ -603,8 +604,6 @@ export default function CategoryPage() {
     setMinRating,
     showDiscountOnly,
     setShowDiscountOnly,
-    setCityId,
-    setSubLocationId,
     dynamicFilterDefs,
     dynamicFilters,
     onDynamicFilterChange: handleDynamicFilterChange,
@@ -684,7 +683,6 @@ export default function CategoryPage() {
                   <option value="popularity">Popularity</option>
                   <option value="price-low">Price: Low to High</option>
                   <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Customer Rating</option>
                   <option value="newest">Newest First</option>
                 </Select>
               </div>

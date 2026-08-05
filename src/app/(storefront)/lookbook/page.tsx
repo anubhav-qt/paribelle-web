@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import SectionRenderer from '@/components/SectionRenderer';
 import { Monogram } from '@/components/brand/Monogram';
 import { Button } from '@/components/ui/Button';
 import { PageSection } from '@/lib/pageSections';
+import { LOOKBOOK_ENABLED } from '@/lib/features';
 
 interface MarketplacePage {
   id: string;
@@ -16,6 +18,8 @@ interface MarketplacePage {
 }
 
 export default function LookbookIndexPage() {
+  if (!LOOKBOOK_ENABLED) notFound();
+
   const [page, setPage] = useState<MarketplacePage | null>(null);
   const [loading, setLoading] = useState(true);
 

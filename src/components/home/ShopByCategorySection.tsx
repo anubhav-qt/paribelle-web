@@ -9,10 +9,17 @@ export interface ShopByCategorySectionProps {
   productsByCategory: Record<string, Product[]>;
 }
 
+// With many categories this section becomes an endless page of
+// near-identical rows — capped so the homepage stays finite. The header's
+// nav already lists every category permanently, so nothing is lost by not
+// repeating the rest here.
+const MAX_SECTIONS = 3;
+
 export function ShopByCategorySection({ categories, productsByCategory }: ShopByCategorySectionProps) {
   const sections = categories
     .map((cat) => ({ cat, products: productsByCategory[cat.slug] || [] }))
-    .filter((s) => s.products.length > 0);
+    .filter((s) => s.products.length > 0)
+    .slice(0, MAX_SECTIONS);
 
   if (sections.length === 0) return null;
 

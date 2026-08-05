@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { clearAuth } from '@/lib/auth';
 import { ADMIN_NAV } from './adminNav';
+import { NotificationBell } from '@/components/NotificationBell';
 
 /**
  * Chrome for the store panel. The login page renders bare — it is reached
@@ -46,6 +47,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2 border-l border-gray-200 pl-4">
+            <NotificationBell
+              buttonClassName="relative rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+              iconClassName="h-4 w-4"
+            />
             <Link
               href="/"
               className="whitespace-nowrap text-sm text-gray-600 hover:text-gray-900"

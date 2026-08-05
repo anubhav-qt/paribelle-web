@@ -12,6 +12,7 @@ import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
+import AdminExchangePanel from '@/components/AdminExchangePanel';
 import { Order } from '@/types/common';
 import { Loader } from '@/components/ui/Loader';
 
@@ -47,6 +48,7 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [returnDetails, setReturnDetails] = useState<ReturnDetails | null>(null);
+  const [exchangeOrder, setExchangeOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -743,7 +745,16 @@ export default function AdminOrdersPage() {
                               Confirm All Received
                             </button>
                           ) : null}
-                          
+
+                          {order.status === 'delivered' && (
+                            <button
+                              onClick={() => setExchangeOrder(order)}
+                              className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                            >
+                              Exchange Requests
+                            </button>
+                          )}
+
                           <button
                             onClick={() => viewOrderDetails(order)}
                             className="text-blue-600 hover:text-blue-800 flex items-center justify-center gap-1 px-3 py-1"
@@ -758,6 +769,15 @@ export default function AdminOrdersPage() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {exchangeOrder && (
+            <AdminExchangePanel
+              isOpen={!!exchangeOrder}
+              onClose={() => setExchangeOrder(null)}
+              orderId={exchangeOrder.id}
+              orderNumber={exchangeOrder.orderNumber}
+            />
           )}
         </div>
       </div>

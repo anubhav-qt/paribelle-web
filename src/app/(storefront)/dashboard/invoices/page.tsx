@@ -150,19 +150,13 @@ export default function VendorDashboardInvoices() {
         <p className="text-gray-600 mt-2">View your order payouts and commission details</p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Summary Cards. "Total Commission" removed — platform commission is 0
+          (see plan Task 1), so this tile always read ₹0 for new orders. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="text-sm text-gray-600 mb-2">Total Payout</div>
           <div className="text-2xl font-bold text-blue-600">
             {formatCurrency(stats.totalPayout)}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-sm text-gray-600 mb-2">Total Commission</div>
-          <div className="text-2xl font-bold text-red-600">
-            {formatCurrency(stats.totalCommission)}
           </div>
         </div>
 

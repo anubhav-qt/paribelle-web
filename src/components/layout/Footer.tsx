@@ -6,6 +6,7 @@ import { Facebook, Instagram, Twitter, Youtube, Linkedin, ArrowRight } from 'luc
 import { useCategories } from '@/hooks/useCategories';
 import { Monogram } from '@/components/brand/Monogram';
 import { usePbToast } from '@/components/ui/Toast';
+import { LOOKBOOK_ENABLED } from '@/lib/features';
 
 interface FooterSettings {
   aboutText: string;
@@ -87,11 +88,13 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
-              <li>
-                <Link href="/lookbook" className="text-sm text-white/70 hover:text-white transition-colors duration-150">
-                  Lookbook
-                </Link>
-              </li>
+              {LOOKBOOK_ENABLED && (
+                <li>
+                  <Link href="/lookbook" className="text-sm text-white/70 hover:text-white transition-colors duration-150">
+                    Lookbook
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
 

@@ -36,19 +36,20 @@ function AdminDashboardContent() {
       const auth = { headers: { Authorization: `Bearer ${token}` } };
 
       try {
-        const [products, categories, orders] = await Promise.all([
-          fetch(`${api}/api/v1/products?page=1&limit=1`, auth).then((r) => (r.ok ? r.json() : null)),
+        // `GET /orders` returns only the calling admin's own orders — it is
+        // scoped that way for regular customers too. Filtering that response
+        // by date made this tile read close to 0 regardless of real order
+        // volume. `/orders/admin/stats` counts every order placed today.
+        const [products, categories, orderStats] = await Promise.all([
+          fetch(`${api}/api/v1/products/admin/stats`, auth).then((r) => (r.ok ? r.json() : null)),
           fetch(`${api}/api/v1/categories`, auth).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${api}/api/v1/orders`, auth).then((r) => (r.ok ? r.json() : null)),
+          fetch(`${api}/api/v1/orders/admin/stats`, auth).then((r) => (r.ok ? r.json() : null)),
         ]);
 
-        const today = new Date().toISOString().split('T')[0];
         setStats({
           products: products?.total ?? 0,
           categories: Array.isArray(categories) ? categories.length : 0,
-          orders: Array.isArray(orders)
-            ? orders.filter((o: any) => o.createdAt?.startsWith(today)).length
-            : 0,
+          orders: orderStats?.ordersToday ?? 0,
         });
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);

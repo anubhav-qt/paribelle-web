@@ -7,6 +7,7 @@ import { CartProvider } from '@/contexts/CartContext';
 import { WishlistProvider } from '@/contexts/WishlistContext';
 import { PoliciesProvider } from '@/contexts/PoliciesContext';
 import { StockWebSocketProvider } from '@/contexts/StockWebSocketContext';
+import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import CartDrawer from './layout/CartDrawer';
 
@@ -27,16 +28,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
         <StockWebSocketProvider>
-          <PoliciesProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <ToastProvider>
-                  {children}
-                  <CartDrawer />
-                </ToastProvider>
-              </WishlistProvider>
-            </CartProvider>
-          </PoliciesProvider>
+          <NotificationsProvider>
+            <PoliciesProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <ToastProvider>
+                    {children}
+                    <CartDrawer />
+                  </ToastProvider>
+                </WishlistProvider>
+              </CartProvider>
+            </PoliciesProvider>
+          </NotificationsProvider>
         </StockWebSocketProvider>
       </ThemeProvider>
     </QueryClientProvider>

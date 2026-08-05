@@ -42,7 +42,11 @@ export default function AdminSettingsPage() {
   }>>([]);
   const [returnPolicy, setReturnPolicy] = useState<{ enabled: boolean; days?: number; text: string }>({ enabled: false, text: '' });
   const [cancellationPolicy, setCancellationPolicy] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: '' });
-  const [commissionRate, setCommissionRate] = useState<number>(10);
+  // No UI control edits this anymore — commission is fixed at 0 (see plan
+  // Task 1). The state and save call are kept only so re-saving the rest of
+  // this form doesn't clobber whatever value the `platform_commission_rate`
+  // setting already holds.
+  const [commissionRate, setCommissionRate] = useState<number>(0);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(0);
   
   // Orphan cleanup state
@@ -123,7 +127,7 @@ export default function AdminSettingsPage() {
 
             const commissionRateSetting = data.find((s: Setting) => s.key === 'platform_commission_rate');
             if (commissionRateSetting) {
-          setCommissionRate(parseFloat(commissionRateSetting.value) || 10);
+          setCommissionRate(parseFloat(commissionRateSetting.value) || 0);
             }
 
             const freeShippingThresholdSetting = data.find((s: Setting) => s.key === 'default_free_shipping_threshold');
@@ -507,7 +511,7 @@ export default function AdminSettingsPage() {
             <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <DollarSign className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Currency & Commission</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Currency</h2>
           </div>
 
           <div className="space-y-4">
@@ -534,35 +538,6 @@ export default function AdminSettingsPage() {
             </div>
 
             <div>
-              <label htmlFor="commissionRate" className="block font-medium text-gray-900 mb-2">
-                Platform Commission Rate (%)
-              </label>
-              <input
-                type="number"
-                id="commissionRate"
-                value={commissionRate}
-                onChange={(e) => setCommissionRate(parseFloat(e.target.value) || 0)}
-                min="0"
-                max="100"
-                step="0.1"
-                placeholder="10"
-                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="text-sm text-gray-600 mt-2">
-                Default commission rate charged on vendor sales. Can be overridden per vendor in vendor settings.
-              </p>
-              <div className="mt-3 p-3 bg-gray-50 rounded-lg border text-sm text-gray-700">
-                <p className="font-medium mb-2">💡 How Commission Works:</p>
-                <ul className="space-y-1 ml-4 list-disc">
-                  <li><strong>commission_amount</strong> = Order Subtotal × (Rate ÷ 100)</li>
-                  <li><strong>vendor_payout</strong> = Order Total - Commission - Platform Fees</li>
-                  <li>Set per-vendor rates in Admin → Vendors → Edit Vendor</li>
-                  <li>Commission is calculated when order is placed and stored in order record</li>
-                </ul>
-              </div>
-            </div>
-
-            <div>
               <label htmlFor="freeShippingThreshold" className="block font-medium text-gray-900 mb-2">
                 Default Free Shipping Threshold ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency})
               </label>
@@ -585,11 +560,6 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> Commission is calculated as: Order Total × Commission Rate. Individual vendors can have custom rates set in their vendor settings.
-              </p>
-            </div>
           </div>
             </div>
 

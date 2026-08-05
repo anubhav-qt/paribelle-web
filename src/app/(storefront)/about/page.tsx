@@ -6,12 +6,42 @@ import { RevealOnScroll } from '@/components/brand/RevealOnScroll';
 import { SectionHeading } from '@/components/brand/SectionHeading';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
+import { EditorialSplit } from '@/components/home/EditorialSplit';
+import { CommunityGrid } from '@/components/home/CommunityGrid';
+import { getDisplayImage } from '@/lib/utils/product-card-helpers';
 
 export const metadata: Metadata = {
   title: 'Our Story',
   description:
     'PariBelle is a Jaipur studio designing our own kurtis and artificial jewellery, with new pieces added every season.',
 };
+
+/**
+ * The homepage used to carry both of these below its hero — moved here as
+ * part of Task 6's redesign, since the homepage's job is now getting a
+ * shopper to a product, not telling the brand story. Failure here degrades
+ * to an empty grid (CommunityGrid returns null with no images), not a
+ * broken page.
+ */
+async function getCommunityImages(): Promise<string[]> {
+  try {
+    const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const res = await fetch(`${apiUrl}/api/v1/homepage/data`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const all = [
+      ...(data.uncategorizedProducts || []),
+      ...Object.values(data.productsByCategory || {}).flat(),
+    ] as Array<{ featuredImage?: string; images?: string[] }>;
+    return all
+      .map((p) => getDisplayImage(p.featuredImage, p.images))
+      .filter((img): img is string => !!img)
+      .slice(0, 6);
+  } catch (error) {
+    console.error('[About] Failed to fetch community images:', error);
+    return [];
+  }
+}
 
 const CRAFTS = [
   {
@@ -36,7 +66,9 @@ const CRAFTS = [
   },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const communityImages = await getCommunityImages();
+
   return (
     <div className="bg-[hsl(var(--pb-ivory))]">
       <section className="relative flex min-h-[52vh] items-center justify-center overflow-hidden bg-[hsl(var(--pb-wine))] px-6 py-24 text-center">
@@ -71,6 +103,10 @@ export default function AboutPage() {
         </RevealOnScroll>
       </section>
 
+      {/* Moved from the homepage as part of Task 6 — the front page's job is
+          now getting a shopper to a product, not carrying the brand story. */}
+      <EditorialSplit ctaHref="/category/new-in" ctaLabel="Shop New In" />
+
       <section className="bg-[hsl(var(--pb-blush-wash))]">
         <div className="mx-auto max-w-7xl px-6 py-20 md:px-8">
           <SectionHeading eyebrow="What we make" title="How each piece comes together" align="center" showRule />
@@ -85,6 +121,8 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      <CommunityGrid images={communityImages} />
 
       <section className="mx-auto max-w-3xl px-6 py-20 text-center md:px-8">
         <RevealOnScroll>
