@@ -1,14 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function ResendVerificationPage() {
+function ResendVerificationForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState(() => searchParams.get('email') || '');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  // Signup routes here when the verification email failed to send at
+  // registration time, so this page can explain why the shopper is here
+  // instead of them wondering what went wrong.
+  const sendFailedAtSignup = searchParams.get('reason') === 'send_failed';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +60,9 @@ export default function ResendVerificationPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Resend Verification Email</h1>
           <p className="text-gray-600">
-            Enter your email address to receive a new verification link
+            {sendFailedAtSignup
+              ? "Your account was created, but we couldn't send the verification email. Enter your address below to try again."
+              : 'Enter your email address to receive a new verification link'}
           </p>
         </div>
 
@@ -140,7 +147,7 @@ export default function ResendVerificationPage() {
             Already verified? Login
           </Link>
           <Link
-            href="/register"
+            href="/signup"
             className="block text-sm text-gray-600 hover:text-gray-700"
           >
             Don't have an account? Register
@@ -148,5 +155,13 @@ export default function ResendVerificationPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResendVerificationPage() {
+  return (
+    <Suspense>
+      <ResendVerificationForm />
+    </Suspense>
   );
 }

@@ -47,6 +47,15 @@ export default function SignUpPage() {
         throw new Error(data.message || 'Sign up failed');
       }
 
+      // The account exists either way — a mail outage doesn't block signup —
+      // but if the verification email didn't actually send, telling the
+      // shopper to "check your email" would send them to wait for something
+      // that will never arrive. Route them to resend instead.
+      if (data.emailSent === false) {
+        router.push(`/resend-verification?email=${encodeURIComponent(formData.email)}&reason=send_failed`);
+        return;
+      }
+
       router.push('/login?registered=true');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
