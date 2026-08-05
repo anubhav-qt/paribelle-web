@@ -28,7 +28,7 @@ type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
 function CheckoutContent() {
   const router = useRouter();
   const { items, totalItems, updateQuantity, removeFromCart, clearCart, reconcile } = useCart();
-  const { createOrder: createRazorpayOrder, verifyPayment, openCheckout } = useRazorpay();
+  const { createOrder: createRazorpayOrder, verifyPayment, openCheckout, razorpayKeyId } = useRazorpay();
   const theme = useThemeClasses();
 
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('cart');
@@ -392,20 +392,22 @@ function CheckoutContent() {
 
       // If Razorpay, check if configured and initiate payment
       if (paymentMethod === 'razorpay') {
-        // Check if Razorpay is configured
-        const isDevelopment = process.env.NODE_ENV === 'development';
-        
-        if (isDevelopment) {
-          // In development, simulate successful payment for testing
+        // Simulate only when Razorpay genuinely has no key to work with —
+        // not whenever NODE_ENV happens to say "development". Gating on the
+        // environment instead of on configuration meant `npm run dev` always
+        // showed the fake-payment dialog even with real test keys set,
+        // making it impossible to exercise the actual Razorpay flow locally
+        // without deploying first.
+        if (!razorpayKeyId) {
           const vendorCount = ordersArray.length;
           const simulatePayment = confirm(
-            `🧪 Development Mode: Razorpay not configured.\n\n` +
+            `🧪 Razorpay is not configured.\n\n` +
             `${vendorCount} order${vendorCount > 1 ? 's' : ''} created\n` +
             `Order${vendorCount > 1 ? 's' : ''}: ${orderNumbers}\n\n` +
             `Click OK to simulate successful payment\n` +
             `Click Cancel to cancel order`
           );
-          
+
           if (simulatePayment) {
             // Simulate payment delay
             await new Promise(resolve => setTimeout(resolve, 1500));
@@ -416,7 +418,7 @@ function CheckoutContent() {
             alert('Orders created but payment cancelled. You can pay later.');
           }
         } else {
-          // Production - attempt real Razorpay payment (use first order for Razorpay)
+          // A key is configured — test or live, same code path either way.
           await handleRazorpayPayment(orderNumbers, ordersArray[0].id);
         }
       } else {
