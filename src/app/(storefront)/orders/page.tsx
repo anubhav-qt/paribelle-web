@@ -131,7 +131,13 @@ function OrdersPageInner() {
 
       if (response.ok) {
         const data = await response.json();
-        setOrders(Array.isArray(data) ? data : data.orders || []);
+        const list = Array.isArray(data) ? data : data.orders || [];
+        setOrders(list);
+        // Keep the open modal in sync — otherwise a background refetch
+        // (e.g. after marking an exchange shipped) briefly unmounts the
+        // modal while loading and remounts it with the stale order it was
+        // opened with, undoing whatever the customer just did.
+        setSelectedOrder((prev) => (prev ? list.find((o: Order) => o.id === prev.id) || prev : prev));
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -781,6 +787,7 @@ function OrdersPageInner() {
           onClose={() => setSelectedOrder(null)}
           onPrintInvoice={handlePrintInvoice}
           getStatusColor={getStatusColor}
+          onExchangeUpdated={fetchOrders}
         />
       )}
 

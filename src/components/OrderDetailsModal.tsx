@@ -49,7 +49,14 @@ interface OrderDetailsModalProps {
   formatCurrency?: (amount: number) => string;
   formatDate?: (dateString: string) => string;
   getStatusColor: (status: string) => string;
+  /** Called after the customer marks an exchange shipped, so the parent can refetch in the background. */
+  onExchangeUpdated?: () => void;
 }
+
+const authHeaders = (): Record<string, string> => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 export default function OrderDetailsModal({
   order,
@@ -60,8 +67,57 @@ export default function OrderDetailsModal({
   formatCurrency,
   formatDate,
   getStatusColor,
+  onExchangeUpdated,
 }: OrderDetailsModalProps) {
   const [isReturnSectionExpanded, setIsReturnSectionExpanded] = useState(false);
+  // Local copy so "I've shipped it back" reflects immediately without
+  // waiting on the parent to refetch the whole order list.
+  const [returnsOverride, setReturnsOverride] = useState<any[]>(order.returns || []);
+  const [markingInTransitId, setMarkingInTransitId] = useState<string | null>(null);
+  const [inTransitError, setInTransitError] = useState('');
+
+  React.useEffect(() => {
+    setReturnsOverride(order.returns || []);
+  }, [order.id, order.returns]);
+
+  const handleMarkShipped = async (returnId: string) => {
+    setInTransitError('');
+    setMarkingInTransitId(returnId);
+    try {
+      const trackingNumber = prompt('Tracking number (optional):') || undefined;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/exchanges/${returnId}/in-transit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ trackingNumber }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to mark as shipped');
+      }
+      const updated = await res.json();
+      // The API responds with the TypeORM entity (camelCase), but this
+      // component's data comes from a raw-SQL `order.returns` join
+      // elsewhere (snake_case) — map explicitly rather than spreading,
+      // or the fresh fields silently wouldn't render.
+      setReturnsOverride((prev) =>
+        prev.map((r) =>
+          r.id === returnId
+            ? {
+                ...r,
+                status: updated.status,
+                in_transit_at: updated.inTransitAt,
+                customer_tracking_number: updated.customerTrackingNumber,
+              }
+            : r,
+        ),
+      );
+      onExchangeUpdated?.();
+    } catch (err: any) {
+      setInTransitError(err?.message || 'Failed to mark as shipped');
+    } finally {
+      setMarkingInTransitId(null);
+    }
+  };
 
   // Default format functions if not provided
   const defaultFormatCurrency = (amount: number) => {
@@ -79,8 +135,8 @@ export default function OrderDetailsModal({
 
   // Determine if return section should be displayed
   // Only show if there are actual returns or return requests for this order
-  const showReturnSection = 
-    (order.returns && order.returns.length > 0) ||
+  const showReturnSection =
+    returnsOverride.length > 0 ||
     (order.returnReason) ||
     (order.returnRejectedAt && order.returnRejectionReason);
 
@@ -144,22 +200,22 @@ export default function OrderDetailsModal({
                     <div className="text-left flex-1">
                       <h3 className="font-semibold text-foreground">
                         Exchange Requests
-                        {order.returns && order.returns.length > 0 && (
+                        {returnsOverride.length > 0 && (
                           <span className="ml-2 text-xs font-normal text-muted-foreground">
-                            ({order.returns.length} item{order.returns.length !== 1 ? 's' : ''})
+                            ({returnsOverride.length} item{returnsOverride.length !== 1 ? 's' : ''})
                           </span>
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {order.returnRejectedAt ? (isAdmin ? 'Rejected' : 'Request Rejected') :
-                         order.returns && order.returns.length > 0 ? 'View exchange status' : 'View Details'}
+                         returnsOverride.length > 0 ? 'View exchange status' : 'View Details'}
                       </p>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       order.returnRejectedAt ? 'bg-red-100 text-red-800 border border-red-300' :
                       'bg-muted text-muted-foreground border border-border'
                     }`}>
-                      {order.returnRejectedAt ? 'REJECTED' : `${order.returns?.length || 0} REQUEST${order.returns?.length === 1 ? '' : 'S'}`}
+                      {order.returnRejectedAt ? 'REJECTED' : `${returnsOverride.length} REQUEST${returnsOverride.length === 1 ? '' : 'S'}`}
                     </span>
                   </div>
                   <svg
@@ -176,11 +232,11 @@ export default function OrderDetailsModal({
                 {isReturnSectionExpanded && (
                   <div className="p-4 space-y-4 border-t border-border">
                     {/* Return Items Details */}
-                    {order.returns && order.returns.length > 0 && (
+                    {returnsOverride.length > 0 && (
                       <div className="space-y-3">
                         <h4 className="font-medium text-foreground">Returned Items</h4>
                         <div className="space-y-2">
-                          {order.returns.map((returnItem: any, idx: number) => (
+                          {returnsOverride.map((returnItem: any, idx: number) => (
                             <div key={idx} className="bg-accent/30 border border-border rounded-lg p-3">
                               <div className="flex justify-between items-start mb-2">
                                 <div className="flex-1">
@@ -289,11 +345,38 @@ export default function OrderDetailsModal({
                                 </div>
                               )}
 
-                              {/* Customer Message for Approved Exchanges */}
+                              {/* Customer action for Approved Exchanges — this is the missing link: the
+                                  admin can't inspect anything until the customer says it's on its way. */}
                               {!isAdmin && returnItem.status === 'approved' && (
                                 <div className="mt-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 p-3 rounded-lg">
-                                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                                    ✓ Exchange approved! Please ship the item back. We'll send your replacement once we receive and inspect it.
+                                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                                    ✓ Exchange approved! Ship the item back, then let us know it's on its way — we'll inspect it and take it from there.
+                                  </p>
+                                  {inTransitError && markingInTransitId === null && (
+                                    <p className="text-xs text-red-600 mb-2">{inTransitError}</p>
+                                  )}
+                                  <button
+                                    onClick={() => handleMarkShipped(returnItem.id)}
+                                    disabled={markingInTransitId === returnItem.id}
+                                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                                  >
+                                    {markingInTransitId === returnItem.id ? 'Marking as shipped…' : "I've shipped it back"}
+                                  </button>
+                                </div>
+                              )}
+                              {!isAdmin && returnItem.status === 'in_transit' && (
+                                <div className="mt-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 p-3 rounded-lg">
+                                  <p className="text-sm text-indigo-800 dark:text-indigo-200">
+                                    📦 Marked as shipped — we're waiting for it to arrive so we can inspect it.
+                                    {returnItem.customer_tracking_number && ` Tracking: ${returnItem.customer_tracking_number}`}
+                                  </p>
+                                </div>
+                              )}
+                              {isAdmin && returnItem.status === 'in_transit' && (
+                                <div className="mt-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 p-3 rounded-lg">
+                                  <p className="text-sm text-indigo-800 dark:text-indigo-200">
+                                    📦 Customer says this has shipped. Once it physically arrives, record the inspection result from the
+                                    Exchange Requests panel — passing it is how you tell the system "I've got it."
                                   </p>
                                 </div>
                               )}

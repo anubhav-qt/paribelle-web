@@ -101,6 +101,10 @@ function AdminOrdersPageInner() {
 
       const data = await response.json();
       setOrders(data);
+      // Keep an open details modal in sync with a background refetch —
+      // otherwise it briefly unmounts (while loading) and remounts with the
+      // stale order it was opened with.
+      setSelectedOrder((prev) => (prev ? data.find((o: Order) => o.id === prev.id) || prev : prev));
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]);
@@ -860,6 +864,7 @@ function AdminOrdersPageInner() {
           formatCurrency={formatCurrency}
           formatDate={formatDate}
           getStatusColor={getStatusColor}
+          onExchangeUpdated={fetchOrders}
         />
       )}
       
