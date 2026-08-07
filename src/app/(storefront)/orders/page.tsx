@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
@@ -37,6 +37,14 @@ interface ReturnDetails {
 }
 
 export default function OrdersPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader size="md" /></div>}>
+      <OrdersPageInner />
+    </Suspense>
+  );
+}
+
+function OrdersPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const deepLinkOrderId = searchParams.get('orderId');

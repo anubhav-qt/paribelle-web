@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -39,6 +39,14 @@ interface ReturnDetails {
 }
 
 export default function AdminOrdersPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader size="md" /></div>}>
+      <AdminOrdersPageInner />
+    </Suspense>
+  );
+}
+
+function AdminOrdersPageInner() {
   const { toast, showToast, hideToast } = useToast();
   const { confirm, showConfirm, hideConfirm } = useConfirm();
   const [orders, setOrders] = useState<Order[]>([]);
