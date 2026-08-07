@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
+import Link from 'next/link';
 
 interface ExchangeRequest {
   id: string;
@@ -17,6 +18,17 @@ interface ExchangeRequest {
   rejectionReason: string | null;
   replacementTrackingNumber: string | null;
   requestedAt: string;
+  refundTotal: number | string;
+  exchangeVariantId: string | null;
+  exchangeVariant: {
+    id: string;
+    variantAttributes: Record<string, string>;
+    price: number;
+    product: { id: string; name: string };
+  } | null;
+  completedOrderId: string | null;
+  completedOrder: { id: string; orderNumber: string } | null;
+  orderItem: { productId: string } | null;
 }
 
 interface AdminExchangePanelProps {
@@ -24,21 +36,26 @@ interface AdminExchangePanelProps {
   onClose: () => void;
   orderId: string;
   orderNumber: string;
+  originalProductId?: string;
 }
 
 const STATUS_LABEL: Record<string, string> = {
   requested: 'Requested — awaiting your decision',
   approved: 'Approved — waiting for the customer to ship it back',
   in_transit: 'Customer has shipped it back',
-  received: 'Received — inspection passed, ready to ship replacement',
+  received: 'Received — inspection passed',
   replacement_shipped: 'Replacement shipped',
+  completed: 'Completed',
   rejected: 'Rejected',
 };
 
+const money = (n: number | string) => `₹${Number(n).toFixed(2)}`;
+
 /**
  * The admin side of the exchange sub-machine — see Task 8 in the
- * implementation plan for the full diagram. Every action here calls an
- * `@AdminOnly()` endpoint.
+ * implementation plan for the full diagram, and the "three routes" section
+ * for what distinguishes them. Every action here calls an `@AdminOnly()`
+ * endpoint.
  */
 export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumber }: AdminExchangePanelProps) {
   const [exchanges, setExchanges] = useState<ExchangeRequest[]>([]);
@@ -114,92 +131,156 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
           ) : exchanges.length === 0 ? (
             <p className="text-sm text-gray-500">No exchange requests on this order.</p>
           ) : (
-            exchanges.map((exc) => (
-              <div key={exc.id} className="rounded-lg border p-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="font-medium text-gray-900">{exc.returnNumber}</span>
-                  <span className="text-xs text-gray-500">{new Date(exc.requestedAt).toLocaleDateString()}</span>
-                </div>
-                <p className="text-sm text-gray-700">{exc.productName} — Qty {exc.quantity}</p>
-                <p className="text-sm text-gray-600">Reason: {exc.reason}</p>
-                {exc.customerNotes && <p className="text-sm text-gray-500">Notes: {exc.customerNotes}</p>}
-                <p className="mt-2 text-sm font-medium text-blue-700">
-                  {STATUS_LABEL[exc.status] || exc.status}
-                </p>
-                {exc.customerTrackingNumber && (
-                  <p className="text-xs text-gray-500">Customer tracking: {exc.customerTrackingNumber}</p>
-                )}
-                {exc.inspectionNotes && (
-                  <p className="text-xs text-gray-500">Inspection notes: {exc.inspectionNotes}</p>
-                )}
-                {exc.rejectionReason && (
-                  <p className="text-xs text-red-600">Rejected: {exc.rejectionReason}</p>
-                )}
-                {exc.replacementTrackingNumber && (
-                  <p className="text-xs text-gray-500">Replacement tracking: {exc.replacementTrackingNumber}</p>
-                )}
+            exchanges.map((exc) => {
+              // Route classification mirrors the backend: no exchangeVariant
+              // at all is route 3 (credit only). An exchangeVariant on a
+              // *different* product is route 2 (replacement order). Same
+              // product is route 1 (direct swap, ships off this row).
+              const isDifferentProduct =
+                !!exc.exchangeVariant && exc.exchangeVariant.product.id !== exc.orderItem?.productId;
+              const isRoute3 = !exc.exchangeVariant;
+              const awaitingReplacementDecision =
+                exc.status === 'received' && exc.inspectionResult === 'passed' && !!exc.exchangeVariant && !exc.completedOrderId;
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {exc.status === 'requested' && (
-                    <>
-                      <button
-                        disabled={busyId === exc.id}
-                        onClick={() => withBusy(exc.id, () => call(`exchanges/${exc.id}/approve`))}
-                        className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
-                      >
-                        Approve
-                      </button>
+              return (
+                <div key={exc.id} className="rounded-lg border p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="font-medium text-gray-900">{exc.returnNumber}</span>
+                    <span className="text-xs text-gray-500">{new Date(exc.requestedAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-sm text-gray-700">{exc.productName} — Qty {exc.quantity}</p>
+
+                  {exc.exchangeVariant && (
+                    <p className="text-sm text-gray-700">
+                      Wants: <span className="font-medium">{exc.exchangeVariant.product.name}</span>
+                      {Object.keys(exc.exchangeVariant.variantAttributes || {}).length > 0 &&
+                        ` (${Object.values(exc.exchangeVariant.variantAttributes).join(' / ')})`}
+                      {' — '}{money(exc.exchangeVariant.price)}
+                      {isDifferentProduct && (
+                        <span className="ml-1 rounded bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700">
+                          different product
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  {isRoute3 && (
+                    <p className="text-sm text-gray-700">
+                      Wants: <span className="font-medium">store credit only</span>, no replacement
+                    </p>
+                  )}
+                  {Number(exc.refundTotal) > 0 && (
+                    <p className="text-sm text-gray-700">Credit: <span className="font-medium">{money(exc.refundTotal)}</span></p>
+                  )}
+
+                  <p className="text-sm text-gray-600">Reason: {exc.reason}</p>
+                  {exc.customerNotes && <p className="text-sm text-gray-500">Notes: {exc.customerNotes}</p>}
+                  <p className="mt-2 text-sm font-medium text-blue-700">
+                    {STATUS_LABEL[exc.status] || exc.status}
+                  </p>
+                  {exc.customerTrackingNumber && (
+                    <p className="text-xs text-gray-500">Customer tracking: {exc.customerTrackingNumber}</p>
+                  )}
+                  {exc.inspectionNotes && (
+                    <p className="text-xs text-gray-500">Inspection notes: {exc.inspectionNotes}</p>
+                  )}
+                  {exc.rejectionReason && (
+                    <p className="text-xs text-red-600">Rejected: {exc.rejectionReason}</p>
+                  )}
+                  {exc.replacementTrackingNumber && (
+                    <p className="text-xs text-gray-500">Replacement tracking: {exc.replacementTrackingNumber}</p>
+                  )}
+                  {exc.completedOrder && (
+                    <p className="text-xs text-gray-500">
+                      Fulfilled by{' '}
+                      <Link href={`/admin/orders?orderId=${exc.completedOrder.id}`} className="text-blue-600 hover:underline">
+                        order #{exc.completedOrder.orderNumber}
+                      </Link>
+                    </p>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {exc.status === 'requested' && (
+                      <>
+                        <button
+                          disabled={busyId === exc.id}
+                          onClick={() => withBusy(exc.id, () => call(`exchanges/${exc.id}/approve`))}
+                          className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          disabled={busyId === exc.id}
+                          onClick={() => {
+                            const reason = prompt('Reason for rejecting this exchange request:');
+                            if (reason) withBusy(exc.id, () => call(`exchanges/${exc.id}/reject`, { reason }));
+                          }}
+                          className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    {exc.status === 'in_transit' && (
+                      <>
+                        <button
+                          disabled={busyId === exc.id}
+                          onClick={() => {
+                            const notes = prompt('Inspection notes (optional):') || undefined;
+                            withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'passed', notes }));
+                          }}
+                          className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
+                        >
+                          Passed Inspection
+                        </button>
+                        <button
+                          disabled={busyId === exc.id}
+                          onClick={() => {
+                            const notes = prompt('Why did it fail inspection?') || undefined;
+                            withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'failed', notes }));
+                          }}
+                          className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Failed Inspection
+                        </button>
+                      </>
+                    )}
+                    {/* Route 1: same product, different variant — ships directly off this row. */}
+                    {exc.status === 'received' && exc.inspectionResult === 'passed' && exc.exchangeVariant && !isDifferentProduct && (
                       <button
                         disabled={busyId === exc.id}
                         onClick={() => {
-                          const reason = prompt('Reason for rejecting this exchange request:');
-                          if (reason) withBusy(exc.id, () => call(`exchanges/${exc.id}/reject`, { reason }));
+                          const trackingNumber = prompt('Replacement tracking number (optional):') || undefined;
+                          withBusy(exc.id, () => call(`exchanges/${exc.id}/ship-replacement`, { trackingNumber }));
                         }}
-                        className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                        className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
                       >
-                        Reject
+                        Ship Replacement
                       </button>
-                    </>
-                  )}
-                  {exc.status === 'in_transit' && (
-                    <>
-                      <button
-                        disabled={busyId === exc.id}
-                        onClick={() => {
-                          const notes = prompt('Inspection notes (optional):') || undefined;
-                          withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'passed', notes }));
-                        }}
-                        className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
-                      >
-                        Passed Inspection
-                      </button>
-                      <button
-                        disabled={busyId === exc.id}
-                        onClick={() => {
-                          const notes = prompt('Why did it fail inspection?') || undefined;
-                          withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'failed', notes }));
-                        }}
-                        className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
-                      >
-                        Failed Inspection
-                      </button>
-                    </>
-                  )}
-                  {exc.status === 'received' && exc.inspectionResult === 'passed' && (
-                    <button
-                      disabled={busyId === exc.id}
-                      onClick={() => {
-                        const trackingNumber = prompt('Replacement tracking number (optional):') || undefined;
-                        withBusy(exc.id, () => call(`exchanges/${exc.id}/ship-replacement`, { trackingNumber }));
-                      }}
-                      className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      Ship Replacement
-                    </button>
-                  )}
+                    )}
+                    {/* Route 2: different product — the credit was already issued; place the actual replacement order, or bail to credit-only. */}
+                    {awaitingReplacementDecision && isDifferentProduct && (
+                      <>
+                        <button
+                          disabled={busyId === exc.id}
+                          onClick={() => withBusy(exc.id, () => call(`exchanges/${exc.id}/create-replacement-order`))}
+                          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          Create Replacement Order
+                        </button>
+                        <button
+                          disabled={busyId === exc.id}
+                          onClick={() => withBusy(exc.id, () => call(`exchanges/${exc.id}/settle-as-credit`))}
+                          className="rounded bg-gray-600 px-3 py-1 text-xs text-white hover:bg-gray-700 disabled:opacity-50"
+                          title="Product no longer available — leave the customer with store credit instead"
+                        >
+                          Settle as Credit Instead
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

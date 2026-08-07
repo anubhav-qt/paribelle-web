@@ -12,6 +12,7 @@ export type PaymentStatusValue =
   | 'failed'
   | 'refund_pending'
   | 'refunded'
+  | 'credited'
   | (string & {});
 
 const LABELS: Record<string, string> = {
@@ -20,6 +21,7 @@ const LABELS: Record<string, string> = {
   failed: 'Failed',
   refund_pending: 'Refund pending',
   refunded: 'Refunded',
+  credited: 'Store credit issued',
 };
 
 const CLASSES: Record<string, string> = {
@@ -27,6 +29,7 @@ const CLASSES: Record<string, string> = {
   refunded: 'bg-purple-100 text-purple-800',
   refund_pending: 'bg-orange-100 text-orange-800',
   failed: 'bg-red-100 text-red-800',
+  credited: 'bg-teal-100 text-teal-800',
 };
 
 const FALLBACK_CLASS = 'bg-yellow-100 text-yellow-800';

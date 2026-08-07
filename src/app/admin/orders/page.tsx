@@ -15,6 +15,7 @@ import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 import AdminExchangePanel from '@/components/AdminExchangePanel';
+import CodRefusalModal from '@/components/CodRefusalModal';
 import { Order } from '@/types/common';
 import { Loader } from '@/components/ui/Loader';
 
@@ -59,6 +60,7 @@ function AdminOrdersPageInner() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [returnDetails, setReturnDetails] = useState<ReturnDetails | null>(null);
   const [exchangeOrder, setExchangeOrder] = useState<Order | null>(null);
+  const [codRefusalOrder, setCodRefusalOrder] = useState<Order | null>(null);
   const searchParams = useSearchParams();
   const deepLinkOrderId = searchParams.get('orderId');
   const { notifications } = useNotifications();
@@ -427,7 +429,10 @@ function AdminOrdersPageInner() {
       pending: ['pending', 'confirmed', 'cancelled'],
       confirmed: ['confirmed', 'processing', 'cancelled'],
       processing: ['processing', 'shipped', 'cancelled'],
-      shipped: ['shipped', 'delivered', 'cancelled'],
+      // Once dispatched the order can no longer be cancelled from here — the
+      // backend rejects it. A refused COD delivery goes through the "COD
+      // Refused" action instead, which decides credit/exchange/nothing.
+      shipped: ['shipped', 'delivered'],
       delivered: ['delivered'], // Only return requests via button, no dropdown change
       cancelled: ['cancelled'], // Final state
       return_requested: ['return_requested'], // Controlled by approve/reject buttons
@@ -703,11 +708,14 @@ function AdminOrdersPageInner() {
                         <select
                           value={order.paymentStatus}
                           onChange={(e) => handlePaymentStatusChange(order.id, e.target.value)}
-                          disabled={order.status === 'refunded' || order.paymentStatus === 'paid'}
-                          title={order.paymentStatus === 'paid' ? 'Online payments cannot be changed' : ''}
+                          disabled={order.status === 'refunded' || order.paymentStatus === 'paid' || order.paymentStatus === 'credited'}
+                          title={
+                            order.paymentStatus === 'paid' ? 'Online payments cannot be changed' :
+                            order.paymentStatus === 'credited' ? 'Store credit was already issued for this order' : ''
+                          }
                           className={`px-3 py-1 rounded-full text-xs font-medium border-0 ${paymentStatusClass(order.paymentStatus)} ${
-                            order.status === 'refunded' || order.paymentStatus === 'paid'
-                              ? 'cursor-not-allowed opacity-75' 
+                            order.status === 'refunded' || order.paymentStatus === 'paid' || order.paymentStatus === 'credited'
+                              ? 'cursor-not-allowed opacity-75'
                               : 'cursor-pointer'
                           }`}
                         >
@@ -719,6 +727,10 @@ function AdminOrdersPageInner() {
                               promotes it to Refunded. */}
                           <option value="refund_pending">Refund pending</option>
                           <option value="refunded">Refunded</option>
+                          {/* Set automatically when an admin cancels a paid
+                              order or resolves a COD refusal with a credit —
+                              never manually chosen. */}
+                          <option value="credited">Store Credit Issued</option>
                         </select>
                       </td>
                       <td className="px-6 py-4">
@@ -788,6 +800,16 @@ function AdminOrdersPageInner() {
                             </button>
                           )}
 
+                          {order.status === 'shipped' && order.paymentMethod === 'cod' && order.paymentStatus === 'pending' && (
+                            <button
+                              onClick={() => setCodRefusalOrder(order)}
+                              className="px-3 py-1 bg-orange-600 text-white text-xs rounded hover:bg-orange-700 transition-colors"
+                              title="Customer refused this COD delivery at the door"
+                            >
+                              COD Refused
+                            </button>
+                          )}
+
                           <button
                             onClick={() => viewOrderDetails(order)}
                             className="text-blue-600 hover:text-blue-800 flex items-center justify-center gap-1 px-3 py-1"
@@ -810,6 +832,18 @@ function AdminOrdersPageInner() {
               onClose={() => setExchangeOrder(null)}
               orderId={exchangeOrder.id}
               orderNumber={exchangeOrder.orderNumber}
+            />
+          )}
+
+          {codRefusalOrder && (
+            <CodRefusalModal
+              isOpen={!!codRefusalOrder}
+              onClose={() => setCodRefusalOrder(null)}
+              order={codRefusalOrder}
+              onResolved={() => {
+                showToast('COD refusal resolved', 'success');
+                fetchOrders();
+              }}
             />
           )}
         </div>

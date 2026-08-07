@@ -332,7 +332,7 @@ function OrdersPageInner() {
   const handleExchangeRequest = async (data: {
     quantity: number;
     reason: string;
-    exchangeVariantId: string;
+    exchangeVariantId?: string;
     customerNotes?: string;
   }) => {
     if (!orderToAction || !itemForExchange) {
