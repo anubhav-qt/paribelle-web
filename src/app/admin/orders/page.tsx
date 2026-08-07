@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { formatCurrencyWhole } from '@/lib/currency';
 import { getStatusColor } from '@/lib/utils/status';
 import { formatDateTime } from '@/lib/utils/date';
@@ -49,10 +51,29 @@ export default function AdminOrdersPage() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [returnDetails, setReturnDetails] = useState<ReturnDetails | null>(null);
   const [exchangeOrder, setExchangeOrder] = useState<Order | null>(null);
+  const searchParams = useSearchParams();
+  const deepLinkOrderId = searchParams.get('orderId');
+  const { notifications } = useNotifications();
 
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // A notification carrying an orderId deep-links here (see NotificationBell)
+  // — open that order's details as soon as the list has loaded.
+  useEffect(() => {
+    if (!deepLinkOrderId || orders.length === 0) return;
+    const target = orders.find((o) => o.id === deepLinkOrderId);
+    if (target) viewOrderDetails(target);
+  }, [deepLinkOrderId, orders]);
+
+  // Refetch when a notification arrives while already on this page — the
+  // socket event reaches the right room, this just makes the page react to it.
+  const latestNotificationId = notifications[0]?.id;
+  useEffect(() => {
+    if (latestNotificationId) fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestNotificationId]);
 
   const fetchOrders = async () => {
     try {
@@ -490,19 +511,23 @@ export default function AdminOrdersPage() {
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="text-2xl font-bold text-amber-600">
-              {orders.filter(o => o.status === 'return_requested').length}
+              {orders.filter(o => o.status === 'confirmed').length}
             </div>
-            <div className="text-sm text-gray-600 mt-1">Return Requests</div>
+            <div className="text-sm text-gray-600 mt-1">Confirmed</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="text-2xl font-bold text-orange-600">
-              {orders.filter(o => o.status === 'returned').length}
+              {orders.filter(o => o.status === 'cancelled').length}
             </div>
-            <div className="text-sm text-gray-600 mt-1">Returned</div>
+            <div className="text-sm text-gray-600 mt-1">Cancelled</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0))}
+              {formatCurrency(
+                orders
+                  .filter(o => o.status !== 'cancelled' && (o.paymentStatus === 'paid' || o.paymentStatus === 'credited'))
+                  .reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+              )}
             </div>
             <div className="text-sm text-gray-600 mt-1">Total Revenue</div>
           </div>

@@ -1,24 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Plus, Trash2, Save, ArrowLeft, Copy } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, Save, Eye, EyeOff, GripVertical } from 'lucide-react';
 import Link from 'next/link';
-
-interface FilterOption {
-  label: string;
-  value: string;
-}
-
-interface CategoryFilter {
-  id: string;
-  label: string;
-  type: 'select' | 'multiselect' | 'checkbox' | 'range';
-  options?: FilterOption[];
-  min?: number;
-  max?: number;
-  step?: number;
-}
 
 /** A filter the API derived from the attributes this category's variants carry. */
 interface SuggestedFilter {
@@ -28,305 +13,96 @@ interface SuggestedFilter {
   options: Array<{ value: string; label: string; productCount: number }>;
 }
 
+interface FilterOverride {
+  id: string;
+  label?: string;
+  sortOrder?: number;
+  hidden?: boolean;
+}
+
+/** A row in the editor: a derived filter plus whatever override is on top of it. */
+interface EditableFilter {
+  id: string;
+  label: string;
+  options: SuggestedFilter['options'];
+  sortOrder: number;
+  hidden: boolean;
+}
+
 import { Category } from '@/types/product';
 import { Loader } from '@/components/ui/Loader';
 import { api, errorMessage } from '@/lib/api';
 
-// Filter templates for the two live categories, Kurtis and Jewellery. Ids
-// must match the keys used in the `Attributes` column of the product import
-// sheet — a filter only narrows results if its id matches an attribute key
-// products actually carry.
-const COMMON_FILTER_TEMPLATES: CategoryFilter[] = [
-  {
-    id: 'price',
-    label: 'Price Range',
-    type: 'range',
-    min: 0,
-    max: 20000,
-    step: 200,
-  },
-  {
-    id: 'fabric',
-    label: 'Fabric',
-    type: 'checkbox',
-    options: [
-      { label: 'Cotton', value: 'cotton' },
-      { label: 'Chanderi', value: 'chanderi' },
-      { label: 'Silk', value: 'silk' },
-      { label: 'Rayon', value: 'rayon' },
-      { label: 'Georgette', value: 'georgette' },
-      { label: 'Muslin', value: 'muslin' },
-    ],
-  },
-  {
-    id: 'colour',
-    label: 'Colour',
-    type: 'checkbox',
-    options: [
-      { label: 'Rose', value: 'rose' },
-      { label: 'Ivory', value: 'ivory' },
-      { label: 'Indigo', value: 'indigo' },
-      { label: 'Black', value: 'black' },
-      { label: 'Mustard', value: 'mustard' },
-      { label: 'Green', value: 'green' },
-      { label: 'Maroon', value: 'maroon' },
-    ],
-  },
-  {
-    id: 'size',
-    label: 'Size',
-    type: 'checkbox',
-    options: [
-      { label: 'XS', value: 'xs' },
-      { label: 'S', value: 's' },
-      { label: 'M', value: 'm' },
-      { label: 'L', value: 'l' },
-      { label: 'XL', value: 'xl' },
-      { label: 'XXL', value: 'xxl' },
-      { label: '3XL', value: '3xl' },
-    ],
-  },
-  {
-    id: 'sleeve',
-    label: 'Sleeve',
-    type: 'checkbox',
-    options: [
-      { label: 'Sleeveless', value: 'sleeveless' },
-      { label: 'Short', value: 'short' },
-      { label: 'Three-Quarter', value: 'three-quarter' },
-      { label: 'Full', value: 'full' },
-    ],
-  },
-  {
-    id: 'type',
-    label: 'Type',
-    type: 'checkbox',
-    options: [
-      { label: 'Earrings', value: 'earrings' },
-      { label: 'Necklace', value: 'necklace' },
-      { label: 'Bangles', value: 'bangles' },
-      { label: 'Ring', value: 'ring' },
-      { label: 'Anklet', value: 'anklet' },
-    ],
-  },
-  {
-    id: 'finish',
-    label: 'Finish',
-    type: 'checkbox',
-    options: [
-      { label: 'Gold-tone', value: 'gold-tone' },
-      { label: 'Silver-tone', value: 'silver-tone' },
-      { label: 'Oxidised', value: 'oxidised' },
-      { label: 'Rose Gold', value: 'rose-gold' },
-    ],
-  },
-  {
-    id: 'stone',
-    label: 'Stone / Work',
-    type: 'checkbox',
-    options: [
-      { label: 'Kundan', value: 'kundan' },
-      { label: 'Meenakari', value: 'meenakari' },
-      { label: 'Pearl', value: 'pearl' },
-      { label: 'American Diamond', value: 'american-diamond' },
-      { label: 'Beads', value: 'beads' },
-    ],
-  },
-  {
-    id: 'occasion',
-    label: 'Occasion',
-    type: 'checkbox',
-    options: [
-      { label: 'Everyday', value: 'everyday' },
-      { label: 'Work', value: 'work' },
-      { label: 'Festive', value: 'festive' },
-      { label: 'Wedding', value: 'wedding' },
-    ],
-  },
-  {
-    id: 'rating',
-    label: 'Customer Rating',
-    type: 'checkbox',
-    options: [
-      { label: '4★ & Above', value: '4' },
-      { label: '3★ & Above', value: '3' },
-      { label: '2★ & Above', value: '2' },
-      { label: '1★ & Above', value: '1' },
-    ],
-  },
-  {
-    id: 'discount',
-    label: 'Discount',
-    type: 'checkbox',
-    options: [
-      { label: '50% or more', value: '50' },
-      { label: '40% or more', value: '40' },
-      { label: '30% or more', value: '30' },
-      { label: '20% or more', value: '20' },
-      { label: '10% or more', value: '10' },
-    ],
-  },
-];
-
+/**
+ * Filters are derived live from the catalogue (`product_variants.variant_attributes`)
+ * — see Task 8 in the implementation plan. There is no free-text option entry
+ * here any more: an admin can only rename a filter, reorder it, or hide it.
+ * Typing a brand-new option here used to save silently and then do nothing,
+ * because the storefront never read it — options only ever come from what
+ * products actually carry.
+ */
 export default function CategoryFiltersPage() {
   const params = useParams();
-  const router = useRouter();
   const categoryId = params.id as string;
-  
+
   const [category, setCategory] = useState<Category | null>(null);
-  const [filters, setFilters] = useState<CategoryFilter[]>([]);
+  const [filters, setFilters] = useState<EditableFilter[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [suggested, setSuggested] = useState<SuggestedFilter[]>([]);
 
   useEffect(() => {
-    fetchCategory();
-    fetchSuggestions();
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId]);
 
-  const fetchCategory = async () => {
+  const load = async () => {
+    setLoading(true);
+    setError('');
     try {
-      const data = await api.get<Category & { filterConfig?: { filters?: CategoryFilter[] } }>(
-        `/categories/${categoryId}`,
-      );
-      setCategory(data);
-      setFilters(data.filterConfig?.filters || []);
-    } catch (error) {
-      console.error('Error fetching category:', error);
-      setError(errorMessage(error, 'Failed to load category'));
+      const [categoryData, suggestionsData] = await Promise.all([
+        api.get<Category & { filterConfig?: { filters?: FilterOverride[] } }>(`/categories/${categoryId}`),
+        api.get<{ filters: SuggestedFilter[] }>(`/categories/${categoryId}/filter-suggestions`),
+      ]);
+      setCategory(categoryData);
+
+      const overrides = new Map<string, FilterOverride>();
+      for (const o of categoryData.filterConfig?.filters || []) {
+        overrides.set(o.id, o);
+      }
+
+      const merged: EditableFilter[] = (suggestionsData.filters || []).map((suggested, index) => {
+        const override = overrides.get(suggested.id);
+        return {
+          id: suggested.id,
+          label: override?.label || suggested.label,
+          options: suggested.options,
+          sortOrder: override?.sortOrder ?? index,
+          hidden: override?.hidden ?? false,
+        };
+      });
+      merged.sort((a, b) => a.sortOrder - b.sortOrder);
+      setFilters(merged);
+    } catch (err) {
+      console.error('Error loading filters:', err);
+      setError(errorMessage(err, 'Failed to load filters'));
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * What this category's products actually carry. A hand-typed filter only
-   * narrows results if its options match values products really have, so
-   * these are worth more than the generic templates below them.
-   */
-  const fetchSuggestions = async () => {
-    try {
-      const data = await api.get<{ filters: SuggestedFilter[] }>(
-        `/categories/${categoryId}/filter-suggestions`,
-      );
-      setSuggested(data.filters || []);
-    } catch (error) {
-      // Not worth an error banner — the templates still work.
-      console.error('Error fetching filter suggestions:', error);
-    }
+  const updateFilter = (index: number, patch: Partial<EditableFilter>) => {
+    setFilters((current) => current.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   };
 
-  const addFilter = () => {
-    const newFilter: CategoryFilter = {
-      id: `filter_${Date.now()}`,
-      label: '',
-      type: 'checkbox',
-      options: [],
-    };
-    setFilters([...filters, newFilter]);
-    setShowTemplates(false);
-  };
-
-  /**
-   * Deep copy, not shallow. `[...template.options]` copied the array but left
-   * every option object shared with `COMMON_FILTER_TEMPLATES`, so editing a
-   * label here rewrote the module-level template — and every category
-   * configured afterwards in the same session inherited the edit.
-   */
-  const addFilterFromTemplate = (template: CategoryFilter) => {
-    setFilters([
-      ...filters,
-      {
-        ...template,
-        options: template.options?.map((option) => ({ ...option })),
-      },
-    ]);
-    setShowTemplates(false);
-  };
-
-  /** Add a derived filter, replacing any existing filter with the same id. */
-  const addFilterFromSuggestion = (suggestion: SuggestedFilter) => {
-    const next: CategoryFilter = {
-      id: suggestion.id,
-      label: suggestion.label,
-      type: 'checkbox',
-      options: suggestion.options.map(({ value, label }) => ({ value, label })),
-    };
-
+  const move = (index: number, direction: -1 | 1) => {
     setFilters((current) => {
-      const existing = current.findIndex((f) => f.id === next.id);
-      if (existing === -1) return [...current, next];
-      return current.map((f, i) => (i === existing ? next : f));
-    });
-    setShowTemplates(false);
-  };
-
-  const removeFilter = (index: number) => {
-    setFilters(filters.filter((_, i) => i !== index));
-  };
-
-  const updateFilter = (index: number, field: keyof CategoryFilter, value: any) => {
-    const newFilters = [...filters];
-    newFilters[index] = { ...newFilters[index], [field]: value };
-    
-    // Clear options if changing from checkbox/select to range
-    if (field === 'type' && value === 'range') {
-      newFilters[index].options = undefined;
-      newFilters[index].min = 0;
-      newFilters[index].max = 10000;
-      newFilters[index].step = 100;
-    }
-    
-    // Clear range values if changing to checkbox/select
-    if (field === 'type' && (value === 'checkbox' || value === 'select' || value === 'multiselect')) {
-      newFilters[index].min = undefined;
-      newFilters[index].max = undefined;
-      newFilters[index].step = undefined;
-      if (!newFilters[index].options) {
-        newFilters[index].options = [];
-      }
-    }
-    
-    setFilters(newFilters);
-  };
-
-  /** Replace one filter, leaving the rest — and the objects inside them — alone. */
-  const replaceFilter = (filterIndex: number, next: CategoryFilter) => {
-    setFilters((current) => current.map((f, i) => (i === filterIndex ? next : f)));
-  };
-
-  const addOption = (filterIndex: number) => {
-    const filter = filters[filterIndex];
-    replaceFilter(filterIndex, {
-      ...filter,
-      options: [...(filter.options || []), { label: '', value: '' }],
-    });
-  };
-
-  const removeOption = (filterIndex: number, optionIndex: number) => {
-    const filter = filters[filterIndex];
-    replaceFilter(filterIndex, {
-      ...filter,
-      options: (filter.options || []).filter((_, i) => i !== optionIndex),
-    });
-  };
-
-  const updateOption = (
-    filterIndex: number,
-    optionIndex: number,
-    field: 'label' | 'value',
-    value: string,
-  ) => {
-    const filter = filters[filterIndex];
-    replaceFilter(filterIndex, {
-      ...filter,
-      options: (filter.options || []).map((option, i) =>
-        i === optionIndex ? { ...option, [field]: value } : option,
-      ),
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next.map((f, i) => ({ ...f, sortOrder: i }));
     });
   };
 
@@ -334,14 +110,20 @@ export default function CategoryFiltersPage() {
     setSaving(true);
     setError('');
     setSuccess('');
-
     try {
-      await api.put(`/categories/${categoryId}/filters`, { filters });
+      await api.put(`/categories/${categoryId}/filters`, {
+        filters: filters.map((f, i) => ({
+          id: f.id,
+          label: f.label,
+          sortOrder: i,
+          hidden: f.hidden,
+        })),
+      });
       setSuccess('Filters saved successfully!');
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error) {
-      console.error('Error saving filters:', error);
-      setError(`Failed to save filters: ${errorMessage(error)}`);
+    } catch (err) {
+      console.error('Error saving filters:', err);
+      setError(`Failed to save filters: ${errorMessage(err)}`);
     } finally {
       setSaving(false);
     }
@@ -356,305 +138,128 @@ export default function CategoryFiltersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Left Sidebar - Common Filter Templates */}
-      <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
-          <h2 className="font-semibold text-gray-900 mb-2">Filter Templates</h2>
-          <p className="text-xs text-gray-600">Click to add to category</p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                href="/admin/categories"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Back to Categories"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Configure Filters</h1>
+                <p className="text-gray-600">Category: {category?.name}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Saving...' : 'Save Filters'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+          These filters and their options come from what your products actually carry
+          (each variant's attributes). You can rename a filter, reorder it, or hide it —
+          options themselves can't be hand-typed here, since a hand-typed option that no
+          product has would never match anything on the storefront.
         </div>
 
-        {suggested.length > 0 && (
-          <div className="p-4 border-b border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900">From your products</h3>
-            <p className="mb-3 text-xs text-gray-600">
-              Attributes your products in this category actually carry. These are
-              guaranteed to match something.
-            </p>
-            <div className="space-y-2">
-              {suggested.map((suggestion) => (
-                <button
-                  key={suggestion.id}
-                  onClick={() => addFilterFromSuggestion(suggestion)}
-                  className="group w-full rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-left transition-colors hover:border-emerald-500 hover:bg-emerald-50"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900 group-hover:text-emerald-700">
-                        {suggestion.label}
-                      </div>
-                      <div className="mt-1 text-xs text-gray-600">
-                        {suggestion.options
-                          .slice(0, 4)
-                          .map((o) => `${o.label} (${o.productCount})`)
-                          .join(', ')}
-                        {suggestion.options.length > 4 &&
-                          ` +${suggestion.options.length - 4} more`}
-                      </div>
-                    </div>
-                    <Plus className="ml-2 h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-emerald-600" />
-                  </div>
-                </button>
-              ))}
-            </div>
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+            {success}
           </div>
         )}
 
-        <div className="p-4 space-y-2">
-          <h3 className="text-sm font-semibold text-gray-900">Common templates</h3>
-          {COMMON_FILTER_TEMPLATES.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => addFilterFromTemplate(template)}
-              className="w-full text-left p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-900 group-hover:text-blue-700">
-                    {template.label}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    <span className="inline-block px-2 py-0.5 bg-gray-100 rounded text-gray-700 mr-1">
-                      {template.type}
-                    </span>
-                    {template.options && template.options.length > 0 && (
-                      <span className="text-gray-600">{template.options.length} options</span>
-                    )}
-                    {template.type === 'range' && (
-                      <span className="text-gray-600">₹{template.min?.toLocaleString()}-₹{template.max?.toLocaleString()}</span>
-                    )}
-                  </div>
-                </div>
-                <Plus className="w-4 h-4 text-gray-400 group-hover:text-blue-600 flex-shrink-0 ml-2" />
-              </div>
-            </button>
-          ))}
-        </div>
-        
-        <div className="p-4 border-t border-gray-200">
-          <Link
-            href="/admin/common-filters"
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
-            View All Templates →
-          </Link>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/admin/categories"
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Back to Categories"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </Link>
-                <div>
-                  <Link
-                    href="/admin"
-                    className="text-blue-600 hover:text-blue-800 text-sm inline-block mb-1"
-                  >
-                    ← Back to Dashboard
-                  </Link>
-                  <h1 className="text-2xl font-bold text-gray-900">Configure Filters</h1>
-                  <p className="text-gray-600">Category: {category?.name}</p>
-                </div>
-              </div>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                <Save className="w-4 h-4" />
-                {saving ? 'Saving...' : 'Save Filters'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6">
-          {/* Messages */}
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
-              {success}
-            </div>
-          )}
-
-          {/* Filters List */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold">Active Filters</h2>
-              <button
-                onClick={addFilter}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Custom Filter
-              </button>
-            </div>
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-xl font-semibold mb-6">
+            Filters ({filters.length})
+          </h2>
 
           {filters.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              <p>No filters configured yet.</p>
-              <p className="text-sm mt-2">Click "Add Filter" to create your first filter.</p>
+              <p>No attributes found on this category's products yet.</p>
+              <p className="text-sm mt-2">
+                Filters appear automatically once product variants carry attributes
+                (e.g. colour, size).
+              </p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {filters.map((filter, filterIndex) => (
-                <div key={filter.id} className="border rounded-lg p-6 bg-gray-50">
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="font-semibold text-lg">Filter #{filterIndex + 1}</h3>
+            <div className="space-y-3">
+              {filters.map((filter, index) => (
+                <div
+                  key={filter.id}
+                  className={`border rounded-lg p-4 flex items-start gap-4 ${filter.hidden ? 'bg-gray-50 opacity-60' : 'bg-white'}`}
+                >
+                  <div className="flex flex-col items-center gap-1 pt-2 text-gray-400">
+                    <GripVertical className="w-4 h-4" />
                     <button
-                      onClick={() => removeFilter(filterIndex)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      onClick={() => move(index, -1)}
+                      disabled={index === 0}
+                      className="text-xs disabled:opacity-30"
+                      title="Move up"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      ▲
+                    </button>
+                    <button
+                      onClick={() => move(index, 1)}
+                      disabled={index === filters.length - 1}
+                      className="text-xs disabled:opacity-30"
+                      title="Move down"
+                    >
+                      ▼
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Filter ID (used in API)
-                      </label>
-                      <input
-                        type="text"
-                        value={filter.id}
-                        onChange={(e) => updateFilter(filterIndex, 'id', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., brand, color, size"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Display Label
-                      </label>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
                       <input
                         type="text"
                         value={filter.label}
-                        onChange={(e) => updateFilter(filterIndex, 'label', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., Brand, Color, Size"
+                        onChange={(e) => updateFilter(index, { label: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                        placeholder="Display label"
                       />
+                      <button
+                        onClick={() => updateFilter(index, { hidden: !filter.hidden })}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          filter.hidden
+                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                        }`}
+                      >
+                        {filter.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {filter.hidden ? 'Hidden' : 'Visible'}
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Attribute key: <code className="bg-gray-100 px-1 rounded">{filter.id}</code>
+                      {' · '}
+                      {filter.options.slice(0, 6).map((o) => `${o.label} (${o.productCount})`).join(', ')}
+                      {filter.options.length > 6 && ` +${filter.options.length - 6} more`}
                     </div>
                   </div>
-
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Filter Type
-                    </label>
-                    <select
-                      value={filter.type}
-                      onChange={(e) => updateFilter(filterIndex, 'type', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="checkbox">Checkbox (Multiple selection)</option>
-                      <option value="select">Select (Single selection)</option>
-                      <option value="multiselect">Multi-Select</option>
-                      <option value="range">Range (Price, Size, etc.)</option>
-                    </select>
-                  </div>
-
-                  {/* Options for checkbox/select */}
-                  {(filter.type === 'checkbox' || filter.type === 'select' || filter.type === 'multiselect') && (
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Options
-                        </label>
-                        <button
-                          onClick={() => addOption(filterIndex)}
-                          className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Add Option
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {filter.options?.map((option, optionIndex) => (
-                          <div key={optionIndex} className="flex gap-2">
-                            <input
-                              type="text"
-                              value={option.label}
-                              onChange={(e) => updateOption(filterIndex, optionIndex, 'label', e.target.value)}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Display Label (e.g., Nike)"
-                            />
-                            <input
-                              type="text"
-                              value={option.value}
-                              onChange={(e) => updateOption(filterIndex, optionIndex, 'value', e.target.value)}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Value (e.g., nike)"
-                            />
-                            <button
-                              onClick={() => removeOption(filterIndex, optionIndex)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Range configuration */}
-                  {filter.type === 'range' && (
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Min Value
-                        </label>
-                        <input
-                          type="number"
-                          value={filter.min || 0}
-                          onChange={(e) => updateFilter(filterIndex, 'min', Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Max Value
-                        </label>
-                        <input
-                          type="number"
-                          value={filter.max || 10000}
-                          onChange={(e) => updateFilter(filterIndex, 'max', Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Step
-                        </label>
-                        <input
-                          type="number"
-                          value={filter.step || 100}
-                          onChange={(e) => updateFilter(filterIndex, 'step', Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
       </div>
-    </div>
     </div>
   );
 }

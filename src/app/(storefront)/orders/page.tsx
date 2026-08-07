@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
 import { getStatusColor } from '@/lib/utils/status';
@@ -38,6 +38,8 @@ interface ReturnDetails {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const deepLinkOrderId = searchParams.get('orderId');
   const theme = useThemeClasses();
   const { toast, showToast, hideToast } = useToast();
   const { confirm, showConfirm, hideConfirm } = useConfirm();
@@ -99,6 +101,14 @@ export default function OrdersPage() {
       unsubscribe();
     };
   }, [subscribeToOrderStatusUpdates]);
+
+  // A notification carrying an orderId deep-links here (see NotificationBell)
+  // — open that order's details as soon as the list has loaded.
+  useEffect(() => {
+    if (!deepLinkOrderId || orders.length === 0) return;
+    const target = orders.find((o) => o.id === deepLinkOrderId);
+    if (target) setSelectedOrder(target);
+  }, [deepLinkOrderId, orders]);
 
   const fetchOrders = async () => {
     try {

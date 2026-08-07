@@ -87,6 +87,7 @@ export interface Order {
   status: string;
   paymentStatus?: string;
   paymentMethod?: string;
+  cancellationReason?: string;
   total?: number;
   totalAmount?: number;
   subtotal?: number;

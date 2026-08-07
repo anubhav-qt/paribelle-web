@@ -121,6 +121,12 @@ export default function OrderDetailsModal({
                   {paymentStatusLabel(order.paymentStatus)}
                 </span>
               )}
+              {order.status === 'cancelled' && order.cancellationReason && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Cancellation reason: </span>
+                  {order.cancellationReason}
+                </div>
+              )}
             </div>
 
             {/* Collapsible Return Information Section */}
@@ -133,14 +139,11 @@ export default function OrderDetailsModal({
                 >
                   <div className="flex items-center gap-3 flex-1">
                     <span className="text-xl">
-                      {order.status === 'return_requested' ? '🔄' :
-                       order.status === 'return_approved' ? '✅' :
-                       order.status === 'returned' ? '📦' :
-                       order.returnRejectedAt ? '❌' : '📋'}
+                      {order.returnRejectedAt ? '❌' : '🔄'}
                     </span>
                     <div className="text-left flex-1">
                       <h3 className="font-semibold text-foreground">
-                        Return Information
+                        Exchange Requests
                         {order.returns && order.returns.length > 0 && (
                           <span className="ml-2 text-xs font-normal text-muted-foreground">
                             ({order.returns.length} item{order.returns.length !== 1 ? 's' : ''})
@@ -148,24 +151,15 @@ export default function OrderDetailsModal({
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {order.status === 'return_requested' ? 'Pending Review' :
-                         order.status === 'return_approved' ? (isAdmin ? 'Approved - Awaiting Return' : 'Approved - Please Ship Back') :
-                         order.status === 'returned' ? 'Completed' :
-                         order.returnRejectedAt ? (isAdmin ? 'Rejected' : 'Request Rejected') : 
-                         order.returns && order.returns.length > 0 ? 'Item Returns' : 'View Details'}
+                        {order.returnRejectedAt ? (isAdmin ? 'Rejected' : 'Request Rejected') :
+                         order.returns && order.returns.length > 0 ? 'View exchange status' : 'View Details'}
                       </p>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      order.status === 'return_requested' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' :
-                      order.status === 'return_approved' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
-                      order.status === 'returned' ? 'bg-green-100 text-green-800 border border-green-300' :
-                      order.returnRejectedAt ? 'bg-red-100 text-red-800 border border-red-300' : 
+                      order.returnRejectedAt ? 'bg-red-100 text-red-800 border border-red-300' :
                       'bg-muted text-muted-foreground border border-border'
                     }`}>
-                      {order.status === 'return_requested' ? 'PENDING REVIEW' :
-                       order.status === 'return_approved' ? 'APPROVED' :
-                       order.status === 'returned' ? 'RETURNED' :
-                       order.returnRejectedAt ? 'REJECTED' : 'UNKNOWN'}
+                      {order.returnRejectedAt ? 'REJECTED' : `${order.returns?.length || 0} REQUEST${order.returns?.length === 1 ? '' : 'S'}`}
                     </span>
                   </div>
                   <svg
@@ -199,42 +193,46 @@ export default function OrderDetailsModal({
                                   returnItem.status === 'requested' ? 'bg-yellow-100 text-yellow-800' :
                                   returnItem.status === 'approved' ? 'bg-blue-100 text-blue-800' :
                                   returnItem.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                  returnItem.status === 'received' ? 'bg-green-100 text-green-800' :
-                                  returnItem.status === 'refunded' ? 'bg-green-100 text-green-800' :
+                                  returnItem.status === 'in_transit' ? 'bg-indigo-100 text-indigo-800' :
+                                  returnItem.status === 'received' ? 'bg-teal-100 text-teal-800' :
+                                  returnItem.status === 'replacement_shipped' ? 'bg-purple-100 text-purple-800' :
+                                  returnItem.status === 'completed' ? 'bg-green-100 text-green-800' :
                                   'bg-gray-100 text-gray-800'
                                 }`}>
-                                  {returnItem.status?.toUpperCase()}
+                                  {returnItem.status?.replace(/_/g, ' ').toUpperCase()}
                                 </span>
                               </div>
-                              
+
                               <div className="grid grid-cols-2 gap-2 text-sm mb-2">
                                 <div>
                                   <span className="text-muted-foreground">Quantity:</span>
                                   <span className="ml-2 font-medium text-foreground">{returnItem.quantity}</span>
                                 </div>
-                                <div>
-                                  <span className="text-muted-foreground">Refund:</span>
-                                  <span className="ml-2 font-medium text-foreground">
-                                    {formatCurrency ? formatCurrency(returnItem.refund_total || returnItem.refundTotal || 0) : `$${returnItem.refund_total || returnItem.refundTotal || 0}`}
-                                  </span>
-                                </div>
+                                {Number(returnItem.refund_total || returnItem.refundTotal || 0) > 0 && (
+                                  <div>
+                                    <span className="text-muted-foreground">Credit issued:</span>
+                                    <span className="ml-2 font-medium text-foreground">
+                                      {formatCurrency ? formatCurrency(returnItem.refund_total || returnItem.refundTotal || 0) : `₹${returnItem.refund_total || returnItem.refundTotal || 0}`}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
-                              
+
                               <div className="text-sm">
                                 <p className="text-muted-foreground mb-1">Reason:</p>
                                 <p className="text-foreground bg-background/50 p-2 rounded">{formatReturnReason(returnItem.reason)}</p>
                               </div>
-                              
+
                               {returnItem.customer_notes && (
                                 <div className="text-sm mt-2">
                                   <p className="text-muted-foreground mb-1">Customer Notes:</p>
                                   <p className="text-foreground bg-background/50 p-2 rounded">{returnItem.customer_notes}</p>
                                 </div>
                               )}
-                              
-                              {/* Return History Timeline */}
+
+                              {/* Exchange History Timeline */}
                               <div className="mt-3 pt-3 border-t border-border">
-                                <p className="text-xs font-medium text-muted-foreground mb-2">Return Timeline:</p>
+                                <p className="text-xs font-medium text-muted-foreground mb-2">Exchange Timeline:</p>
                                 <div className="space-y-1 text-xs">
                                   {returnItem.requested_at && (
                                     <div className="flex items-center gap-2 text-muted-foreground">
@@ -257,43 +255,45 @@ export default function OrderDetailsModal({
                                       )}
                                     </div>
                                   )}
-                                  {returnItem.received_at && (
+                                  {returnItem.in_transit_at && (
                                     <div className="flex items-center gap-2 text-muted-foreground">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                      <span>Received: {new Date(returnItem.received_at).toLocaleString()}</span>
+                                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                      <span>Shipped back by customer: {new Date(returnItem.in_transit_at).toLocaleString()}</span>
                                     </div>
                                   )}
-                                  {returnItem.refunded_at && (
+                                  {returnItem.received_at && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                                      <span>Received{returnItem.inspection_result ? ` (inspection: ${returnItem.inspection_result})` : ''}: {new Date(returnItem.received_at).toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                  {returnItem.replacement_shipped_at && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                      <span>Replacement shipped: {new Date(returnItem.replacement_shipped_at).toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                  {returnItem.completed_at && (
                                     <div className="flex items-center gap-2 text-muted-foreground">
                                       <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span>
-                                      <span>Refunded: {new Date(returnItem.refunded_at).toLocaleString()}</span>
+                                      <span>Completed: {new Date(returnItem.completed_at).toLocaleString()}</span>
                                     </div>
                                   )}
                                 </div>
                               </div>
-                              
-                              {isAdmin && (returnItem.admin_notes || returnItem.vendor_notes) && (
+
+                              {isAdmin && returnItem.admin_notes && (
                                 <div className="mt-2 pt-2 border-t border-border text-sm">
-                                  {returnItem.admin_notes && (
-                                    <div className="mb-2">
-                                      <p className="text-xs font-medium text-muted-foreground">Admin Notes:</p>
-                                      <p className="text-foreground bg-blue-50 dark:bg-blue-900/20 p-2 rounded">{returnItem.admin_notes}</p>
-                                    </div>
-                                  )}
-                                  {returnItem.vendor_notes && (
-                                    <div>
-                                      <p className="text-xs font-medium text-muted-foreground">Vendor Notes:</p>
-                                      <p className="text-foreground bg-purple-50 dark:bg-purple-900/20 p-2 rounded">{returnItem.vendor_notes}</p>
-                                    </div>
-                                  )}
+                                  <p className="text-xs font-medium text-muted-foreground">Admin Notes:</p>
+                                  <p className="text-foreground bg-blue-50 dark:bg-blue-900/20 p-2 rounded">{returnItem.admin_notes}</p>
                                 </div>
                               )}
 
-                              {/* Customer Message for Approved Returns */}
+                              {/* Customer Message for Approved Exchanges */}
                               {!isAdmin && returnItem.status === 'approved' && (
                                 <div className="mt-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 p-3 rounded-lg">
                                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                                    ✓ Return approved! Please ship the item back. You'll receive your refund once we receive and verify the item.
+                                    ✓ Exchange approved! Please ship the item back. We'll send your replacement once we receive and inspect it.
                                   </p>
                                 </div>
                               )}
@@ -571,19 +571,6 @@ export default function OrderDetailsModal({
                 </div>
               </div>
             </div>
-
-            {/* Vendor Info */}
-            {order.vendor && (
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-foreground mb-2">Vendor</h3>
-                <div className="bg-gray-50 dark:bg-muted p-4 rounded-lg">
-                  <p className="font-medium">{order.vendor.businessName}</p>
-                  {order.vendor.storeName && (
-                    <p className="text-sm text-gray-600 dark:text-muted-foreground">{order.vendor.storeName}</p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

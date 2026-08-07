@@ -79,8 +79,16 @@ export function NotificationBell({ buttonClassName, iconClassName }: Notificatio
                     <p className="mt-1 text-xs text-gray-400">{timeAgo(n.createdAt)}</p>
                   </div>
                 );
-                return n.link ? (
-                  <Link key={n.id} href={n.link}>
+                // Deep-link to the specific order, not just the orders list —
+                // the notification already carries orderId, the link just
+                // wasn't using it. `?orderId=` is read by the orders pages to
+                // open that order's details and force a fresh fetch even if
+                // the page was already mounted with stale data.
+                const href = n.link && n.orderId
+                  ? `${n.link}${n.link.includes('?') ? '&' : '?'}orderId=${n.orderId}`
+                  : n.link;
+                return href ? (
+                  <Link key={n.id} href={href}>
                     {content}
                   </Link>
                 ) : (
