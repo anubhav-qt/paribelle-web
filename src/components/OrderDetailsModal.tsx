@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/currency';
 import { formatDateTime } from '@/lib/utils/date';
 import { paymentStatusClass, paymentStatusLabel } from '@/lib/utils/payment-status';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
+import ShipBackModal from '@/components/ShipBackModal';
 import { Order, OrderItem } from '@/types/common';
 
 // Format return reason from key to human-readable label
@@ -75,16 +76,16 @@ export default function OrderDetailsModal({
   const [returnsOverride, setReturnsOverride] = useState<any[]>(order.returns || []);
   const [markingInTransitId, setMarkingInTransitId] = useState<string | null>(null);
   const [inTransitError, setInTransitError] = useState('');
+  const [shipBackReturnId, setShipBackReturnId] = useState<string | null>(null);
 
   React.useEffect(() => {
     setReturnsOverride(order.returns || []);
   }, [order.id, order.returns]);
 
-  const handleMarkShipped = async (returnId: string) => {
+  const handleMarkShipped = async (returnId: string, trackingNumber?: string) => {
     setInTransitError('');
     setMarkingInTransitId(returnId);
     try {
-      const trackingNumber = prompt('Tracking number (optional):') || undefined;
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/exchanges/${returnId}/in-transit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -114,6 +115,7 @@ export default function OrderDetailsModal({
       onExchangeUpdated?.();
     } catch (err: any) {
       setInTransitError(err?.message || 'Failed to mark as shipped');
+      throw err;
     } finally {
       setMarkingInTransitId(null);
     }
@@ -352,15 +354,11 @@ export default function OrderDetailsModal({
                                   <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
                                     ✓ Exchange approved! Ship the item back, then let us know it's on its way — we'll inspect it and take it from there.
                                   </p>
-                                  {inTransitError && markingInTransitId === null && (
-                                    <p className="text-xs text-red-600 mb-2">{inTransitError}</p>
-                                  )}
                                   <button
-                                    onClick={() => handleMarkShipped(returnItem.id)}
-                                    disabled={markingInTransitId === returnItem.id}
+                                    onClick={() => setShipBackReturnId(returnItem.id)}
                                     className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                                   >
-                                    {markingInTransitId === returnItem.id ? 'Marking as shipped…' : "I've shipped it back"}
+                                    Where do I send it?
                                   </button>
                                 </div>
                               )}
@@ -674,6 +672,17 @@ export default function OrderDetailsModal({
           </button>
         </div>
       </div>
+
+      <ShipBackModal
+        isOpen={!!shipBackReturnId}
+        onClose={() => setShipBackReturnId(null)}
+        productName={returnsOverride.find((r) => r.id === shipBackReturnId)?.productName}
+        onConfirm={async (trackingNumber) => {
+          if (!shipBackReturnId) return;
+          await handleMarkShipped(shipBackReturnId, trackingNumber);
+          setShipBackReturnId(null);
+        }}
+      />
     </div>
   );
 }

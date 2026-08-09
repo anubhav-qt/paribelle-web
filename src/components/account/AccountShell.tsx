@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Package, Heart, MapPin, FileText, Gift, User } from 'lucide-react';
+import { LayoutGrid, Package, Heart, MapPin, FileText, Gift, User, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutGrid },
   { href: '/orders', label: 'Orders', icon: Package },
+  { href: '/wallet', label: 'Wallet', icon: Wallet },
   { href: '/wishlist', label: 'Wishlist', icon: Heart },
   { href: '/profile', label: 'Addresses', icon: MapPin },
   { href: '/dashboard/invoices', label: 'Invoices', icon: FileText },

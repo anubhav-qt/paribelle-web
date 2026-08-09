@@ -14,6 +14,7 @@ import { SearchOverlay } from './SearchOverlay';
 import { cn } from '@/lib/utils';
 import { LOOKBOOK_ENABLED } from '@/lib/features';
 import { NotificationBell } from '@/components/NotificationBell';
+import { WalletBadge } from '@/components/WalletBadge';
 
 const STATIC_LINKS = [{ label: 'New In', href: '/category/new-in' }];
 
@@ -254,7 +255,10 @@ export function Header() {
             </Link>
           )}
           {isLoggedIn && (
-            <NotificationBell buttonClassName={ICON_BUTTON} iconClassName="h-5 w-5 text-[hsl(var(--pb-ink))]" />
+            <>
+              <NotificationBell buttonClassName={ICON_BUTTON} iconClassName="h-5 w-5 text-[hsl(var(--pb-ink))]" />
+              <WalletBadge buttonClassName={ICON_BUTTON} iconClassName="h-5 w-5 text-[hsl(var(--pb-ink))]" />
+            </>
           )}
           <Link href="/wishlist" aria-label="Wishlist" className={ICON_BUTTON}>
             <Heart className="h-5 w-5 text-[hsl(var(--pb-ink))]" />

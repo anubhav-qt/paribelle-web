@@ -15,6 +15,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import ExchangeRequestModal from '@/components/ExchangeRequestModal';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
+import ShipBackModal from '@/components/ShipBackModal';
 import { useMarketplaceWebSocket } from '@/contexts/StockWebSocketContext';
 import { Order, OrderItem } from '@/types/common';
 import { Loader } from '@/components/ui/Loader';
@@ -59,6 +60,8 @@ function OrdersPageInner() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showExchangeModal, setShowExchangeModal] = useState(false);
   const [itemForExchange, setItemForExchange] = useState<OrderItem | null>(null);
+  const [shipBackReturnId, setShipBackReturnId] = useState<string | null>(null);
+  const [shipBackProductName, setShipBackProductName] = useState<string | undefined>(undefined);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelReasonOther, setCancelReasonOther] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -264,6 +267,36 @@ function OrdersPageInner() {
    * server-side by OrdersService.transformOrder) is what actually gates the
    * button; this only formats `exchangeWindowExpiresAt` for display.
    */
+  /**
+   * How many units of this item are still eligible for an exchange request,
+   * and whether one is already pending — mirrors the backend's
+   * `alreadyRequested + quantity > item.quantity` check in
+   * ExchangesService.request so the button doesn't invite a request the
+   * server will just reject.
+   */
+  const getItemExchangeInfo = (order: Order, item: OrderItem) => {
+    const itemReturns = (order.returns || []).filter((r: any) => r.orderItemId === item.id);
+    const active = itemReturns.filter((r: any) => r.status !== 'rejected');
+    const requestedQty = active.reduce((sum: number, r: any) => sum + (r.quantity || 0), 0);
+    const remaining = Math.max(0, (item.quantity || 0) - requestedQty);
+    return { remaining, hasActive: active.length > 0 };
+  };
+
+  const handleMarkExchangeShipped = async (returnId: string, trackingNumber?: string) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/exchanges/${returnId}/in-transit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ trackingNumber }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to mark as shipped');
+    }
+    showToast('Marked as shipped — thanks!', 'success');
+    fetchOrders();
+  };
+
   const getExchangeWindowMessage = (order: Order): string => {
     if (!order.exchangeWindowExpiresAt) return '';
     const remainingDays = Math.ceil(
@@ -743,23 +776,40 @@ function OrdersPageInner() {
                     {/* Server-computed — see OrdersService.transformOrder. No
                         returns or refunds any more, only an exchange for a
                         different variant of the same item once delivered.
-                        Targets the first item; an order with several items
-                        exchanges them one request at a time. */}
-                    {order.canExchange && order.items?.[0] && (
-                      <button
-                        onClick={() => {
-                          setOrderToAction(order);
-                          setItemForExchange(order.items[0]);
-                          setShowExchangeModal(true);
-                        }}
-                        className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium"
-                        title={getExchangeWindowMessage(order)}
-                      >
-                        Request Exchange
-                      </button>
-                    )}
+                        Exchanges are per-item: each item on the order gets
+                        its own button, hidden once every unit of that item
+                        already has a non-rejected exchange request. */}
+                    {order.canExchange && order.items?.map((item) => {
+                      const { remaining, hasActive } = getItemExchangeInfo(order, item);
+                      if (remaining <= 0) {
+                        return hasActive ? (
+                          <span
+                            key={item.id}
+                            className="px-4 py-2 border border-border text-muted-foreground rounded-lg font-medium text-sm flex items-center"
+                            title="An exchange request for this item is already in progress"
+                          >
+                            {order.items.length > 1 ? `${item.productName}: ` : ''}Exchange requested
+                          </span>
+                        ) : null;
+                      }
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setOrderToAction(order);
+                            setItemForExchange(remaining < item.quantity ? { ...item, quantity: remaining } : item);
+                            setShowExchangeModal(true);
+                          }}
+                          className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium"
+                          title={getExchangeWindowMessage(order)}
+                        >
+                          {order.items.length > 1 ? `Exchange: ${item.productName}` : 'Request Exchange'}
+                        </button>
+                      );
+                    })}
                     {/* Cancel is only offered while the server says it's still
-                        allowed — unpaid and not yet shipped. See Task 8. */}
+                        allowed — not yet shipped. Paid orders are refunded to
+                        store credit on cancel; see OrdersService.cancel. */}
                     {order.canCancel && (
                       <button
                         onClick={() => {
@@ -771,6 +821,20 @@ function OrdersPageInner() {
                         Cancel Order
                       </button>
                     )}
+                    {/* Approved exchange — customer still needs to physically
+                        ship the item back before an admin can inspect it. */}
+                    {(order.returns || []).filter((r: any) => r.status === 'approved').map((r: any) => (
+                      <button
+                        key={r.id}
+                        onClick={() => {
+                          setShipBackReturnId(r.id);
+                          setShipBackProductName(r.productName);
+                        }}
+                        className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-medium"
+                      >
+                        Ship Exchange Back
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -874,6 +938,22 @@ function OrdersPageInner() {
           onSubmit={handleExchangeRequest}
         />
       )}
+
+      {/* Ship-back instructions — shown once an exchange request is approved */}
+      <ShipBackModal
+        isOpen={!!shipBackReturnId}
+        onClose={() => {
+          setShipBackReturnId(null);
+          setShipBackProductName(undefined);
+        }}
+        productName={shipBackProductName}
+        onConfirm={async (trackingNumber) => {
+          if (!shipBackReturnId) return;
+          await handleMarkExchangeShipped(shipBackReturnId, trackingNumber);
+          setShipBackReturnId(null);
+          setShipBackProductName(undefined);
+        }}
+      />
 
       {/* Toast Notification */}
       {toast && (
