@@ -64,6 +64,19 @@ export function Header() {
   const [accountOpen, setAccountOpen] = React.useState(false);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Sliding nav highlighter: one shared pill measures the currently active
+  // link's own rect (relative to the nav container) and animates to it,
+  // rather than every link independently toggling its own background.
+  const navContainerRef = React.useRef<HTMLElement | null>(null);
+  const navLinkRefs = React.useRef<Map<string, HTMLAnchorElement>>(new Map());
+  const [pillRect, setPillRect] = React.useState<{ left: number; width: number } | null>(null);
+  const [pillAnimReady, setPillAnimReady] = React.useState(false);
+
+  const setNavLinkRef = (key: string) => (el: HTMLAnchorElement | null) => {
+    if (el) navLinkRefs.current.set(key, el);
+    else navLinkRefs.current.delete(key);
+  };
+
   const clearCloseTimer = () => {
     if (closeTimer.current) {
       clearTimeout(closeTimer.current);
@@ -112,14 +125,66 @@ export function Header() {
   // Current-page highlighting, kept separate from `activeMenu` (which tracks
   // the hovered/open mega menu, not location) so the two states can layer:
   // hovering a sibling category tints it without moving the "you are here"
-  // marker off the actual current page.
+  // marker off the actual current page. A hovered/open mega menu takes
+  // precedence over plain location — it's the more specific state, and the
+  // sliding pill below can only be in one place at a time.
+  const activeNavKey = React.useMemo(() => {
+    if (activeMenu) {
+      const hovered = categories.find((c) => c.id === activeMenu);
+      if (hovered) return hovered.id;
+    }
+    if (pathname === '/') return 'home';
+    const activeCat = categories.find((c) => pathname === `/category/${c.slug}`);
+    if (activeCat) return activeCat.id;
+    if (LOOKBOOK_ENABLED && pathname === '/lookbook') return 'lookbook';
+    if (pathname === '/about') return 'about';
+    return null;
+  }, [pathname, activeMenu, categories]);
+
   const navLinkClass = (isActive: boolean) =>
     cn(
       NAV_LINK,
+      'relative z-10',
       isActive
-        ? 'bg-[hsl(var(--pb-blush-wash))] text-[hsl(var(--pb-rose-deep))]'
+        ? 'text-[hsl(var(--pb-rose-deep))]'
         : 'text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]'
     );
+
+  const measurePill = React.useCallback(() => {
+    const container = navContainerRef.current;
+    const key = activeNavKey;
+    if (!container || !key) {
+      setPillRect(null);
+      return;
+    }
+    const el = navLinkRefs.current.get(key);
+    if (!el) {
+      setPillRect(null);
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    setPillRect({ left: elRect.left - containerRect.left, width: elRect.width });
+  }, [activeNavKey]);
+
+  React.useLayoutEffect(() => {
+    measurePill();
+  }, [measurePill]);
+
+  React.useEffect(() => {
+    window.addEventListener('resize', measurePill);
+    return () => window.removeEventListener('resize', measurePill);
+  }, [measurePill]);
+
+  // Skip the transition on the very first measurement so the pill doesn't
+  // animate in from a stale/zero position — only start animating once it has
+  // settled at its correct initial spot.
+  React.useEffect(() => {
+    if (pillRect && !pillAnimReady) {
+      const raf = requestAnimationFrame(() => setPillAnimReady(true));
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [pillRect, pillAnimReady]);
 
   return (
     <>
@@ -132,7 +197,7 @@ export function Header() {
             'relative flex items-center gap-0.5 rounded-full border px-2 py-1.5 backdrop-blur-xl transition-all duration-300 ease-pb',
             scrolled
               ? 'border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory)/0.94)] shadow-pb-lg'
-              : 'border-[hsl(var(--pb-linen)/0.7)] bg-[hsl(var(--pb-ivory)/0.72)] shadow-pb-md'
+              : 'border-[hsl(var(--pb-linen)/0.7)] bg-[hsl(var(--pb-blush-wash)/0.55)] shadow-pb-md'
           )}
         >
           <button
@@ -152,24 +217,39 @@ export function Header() {
 
           <Divider />
 
-          <nav className="hidden items-center md:flex">
+          <nav ref={navContainerRef} className="relative hidden items-center md:flex">
+            {pillRect && (
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'pointer-events-none absolute inset-y-0 rounded-full bg-[hsl(var(--pb-blush-wash))]',
+                  pillAnimReady && 'transition-[transform,width] duration-300 ease-pb'
+                )}
+                style={{ transform: `translateX(${pillRect.left}px)`, width: pillRect.width }}
+              />
+            )}
+
             {STATIC_LINKS.map((link) => (
-              <Link key={link.href} href={link.href} className={navLinkClass(pathname === link.href)}>
+              <Link
+                key={link.href}
+                href={link.href}
+                ref={setNavLinkRef('home')}
+                className={navLinkClass(activeNavKey === 'home')}
+              >
                 {link.label}
               </Link>
             ))}
 
             {categories.map((cat) => {
               const hasChildren = !!cat.children?.length;
-              // The mega menu being open takes visual precedence over plain
-              // location — it's the more specific state for exactly this item.
-              const isActive = activeMenu === cat.id || pathname === `/category/${cat.slug}`;
+              const isActive = activeNavKey === cat.id;
               return (
                 // A link, not a button: hovering opens the mega menu, but the
                 // category name itself has to be clickable and keyboard-reachable.
                 <Link
                   key={cat.id}
                   href={`/category/${cat.slug}`}
+                  ref={setNavLinkRef(cat.id)}
                   // A category with no children has nothing for the panel to
                   // show — opening it anyway is the empty-white-panel bug.
                   onMouseEnter={hasChildren ? () => openMegaMenu(cat.id) : undefined}
@@ -182,11 +262,15 @@ export function Header() {
             })}
 
             {LOOKBOOK_ENABLED && (
-              <Link href="/lookbook" className={navLinkClass(pathname === '/lookbook')}>
+              <Link
+                href="/lookbook"
+                ref={setNavLinkRef('lookbook')}
+                className={navLinkClass(activeNavKey === 'lookbook')}
+              >
                 Lookbook
               </Link>
             )}
-            <Link href="/about" className={navLinkClass(pathname === '/about')}>
+            <Link href="/about" ref={setNavLinkRef('about')} className={navLinkClass(activeNavKey === 'about')}>
               About
             </Link>
 
@@ -203,7 +287,7 @@ export function Header() {
                 aria-label="Account"
                 aria-expanded={accountOpen}
                 aria-haspopup="menu"
-                className={ICON_BUTTON}
+                className={cn(ICON_BUTTON, accountOpen && 'bg-[hsl(var(--pb-blush-wash))]')}
               >
                 <User className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
               </button>
@@ -253,7 +337,11 @@ export function Header() {
           {isLoggedIn && (
             <NotificationBell buttonClassName={ICON_BUTTON} iconClassName="h-5 w-5 text-[hsl(var(--pb-ink))]" />
           )}
-          <Link href="/wishlist" aria-label="Wishlist" className={ICON_BUTTON}>
+          <Link
+            href="/wishlist"
+            aria-label="Wishlist"
+            className={cn(ICON_BUTTON, pathname === '/wishlist' && 'bg-[hsl(var(--pb-blush-wash))]')}
+          >
             <Heart className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
             <CountBadge count={wishlistCount} />
           </Link>

@@ -8,13 +8,14 @@ export interface ProductRailProps {
   title: string;
   products: Product[];
   viewAllHref?: string;
+  tinted?: boolean;
 }
 
-export function ProductRail({ eyebrow, title, products, viewAllHref }: ProductRailProps) {
+export function ProductRail({ eyebrow, title, products, viewAllHref, tinted }: ProductRailProps) {
   if (products.length === 0) return null;
 
-  return (
-    <section className="mx-auto max-w-7xl px-4 py-12 md:px-8">
+  const rail = (
+    <>
       <SectionHeading eyebrow={eyebrow} title={title} viewAllHref={viewAllHref} />
       <div className="scrollbar-hide mt-8 flex gap-4 overflow-x-auto md:gap-6">
         {products.map((product, i) => (
@@ -23,6 +24,16 @@ export function ProductRail({ eyebrow, title, products, viewAllHref }: ProductRa
           </RevealOnScroll>
         ))}
       </div>
-    </section>
+    </>
   );
+
+  if (tinted) {
+    return (
+      <section className="bg-[hsl(var(--pb-blush-wash))]">
+        <div className="mx-auto max-w-7xl px-4 py-12 md:px-8">{rail}</div>
+      </section>
+    );
+  }
+
+  return <section className="mx-auto max-w-7xl px-4 py-12 md:px-8">{rail}</section>;
 }

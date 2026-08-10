@@ -1,6 +1,7 @@
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { PageShell } from '@/components/layout/PageShell';
+import { CustomCursor } from '@/components/CustomCursor';
 
 /**
  * PariBelle's shopfront chrome. Lives on the route group rather than the root
@@ -10,6 +11,7 @@ import { PageShell } from '@/components/layout/PageShell';
 export default function StorefrontLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <CustomCursor />
       <Header />
       <PageShell>{children}</PageShell>
       <Footer />

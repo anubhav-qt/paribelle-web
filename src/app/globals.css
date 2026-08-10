@@ -363,6 +363,16 @@
     display: none;
   }
 
+  /*
+   * Storefront custom cursor: applied to <body> only once CustomCursor has
+   * confirmed hover:hover + pointer:fine support client-side, so a JS
+   * failure never leaves visitors without any cursor at all.
+   */
+  .pb-custom-cursor-active,
+  .pb-custom-cursor-active * {
+    cursor: none !important;
+  }
+
   /* Vendor Theme Utilities */
   .vendor-bg {
     background-color: var(--vendor-bg, #FFFFFF) !important;

@@ -13,7 +13,7 @@ const Radio = React.forwardRef<HTMLInputElement, RadioProps>(
     const radioId = id || generatedId;
 
     return (
-      <label htmlFor={radioId} className="inline-flex items-center gap-2.5 cursor-pointer select-none">
+      <label htmlFor={radioId} className="flex items-center gap-2.5 cursor-pointer select-none">
         <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center">
           <input
             ref={ref}

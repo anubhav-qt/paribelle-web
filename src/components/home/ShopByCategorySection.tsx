@@ -15,11 +15,6 @@ export interface ShopByCategorySectionProps {
 // repeating the rest here.
 const MAX_SECTIONS = 3;
 
-// Kurtis gets the tinted band, Jewellery stays on plain ivory — a fixed
-// pairing by category identity rather than alternating by row position, so
-// it doesn't flip if the categories ever get reordered.
-const TINTED_SLUGS = new Set(['kurtis']);
-
 export function ShopByCategorySection({ categories, productsByCategory }: ShopByCategorySectionProps) {
   const sections = categories
     .map((cat) => ({ cat, products: productsByCategory[cat.slug] || [] }))
@@ -30,10 +25,10 @@ export function ShopByCategorySection({ categories, productsByCategory }: ShopBy
 
   return (
     <>
-      {sections.map(({ cat, products }) => (
+      {sections.map(({ cat, products }, sectionIndex) => (
         <section
           key={cat.id}
-          className={TINTED_SLUGS.has(cat.slug) ? 'bg-[hsl(var(--pb-blush-wash))]' : undefined}
+          className={sectionIndex % 2 === 1 ? 'bg-[hsl(var(--pb-blush-wash))]' : undefined}
         >
           <div className="mx-auto max-w-7xl px-4 py-14 md:px-8">
             <SectionHeading eyebrow="Shop the Edit" title={cat.name} viewAllHref={`/category/${cat.slug}`} />

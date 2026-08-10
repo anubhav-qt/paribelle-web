@@ -87,7 +87,7 @@ export default function MainPageClient({
       </Suspense>
 
       <FabricWeaveHero />
-      <ProductRail eyebrow="Most Loved" title="Top Sellers" products={topSellingProducts} />
+      <ProductRail eyebrow="Most Loved" title="Top Sellers" products={topSellingProducts} tinted />
       <ShopByCategorySection categories={browseCategories} productsByCategory={productsByCategory} />
       {LOOKBOOK_ENABLED && <LookbookTeaser />}
       {bookingProducts.length > 0 && (
