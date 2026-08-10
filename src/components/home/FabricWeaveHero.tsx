@@ -1,28 +1,27 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 
 /**
- * The new hero — see Task 6 in the implementation plan. Replaces the old
- * photo-zoom `ScrapbookHero` with an animated woven-thread canvas behind a
- * shopping-first foreground: headline, a real search input, one primary CTA.
- * No category chips here — that was one of four places the same category
- * list repeated in a single scroll; navigation lives in the header.
+ * The hero — an animated woven-thread canvas behind a single headline. No
+ * subtext, no search bar, no CTA: the "Top Sellers" rail right below this
+ * section is the call to action, and the header nav is where every other
+ * destination already lives.
  *
  * The weave is a plain 2D canvas sine field, not per-thread DOM/SVG nodes —
  * a few hundred animated elements is what makes woven-pattern heroes janky.
  * It pauses via IntersectionObserver once scrolled out of view, and renders a
  * single static frame under `prefers-reduced-motion: reduce` rather than a
  * blank background.
+ *
+ * Hovering the weave bows the threads away from the cursor, lens-like, and
+ * lets them settle back once the pointer leaves — smoothed with a lerp so it
+ * reads as a responsive material, not a snap-to-cursor glitch. Skipped for
+ * reduced-motion and coarse (touch) pointers, since neither can hover.
  */
 export function FabricWeaveHero() {
-  const router = useRouter();
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const [query, setQuery] = React.useState('');
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
@@ -33,6 +32,7 @@ export function FabricWeaveHero() {
     if (!ctx) return;
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const supportsHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
     let width = 0;
     let height = 0;
@@ -40,6 +40,12 @@ export function FabricWeaveHero() {
     let rafId: number | null = null;
     let visible = true;
     let t = 0;
+
+    // Raw pointer target vs. the smoothed position actually used to draw —
+    // lerping both position and influence is what makes the distortion
+    // ease in/out instead of snapping to the cursor every frame.
+    const pointer = { x: 0, y: 0, active: false };
+    const rendered = { x: 0, y: 0, influence: 0 };
 
     const resize = () => {
       width = container.clientWidth;
@@ -52,9 +58,12 @@ export function FabricWeaveHero() {
     };
 
     // Thread colours pulled from the store's own palette, at low alpha so the
-    // headline and CTAs stay comfortably readable over the busiest frame.
+    // headline stays comfortably readable over the busiest frame.
     const WARP_COLOR = 'hsla(349, 48%, 70%, 0.22)'; // --pb-rose
     const WEFT_COLOR = 'hsla(38, 38%, 59%, 0.18)'; // --pb-gold
+
+    const DISTORT_RADIUS = 180;
+    const DISTORT_STRENGTH = 26;
 
     const draw = (time: number) => {
       ctx.clearRect(0, 0, width, height);
@@ -63,6 +72,21 @@ export function FabricWeaveHero() {
       const weftCount = 40;
       const amplitude = 10;
       const freq = 0.015;
+      const { x: px, y: py, influence } = rendered;
+
+      // Pushes a point on the thread away from the (smoothed) cursor with a
+      // gaussian falloff — a lens bulge, not a hard-edged bend.
+      const distort = (x: number, y: number): [number, number] => {
+        if (influence <= 0.001) return [x, y];
+        const dx = x - px;
+        const dy = y - py;
+        const distSq = dx * dx + dy * dy;
+        const falloff = Math.exp(-distSq / (2 * DISTORT_RADIUS * DISTORT_RADIUS));
+        if (falloff < 0.001) return [x, y];
+        const dist = Math.sqrt(distSq) || 0.0001;
+        const push = influence * falloff * DISTORT_STRENGTH;
+        return [x + (dx / dist) * push, y + (dy / dist) * push];
+      };
 
       // Warp threads: mostly vertical, drifting horizontally.
       ctx.strokeStyle = WARP_COLOR;
@@ -72,8 +96,9 @@ export function FabricWeaveHero() {
         ctx.beginPath();
         for (let y = 0; y <= height; y += 8) {
           const x = baseX + Math.sin(y * freq + time * 0.0004 + i) * amplitude;
-          if (y === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+          const [dx, dy] = distort(x, y);
+          if (y === 0) ctx.moveTo(dx, dy);
+          else ctx.lineTo(dx, dy);
         }
         ctx.stroke();
       }
@@ -85,8 +110,9 @@ export function FabricWeaveHero() {
         ctx.beginPath();
         for (let x = 0; x <= width; x += 8) {
           const y = baseY + Math.sin(x * freq + time * 0.0003 + i * 1.7) * amplitude;
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+          const [dx, dy] = distort(x, y);
+          if (x === 0) ctx.moveTo(dx, dy);
+          else ctx.lineTo(dx, dy);
         }
         ctx.stroke();
       }
@@ -109,10 +135,18 @@ export function FabricWeaveHero() {
       // good and the canvas stayed permanently blank, even once the hero was
       // actually on screen. Always rescheduling avoids the race; skipping
       // the draw call itself is what actually saves the CPU off-screen.
+      //
+      // The frame cap steps up from 30fps to 60fps while the cursor is
+      // actively distorting the weave — smooth tracking matters there far
+      // more than it does for the idle drift.
       let lastFrame = 0;
-      const targetInterval = 1000 / 30; // capped at ~30fps
       const loop = (now: number) => {
+        const targetInterval = rendered.influence > 0.01 || pointer.active ? 1000 / 60 : 1000 / 30;
         if (visible && now - lastFrame >= targetInterval) {
+          const targetInfluence = supportsHover && pointer.active ? 1 : 0;
+          rendered.x += (pointer.x - rendered.x) * 0.15;
+          rendered.y += (pointer.y - rendered.y) * 0.15;
+          rendered.influence += (targetInfluence - rendered.influence) * 0.12;
           t = now;
           draw(t);
           lastFrame = now;
@@ -133,22 +167,35 @@ export function FabricWeaveHero() {
     );
     observer.observe(container);
 
+    let onPointerMove: ((e: PointerEvent) => void) | undefined;
+    let onPointerLeave: (() => void) | undefined;
+    if (supportsHover && !prefersReducedMotion) {
+      onPointerMove = (e: PointerEvent) => {
+        const rect = container.getBoundingClientRect();
+        pointer.x = e.clientX - rect.left;
+        pointer.y = e.clientY - rect.top;
+        pointer.active = true;
+      };
+      onPointerLeave = () => {
+        pointer.active = false;
+      };
+      container.addEventListener('pointermove', onPointerMove);
+      container.addEventListener('pointerleave', onPointerLeave);
+    }
+
     return () => {
       window.removeEventListener('resize', onResize);
       observer.disconnect();
       if (rafId !== null) cancelAnimationFrame(rafId);
+      if (onPointerMove) container.removeEventListener('pointermove', onPointerMove);
+      if (onPointerLeave) container.removeEventListener('pointerleave', onPointerLeave);
     };
   }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim()) router.push(`/search?q=${encodeURIComponent(query.trim())}`);
-  };
 
   return (
     <section
       ref={containerRef}
-      className="relative flex min-h-[70vh] items-center justify-center overflow-hidden bg-[hsl(var(--pb-ivory))] px-6 py-24 md:min-h-[85vh]"
+      className="relative flex min-h-[42vh] items-center justify-center overflow-hidden bg-[hsl(var(--pb-ivory))] px-6 py-16 md:min-h-[56vh]"
     >
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none absolute inset-0" />
 
@@ -158,26 +205,6 @@ export function FabricWeaveHero() {
           <br />
           not just bought.
         </h1>
-        <p className="mt-4 max-w-md text-[hsl(var(--pb-ink-muted))]">
-          Kurtis and jewellery cut, checked and finished in Jaipur — new pieces every season.
-        </p>
-
-        <form onSubmit={handleSearch} className="mt-8 w-full max-w-sm">
-          <div className="flex items-center gap-2 rounded-full border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory)/0.9)] px-4 py-2.5 shadow-pb-md backdrop-blur-sm focus-within:border-[hsl(var(--pb-rose-deep))]">
-            <Search className="h-4 w-4 shrink-0 text-[hsl(var(--pb-ink-faint))]" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search kurtis, jewellery…"
-              className="w-full bg-transparent text-sm text-[hsl(var(--pb-ink))] placeholder:text-[hsl(var(--pb-ink-faint))] focus:outline-none"
-            />
-          </div>
-        </form>
-
-        <div className="mt-6">
-          <Button onClick={() => router.push('/category/new-in')}>Shop New In</Button>
-        </div>
       </div>
     </section>
   );

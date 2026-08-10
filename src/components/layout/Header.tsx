@@ -3,20 +3,19 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, Heart, ShoppingBag, User, Menu, Package, LogOut } from 'lucide-react';
+import { Heart, ShoppingBag, User, Menu, Package, LogOut } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { MegaMenu } from './MegaMenu';
 import { MobileNav } from './MobileNav';
-import { SearchOverlay } from './SearchOverlay';
 import { cn } from '@/lib/utils';
 import { LOOKBOOK_ENABLED } from '@/lib/features';
 import { NotificationBell } from '@/components/NotificationBell';
 import { WalletBadge } from '@/components/WalletBadge';
 
-const STATIC_LINKS = [{ label: 'New In', href: '/category/new-in' }];
+const STATIC_LINKS = [{ label: 'Home', href: '/' }];
 
 /** Shared shape for every interactive element inside the pill. */
 const PILL_ITEM =
@@ -62,7 +61,6 @@ export function Header() {
   const [scrolled, setScrolled] = React.useState(false);
   const [activeMenu, setActiveMenu] = React.useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
-  const [searchOpen, setSearchOpen] = React.useState(false);
   const [accountOpen, setAccountOpen] = React.useState(false);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -111,6 +109,18 @@ export function Header() {
 
   const activeCategory = categories.find((c) => c.id === activeMenu && c.children?.length);
 
+  // Current-page highlighting, kept separate from `activeMenu` (which tracks
+  // the hovered/open mega menu, not location) so the two states can layer:
+  // hovering a sibling category tints it without moving the "you are here"
+  // marker off the actual current page.
+  const navLinkClass = (isActive: boolean) =>
+    cn(
+      NAV_LINK,
+      isActive
+        ? 'bg-[hsl(var(--pb-blush-wash))] text-[hsl(var(--pb-rose-deep))]'
+        : 'text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]'
+    );
+
   return (
     <>
       <header
@@ -144,17 +154,16 @@ export function Header() {
 
           <nav className="hidden items-center md:flex">
             {STATIC_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`${NAV_LINK} text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]`}
-              >
+              <Link key={link.href} href={link.href} className={navLinkClass(pathname === link.href)}>
                 {link.label}
               </Link>
             ))}
 
             {categories.map((cat) => {
               const hasChildren = !!cat.children?.length;
+              // The mega menu being open takes visual precedence over plain
+              // location — it's the more specific state for exactly this item.
+              const isActive = activeMenu === cat.id || pathname === `/category/${cat.slug}`;
               return (
                 // A link, not a button: hovering opens the mega menu, but the
                 // category name itself has to be clickable and keyboard-reachable.
@@ -165,12 +174,7 @@ export function Header() {
                   // show — opening it anyway is the empty-white-panel bug.
                   onMouseEnter={hasChildren ? () => openMegaMenu(cat.id) : undefined}
                   onFocus={hasChildren ? () => openMegaMenu(cat.id) : undefined}
-                  className={cn(
-                    NAV_LINK,
-                    activeMenu === cat.id
-                      ? 'bg-[hsl(var(--pb-blush-wash))] text-[hsl(var(--pb-rose-deep))]'
-                      : 'text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]'
-                  )}
+                  className={navLinkClass(isActive)}
                 >
                   {cat.name}
                 </Link>
@@ -178,26 +182,17 @@ export function Header() {
             })}
 
             {LOOKBOOK_ENABLED && (
-              <Link
-                href="/lookbook"
-                className={`${NAV_LINK} text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]`}
-              >
+              <Link href="/lookbook" className={navLinkClass(pathname === '/lookbook')}>
                 Lookbook
               </Link>
             )}
-            <Link
-              href="/about"
-              className={`${NAV_LINK} text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]`}
-            >
+            <Link href="/about" className={navLinkClass(pathname === '/about')}>
               About
             </Link>
 
             <Divider />
           </nav>
 
-          <button onClick={() => setSearchOpen(true)} aria-label="Search" className={ICON_BUTTON}>
-            <Search className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
-          </button>
           {/* Signed out, the icon is a shortcut to the login page. Signed in,
               it opens the account menu — which is the only place on the
               storefront a customer can sign out from. */}
@@ -236,6 +231,7 @@ export function Header() {
                     >
                       <Package className="h-4 w-4" /> My Orders
                     </Link>
+                    <WalletBadge variant="row" onNavigate={() => setAccountOpen(false)} />
                     <button
                       onClick={() => {
                         setAccountOpen(false);
@@ -255,10 +251,7 @@ export function Header() {
             </Link>
           )}
           {isLoggedIn && (
-            <>
-              <NotificationBell buttonClassName={ICON_BUTTON} iconClassName="h-5 w-5 text-[hsl(var(--pb-ink))]" />
-              <WalletBadge buttonClassName={ICON_BUTTON} iconClassName="h-5 w-5 text-[hsl(var(--pb-ink))]" />
-            </>
+            <NotificationBell buttonClassName={ICON_BUTTON} iconClassName="h-5 w-5 text-[hsl(var(--pb-ink))]" />
           )}
           <Link href="/wishlist" aria-label="Wishlist" className={ICON_BUTTON}>
             <Heart className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
@@ -289,7 +282,6 @@ export function Header() {
       </header>
 
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} categories={categories} />
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }

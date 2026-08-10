@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ChevronDown, Heart, User, Package, LogOut, LogIn } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Monogram } from '@/components/brand/Monogram';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { cn } from '@/lib/utils';
 import type { Category } from '@/types/product';
 import { useState } from 'react';
 import { LOOKBOOK_ENABLED } from '@/lib/features';
@@ -15,18 +17,26 @@ export interface MobileNavProps {
   categories: Category[];
 }
 
+const TOP_LINK = 'py-3 text-sm font-medium border-b border-[hsl(var(--pb-linen))]';
+
 export function MobileNav({ open, onClose, categories }: MobileNavProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const { user, isLoggedIn, logout } = useCurrentUser();
+  const pathname = usePathname();
 
   return (
     <Drawer open={open} onClose={onClose} side="right" title={<Monogram className="h-6 w-6 text-[hsl(var(--pb-rose))]" />}>
       <nav className="flex flex-col px-6 py-4">
-        <Link href="/category/new-in" onClick={onClose} className="py-3 text-sm font-medium text-[hsl(var(--pb-ink))] border-b border-[hsl(var(--pb-linen))]">
-          New In
+        <Link
+          href="/"
+          onClick={onClose}
+          className={cn(TOP_LINK, pathname === '/' ? 'text-[hsl(var(--pb-rose-deep))]' : 'text-[hsl(var(--pb-ink))]')}
+        >
+          Home
         </Link>
         {categories.map((cat) => {
           const hasChildren = !!cat.children && cat.children.length > 0;
+          const isActive = pathname === `/category/${cat.slug}`;
           return (
             <div key={cat.id} className="border-b border-[hsl(var(--pb-linen))]">
               {hasChildren ? (
@@ -45,7 +55,10 @@ export function MobileNav({ open, onClose, categories }: MobileNavProps) {
                 <Link
                   href={`/category/${cat.slug}`}
                   onClick={onClose}
-                  className="block py-3 text-sm font-medium text-[hsl(var(--pb-ink))]"
+                  className={cn(
+                    'block py-3 text-sm font-medium',
+                    isActive ? 'text-[hsl(var(--pb-rose-deep))]' : 'text-[hsl(var(--pb-ink))]'
+                  )}
                 >
                   {cat.name}
                 </Link>
@@ -68,11 +81,19 @@ export function MobileNav({ open, onClose, categories }: MobileNavProps) {
           );
         })}
         {LOOKBOOK_ENABLED && (
-          <Link href="/lookbook" onClick={onClose} className="py-3 text-sm font-medium text-[hsl(var(--pb-ink))] border-b border-[hsl(var(--pb-linen))]">
+          <Link
+            href="/lookbook"
+            onClick={onClose}
+            className={cn(TOP_LINK, pathname === '/lookbook' ? 'text-[hsl(var(--pb-rose-deep))]' : 'text-[hsl(var(--pb-ink))]')}
+          >
             Lookbook
           </Link>
         )}
-        <Link href="/about" onClick={onClose} className="py-3 text-sm font-medium text-[hsl(var(--pb-ink))] border-b border-[hsl(var(--pb-linen))]">
+        <Link
+          href="/about"
+          onClick={onClose}
+          className={cn(TOP_LINK, pathname === '/about' ? 'text-[hsl(var(--pb-rose-deep))]' : 'text-[hsl(var(--pb-ink))]')}
+        >
           About
         </Link>
 

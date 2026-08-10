@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/currency';
@@ -114,12 +114,20 @@ function OrdersPageInner() {
   }, [subscribeToOrderStatusUpdates]);
 
   // A notification carrying an orderId deep-links here (see NotificationBell)
-  // — open that order's details as soon as the list has loaded.
+  // — open that order's details as soon as the list has loaded. One-shot: the
+  // orderId is consumed and the URL is cleaned up immediately after opening,
+  // so navigating away and back (or a background refetch re-running this
+  // effect) can't reopen a modal the customer already closed.
+  const consumedDeepLinkRef = useRef<string | null>(null);
   useEffect(() => {
     if (!deepLinkOrderId || orders.length === 0) return;
+    if (consumedDeepLinkRef.current === deepLinkOrderId) return;
     const target = orders.find((o) => o.id === deepLinkOrderId);
-    if (target) setSelectedOrder(target);
-  }, [deepLinkOrderId, orders]);
+    if (!target) return;
+    consumedDeepLinkRef.current = deepLinkOrderId;
+    setSelectedOrder(target);
+    router.replace('/orders', { scroll: false });
+  }, [deepLinkOrderId, orders, router]);
 
   const fetchOrders = async () => {
     try {

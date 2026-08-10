@@ -48,6 +48,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-2 border-l border-gray-200 pl-4">
             <NotificationBell
+              variant="admin"
               buttonClassName="relative rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
               iconClassName="h-4 w-4"
             />

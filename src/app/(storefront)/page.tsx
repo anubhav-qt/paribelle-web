@@ -46,7 +46,6 @@ export default async function HomePage() {
       settings={data.settings}
       categories={data.categories}
       productsByCategory={data.productsByCategory}
-      uncategorizedProducts={data.uncategorizedProducts}
     />
   );
 }

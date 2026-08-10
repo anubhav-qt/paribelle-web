@@ -662,7 +662,7 @@ export default function CategoryPage() {
         <div className="flex gap-10">
           <aside className="hidden w-56 shrink-0 lg:block">
             <div className="sticky top-24">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-8 flex min-h-[2.875rem] items-center justify-between border-b border-[hsl(var(--pb-linen))] pb-4">
                 <h2 className="font-display text-lg text-[hsl(var(--pb-ink))]">Filters</h2>
                 <button onClick={resetFilters} className="text-xs text-[hsl(var(--pb-rose-deep))] hover:underline">
                   Clear all
@@ -673,7 +673,7 @@ export default function CategoryPage() {
           </aside>
 
           <div className="flex-1">
-            <div className="mb-8 flex items-center justify-between gap-4 border-b border-[hsl(var(--pb-linen))] pb-4">
+            <div className="mb-8 flex min-h-[2.875rem] items-center justify-between gap-4 border-b border-[hsl(var(--pb-linen))] pb-4">
               <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setShowFilters(true)}>
                 <SlidersHorizontal className="h-4 w-4" /> Filters
               </Button>

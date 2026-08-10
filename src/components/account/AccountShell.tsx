@@ -2,17 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Package, Heart, MapPin, FileText, Gift, User, Wallet } from 'lucide-react';
+import { LayoutGrid, Package, Heart, FileText, User, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Every href here must be unique — `active` below matches by exact pathname,
+// and two entries sharing a target (as Addresses/Profile and the dead
+// `#referrals` anchor used to) both light up whenever either is current.
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutGrid },
   { href: '/orders', label: 'Orders', icon: Package },
   { href: '/wallet', label: 'Wallet', icon: Wallet },
   { href: '/wishlist', label: 'Wishlist', icon: Heart },
-  { href: '/profile', label: 'Addresses', icon: MapPin },
   { href: '/dashboard/invoices', label: 'Invoices', icon: FileText },
-  { href: '/dashboard#referrals', label: 'Referrals', icon: Gift },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
@@ -25,7 +26,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
         <aside className="shrink-0 md:w-56">
           <nav className="flex gap-1 overflow-x-auto md:sticky md:top-24 md:flex-col md:overflow-visible">
             {NAV.map(({ href, label, icon: Icon }) => {
-              const active = pathname === href.split('#')[0];
+              const active = pathname === href;
               return (
                 <Link
                   key={label}

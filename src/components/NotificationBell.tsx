@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Bell } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useNotifications } from '@/contexts/NotificationsContext';
 
 function timeAgo(iso: string): string {
@@ -19,6 +20,9 @@ interface NotificationBellProps {
   /** Class applied to the trigger button, so it can match either chrome. */
   buttonClassName?: string;
   iconClassName?: string;
+  /** Storefront uses the PariBelle palette; admin keeps its own plain
+   * gray chrome, since this component is shared between the two layouts. */
+  variant?: 'storefront' | 'admin';
 }
 
 /**
@@ -26,9 +30,11 @@ interface NotificationBellProps {
  * component on the storefront header and the admin layout; which
  * notifications it shows is decided server-side by role, not here.
  */
-export function NotificationBell({ buttonClassName, iconClassName }: NotificationBellProps) {
+export function NotificationBell({ buttonClassName, iconClassName, variant = 'storefront' }: NotificationBellProps) {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const [open, setOpen] = React.useState(false);
+
+  const isAdmin = variant === 'admin';
 
   return (
     <div className="relative">
@@ -37,11 +43,16 @@ export function NotificationBell({ buttonClassName, iconClassName }: Notificatio
         aria-label="Notifications"
         aria-expanded={open}
         aria-haspopup="menu"
-        className={buttonClassName || 'relative p-2 rounded-full hover:bg-gray-100'}
+        className={buttonClassName || (isAdmin ? 'relative p-2 rounded-full hover:bg-gray-100' : 'relative p-2 rounded-full hover:bg-[hsl(var(--pb-blush-wash))]')}
       >
         <Bell className={iconClassName || 'h-5 w-5'} />
         {unreadCount > 0 && (
-          <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-medium text-white">
+          <span
+            className={cn(
+              'absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-medium text-white',
+              isAdmin ? 'bg-red-600' : 'bg-[hsl(var(--pb-rose-deep))]'
+            )}
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -52,18 +63,38 @@ export function NotificationBell({ buttonClassName, iconClassName }: Notificatio
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div
             role="menu"
-            className="absolute right-0 top-full z-20 mt-2 w-80 max-h-[28rem] overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+            className={cn(
+              'absolute right-0 top-full z-20 mt-2 w-80 max-h-[28rem] overflow-y-auto',
+              isAdmin
+                ? 'rounded-lg border border-gray-200 bg-white shadow-lg'
+                : 'rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory))] shadow-pb-md'
+            )}
           >
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <span className="font-medium text-gray-900">Notifications</span>
+            <div
+              className={cn(
+                'flex items-center justify-between border-b px-4 py-3',
+                isAdmin ? 'border-gray-200' : 'border-[hsl(var(--pb-linen))]'
+              )}
+            >
+              <span className={cn('font-medium', isAdmin ? 'text-gray-900' : 'text-[hsl(var(--pb-ink))]')}>
+                Notifications
+              </span>
               {unreadCount > 0 && (
-                <button onClick={() => markAllRead()} className="text-xs text-blue-600 hover:underline">
+                <button
+                  onClick={() => markAllRead()}
+                  className={cn(
+                    'text-xs hover:underline',
+                    isAdmin ? 'text-blue-600' : 'text-[hsl(var(--pb-rose-deep))]'
+                  )}
+                >
                   Mark all read
                 </button>
               )}
             </div>
             {notifications.length === 0 ? (
-              <p className="px-4 py-6 text-center text-sm text-gray-500">No notifications yet.</p>
+              <p className={cn('px-4 py-6 text-center text-sm', isAdmin ? 'text-gray-500' : 'text-[hsl(var(--pb-ink-faint))]')}>
+                No notifications yet.
+              </p>
             ) : (
               notifications.map((n) => {
                 const content = (
@@ -72,11 +103,24 @@ export function NotificationBell({ buttonClassName, iconClassName }: Notificatio
                       if (!n.readAt) markRead(n.id);
                       setOpen(false);
                     }}
-                    className={`cursor-pointer border-b px-4 py-3 hover:bg-gray-50 ${!n.readAt ? 'bg-blue-50/50' : ''}`}
+                    className={cn(
+                      'cursor-pointer border-b px-4 py-3',
+                      isAdmin
+                        ? `border-gray-200 hover:bg-gray-50 ${!n.readAt ? 'bg-blue-50/50' : ''}`
+                        : `border-[hsl(var(--pb-linen))] hover:bg-[hsl(var(--pb-shell))] ${!n.readAt ? 'bg-[hsl(var(--pb-blush-wash))]' : ''}`
+                    )}
                   >
-                    <p className="text-sm font-medium text-gray-900">{n.title}</p>
-                    {n.body && <p className="mt-0.5 text-xs text-gray-600">{n.body}</p>}
-                    <p className="mt-1 text-xs text-gray-400">{timeAgo(n.createdAt)}</p>
+                    <p className={cn('text-sm font-medium', isAdmin ? 'text-gray-900' : 'text-[hsl(var(--pb-ink))]')}>
+                      {n.title}
+                    </p>
+                    {n.body && (
+                      <p className={cn('mt-0.5 text-xs', isAdmin ? 'text-gray-600' : 'text-[hsl(var(--pb-ink-muted))]')}>
+                        {n.body}
+                      </p>
+                    )}
+                    <p className={cn('mt-1 text-xs', isAdmin ? 'text-gray-400' : 'text-[hsl(var(--pb-ink-faint))]')}>
+                      {timeAgo(n.createdAt)}
+                    </p>
                   </div>
                 );
                 // Deep-link to the specific order, not just the orders list —

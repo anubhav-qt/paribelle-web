@@ -19,7 +19,6 @@ interface MainPageClientProps {
   };
   categories: Category[];
   productsByCategory: Record<string, Product[]>;
-  uncategorizedProducts: Product[];
 }
 
 const BOOKINGS_KEY = 'bookings-services';
@@ -27,7 +26,6 @@ const BOOKINGS_KEY = 'bookings-services';
 export default function MainPageClient({
   categories,
   productsByCategory,
-  uncategorizedProducts,
 }: MainPageClientProps) {
   const bookingProducts = productsByCategory[BOOKINGS_KEY] || [];
 
@@ -48,19 +46,39 @@ export default function MainPageClient({
     [shopCategories]
   );
 
-  const newInProducts = useMemo(() => {
-    const all = [
-      ...uncategorizedProducts,
-      ...Object.entries(productsByCategory)
-        .filter(([slug]) => slug !== BOOKINGS_KEY)
-        .flatMap(([, products]) => products),
-    ];
+  /**
+   * The hero's follow-up rail: top 5 by sales, but never at the cost of
+   * range — at least 2 Kurtis and 2 Jewellery pieces are guaranteed (when
+   * stock allows), with the 5th slot going to whichever product sold best
+   * among what's left over. Picking straight top-5-by-salesCount could
+   * easily land all five from one category.
+   */
+  const topSellingProducts = useMemo(() => {
+    const bySales = (a: Product, b: Product) => (b.salesCount || 0) - (a.salesCount || 0);
+    const kurtis = [...(productsByCategory['kurtis'] || [])].sort(bySales);
+    const jewellery = [...(productsByCategory['jewellery'] || [])].sort(bySales);
+
+    const picked: Product[] = [];
     const seen = new Set<string>();
-    const unique = all.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
-    return unique
-      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-      .slice(0, 12);
-  }, [uncategorizedProducts, productsByCategory]);
+    const take = (list: Product[], count: number) => {
+      for (const p of list) {
+        if (picked.length >= 5 || seen.has(p.id)) continue;
+        if (count-- <= 0) break;
+        seen.add(p.id);
+        picked.push(p);
+      }
+    };
+
+    take(kurtis, 2);
+    take(jewellery, 2);
+
+    const remainder = [...kurtis, ...jewellery]
+      .filter((p) => !seen.has(p.id))
+      .sort(bySales);
+    take(remainder, 5 - picked.length);
+
+    return picked.sort(bySales);
+  }, [productsByCategory]);
 
   return (
     <div className="min-h-screen bg-[hsl(var(--pb-ivory))]">
@@ -69,7 +87,7 @@ export default function MainPageClient({
       </Suspense>
 
       <FabricWeaveHero />
-      <ProductRail eyebrow="Just Arrived" title="New In" products={newInProducts} viewAllHref="/category/new-in" />
+      <ProductRail eyebrow="Most Loved" title="Top Sellers" products={topSellingProducts} />
       <ShopByCategorySection categories={browseCategories} productsByCategory={productsByCategory} />
       {LOOKBOOK_ENABLED && <LookbookTeaser />}
       {bookingProducts.length > 0 && (

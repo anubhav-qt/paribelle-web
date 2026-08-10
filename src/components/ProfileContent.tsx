@@ -197,21 +197,14 @@ export default function ProfileContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Page Header */}
-        <div className="mb-8">
-          <Link
-            href="/dashboard"
-            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
-          >
-            ← Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold mb-2 text-foreground">My Profile</h1>
-          <p className="text-muted-foreground">Manage your account information</p>
-        </div>
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold mb-2 text-foreground">My Profile</h1>
+        <p className="text-muted-foreground">Manage your account information</p>
+      </div>
 
-        {/* Tabs */}
+      {/* Tabs */}
         <div className="mb-6 border-b border-border">
           <div className="flex gap-4">
             <button
@@ -759,7 +752,6 @@ export default function ProfileContent() {
             )}
           </div>
         )}
-      </div>
     </div>
   );
 }
