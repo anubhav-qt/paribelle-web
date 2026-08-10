@@ -614,7 +614,7 @@ function OrdersPageInner() {
             {orders.length === 0 && (
               <Link
                 href="/"
-                className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+                className="inline-block px-6 py-3 bg-[hsl(var(--pb-rose))] text-white rounded-sm font-semibold hover:bg-[hsl(var(--pb-rose-deep))] transition-colors"
               >
                 Start Shopping
               </Link>
@@ -767,7 +767,7 @@ function OrdersPageInner() {
                           setReturnDetails(null);
                         }
                       }}
-                      className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/10 transition-colors font-medium flex items-center gap-2"
+                      className="px-4 py-2 border border-[hsl(var(--pb-rose))] text-[hsl(var(--pb-rose-deep))] rounded-sm hover:bg-[hsl(var(--pb-blush-wash))] transition-colors font-medium flex items-center gap-2"
                     >
                       <Eye className="w-4 h-4" />
                       View Details

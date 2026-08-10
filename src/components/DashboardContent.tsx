@@ -206,7 +206,7 @@ export default function DashboardContent() {
             <p className="text-muted-foreground mb-6">Start shopping to see your orders here</p>
             <Link
               href="/"
-              className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+              className="inline-block px-6 py-3 bg-[hsl(var(--pb-rose))] text-white rounded-sm font-semibold hover:bg-[hsl(var(--pb-rose-deep))] transition-colors"
             >
               Start Shopping
             </Link>

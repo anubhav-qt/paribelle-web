@@ -8,8 +8,7 @@ const sizeClasses = {
 } as const;
 
 /**
- * Brand loading indicator — the PariBelle monogram, pulsing rather than
- * spinning fast, since a detailed mark reads better slow. Respects
+ * Brand loading indicator — the PariBelle monogram, spinning. Respects
  * prefers-reduced-motion by holding a static, slightly faded mark instead.
  */
 export function Loader({
@@ -23,7 +22,7 @@ export function Loader({
     <Monogram
       className={cn(
         sizeClasses[size],
-        'text-primary animate-pulse motion-reduce:animate-none motion-reduce:opacity-60',
+        'text-primary animate-spin motion-reduce:animate-none motion-reduce:opacity-60',
         className
       )}
     />

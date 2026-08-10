@@ -1,12 +1,22 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
+
+// An organic, hand-drawn-feeling outline rather than a rounded rectangle —
+// four different corner radii blended on each axis so the curve reads as
+// irregular but still smooth. The inner clip is the same formula pulled in a
+// few points, so the blush mat shows as an even, consistent ring all the way
+// round instead of a rectangular border.
+const BLOB_OUTER = '62% 38% 55% 45% / 48% 62% 38% 52%';
+const BLOB_INNER = '58% 42% 51% 49% / 45% 58% 42% 55%';
 
 /**
- * The hero — an animated woven-thread canvas behind a single headline. No
- * subtext, no search bar, no CTA: the "Top Sellers" rail right below this
- * section is the call to action, and the header nav is where every other
- * destination already lives.
+ * The hero — the headline on the left, the campaign photo on the right in a
+ * soft blush-pink organic frame, both sitting over a woven-thread canvas
+ * that spans the whole section (including the empty ground around the
+ * frame). The photo's mat is opaque, so the weave shows through the
+ * whitespace around it, never through the photo itself.
  *
  * The weave is a plain 2D canvas sine field, not per-thread DOM/SVG nodes —
  * a few hundred animated elements is what makes woven-pattern heroes janky.
@@ -14,10 +24,11 @@ import * as React from 'react';
  * single static frame under `prefers-reduced-motion: reduce` rather than a
  * blank background.
  *
- * Hovering the weave bows the threads away from the cursor, lens-like, and
- * lets them settle back once the pointer leaves — smoothed with a lerp so it
- * reads as a responsive material, not a snap-to-cursor glitch. Skipped for
- * reduced-motion and coarse (touch) pointers, since neither can hover.
+ * Hovering bows the threads away from the cursor, lens-like. Position tracks
+ * the pointer with no easing — any lerp on x/y reads as lag between the
+ * cursor and the distortion, which is exactly what this should not have.
+ * Only the influence (how strongly the lens is "on") still fades in from a
+ * hover-start ripple, or the effect would pop on with a hard edge.
  */
 export function FabricWeaveHero() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -41,10 +52,9 @@ export function FabricWeaveHero() {
     let visible = true;
     let t = 0;
 
-    // Raw pointer target vs. the smoothed position actually used to draw —
-    // lerping both position and influence is what makes the distortion
-    // ease in/out instead of snapping to the cursor every frame.
     const pointer = { x: 0, y: 0, active: false };
+    // Position is applied straight from the pointer every frame — no lerp —
+    // so the bulge sits exactly under the cursor with zero spatial lag.
     const rendered = { x: 0, y: 0, influence: 0 };
 
     const resize = () => {
@@ -58,24 +68,24 @@ export function FabricWeaveHero() {
     };
 
     // Thread colours pulled from the store's own palette, at low alpha so the
-    // headline stays comfortably readable over the busiest frame.
-    const WARP_COLOR = 'hsla(349, 48%, 70%, 0.22)'; // --pb-rose
-    const WEFT_COLOR = 'hsla(38, 38%, 59%, 0.18)'; // --pb-gold
+    // headline and photo stay comfortably readable over the busiest frame.
+    const WARP_COLOR = 'hsla(349, 48%, 70%, 0.20)'; // --pb-rose
+    const WEFT_COLOR = 'hsla(38, 38%, 59%, 0.16)'; // --pb-gold
 
     const DISTORT_RADIUS = 180;
-    const DISTORT_STRENGTH = 26;
+    const DISTORT_STRENGTH = 13;
 
     const draw = (time: number) => {
       ctx.clearRect(0, 0, width, height);
 
-      const warpCount = 60;
-      const weftCount = 40;
+      const warpCount = 70;
+      const weftCount = 46;
       const amplitude = 10;
       const freq = 0.015;
       const { x: px, y: py, influence } = rendered;
 
-      // Pushes a point on the thread away from the (smoothed) cursor with a
-      // gaussian falloff — a lens bulge, not a hard-edged bend.
+      // Pushes a point on the thread away from the cursor with a gaussian
+      // falloff — a lens bulge, not a hard-edged bend.
       const distort = (x: number, y: number): [number, number] => {
         if (influence <= 0.001) return [x, y];
         const dx = x - px;
@@ -125,28 +135,14 @@ export function FabricWeaveHero() {
       // not just disappear for anyone who has motion reduced.
       draw(0);
     } else {
-      // A single chain of requestAnimationFrame calls, kept running for the
-      // component's whole lifetime — `visible` only gates whether a frame
-      // actually draws, not whether the next frame gets scheduled. An
-      // earlier version stopped rescheduling whenever `visible` was false
-      // and only resumed if `rafId` happened to still be `null`, which raced
-      // the IntersectionObserver's first (async) callback: if it reported
-      // "not visible" before the loop's own first tick, the loop exited for
-      // good and the canvas stayed permanently blank, even once the hero was
-      // actually on screen. Always rescheduling avoids the race; skipping
-      // the draw call itself is what actually saves the CPU off-screen.
-      //
-      // The frame cap steps up from 30fps to 60fps while the cursor is
-      // actively distorting the weave — smooth tracking matters there far
-      // more than it does for the idle drift.
       let lastFrame = 0;
       const loop = (now: number) => {
         const targetInterval = rendered.influence > 0.01 || pointer.active ? 1000 / 60 : 1000 / 30;
         if (visible && now - lastFrame >= targetInterval) {
           const targetInfluence = supportsHover && pointer.active ? 1 : 0;
-          rendered.x += (pointer.x - rendered.x) * 0.15;
-          rendered.y += (pointer.y - rendered.y) * 0.15;
-          rendered.influence += (targetInfluence - rendered.influence) * 0.12;
+          rendered.x = pointer.x;
+          rendered.y = pointer.y;
+          rendered.influence += (targetInfluence - rendered.influence) * 0.35;
           t = now;
           draw(t);
           lastFrame = now;
@@ -195,16 +191,36 @@ export function FabricWeaveHero() {
   return (
     <section
       ref={containerRef}
-      className="relative flex min-h-[42vh] items-center justify-center overflow-hidden bg-[hsl(var(--pb-ivory))] px-6 py-16 md:min-h-[56vh]"
+      className="relative overflow-hidden bg-[hsl(var(--pb-ivory))] pt-16 md:pt-20"
     >
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none absolute inset-0" />
 
-      <div className="relative z-10 mx-auto flex max-w-xl flex-col items-center text-center">
-        <h1 className="font-display text-display-lg italic text-[hsl(var(--pb-ink))] md:text-6xl">
-          Designed to be worn,
-          <br />
-          not just bought.
-        </h1>
+      <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-6 px-4 md:grid-cols-2 md:gap-10 md:px-8">
+        <div className="flex items-center justify-center py-8 md:justify-start md:py-8">
+          <h1 className="max-w-md font-display text-display-lg italic text-[hsl(var(--pb-ink))] md:text-6xl">
+            Designed to be <span className="text-[hsl(var(--pb-rose-deep))]">worn</span>,
+            <br />
+            not just bought.
+          </h1>
+        </div>
+
+        <div className="flex items-center justify-center py-6 pb-10 md:justify-end md:py-8">
+          <div
+            className="relative aspect-[4/5] w-full max-w-sm bg-[hsl(var(--pb-blush-wash))] p-3 shadow-pb-lg md:p-4"
+            style={{ borderRadius: BLOB_OUTER }}
+          >
+            <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_INNER }}>
+              <Image
+                src="/hero/hero-main.jpg"
+                alt="A PariBelle kurti, styled with silver jhumka earrings"
+                fill
+                priority
+                sizes="(min-width: 768px) 36vw, 85vw"
+                className="object-cover object-top"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -8,7 +8,7 @@ import { useCart } from '@/contexts/CartContext';
 import { getCurrencySymbol } from '@/lib/currency';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { AccountShell } from '@/components/account/AccountShell';
 
 export default function WishlistPage() {
   const { items, removeFromWishlist, clearWishlist } = useWishlist();
@@ -37,24 +37,24 @@ export default function WishlistPage() {
 
   if (items.length === 0) {
     return (
-      <EmptyState
-        icon={<Heart className="h-10 w-10" />}
-        title="Your wishlist is empty"
-        description="Save pieces you love and check them out anytime."
-        action={
-          <Link href="/">
-            <Button size="sm">Start Shopping</Button>
-          </Link>
-        }
-        className="min-h-[60vh]"
-      />
+      <AccountShell>
+        <EmptyState
+          icon={<Heart className="h-10 w-10" />}
+          title="Your wishlist is empty"
+          description="Save pieces you love and check them out anytime."
+          action={
+            <Link href="/">
+              <Button size="sm">Start Shopping</Button>
+            </Link>
+          }
+          className="min-h-[60vh]"
+        />
+      </AccountShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
-      <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Wishlist' }]} className="mb-6" />
-
+    <AccountShell>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-3 font-display text-3xl text-[hsl(var(--pb-ink))]">
@@ -115,6 +115,6 @@ export default function WishlistPage() {
           <Button variant="ghost">Continue Shopping</Button>
         </Link>
       </div>
-    </div>
+    </AccountShell>
   );
 }

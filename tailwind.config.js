@@ -75,6 +75,7 @@ module.exports = {
       fontFamily: {
         display: ['var(--font-display)'],
         sans: ['var(--font-sans)'],
+        logo: ['var(--font-logo)'],
       },
       boxShadow: {
         'pb-sm': 'var(--shadow-sm)',

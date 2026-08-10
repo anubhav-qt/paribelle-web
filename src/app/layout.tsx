@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Cormorant_Garamond, Jost } from 'next/font/google';
+import { Cormorant_Garamond, Jost, Italiana } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import ThemeProvider from '@/components/ThemeProvider';
 import './globals.css';
@@ -16,6 +16,13 @@ const jost = Jost({
   subsets: ['latin'],
   weight: ['300', '400', '500'],
   variable: '--font-sans',
+  display: 'swap',
+});
+
+const italiana = Italiana({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-logo',
   display: 'swap',
 });
 
@@ -68,7 +75,7 @@ export default async function RootLayout({
   const defaultTheme = await getDefaultTheme();
 
   return (
-    <html lang="en" suppressHydrationWarning className={`${cormorant.variable} ${jost.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${cormorant.variable} ${jost.variable} ${italiana.variable}`}>
       <body className={jost.className}>
         <ThemeProvider initialTheme={defaultTheme}>
           <Providers>{children}</Providers>

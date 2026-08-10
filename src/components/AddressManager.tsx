@@ -694,7 +694,7 @@ export default function AddressManager({
               type="button"
               onClick={handleSaveAddress}
               disabled={saving}
-              className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-70"
+              className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-[hsl(var(--pb-rose))] text-white rounded-sm hover:bg-[hsl(var(--pb-rose-deep))] transition-colors disabled:opacity-70"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving
@@ -786,7 +786,7 @@ export default function AddressManager({
               <div className="flex gap-2">
                 <button
                   onClick={(e) => handleEditAddress(addr, e)}
-                  className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                  className="p-2 text-[hsl(var(--pb-rose-deep))] hover:bg-[hsl(var(--pb-blush-wash))] rounded-sm transition-colors"
                   title="Edit address"
                 >
                   <Edit2 className="w-4 h-4" />
