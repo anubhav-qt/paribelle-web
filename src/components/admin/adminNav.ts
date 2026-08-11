@@ -46,9 +46,9 @@ export const ADMIN_NAV: AdminNavItem[] = [
     icon: Package,
   },
   {
-    title: 'Hero Banners',
-    description: 'Curate the homepage carousel',
-    href: '/admin/hero-banners',
+    title: 'Hero Section',
+    description: 'Replace the three homepage hero photos',
+    href: '/admin/hero-section',
     icon: Image,
   },
   {

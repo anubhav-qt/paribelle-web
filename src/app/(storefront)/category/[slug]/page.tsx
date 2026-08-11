@@ -585,10 +585,18 @@ export default function CategoryPage() {
       onRemove: () => setShowDiscountOnly(false),
     });
   }
-  if (priceRange[1] < maxProductPrice) {
+  if (priceRange[0] > 0 || priceRange[1] < maxProductPrice) {
+    const symbol = getCurrencySymbol(currency);
+    const label =
+      priceRange[0] > 0 && priceRange[1] < maxProductPrice
+        ? `Price: ${symbol}${priceRange[0].toLocaleString()} – ${symbol}${priceRange[1].toLocaleString()}`
+        : priceRange[0] > 0
+        ? `Price: from ${symbol}${priceRange[0].toLocaleString()}`
+        : `Price: up to ${symbol}${priceRange[1].toLocaleString()}`;
+
     activeFilterChips.push({
       key: 'price',
-      label: `Price: up to ${getCurrencySymbol(currency)}${priceRange[1].toLocaleString()}`,
+      label,
       onRemove: () => setPriceRange([0, maxProductPrice]),
     });
   }

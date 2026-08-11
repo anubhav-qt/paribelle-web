@@ -10,6 +10,13 @@ import {
   BLOB_RIGHT_OUTER,
   BLOB_RIGHT_INNER,
 } from './heroBlobShapes';
+import { getImageUrl } from '@/lib/image-url';
+import {
+  DEFAULT_HERO_IMAGES,
+  HERO_SECTION_IMAGES_KEY,
+  HeroSectionImages,
+  resolveHeroImageUrl,
+} from '@/lib/heroSectionImages';
 
 /**
  * The hero — the headline on the left, the campaign photo on the right in a
@@ -33,6 +40,30 @@ import {
 export function FabricWeaveHero() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Starts on the bundled defaults (so first paint never waits on the
+  // network) and swaps in whatever an admin has replaced them with, per
+  // slot, once `hero_section_images` resolves — see
+  // src/lib/heroSectionImages.ts for the shared shape with the admin editor.
+  const [images, setImages] = React.useState(DEFAULT_HERO_IMAGES);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/${HERO_SECTION_IMAGES_KEY}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { value?: Partial<HeroSectionImages> } | null) => {
+        if (cancelled || !data?.value) return;
+        setImages((prev) => ({
+          main: data.value!.main?.url ? { ...prev.main, url: data.value!.main!.url } : prev.main,
+          pink: data.value!.pink?.url ? { ...prev.pink, url: data.value!.pink!.url } : prev.pink,
+          black: data.value!.black?.url ? { ...prev.black, url: data.value!.black!.url } : prev.black,
+        }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
@@ -233,7 +264,7 @@ export function FabricWeaveHero() {
             >
               <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_LEFT_INNER }}>
                 <Image
-                  src="/hero/pink_3.jpg"
+                  src={resolveHeroImageUrl(images.pink.url, getImageUrl)}
                   alt="A coral-pink block-print anarkali kurta set with a matching dupatta"
                   fill
                   quality={85}
@@ -266,7 +297,7 @@ export function FabricWeaveHero() {
             >
               <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_RIGHT_INNER }}>
                 <Image
-                  src="/hero/black_3.jpg"
+                  src={resolveHeroImageUrl(images.black.url, getImageUrl)}
                   alt="A black kurta with floral scalloped embroidery on the hem and cuffs"
                   fill
                   quality={85}
@@ -292,7 +323,7 @@ export function FabricWeaveHero() {
             >
               <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_INNER }}>
                 <Image
-                  src="/hero/hero-main.jpg"
+                  src={resolveHeroImageUrl(images.main.url, getImageUrl)}
                   alt="A PariBelle kurti, styled with silver jhumka earrings"
                   fill
                   priority
