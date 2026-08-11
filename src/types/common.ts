@@ -106,6 +106,13 @@ export interface Order {
     name: string;
   };
   returns?: any[];
+  /** Set when this order IS the replacement a different-product exchange produced — see ExchangesService.createReplacementOrder. */
+  replacementForExchange?: {
+    returnNumber: string;
+    exchangeStatus: string;
+    originalOrderId: string;
+    originalOrderNumber: string;
+  } | null;
   returnReason?: string;
   returnApprovedAt?: string;
   returnRejectedAt?: string;

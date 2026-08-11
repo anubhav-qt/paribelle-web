@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { formatCurrencyWhole } from '@/lib/currency';
 import { getStatusColor } from '@/lib/utils/status';
@@ -62,6 +62,7 @@ function AdminOrdersPageInner() {
   const [returnDetails, setReturnDetails] = useState<ReturnDetails | null>(null);
   const [exchangeOrder, setExchangeOrder] = useState<Order | null>(null);
   const [codRefusalOrder, setCodRefusalOrder] = useState<Order | null>(null);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const deepLinkOrderId = searchParams.get('orderId');
   const { notifications } = useNotifications();
@@ -695,6 +696,26 @@ function AdminOrdersPageInner() {
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="font-medium text-gray-900">{order.orderNumber}</div>
+                        <div className="mt-1 flex flex-col items-start gap-1">
+                          {order.returns && order.returns.length > 0 && (
+                            <button
+                              onClick={() => viewOrderDetails(order)}
+                              title="This order has an exchange request"
+                              className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 hover:bg-purple-200"
+                            >
+                              Exchange: {order.returns[0].status.replace(/_/g, ' ')}
+                            </button>
+                          )}
+                          {order.replacementForExchange && (
+                            <button
+                              onClick={() => router.push(`/admin/orders?orderId=${order.replacementForExchange!.originalOrderId}`)}
+                              title="This order was created as a replacement for an exchange"
+                              className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-200"
+                            >
+                              Replacement for #{order.replacementForExchange.originalOrderNumber}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
