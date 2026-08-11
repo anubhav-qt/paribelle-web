@@ -408,7 +408,17 @@ function AdminOrdersPageInner() {
         order.shippingEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.vendor?.businessName?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter.startsWith('exchange_')
+          // The store has no returns/refunds, only exchanges — these live on
+          // the order's `returns` rows (still the DB table name), not on
+          // `order.status`, which never actually takes these old return-flow
+          // values any more (that flow is retired at the API level). Filtering
+          // by `order.status === 'return_requested'` etc. always matched
+          // nothing; this is what the dropdown options below now drive.
+          ? order.returns?.some((r: any) => r.status === statusFilter.replace('exchange_', ''))
+          : order.status === statusFilter);
 
       return matchesSearch && matchesStatus;
     });
@@ -592,10 +602,15 @@ function AdminOrdersPageInner() {
                 <option value="shipped">Shipped</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
-                <option value="return_requested">Return Requested</option>
-                <option value="return_approved">Return Approved</option>
-                <option value="returned">Returned</option>
-                <option value="refunded">Refunded</option>
+                {/* The store has no returns/refunds — only exchanges. These
+                    filter on the order's linked exchange request(s), not on
+                    `order.status` (see matchesStatus above). */}
+                <option value="exchange_requested">Exchange Requested</option>
+                <option value="exchange_approved">Exchange Approved</option>
+                <option value="exchange_in_transit">Exchange In Transit</option>
+                <option value="exchange_received">Exchange Received</option>
+                <option value="exchange_completed">Exchange Completed</option>
+                <option value="exchange_rejected">Exchange Rejected</option>
               </select>
             </div>
             <div>

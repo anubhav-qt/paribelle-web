@@ -58,19 +58,19 @@ export function ExchangePickerBar() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => router.push('/orders?resumeExchange=1')}
+            className="flex items-center gap-2 whitespace-nowrap rounded-full bg-[hsl(var(--pb-rose-deep))] px-4 py-2 text-xs font-medium uppercase tracking-wide text-white transition-colors hover:opacity-90"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Return to Exchange Request
+          </button>
+          <button
             onClick={() => clearExchangePicker()}
             aria-label="Cancel exchange browsing"
             className="rounded-full p-2 text-[hsl(var(--pb-ink-faint))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-ink))]"
             title="Cancel — stop browsing for a replacement"
           >
             <X className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => router.push('/orders?resumeExchange=1')}
-            className="flex items-center gap-2 whitespace-nowrap rounded-full bg-[hsl(var(--pb-rose-deep))] px-4 py-2 text-xs font-medium uppercase tracking-wide text-white transition-colors hover:opacity-90"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Return to Exchange Request
           </button>
         </div>
       </div>

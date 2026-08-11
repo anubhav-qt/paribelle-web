@@ -662,13 +662,15 @@ export default function ProductDetailPage() {
                 <Button
                   size="md"
                   fullWidth
-                  disabled={outOfStock}
+                  disabled={outOfStock || needsSelection}
                   className="mt-3"
                   onClick={handleSelectForExchange}
                 >
-                  {exchangePicker.picks.some((p) => p.productId === product.id)
-                    ? 'Selected ✓ — pick another, or return to your exchange'
-                    : 'Select for Exchange'}
+                  {needsSelection
+                    ? 'Choose an option first'
+                    : exchangePicker.picks.some((p) => p.productId === product.id)
+                      ? 'Selected ✓ — pick another, or return to your exchange'
+                      : 'Select for Exchange'}
                 </Button>
               </div>
             )}
