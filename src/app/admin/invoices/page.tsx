@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/currency';
 import { getStatusColor } from '@/lib/utils/status';
 import { formatDate as formatDateUtil } from '@/lib/utils/date';
+import { showAlert, showConfirm } from '@/lib/dialog';
 
 interface Invoice {
   id: string;
@@ -107,21 +108,22 @@ export default function AdminInvoicesPage() {
         throw new Error('Failed to auto-generate invoices');
       }
 
-      alert('Invoices generated successfully!');
+      showAlert('Invoices generated successfully!', 'success');
       setShowAutoGenerate(false);
       console.log('🔄 Refreshing invoice list...');
       await fetchInvoices();
       console.log('✅ Invoice list refreshed');
     } catch (err: any) {
       console.error('❌ Auto-generate error:', err);
-      alert(`Error: ${err.message}`);
+      showAlert(`Error: ${err.message}`, 'error');
     } finally {
       setGenerating(false);
     }
   };
 
   const handleSendInvoice = async (invoiceId: string) => {
-    if (!confirm('Send this invoice via email?')) return;
+    const ok = await showConfirm({ message: 'Send this invoice via email?', confirmText: 'Send' });
+    if (!ok) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -136,15 +138,16 @@ export default function AdminInvoicesPage() {
         throw new Error('Failed to send invoice');
       }
 
-      alert('Invoice sent successfully!');
+      showAlert('Invoice sent successfully!', 'success');
       fetchInvoices();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showAlert(`Error: ${err.message}`, 'error');
     }
   };
 
   const handleMarkAsPaid = async (invoiceId: string) => {
-    if (!confirm('Mark this invoice as paid?')) return;
+    const ok = await showConfirm({ message: 'Mark this invoice as paid?', confirmText: 'Mark as Paid' });
+    if (!ok) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -159,10 +162,10 @@ export default function AdminInvoicesPage() {
         throw new Error('Failed to mark invoice as paid');
       }
 
-      alert('Invoice marked as paid!');
+      showAlert('Invoice marked as paid!', 'success');
       fetchInvoices();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showAlert(`Error: ${err.message}`, 'error');
     }
   };
 
@@ -200,7 +203,7 @@ export default function AdminInvoicesPage() {
       console.log('✅ Download complete');
     } catch (err: any) {
       console.error('❌ Download error:', err);
-      alert(`Error downloading invoice: ${err.message}`);
+      showAlert(`Error downloading invoice: ${err.message}`, 'error');
     }
   };
 
@@ -237,7 +240,7 @@ export default function AdminInvoicesPage() {
       }, 1000);
     } catch (err: any) {
       console.error('❌ View error:', err);
-      alert(`Error viewing invoice: ${err.message}`);
+      showAlert(`Error viewing invoice: ${err.message}`, 'error');
     }
   };
 
@@ -285,7 +288,7 @@ export default function AdminInvoicesPage() {
       console.log('✅ Download completed:', filename);
     } catch (err: any) {
       console.error('❌ Download error:', err);
-      alert(`Error downloading invoice: ${err.message}`);
+      showAlert(`Error downloading invoice: ${err.message}`, 'error');
     }
   };
 

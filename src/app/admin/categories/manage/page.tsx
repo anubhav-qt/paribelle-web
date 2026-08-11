@@ -7,6 +7,7 @@ import { Category } from '@/types/product';
 import { generateSlug } from '@/lib/utils/string';
 import { Loader } from '@/components/ui/Loader';
 import { api, errorMessage } from '@/lib/api';
+import { showAlert, showConfirm } from '@/lib/dialog';
 
 export default function ManageCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -53,7 +54,7 @@ export default function ManageCategoriesPage() {
       });
     } catch (error) {
       console.error('Error adding category:', error);
-      alert(`Failed to add category: ${errorMessage(error)}`);
+      showAlert(`Failed to add category: ${errorMessage(error)}`, 'error');
     }
   };
 
@@ -64,22 +65,23 @@ export default function ManageCategoriesPage() {
       setEditingId(null);
     } catch (error) {
       console.error('Error updating category:', error);
-      alert(`Failed to update category: ${errorMessage(error)}`);
+      showAlert(`Failed to update category: ${errorMessage(error)}`, 'error');
     }
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+    const ok = await showConfirm({ message: 'Are you sure you want to delete this category? This action cannot be undone.', confirmText: 'Delete', variant: 'danger' });
+    if (!ok) {
       return;
     }
 
     try {
       await api.delete(`/categories/${id}`);
       await fetchCategories();
-      alert('Category deleted successfully.');
+      showAlert('Category deleted successfully.', 'success');
     } catch (error) {
       console.error('Error deleting category:', error);
-      alert(`Failed to delete category: ${errorMessage(error)}`);
+      showAlert(`Failed to delete category: ${errorMessage(error)}`, 'error');
     }
   };
 

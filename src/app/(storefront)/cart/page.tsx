@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/lib/currency';
@@ -11,6 +12,17 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb';
 
 export default function CartPage() {
   const { items, totalPrice, totalItems, updateQuantity, removeFromCart } = useCart();
+  const router = useRouter();
+
+  // Signed-out shoppers go straight to sign-in rather than to a checkout
+  // page that would just bounce them back with a duplicate prompt.
+  const handleCheckoutClick = () => {
+    if (!localStorage.getItem('token')) {
+      router.push(`/login?returnUrl=${encodeURIComponent('/checkout')}`);
+    } else {
+      router.push('/checkout');
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -99,11 +111,9 @@ export default function CartPage() {
               <span className="font-medium text-[hsl(var(--pb-ink))]">Estimated Total</span>
               <span className="font-display text-xl text-[hsl(var(--pb-rose-deep))]">{formatPrice(totalPrice, 'INR')}</span>
             </div>
-            <Link href="/checkout" className="mt-6 block">
-              <Button fullWidth size="lg">
-                Proceed to Checkout
-              </Button>
-            </Link>
+            <Button fullWidth size="lg" className="mt-6" onClick={handleCheckoutClick}>
+              Proceed to Checkout
+            </Button>
             <Link href="/" className="mt-3 block">
               <Button fullWidth variant="ghost">
                 Continue Shopping

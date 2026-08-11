@@ -25,6 +25,7 @@ import { getCurrencySymbol } from '@/lib/currency';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { usePolicies } from '@/contexts/PoliciesContext';
+import { showAlert } from '@/lib/dialog';
 import { cn } from '@/lib/utils';
 import { Product as BaseProduct, ProductVariant } from '@/types/product';
 
@@ -194,8 +195,7 @@ export default function ProductDetailPage() {
 
   const handleWriteReview = () => {
     if (!isLoggedIn) {
-      alert('Please login to write a review');
-      router.push('/login');
+      router.push(`/login?returnUrl=${encodeURIComponent(`/products/${productSlug}`)}`);
       return;
     }
     setShowReviewForm(true);
@@ -229,10 +229,10 @@ export default function ProductDetailPage() {
         }
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to submit review');
+        showAlert(error.message || 'Failed to submit review', 'error');
       }
     } catch (error) {
-      alert('Failed to submit review. Please try again.');
+      showAlert('Failed to submit review. Please try again.', 'error');
     }
   };
 
@@ -275,11 +275,11 @@ export default function ProductDetailPage() {
     if (!product) return false;
 
     if (product.isParent && !selectedVariation) {
-      alert('Please select all product options.');
+      showAlert('Please select all product options.', 'warning');
       return false;
     }
     if (product.hasVariants && !selectedVariant) {
-      alert('Please select all product options.');
+      showAlert('Please select all product options.', 'warning');
       return false;
     }
 
@@ -287,11 +287,11 @@ export default function ProductDetailPage() {
 
     if (stockQuantity !== null) {
       if (stockQuantity === 0) {
-        alert('Sorry, this product is out of stock.');
+        showAlert('Sorry, this product is out of stock.', 'warning');
         return false;
       }
       if (quantity > stockQuantity) {
-        alert(`Sorry, only ${stockQuantity} items available.`);
+        showAlert(`Sorry, only ${stockQuantity} items available.`, 'warning');
         return false;
       }
     }
@@ -339,7 +339,7 @@ export default function ProductDetailPage() {
       return added;
     } catch (error) {
       console.error('Error adding to cart:', error);
-      alert('Failed to add item to cart. Please try again.');
+      showAlert('Failed to add item to cart. Please try again.', 'error');
       return false;
     } finally {
       setAddToCartLoading(false);
@@ -351,8 +351,16 @@ export default function ProductDetailPage() {
    * used to fire a 500ms timer and a hard `window.location` assignment
    * unconditionally, which navigated away from an out-of-stock warning nobody
    * had read yet and tore down whatever requests the page still had open.
+   *
+   * Signed-out shoppers are sent straight to /login instead: skipping
+   * `handleAddToCart()` means the item is never added and the cart drawer
+   * never opens, so there's nothing left showing behind the login page.
    */
   const handleBuyNow = () => {
+    if (!localStorage.getItem('token')) {
+      router.push(`/login?returnUrl=${encodeURIComponent(`/products/${productSlug}`)}`);
+      return;
+    }
     if (handleAddToCart()) router.push('/checkout');
   };
 
@@ -610,7 +618,7 @@ export default function ProductDetailPage() {
                   value={needsSelection ? 1 : quantity}
                   onChange={(q) => {
                     if (q > maxStock) {
-                      alert(`Cannot add more. Maximum ${maxStock} items available in stock.`);
+                      showAlert(`Cannot add more. Maximum ${maxStock} items available in stock.`, 'warning');
                       return;
                     }
                     setQuantity(q);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Plus, Upload, Trash2 } from 'lucide-react';
+import { showAlert } from '@/lib/dialog';
 
 interface VariationOption {
   value: string;
@@ -192,7 +193,7 @@ export default function ProductVariationBuilder({
       }));
 
     if (options.length === 0) {
-      alert('Please add at least one option');
+      showAlert('Please add at least one option', 'warning');
       return;
     }
 
@@ -223,7 +224,7 @@ export default function ProductVariationBuilder({
 
     // Check if option already exists
     if (theme.options.some(opt => opt.value === newOption.value)) {
-      alert('This option already exists');
+      showAlert('This option already exists', 'warning');
       return;
     }
 

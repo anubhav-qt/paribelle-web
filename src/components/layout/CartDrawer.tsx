@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/lib/currency';
@@ -14,9 +15,21 @@ const FREE_SHIPPING_THRESHOLD = 1999;
 
 export default function CartDrawer() {
   const { items, totalPrice, totalItems, isOpen, closeCart, updateQuantity, removeFromCart } = useCart();
+  const router = useRouter();
 
   const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - totalPrice);
   const progress = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
+
+  // Signed-out shoppers go straight to sign-in rather than to a checkout
+  // page that would just bounce them back with a duplicate prompt.
+  const handleCheckoutClick = () => {
+    closeCart();
+    if (!localStorage.getItem('token')) {
+      router.push(`/login?returnUrl=${encodeURIComponent('/checkout')}`);
+    } else {
+      router.push('/checkout');
+    }
+  };
 
   return (
     <Drawer open={isOpen} onClose={closeCart} title={`Your Bag${totalItems ? ` (${totalItems})` : ''}`}>
@@ -109,11 +122,9 @@ export default function CartDrawer() {
               </span>
             </div>
             <p className="text-xs text-[hsl(var(--pb-ink-faint))]">Shipping and taxes calculated at checkout</p>
-            <Link href="/checkout" onClick={closeCart}>
-              <Button fullWidth size="lg">
-                Proceed to Checkout
-              </Button>
-            </Link>
+            <Button fullWidth size="lg" onClick={handleCheckoutClick}>
+              Proceed to Checkout
+            </Button>
             <Button variant="ghost" fullWidth onClick={closeCart}>
               Continue Shopping
             </Button>

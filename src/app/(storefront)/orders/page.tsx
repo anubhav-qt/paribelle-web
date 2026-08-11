@@ -85,8 +85,7 @@ function OrdersPageInner() {
     const userStr = localStorage.getItem('user');
     
     if (!token) {
-      alert('Please login to view your orders');
-      router.push('/login');
+      router.push(`/login?returnUrl=${encodeURIComponent('/orders')}`);
       return;
     }
 
@@ -224,7 +223,7 @@ function OrdersPageInner() {
 
   const handleCancelOrder = async () => {
     if (!orderToAction || !cancelReason) {
-      alert('Please select a cancellation reason');
+      showToast('Please select a cancellation reason', 'warning');
       return;
     }
 

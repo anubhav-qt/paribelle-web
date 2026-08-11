@@ -6,6 +6,7 @@ import StoreLocationSelector from '@/components/StoreLocationSelector';
 import ImageUpload from '@/components/ImageUpload';
 import { useVendorSettings, useUpdateVendorSettings } from '@/hooks/useVendorSettings';
 import { Loader } from '@/components/ui/Loader';
+import { showAlert } from '@/lib/dialog';
 
 export default function VendorSettingsPage() {
   const { data: vendor, isLoading: loading } = useVendorSettings();
@@ -75,11 +76,11 @@ export default function VendorSettingsPage() {
     try {
       const result = await updateSettingsMutation.mutateAsync(formData);
       console.log('✅ Save completed, result:', result);
-      alert('Settings updated successfully!');
+      showAlert('Settings updated successfully!', 'success');
       // No need to reload - React Query will update the cache automatically
     } catch (error: any) {
       console.error('❌ Error updating settings:', error);
-      alert(`Failed to update settings: ${error.message || 'Unknown error'}`);
+      showAlert(`Failed to update settings: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 

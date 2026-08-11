@@ -15,6 +15,7 @@ import {
   Lock,
 } from 'lucide-react';
 import AddressManager from '@/components/AddressManager';
+import { showAlert } from '@/lib/dialog';
 
 export default function ProfileContent() {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function ProfileContent() {
   const handleSave = async () => {
     // Validate required fields
     if (!formData.phone || !formData.phone.trim()) {
-      alert('Phone number is required. Please provide your contact number.');
+      showAlert('Phone number is required. Please provide your contact number.', 'warning');
       return;
     }
 
@@ -81,7 +82,7 @@ export default function ProfileContent() {
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         setEditing(false);
-        alert('Profile updated successfully!');
+        showAlert('Profile updated successfully!', 'success');
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Failed to update profile' }));
         console.error('Error response:', response.status, errorData);
@@ -89,7 +90,7 @@ export default function ProfileContent() {
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert(error instanceof Error ? error.message : 'Failed to update profile. Please try again.');
+      showAlert(error instanceof Error ? error.message : 'Failed to update profile. Please try again.', 'error');
     } finally {
       setSaving(false);
     }

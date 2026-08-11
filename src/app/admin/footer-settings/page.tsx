@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Plus, Trash2, Facebook, Twitter, Instagram, Linkedin, Youtube } from 'lucide-react';
 import { Loader } from '@/components/ui/Loader';
+import { showAlert } from '@/lib/dialog';
 
 interface SocialLink {
   platform: 'facebook' | 'twitter' | 'instagram' | 'linkedin' | 'youtube' | 'tiktok';
@@ -115,17 +116,17 @@ export default function FooterSettingsPage() {
       if (response.ok) {
         const savedData = await response.json();
         console.log('✅ Footer settings saved successfully:', savedData);
-        alert('Footer settings updated successfully!');
+        showAlert('Footer settings updated successfully!', 'success');
         // Refresh the settings from server to ensure we have the latest
         await fetchSettings();
       } else {
         const errorText = await response.text();
         console.error('❌ Failed to save footer settings:', errorText);
-        alert(`Failed to update footer settings: ${errorText}`);
+        showAlert(`Failed to update footer settings: ${errorText}`, 'error');
       }
     } catch (error) {
       console.error('❌ Error updating footer settings:', error);
-      alert(`Error updating footer settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showAlert(`Error updating footer settings: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsSaving(false);
     }

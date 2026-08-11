@@ -8,6 +8,7 @@ import PageBuilder from '@/components/PageBuilder';
 import SectionLibrary from '@/components/SectionLibrary';
 import { PageSection } from '@/lib/pageSections';
 import { Loader } from '@/components/ui/Loader';
+import { showAlert } from '@/lib/dialog';
 
 export default function EditMarketplacePage() {
   const router = useRouter();
@@ -70,12 +71,12 @@ export default function EditMarketplacePage() {
             showInNavigation: page.showInNavigation ?? true,
           });
         } else {
-          alert('Failed to load page');
+          showAlert('Failed to load page', 'error');
           router.push('/admin/pages');
         }
       } catch (error) {
         console.error('Error loading page:', error);
-        alert('Failed to load page');
+        showAlert('Failed to load page', 'error');
         router.push('/admin/pages');
       } finally {
         setPageLoading(false);
@@ -138,11 +139,11 @@ export default function EditMarketplacePage() {
         router.push('/admin/pages');
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to update page');
+        showAlert(error.message || 'Failed to update page', 'error');
       }
     } catch (error) {
       console.error('Error updating page:', error);
-      alert('Failed to update page');
+      showAlert('Failed to update page', 'error');
     } finally {
       setLoading(false);
     }

@@ -8,6 +8,7 @@ import PageBuilder from '@/components/PageBuilder';
 import SectionLibrary from '@/components/SectionLibrary';
 import { PageSection } from '@/lib/pageSections';
 import { pageTemplates } from '@/lib/pageTemplates';
+import { showAlert } from '@/lib/dialog';
 
 export default function NewMarketplacePage() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function NewMarketplacePage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        alert('Please login again.');
+        showAlert('Please login again.', 'warning');
         setLoading(false);
         return;
       }
@@ -106,11 +107,11 @@ export default function NewMarketplacePage() {
         router.push('/admin/pages');
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to create page');
+        showAlert(error.message || 'Failed to create page', 'error');
       }
     } catch (error) {
       console.error('Error creating page:', error);
-      alert('Failed to create page');
+      showAlert('Failed to create page', 'error');
     } finally {
       setLoading(false);
     }

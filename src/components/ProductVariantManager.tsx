@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { showAlert } from '@/lib/dialog';
 
 export interface VariantOption {
   id: string;
@@ -73,7 +74,7 @@ export default function ProductVariantManager({
   // Add custom variant (not from category)
   const addCustomVariant = () => {
     if (!newCustomVariantName.trim() || !newCustomVariantValues.trim()) {
-      alert('Please enter variant name and values (comma-separated)');
+      showAlert('Please enter variant name and values (comma-separated)', 'warning');
       return;
     }
 
@@ -83,7 +84,7 @@ export default function ProductVariantManager({
       .filter(v => v.length > 0);
 
     if (values.length === 0) {
-      alert('Please enter at least one value');
+      showAlert('Please enter at least one value', 'warning');
       return;
     }
 

@@ -5,6 +5,7 @@ import { Upload, CheckCircle, XCircle, AlertCircle, FileText, ArrowLeft } from '
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader } from '@/components/ui/Loader';
+import { showAlert } from '@/lib/dialog';
 
 interface KYCDocument {
   type: string;
@@ -96,7 +97,7 @@ export default function VendorKYCPage() {
       
       if (!token) {
         console.error('No auth token found');
-        alert('Please login to access this page');
+        showAlert('Please login to access this page', 'warning');
         router.push('/login');
         return;
       }
@@ -109,7 +110,7 @@ export default function VendorKYCPage() {
 
       if (response.status === 401) {
         console.error('Authentication failed - token expired or invalid');
-        alert('Your session has expired. Please login again.');
+        showAlert('Your session has expired. Please login again.', 'warning');
         localStorage.removeItem('token');
         router.push('/login');
         return;
@@ -184,7 +185,7 @@ export default function VendorKYCPage() {
 
   const handleFileSelect = (index: number, file: File) => {
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+      showAlert('File size must be less than 5MB', 'warning');
       return;
     }
 
@@ -204,12 +205,12 @@ export default function VendorKYCPage() {
 
     // Validate required fields
     if (!formData.businessName || !formData.panNumber) {
-      alert('Please fill in Business Name and PAN Number');
+      showAlert('Please fill in Business Name and PAN Number', 'warning');
       return;
     }
 
     if (formData.gstRegistrationType !== 'unregistered' && !formData.gstNumber) {
-      alert('Please provide GST Number for registered businesses');
+      showAlert('Please provide GST Number for registered businesses', 'warning');
       return;
     }
 
@@ -219,7 +220,7 @@ export default function VendorKYCPage() {
     );
 
     if (missingDocs.length > 0) {
-      alert(`Please upload required documents: ${missingDocs.map(d => d.label).join(', ')}`);
+      showAlert(`Please upload required documents: ${missingDocs.map(d => d.label).join(', ')}`, 'warning');
       return;
     }
 
@@ -298,11 +299,11 @@ export default function VendorKYCPage() {
         throw new Error(error.message || 'Failed to submit KYC');
       }
 
-      alert('KYC documents submitted successfully! You will be notified once verified.');
+      showAlert('KYC documents submitted successfully! You will be notified once verified.', 'success');
       router.push('/admin');
     } catch (error: any) {
       console.error('Error submitting KYC:', error);
-      alert(`Failed to submit KYC: ${error.message}`);
+      showAlert(`Failed to submit KYC: ${error.message}`, 'error');
     } finally {
       setSubmitting(false);
     }

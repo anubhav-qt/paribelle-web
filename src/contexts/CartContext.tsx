@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { CartItem, CartContextType, CartReconciliation } from '@/lib/types/cart';
 import { api, ApiError } from '@/lib/api';
+import { showAlert } from '@/lib/dialog';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -105,13 +106,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const maxStock = stockLimitFor(merged);
 
       if (maxStock === 0) {
-        alert(`${newItem.name} is out of stock.`);
+        showAlert(`${newItem.name} is out of stock.`, 'warning');
         return false;
       }
 
       const newQuantity = existingItem.quantity + newItem.quantity;
       if (newQuantity > maxStock) {
-        alert(`Cannot add more. Only ${maxStock} items available in stock.`);
+        showAlert(`Cannot add more. Only ${maxStock} items available in stock.`, 'warning');
         return false;
       }
 
@@ -121,11 +122,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } else {
       const maxStock = stockLimitFor(newItem);
       if (maxStock === 0) {
-        alert(`${newItem.name} is out of stock.`);
+        showAlert(`${newItem.name} is out of stock.`, 'warning');
         return false;
       }
       if (newItem.quantity > maxStock) {
-        alert(`Cannot add ${newItem.quantity} items. Only ${maxStock} available in stock.`);
+        showAlert(`Cannot add ${newItem.quantity} items. Only ${maxStock} available in stock.`, 'warning');
         return false;
       }
 
@@ -162,12 +163,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         // Stock can drop to zero while the line sits in the cart. Drop the
         // line rather than leaving a zero-quantity row behind.
         if (maxStock === 0) {
-          alert(`${item.name} is out of stock and has been removed from your cart.`);
+          showAlert(`${item.name} is out of stock and has been removed from your cart.`, 'warning');
           return [];
         }
 
         if (quantity > maxStock) {
-          alert(`Maximum ${maxStock} items available in stock.`);
+          showAlert(`Maximum ${maxStock} items available in stock.`, 'warning');
         }
 
         return [{ ...item, quantity: Math.min(quantity, maxStock) }];

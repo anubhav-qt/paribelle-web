@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Receipt, Plus, Edit2, Trash2, Search, Upload, Download } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { Loader } from '@/components/ui/Loader';
+import { showAlert, showConfirm } from '@/lib/dialog';
 
 interface HSNCode {
   id: string;
@@ -91,18 +92,18 @@ export default function HSNCodesPage() {
       });
 
       if (response.ok) {
-        alert(`HSN Code ${editingCode ? 'updated' : 'created'} successfully!`);
+        showAlert(`HSN Code ${editingCode ? 'updated' : 'created'} successfully!`, 'success');
         setShowAddModal(false);
         setEditingCode(null);
         setFormData({ code: '', description: '', gstRate: 18 });
         fetchHSNCodes();
       } else {
         const error = await response.json();
-        alert(`Failed: ${error.message || 'Unknown error'}`);
+        showAlert(`Failed: ${error.message || 'Unknown error'}`, 'error');
       }
     } catch (error) {
       console.error('Error saving HSN code:', error);
-      alert('Failed to save HSN code');
+      showAlert('Failed to save HSN code', 'error');
     }
   };
 
@@ -117,7 +118,8 @@ export default function HSNCodesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this HSN code?')) return;
+    const ok = await showConfirm({ message: 'Are you sure you want to delete this HSN code?', confirmText: 'Delete', variant: 'danger' });
+    if (!ok) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -129,14 +131,14 @@ export default function HSNCodesPage() {
       });
 
       if (response.ok) {
-        alert('HSN Code deleted successfully!');
+        showAlert('HSN Code deleted successfully!', 'success');
         fetchHSNCodes();
       } else {
-        alert('Failed to delete HSN code');
+        showAlert('Failed to delete HSN code', 'error');
       }
     } catch (error) {
       console.error('Error deleting HSN code:', error);
-      alert('Failed to delete HSN code');
+      showAlert('Failed to delete HSN code', 'error');
     }
   };
 
@@ -147,7 +149,8 @@ export default function HSNCodesPage() {
   };
 
   const handleSeedCodes = async () => {
-    if (!confirm('This will import all official CBIC HSN codes from the Indian government GST portal (cbic-gst.gov.in). Existing codes will be updated. Continue?')) return;
+    const ok = await showConfirm({ message: 'This will import all official CBIC HSN codes from the Indian government GST portal (cbic-gst.gov.in). Existing codes will be updated. Continue?', confirmText: 'Continue' });
+    if (!ok) return;
     setImporting(true);
     setSeedMessage(null);
     try {

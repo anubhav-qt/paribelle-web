@@ -5,6 +5,7 @@ import { PageSection } from '@/lib/pageSections';
 import SectionRenderer from './SectionRenderer';
 import HotspotEditor from './HotspotEditor';
 import { GripVertical, Settings2, Eye, EyeOff, Trash2, ChevronUp, ChevronDown, Plus } from 'lucide-react';
+import { showConfirm } from '@/lib/dialog';
 
 interface PageBuilderProps {
   sections: PageSection[];
@@ -36,8 +37,9 @@ export default function PageBuilder({ sections, onChange, onAddSection }: PageBu
     onChange(newSections);
   };
 
-  const deleteSection = (id: string) => {
-    if (confirm('Are you sure you want to delete this section?')) {
+  const deleteSection = async (id: string) => {
+    const ok = await showConfirm({ message: 'Are you sure you want to delete this section?', confirmText: 'Delete', variant: 'danger' });
+    if (ok) {
       const newSections = sections.filter(s => s.id !== id);
       updateSectionOrders(newSections);
     }

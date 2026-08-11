@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MapPin, Edit2, Trash2, Plus, Phone, Home, ChevronDown, Loader2 } from 'lucide-react';
 import { initAuthFromCookie } from '@/lib/cross-domain-auth';
 import { api, errorMessage } from '@/lib/api';
+import { showAlert, showConfirm } from '@/lib/dialog';
 
 const COUNTRIES = [
   { code: 'IN', name: 'India', flag: '🇮🇳' },
@@ -404,13 +405,14 @@ export default function AddressManager({
 
   const handleDeleteAddress = async (addressId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this address?')) {
+    const ok = await showConfirm({ message: 'Are you sure you want to delete this address?', confirmText: 'Delete', variant: 'danger' });
+    if (!ok) {
       return;
     }
 
     const token = await getAuthToken();
     if (!token) {
-      alert('Please login to delete address');
+      showAlert('Please login to delete address', 'warning');
       return;
     }
 
@@ -434,7 +436,7 @@ export default function AddressManager({
       
     } catch (error) {
       console.error('Error deleting address:', error);
-      alert(errorMessage(error, 'Failed to delete address. Please try again.'));
+      showAlert(errorMessage(error, 'Failed to delete address. Please try again.'), 'error');
     } finally {
       setDeletingId(null);
     }

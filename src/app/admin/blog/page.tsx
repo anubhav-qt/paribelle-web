@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { showAlert, showConfirm } from '@/lib/dialog';
 
 interface BlogPost {
   id: string;
@@ -54,7 +55,8 @@ export default function AdminBlogPage() {
   };
 
   const deleteBlogPost = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this blog post?')) return;
+    const ok = await showConfirm({ message: 'Are you sure you want to delete this blog post?', confirmText: 'Delete', variant: 'danger' });
+    if (!ok) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -71,11 +73,11 @@ export default function AdminBlogPage() {
       if (response.ok) {
         fetchBlogPosts();
       } else {
-        alert('Failed to delete blog post');
+        showAlert('Failed to delete blog post', 'error');
       }
     } catch (error) {
       console.error('Failed to delete blog post:', error);
-      alert('Failed to delete blog post');
+      showAlert('Failed to delete blog post', 'error');
     }
   };
 

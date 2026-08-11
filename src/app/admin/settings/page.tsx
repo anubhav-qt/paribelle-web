@@ -6,6 +6,7 @@ import { Settings, MapPin, Save, DollarSign, Upload, Trash2, AlertCircle } from 
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { Loader } from '@/components/ui/Loader';
 import { api, errorMessage } from '@/lib/api';
+import { showConfirm } from '@/lib/dialog';
 
 interface Setting {
   id: string;
@@ -308,7 +309,12 @@ export default function AdminSettingsPage() {
   };
 
   const deleteOrphanImages = async () => {
-    if (!confirm(`Are you sure you want to delete ${orphanImages.length} orphan images? This action cannot be undone.`)) {
+    const ok = await showConfirm({
+      message: `Are you sure you want to delete ${orphanImages.length} orphan images? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) {
       return;
     }
 

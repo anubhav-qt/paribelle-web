@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { MapPin, Plus, Search } from 'lucide-react';
 import { City, SubLocation } from '@/types/common';
 import { api, errorMessage } from '@/lib/api';
+import { showAlert } from '@/lib/dialog';
 
 interface StoreLocationSelectorProps {
   initialCityId?: string;
@@ -132,7 +133,7 @@ export default function StoreLocationSelector({
       setShowAddCity(false);
     } catch (error) {
       console.error('Error creating city:', error);
-      alert(errorMessage(error, 'Failed to add city. Please try again.'));
+      showAlert(errorMessage(error, 'Failed to add city. Please try again.'), 'error');
     }
   };
 
@@ -152,7 +153,7 @@ export default function StoreLocationSelector({
       setShowAddSubLocation(false);
     } catch (error) {
       console.error('Error creating sub-location:', error);
-      alert(errorMessage(error, 'Failed to add area. Please try again.'));
+      showAlert(errorMessage(error, 'Failed to add area. Please try again.'), 'error');
     }
   };
 

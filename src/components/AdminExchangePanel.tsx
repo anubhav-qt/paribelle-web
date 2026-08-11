@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import Link from 'next/link';
+import { showPrompt } from '@/lib/dialog';
 
 interface ExchangeRequest {
   id: string;
@@ -210,8 +211,8 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                         </button>
                         <button
                           disabled={busyId === exc.id}
-                          onClick={() => {
-                            const reason = prompt('Reason for rejecting this exchange request:');
+                          onClick={async () => {
+                            const reason = await showPrompt({ title: 'Reject Exchange Request', message: 'Reason for rejecting this exchange request:', required: true });
                             if (reason) withBusy(exc.id, () => call(`exchanges/${exc.id}/reject`, { reason }));
                           }}
                           className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
@@ -224,8 +225,8 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                       <>
                         <button
                           disabled={busyId === exc.id}
-                          onClick={() => {
-                            const notes = prompt('Inspection notes (optional):') || undefined;
+                          onClick={async () => {
+                            const notes = (await showPrompt({ title: 'Passed Inspection', message: 'Inspection notes (optional):' })) || undefined;
                             withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'passed', notes }));
                           }}
                           className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
@@ -234,8 +235,8 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                         </button>
                         <button
                           disabled={busyId === exc.id}
-                          onClick={() => {
-                            const notes = prompt('Why did it fail inspection?') || undefined;
+                          onClick={async () => {
+                            const notes = (await showPrompt({ title: 'Failed Inspection', message: 'Why did it fail inspection?' })) || undefined;
                             withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'failed', notes }));
                           }}
                           className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
@@ -248,8 +249,8 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                     {exc.status === 'received' && exc.inspectionResult === 'passed' && exc.exchangeVariant && !isDifferentProduct && (
                       <button
                         disabled={busyId === exc.id}
-                        onClick={() => {
-                          const trackingNumber = prompt('Replacement tracking number (optional):') || undefined;
+                        onClick={async () => {
+                          const trackingNumber = (await showPrompt({ title: 'Ship Replacement', message: 'Replacement tracking number (optional):' })) || undefined;
                           withBusy(exc.id, () => call(`exchanges/${exc.id}/ship-replacement`, { trackingNumber }));
                         }}
                         className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"

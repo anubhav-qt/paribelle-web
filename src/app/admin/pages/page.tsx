@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Loader } from '@/components/ui/Loader';
+import { showAlert, showConfirm } from '@/lib/dialog';
 
 interface MarketplacePage {
   id: string;
@@ -47,7 +48,8 @@ export default function AdminPagesPage() {
   };
 
   const deletePage = async (pageId: string) => {
-    if (!confirm('Are you sure you want to delete this page?')) return;
+    const ok = await showConfirm({ message: 'Are you sure you want to delete this page?', confirmText: 'Delete', variant: 'danger' });
+    if (!ok) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -64,11 +66,11 @@ export default function AdminPagesPage() {
       if (response.ok) {
         fetchPages();
       } else {
-        alert('Failed to delete page');
+        showAlert('Failed to delete page', 'error');
       }
     } catch (error) {
       console.error('Error deleting page:', error);
-      alert('Failed to delete page');
+      showAlert('Failed to delete page', 'error');
     }
   };
 

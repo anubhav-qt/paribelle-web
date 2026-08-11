@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import 'react-quill/dist/quill.snow.css';
+import { showAlert } from '@/lib/dialog';
 
 // Dynamically import rich text editor (you can replace with your preferred editor)
 const ReactQuill = dynamic(() => import('react-quill'), { 
@@ -73,11 +74,11 @@ export default function NewBlogPostPage() {
         router.push('/admin/blog');
       } else {
         const error = await response.json();
-        alert(`Failed to create blog post: ${error.message}`);
+        showAlert(`Failed to create blog post: ${error.message}`, 'error');
       }
     } catch (error) {
       console.error('Failed to create blog post:', error);
-      alert('Failed to create blog post');
+      showAlert('Failed to create blog post', 'error');
     } finally {
       setLoading(false);
     }

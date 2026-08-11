@@ -11,6 +11,7 @@ import { toggleSort } from '@/lib/utils/sort';
 import { paymentStatusClass } from '@/lib/utils/payment-status';
 import { ArrowUpDown, Eye, Search, Filter, Download, Printer } from 'lucide-react';
 import { useToast, useConfirm } from '@/hooks/useDialogs';
+import { showPrompt } from '@/lib/dialog';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
@@ -267,10 +268,13 @@ function AdminOrdersPageInner() {
   };
 
   const handleRejectReturn = async (orderId: string) => {
-    const reason = prompt('Please provide a reason for rejecting all return requests:');
-    
+    const reason = await showPrompt({
+      title: 'Reject All Return Requests',
+      message: 'Please provide a reason for rejecting all return requests:',
+    });
+
     if (!reason || !reason.trim()) {
-      showToast('Rejection reason is required', 'error');
+      if (reason !== null) showToast('Rejection reason is required', 'error');
       return;
     }
     

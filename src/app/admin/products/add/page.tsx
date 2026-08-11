@@ -11,6 +11,7 @@ import ProductVariationBuilder from '@/components/ProductVariationBuilder';
 import HsnCodeAutocomplete from '@/components/HsnCodeAutocomplete';
 import ProductVariantManager, { VariantOption, VariantCombination } from '@/components/ProductVariantManager';
 import { getVendorId, getUserId, getProductVendorId } from '@/lib/auth';
+import { showAlert } from '@/lib/dialog';
 import 'react-quill/dist/quill.snow.css';
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
@@ -381,13 +382,13 @@ export default function VendorAddProductPage() {
       const token = localStorage.getItem('token');
       
       if (!token) {
-        alert('Please login first');
+        showAlert('Please login first', 'warning');
         return;
       }
 
       const vendorId = getProductVendorId();
       if (!vendorId) {
-        alert('Store vendor ID not found');
+        showAlert('Store vendor ID not found', 'error');
         return;
       }
 
@@ -486,15 +487,15 @@ export default function VendorAddProductPage() {
       });
 
       if (response.ok) {
-        alert('Product created successfully!');
+        showAlert('Product created successfully!', 'success');
         router.push('/admin/products');
       } else {
         const error = await response.json();
-        alert(`Failed to create product: ${error.message || 'Unknown error'}`);
+        showAlert(`Failed to create product: ${error.message || 'Unknown error'}`, 'error');
       }
     } catch (error) {
       console.error('Error creating product:', error);
-      alert('Failed to create product');
+      showAlert('Failed to create product', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -507,7 +508,7 @@ export default function VendorAddProductPage() {
       
       const vendorId = getVendorId();
       if (!vendorId) {
-        alert('Vendor ID not found');
+        showAlert('Vendor ID not found', 'error');
         return;
       }
 
@@ -531,11 +532,11 @@ export default function VendorAddProductPage() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } else {
-        alert('Failed to export products');
+        showAlert('Failed to export products', 'error');
       }
     } catch (error) {
       console.error('Export error:', error);
-      alert('Failed to export products');
+      showAlert('Failed to export products', 'error');
     } finally {
       setExporting(false);
     }
@@ -1106,7 +1107,7 @@ export default function VendorAddProductPage() {
                             onClick={() => {
                               const link = `/${page.slug}`;
                               navigator.clipboard.writeText(link);
-                              alert(`✓ Link copied: ${link}\n\nPaste it in your description using the link button in the editor.`);
+                              showAlert(`✓ Link copied: ${link}\n\nPaste it in your description using the link button in the editor.`, 'success');
                             }}
                             className="text-xs px-2.5 py-1 bg-white border border-blue-300 rounded hover:bg-blue-100 hover:border-blue-400 transition shadow-sm"
                             title={`Click to copy: /${page.slug}`}

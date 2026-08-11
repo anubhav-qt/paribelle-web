@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/currency';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import AddressManager, { Address } from '@/components/AddressManager';
 import { initAuthFromCookie } from '@/lib/cross-domain-auth';
+import { showAlert, showConfirm } from '@/lib/dialog';
 import { 
   ShoppingBag, 
   MapPin, 
@@ -27,7 +28,7 @@ type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
 
 function CheckoutContent() {
   const router = useRouter();
-  const { items, totalItems, updateQuantity, removeFromCart, clearCart, reconcile } = useCart();
+  const { items, totalItems, updateQuantity, removeFromCart, clearCart, reconcile, closeCart } = useCart();
   const { createOrder: createRazorpayOrder, verifyPayment, openCheckout, razorpayKeyId } = useRazorpay();
   const theme = useThemeClasses();
 
@@ -152,8 +153,12 @@ function CheckoutContent() {
     const userStr = localStorage.getItem('user');
     
     if (!token || !userStr) {
-      alert('Please login to continue checkout');
-      router.push('/login');
+      // No popup here: this page is only reached without a token via a
+      // direct URL visit (the cart drawer and cart page now gate before
+      // ever navigating here), so there's nothing to interrupt — just send
+      // the shopper to sign in, and make sure no drawer is left open behind it.
+      closeCart();
+      router.push(`/login?returnUrl=${encodeURIComponent('/checkout')}`);
       return;
     }
     
@@ -248,17 +253,17 @@ function CheckoutContent() {
 
   const handleContinueToPayment = useCallback(() => {
     // Validate shipping address (AddressManager handles detailed validation)
-    if (!shippingAddress.fullName || !shippingAddress.phone || !shippingAddress.addressLine1 || 
+    if (!shippingAddress.fullName || !shippingAddress.phone || !shippingAddress.addressLine1 ||
         !shippingAddress.city || !shippingAddress.state || !shippingAddress.postalCode) {
-      alert('Please fill in all required shipping address fields');
+      showAlert('Please fill in all required shipping address fields', 'warning');
       return;
     }
-    
+
     // Validate billing address if different from shipping
     if (!billingSameAsShipping) {
-      if (!billingAddress.fullName || !billingAddress.phone || !billingAddress.addressLine1 || 
+      if (!billingAddress.fullName || !billingAddress.phone || !billingAddress.addressLine1 ||
           !billingAddress.city || !billingAddress.state || !billingAddress.postalCode) {
-        alert('Please fill in all required billing address fields');
+        showAlert('Please fill in all required billing address fields', 'warning');
         return;
       }
     }
@@ -285,14 +290,19 @@ function CheckoutContent() {
           ...removed.map((i) => `• ${i.name} is no longer available and was removed`),
           ...restocked.map(({ item, to }) => `• ${item.name} is now limited to ${to}`),
         ];
-        alert(`Your cart changed:\n\n${lines.join('\n')}\n\nPlease review before placing the order.`);
+        showAlert(`Your cart changed:\n\n${lines.join('\n')}\n\nPlease review before placing the order.`, 'warning');
         return;
       }
       if (repriced.length > 0) {
         const lines = repriced.map(
           ({ item, from, to }) => `• ${item.name}: ${from.toLocaleString()} → ${to.toLocaleString()}`,
         );
-        if (!confirm(`Some prices have changed:\n\n${lines.join('\n')}\n\nPlace the order at the new prices?`)) {
+        const ok = await showConfirm({
+          title: 'Prices have changed',
+          message: `Some prices have changed:\n\n${lines.join('\n')}\n\nPlace the order at the new prices?`,
+          confirmText: 'Place Order',
+        });
+        if (!ok) {
           return;
         }
       }
@@ -305,7 +315,7 @@ function CheckoutContent() {
       }
       
       if (!token || !userStr) {
-        alert('Please login to place order');
+        showAlert('Please login to place order', 'warning');
         router.push('/login');
         return;
       }
@@ -320,7 +330,7 @@ function CheckoutContent() {
         console.error('Invalid user data in localStorage');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        alert('Session expired. Please login again.');
+        showAlert('Session expired. Please login again.', 'warning');
         router.push('/login');
         return;
       }
@@ -368,7 +378,7 @@ function CheckoutContent() {
         if (error instanceof ApiError && error.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          alert('Session expired. Please login again.');
+          showAlert('Session expired. Please login again.', 'warning');
           router.push('/login');
           return;
         }
@@ -400,22 +410,24 @@ function CheckoutContent() {
         // without deploying first.
         if (!razorpayKeyId) {
           const vendorCount = ordersArray.length;
-          const simulatePayment = confirm(
-            `🧪 Razorpay is not configured.\n\n` +
-            `${vendorCount} order${vendorCount > 1 ? 's' : ''} created\n` +
-            `Order${vendorCount > 1 ? 's' : ''}: ${orderNumbers}\n\n` +
-            `Click OK to simulate successful payment\n` +
-            `Click Cancel to cancel order`
-          );
+          const simulatePayment = await showConfirm({
+            title: 'Razorpay is not configured',
+            message:
+              `${vendorCount} order${vendorCount > 1 ? 's' : ''} created\n` +
+              `Order${vendorCount > 1 ? 's' : ''}: ${orderNumbers}\n\n` +
+              `Simulate successful payment?`,
+            confirmText: 'Simulate Payment',
+            cancelText: 'Cancel Order',
+          });
 
           if (simulatePayment) {
             // Simulate payment delay
             await new Promise(resolve => setTimeout(resolve, 1500));
             clearCart();
             setCurrentStep('confirmation');
-            alert(`✅ Test payment successful for ${vendorCount} order${vendorCount > 1 ? 's' : ''}! (No real payment processed)`);
+            showAlert(`Test payment successful for ${vendorCount} order${vendorCount > 1 ? 's' : ''}! (No real payment processed)`, 'success');
           } else {
-            alert('Orders created but payment cancelled. You can pay later.');
+            showAlert('Orders created but payment cancelled. You can pay later.', 'info');
           }
         } else {
           // A key is configured — test or live, same code path either way.
@@ -432,7 +444,7 @@ function CheckoutContent() {
       console.error('Error placing order:', error);
       // `errorMessage` turns a bare network TypeError ("Failed to fetch") into
       // something a shopper can act on, and passes real API messages through.
-      alert(errorMessage(error, 'Failed to place order. Please try again.'));
+      showAlert(errorMessage(error, 'Failed to place order. Please try again.'), 'error');
     } finally {
       submittingRef.current = false;
       setLoading(false);
@@ -478,7 +490,7 @@ function CheckoutContent() {
             setCurrentStep('confirmation');
           } catch (error) {
             console.error('Payment verification failed:', error);
-            alert('Payment verification failed. Please contact support.');
+            showAlert('Payment verification failed. Please contact support.', 'error');
           } finally {
             setLoading(false);
           }
@@ -500,10 +512,11 @@ function CheckoutContent() {
             console.error('Failed to release order after payment failure:', releaseError);
           }
 
-          alert(
+          showAlert(
             cancelled
               ? 'Payment cancelled. Your order was not placed and the items are still in your cart.'
               : 'Payment failed, so your order was not placed. Your items are still in your cart — please try again.',
+            'warning',
           );
 
           setLoading(false);
@@ -514,12 +527,12 @@ function CheckoutContent() {
       
       // Check if error is due to Razorpay not being configured
       if (error instanceof Error && error.message.includes('not configured')) {
-        alert(
-          '⚠️ Razorpay is not configured.\n\n' +
-          'Please configure Razorpay keys in the backend .env file or use Cash on Delivery option.'
+        showAlert(
+          'Razorpay is not configured.\n\nPlease configure Razorpay keys in the backend .env file or use Cash on Delivery option.',
+          'warning',
         );
       } else {
-        alert('Failed to initiate payment. Please try again or use Cash on Delivery.');
+        showAlert('Failed to initiate payment. Please try again or use Cash on Delivery.', 'error');
       }
       
       setLoading(false);

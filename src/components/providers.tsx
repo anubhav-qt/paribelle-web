@@ -9,6 +9,7 @@ import { PoliciesProvider } from '@/contexts/PoliciesContext';
 import { StockWebSocketProvider } from '@/contexts/StockWebSocketContext';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { ToastProvider } from '@/components/ui/Toast';
+import { DialogHost } from '@/lib/dialog';
 import CartDrawer from './layout/CartDrawer';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   <ToastProvider>
                     {children}
                     <CartDrawer />
+                    <DialogHost />
                   </ToastProvider>
                 </WishlistProvider>
               </CartProvider>

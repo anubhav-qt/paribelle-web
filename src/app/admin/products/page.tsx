@@ -23,6 +23,7 @@ import {
 import 'react-quill/dist/quill.snow.css';
 import { Loader } from '@/components/ui/Loader';
 import { api, ApiError, downloadBlob, errorMessage } from '@/lib/api';
+import { showAlert, showConfirm } from '@/lib/dialog';
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
@@ -164,7 +165,8 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    const ok = await showConfirm({ message: 'Are you sure you want to delete this product?', confirmText: 'Delete', variant: 'danger' });
+    if (!ok) return;
 
     try {
       const result = await deleteProductMutation.mutateAsync(id);
@@ -177,9 +179,9 @@ export default function AdminProductsPage() {
         next.delete(id);
         return next;
       });
-      alert(result?.message || 'Product deleted successfully!');
+      showAlert(result?.message || 'Product deleted successfully!', 'success');
     } catch (error) {
-      alert(`Failed to delete product: ${errorMessage(error)}`);
+      showAlert(`Failed to delete product: ${errorMessage(error)}`, 'error');
     }
   };
 
@@ -205,14 +207,16 @@ export default function AdminProductsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedProductIds.size === 0) {
-      alert('Please select at least one product to delete.');
+      showAlert('Please select at least one product to delete.', 'warning');
       return;
     }
 
     const selectedIds = Array.from(selectedProductIds);
-    const confirmed = confirm(
-      `Are you sure you want to delete ${selectedIds.length} selected product${selectedIds.length > 1 ? 's' : ''}?`
-    );
+    const confirmed = await showConfirm({
+      message: `Are you sure you want to delete ${selectedIds.length} selected product${selectedIds.length > 1 ? 's' : ''}?`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
     if (!confirmed) return;
 
     setBulkDeleting(true);
@@ -238,9 +242,9 @@ export default function AdminProductsPage() {
       if (deletedCount > 0) parts.push(`${deletedCount} deleted`);
       if (archivedCount > 0) parts.push(`${archivedCount} archived (order/booking history)`);
       if (failedCount > 0) parts.push(`${failedCount} failed`);
-      alert(parts.join(', ') + '.');
+      showAlert(parts.join(', ') + '.', 'success');
     } catch (error) {
-      alert('Bulk delete failed. Please try again.');
+      showAlert('Bulk delete failed. Please try again.', 'error');
     } finally {
       setBulkDeleting(false);
     }
@@ -250,7 +254,7 @@ export default function AdminProductsPage() {
     try {
       await updateStatusMutation.mutateAsync({ productId: id, status: newStatus });
     } catch (error: any) {
-      alert(`Failed to update status: ${error.message || 'Unknown error'}`);
+      showAlert(`Failed to update status: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -335,13 +339,13 @@ export default function AdminProductsPage() {
       }
 
       await api.patch(`/products/${editingProduct.id}`, updateData);
-      alert('Product updated successfully!');
+      showAlert('Product updated successfully!', 'success');
       setEditingProduct(null);
       // Refetch products using React Query
       window.location.reload();
     } catch (error) {
       console.error('Save error:', error);
-      alert(`Failed to update product: ${errorMessage(error)}`);
+      showAlert(`Failed to update product: ${errorMessage(error)}`, 'error');
     }
   };
 
@@ -390,12 +394,12 @@ export default function AdminProductsPage() {
     try {
       // Validation
       if (!newProductFormData.name || !newProductFormData.description || !newProductFormData.sku) {
-        alert('Please fill in all required fields (Name, Description, SKU)');
+        showAlert('Please fill in all required fields (Name, Description, SKU)', 'warning');
         return;
       }
 
       if (!newProductFormData.vendorId) {
-        alert('Please select a vendor');
+        showAlert('Please select a vendor', 'warning');
         return;
       }
 
@@ -427,9 +431,9 @@ export default function AdminProductsPage() {
 
       handleCloseAddModal();
       window.location.reload();
-      alert('Product created successfully!');
+      showAlert('Product created successfully!', 'success');
     } catch (error) {
-      alert(`Failed to create product: ${errorMessage(error)}`);
+      showAlert(`Failed to create product: ${errorMessage(error)}`, 'error');
     }
   };
 
@@ -440,7 +444,7 @@ export default function AdminProductsPage() {
       await downloadBlob(response, 'paribelle-import-template.zip');
     } catch (error) {
       console.error('Error downloading simple template:', error);
-      alert(`Failed to generate template: ${errorMessage(error)}`);
+      showAlert(`Failed to generate template: ${errorMessage(error)}`, 'error');
     } finally {
       setExporting(false);
     }
@@ -456,7 +460,7 @@ export default function AdminProductsPage() {
       await downloadBlob(response, `products-physical-${Date.now()}.zip`);
     } catch (error) {
       console.error('Export error:', error);
-      alert(`Export failed: ${errorMessage(error)}`);
+      showAlert(`Export failed: ${errorMessage(error)}`, 'error');
     } finally {
       setExporting(false);
     }
@@ -1035,7 +1039,7 @@ export default function AdminProductsPage() {
                               onClick={() => {
                                 const link = `/${page.slug}`;
                                 navigator.clipboard.writeText(link);
-                                alert(`Link copied: ${link}\n\nYou can paste this in the description editor.`);
+                                showAlert(`Link copied: ${link}\n\nYou can paste this in the description editor.`, 'success');
                               }}
                               className="text-xs px-2 py-1 bg-white border border-blue-300 rounded hover:bg-blue-100 transition"
                               title={`Click to copy link: /${page.slug}`}
@@ -1058,7 +1062,7 @@ export default function AdminProductsPage() {
                               onClick={() => {
                                 const link = `/products/${product.slug}`;
                                 navigator.clipboard.writeText(link);
-                                alert(`Link copied: ${link}\n\nYou can paste this in the description editor.`);
+                                showAlert(`Link copied: ${link}\n\nYou can paste this in the description editor.`, 'success');
                               }}
                               className="text-xs px-2 py-1 bg-white border border-green-300 rounded hover:bg-green-100 transition"
                               title={`Click to copy link: /products/${product.slug}`}

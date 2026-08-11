@@ -7,6 +7,7 @@ import { Package, XCircle } from 'lucide-react';
 import { useVendorPolicies, useUpdateVendorPolicies } from '@/hooks/useVendorPolicies';
 import { VendorPolicy } from '@/types/common';
 import { Loader } from '@/components/ui/Loader';
+import { showAlert } from '@/lib/dialog';
 
 export default function VendorPoliciesPage() {
   const router = useRouter();
@@ -78,10 +79,10 @@ export default function VendorPoliciesPage() {
       };
 
       await updatePoliciesMutation.mutateAsync(payload);
-      alert('Policies updated successfully!');
+      showAlert('Policies updated successfully!', 'success');
     } catch (error: any) {
       console.error('Error updating policies:', error);
-      alert(`Failed to update policies: ${error.message || 'Unknown error'}`);
+      showAlert(`Failed to update policies: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
