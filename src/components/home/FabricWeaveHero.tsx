@@ -9,6 +9,9 @@ import {
   BLOB_LEFT_INNER,
   BLOB_RIGHT_OUTER,
   BLOB_RIGHT_INNER,
+  BLOB_LEFT_OUTER_OPEN,
+  BLOB_RIGHT_OUTER_OPEN,
+  BLOB_CENTER_OUTER_OPEN,
 } from './heroBlobShapes';
 import { getImageUrl } from '@/lib/image-url';
 import {
@@ -17,6 +20,8 @@ import {
   HeroSectionImages,
   resolveHeroImageUrl,
 } from '@/lib/heroSectionImages';
+import { HeroExpandableCard } from './HeroExpandableCard';
+import { HERO_BLOB_PRODUCTS } from './heroBlobProducts';
 
 /**
  * The hero — the headline on the left, the campaign photo on the right in a
@@ -40,6 +45,8 @@ import {
 export function FabricWeaveHero() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const stageRef = React.useRef<HTMLDivElement>(null);
+  const centerCardRef = React.useRef<HTMLDivElement>(null);
 
   // Starts on the bundled defaults (so first paint never waits on the
   // network) and swaps in whatever an admin has replaced them with, per
@@ -254,15 +261,25 @@ export function FabricWeaveHero() {
               Below `lg` the column is too narrow for three prints to read as
               anything but a smudge, so only the centre one renders, exactly
               as before. */}
-          <div className="relative w-full max-w-sm shrink-0 lg:h-[480px] lg:max-w-none xl:w-[126%]">
+          <div ref={stageRef} className="relative w-full max-w-sm shrink-0 lg:h-[480px] lg:max-w-none xl:w-[126%]">
             {/* Left print: pink_3, riding low and a layer behind the centre
                 frame. A thinner mat and softer shadow than the centre card
-                sell the depth ordering at a glance. */}
-            <div
+                sell the depth ordering at a glance. On hover it spreads
+                rightward — left edge pinned by `left-0` — to reveal an order
+                panel, rising above the centre card while it does. */}
+            <HeroExpandableCard
               className="absolute bottom-[6%] left-0 z-0 hidden w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm lg:block xl:w-[33%]"
               style={{ aspectRatio: '4 / 5', borderRadius: BLOB_LEFT_OUTER }}
-            >
-              <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_LEFT_INNER }}>
+              openBorderRadius={BLOB_LEFT_OUTER_OPEN}
+              innerBorderRadius={BLOB_LEFT_INNER}
+              expandDirection="right"
+              hoverZIndex={20}
+              variant="side"
+              centerRef={centerCardRef}
+              stageRef={stageRef}
+              product={HERO_BLOB_PRODUCTS.pink}
+              productImageUrl={resolveHeroImageUrl(images.pink.url, getImageUrl)}
+              image={
                 <Image
                   src={resolveHeroImageUrl(images.pink.url, getImageUrl)}
                   alt="A coral-pink block-print anarkali kurta set with a matching dupatta"
@@ -285,17 +302,27 @@ export function FabricWeaveHero() {
                   // landing on empty fabric below the waist.
                   className="object-cover object-[50%_28%]"
                 />
-              </div>
-            </div>
+              }
+            />
 
             {/* Right print: black_3, riding high and likewise behind the
                 centre frame. The opposing vertical offsets are what stop the
-                trio from reading as a flat row of three. */}
-            <div
+                trio from reading as a flat row of three. On hover it spreads
+                leftward — right edge pinned by `right-0` — above both other
+                cards. */}
+            <HeroExpandableCard
               className="absolute right-0 top-[4%] z-0 hidden w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm lg:block xl:w-[33%]"
               style={{ aspectRatio: '4 / 5', borderRadius: BLOB_RIGHT_OUTER }}
-            >
-              <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_RIGHT_INNER }}>
+              openBorderRadius={BLOB_RIGHT_OUTER_OPEN}
+              innerBorderRadius={BLOB_RIGHT_INNER}
+              expandDirection="left"
+              hoverZIndex={30}
+              variant="side"
+              centerRef={centerCardRef}
+              stageRef={stageRef}
+              product={HERO_BLOB_PRODUCTS.black}
+              productImageUrl={resolveHeroImageUrl(images.black.url, getImageUrl)}
+              image={
                 <Image
                   src={resolveHeroImageUrl(images.black.url, getImageUrl)}
                   alt="A black kurta with floral scalloped embroidery on the hem and cuffs"
@@ -308,20 +335,30 @@ export function FabricWeaveHero() {
                   // detail — stays inside the crop alongside the face.
                   className="object-cover object-[50%_32%]"
                 />
-              </div>
-            </div>
+              }
+            />
 
             {/* Centre print: the hero shot, unchanged in content and still
                 the anchor. It leaves the flow at `lg` so the stage's fixed
                 height governs the section instead; below that it is the only
                 card, and stays in flow at its original size. Its left offset
                 is set so the two side prints tuck under it by roughly a
-                quarter of their own width on each side. */}
-            <div
+                quarter of their own width on each side. On hover it spreads
+                leftward — right edge held fixed — without crossing the
+                stage's own left boundary. */}
+            <HeroExpandableCard
+              ref={centerCardRef}
               className="relative z-10 aspect-[4/5] w-full bg-[hsl(var(--pb-blush-wash))] p-3 shadow-pb-lg md:p-4 lg:absolute lg:left-[22%] lg:top-1/2 lg:w-[56%] lg:-translate-y-1/2 xl:left-[24%] xl:w-[51%]"
               style={{ borderRadius: BLOB_OUTER }}
-            >
-              <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_INNER }}>
+              openBorderRadius={BLOB_CENTER_OUTER_OPEN}
+              innerBorderRadius={BLOB_INNER}
+              expandDirection="left"
+              hoverZIndex={25}
+              variant="center"
+              stageRef={stageRef}
+              product={HERO_BLOB_PRODUCTS.main}
+              productImageUrl={resolveHeroImageUrl(images.main.url, getImageUrl)}
+              image={
                 <Image
                   src={resolveHeroImageUrl(images.main.url, getImageUrl)}
                   alt="A PariBelle kurti, styled with silver jhumka earrings"
@@ -336,8 +373,8 @@ export function FabricWeaveHero() {
                   sizes="(min-width: 1024px) 640px, 480px"
                   className="object-cover object-top"
                 />
-              </div>
-            </div>
+              }
+            />
           </div>
         </div>
       </div>

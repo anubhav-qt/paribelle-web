@@ -20,3 +20,13 @@ export const BLOB_LEFT_INNER = '46% 52% 61% 41% / 37% 62% 50% 51%';
 // so the pair visually frames the centre photo without matching each other.
 export const BLOB_RIGHT_OUTER = '66% 34% 45% 55% / 56% 50% 34% 60%';
 export const BLOB_RIGHT_INNER = '62% 38% 41% 59% / 53% 46% 38% 63%';
+
+// "Open" radii — used while a card is expanded on hover. Each keeps the two
+// corners on its anchored (non-expanding) edge in the original organic
+// curve, and flattens the two corners on the edge that is growing toward a
+// small fixed radius, so the blob reads as melting into a straight-edged
+// panel on the side that now holds the order details, without the fixed
+// side's shape changing at all.
+export const BLOB_LEFT_OUTER_OPEN = '50% 20px 20px 37% / 40% 20px 20px 48%';
+export const BLOB_RIGHT_OUTER_OPEN = '20px 34% 45% 20px / 20px 50% 34% 20px';
+export const BLOB_CENTER_OUTER_OPEN = '20px 38% 55% 20px / 20px 62% 38% 20px';
