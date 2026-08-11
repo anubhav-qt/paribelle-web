@@ -3,6 +3,7 @@ import type { Product } from '@/types/product';
 
 export interface ProductCardProps {
   product: Product;
+  sectionBg?: 'light' | 'tinted';
 }
 
 /**
@@ -10,7 +11,7 @@ export interface ProductCardProps {
  * is a single presentation — the type dispatch this file used to do (booking,
  * tour) went away with those product types.
  */
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, sectionBg }: ProductCardProps) {
   const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
   const compareAtPrice =
     product.compareAtPrice != null
@@ -34,6 +35,8 @@ export default function ProductCard({ product }: ProductCardProps) {
       averageRating={averageRating || 0}
       reviewCount={product.reviewCount || 0}
       vendorId={product.vendorId || product.vendor?.id}
+      categoryLabel={product.categories?.[0]?.name}
+      sectionBg={sectionBg}
       isNew={
         product.createdAt
           ? Date.now() - new Date(product.createdAt).getTime() < 1000 * 60 * 60 * 24 * 21

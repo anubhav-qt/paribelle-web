@@ -364,6 +364,36 @@
   }
 
   /*
+   * Product card resting tilt — every card pivots from its top-right
+   * corner, where the pin (ProductCardShell's `.pb-pin`) sits, marking
+   * that point. Hover/focus straighten and lift the print in one rule here
+   * rather than through Tailwind's `hover:rotate-0`/`hover:-translate-y-*`
+   * utilities: those compose `transform` from shared `--tw-*` custom
+   * properties, which would fight this rule's own base `rotate(...)` for
+   * the same property at equal selector specificity. One owner, no race.
+   */
+  .pb-polaroid-tilt {
+    transform: rotate(-0.6deg);
+    transform-origin: 100% 0%;
+    transition:
+      transform var(--duration-panel) var(--ease-pb),
+      box-shadow var(--duration-panel) var(--ease-pb);
+  }
+  .pb-polaroid-tilt:hover,
+  .pb-polaroid-tilt:focus-visible {
+    transform: translateY(-6px) rotate(0deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pb-polaroid-tilt {
+      transition: none;
+    }
+    .pb-polaroid-tilt:hover,
+    .pb-polaroid-tilt:focus-visible {
+      transform: rotate(-0.6deg);
+    }
+  }
+
+  /*
    * Storefront custom cursor: applied to <body> only once CustomCursor has
    * confirmed hover:hover + pointer:fine support client-side, so a JS
    * failure never leaves visitors without any cursor at all.
@@ -371,6 +401,32 @@
   .pb-custom-cursor-active,
   .pb-custom-cursor-active * {
     cursor: none !important;
+  }
+
+  /*
+   * The cursor: a fixed-size ring, ivory inside, rose border, always.
+   * Position is written straight to the outer element's transform every
+   * animation frame (see CustomCursor.tsx) — this inner dot carries only
+   * appearance, so this transition can animate the fill without ever
+   * fighting the imperative position updates on its parent. The only state
+   * change is the fill itself: rose instead of ivory whenever the pointer
+   * is over anything actually interactive (see the selector list in
+   * CustomCursor.tsx), ivory otherwise.
+   */
+  .pb-cursor-dot {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    border: 1.5px solid hsl(var(--pb-rose));
+    background: hsl(var(--pb-ivory));
+    transform: translate(-50%, -50%);
+    transition: background-color var(--duration-micro) var(--ease-pb);
+  }
+  .pb-cursor-dot[data-cursor-active='true'] {
+    background: hsl(var(--pb-rose));
   }
 
   /* Vendor Theme Utilities */

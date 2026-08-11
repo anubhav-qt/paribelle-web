@@ -17,11 +17,20 @@ const NAV = [
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
-export function AccountShell({ children }: { children: React.ReactNode }) {
+export interface AccountShellProps {
+  children: React.ReactNode;
+  // Every account page shares this shell's width except Wishlist, whose
+  // product grid wants the same five-up column count as the rest of the
+  // storefront — cramped at the default width once the nav rail eats into
+  // it. Opt-in and defaulted off so no other account page shifts.
+  wide?: boolean;
+}
+
+export function AccountShell({ children, wide }: AccountShellProps) {
   const pathname = usePathname();
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+    <div className={cn('mx-auto px-4 py-8 md:px-8', wide ? 'max-w-[1600px]' : 'max-w-7xl')}>
       <div className="flex flex-col gap-10 md:flex-row">
         <aside className="shrink-0 md:w-56">
           <nav className="flex gap-1 overflow-x-auto md:sticky md:top-24 md:flex-col md:overflow-visible">

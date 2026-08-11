@@ -2,14 +2,12 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Star, Package, Calendar, ChevronDown } from 'lucide-react';
-import { getCurrencySymbol } from '@/lib/currency';
-import { getProductImageUrl } from '@/lib/image-url';
+import { Package } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { Product } from '@/types/product';
 import { Loader } from '@/components/ui/Loader';
+import ProductCard from '@/components/product/ProductCard';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -28,7 +26,6 @@ function SearchContent() {
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   
-  const currency = settings?.currency || 'INR';
   const categoryDisplayMode = (settings?.categoryMode === 'top' ? 'top' : 'sidebar') as 'top' | 'sidebar';
   const marketplaceLogo = settings?.logo || '';
   const marketplaceName = settings?.name || 'PariBelle';
@@ -233,62 +230,10 @@ function SearchContent() {
                 <p className={theme.textMuted}>Try adjusting your search terms or filters</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map((product) => {
-                  return (
-                  <Link
-                    key={product.id}
-                    href={`/products/${product.slug}`}
-                    className={theme.combine('group rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden', 'bg-card')}
-                  >
-                    <div className="aspect-square bg-muted overflow-hidden relative">
-                      <img
-                        src={getProductImageUrl(product)}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          if (!target.dataset.fallback) {
-                            target.dataset.fallback = 'true';
-                            target.src = '/placeholder-image.svg';
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="p-4">
-                      <h3 className={theme.combine('font-semibold mb-1 line-clamp-2 transition-colors', theme.text, 'group-hover:text-blue-600')}>
-                        {product.name}
-                      </h3>
-                      {product.shortDescription && (
-                        <p className={theme.combine('text-sm mb-2 line-clamp-2', theme.textMuted)}>
-                          {product.shortDescription}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-1 mb-2">
-                        <div className="flex items-center">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm font-medium ml-1">
-                            {Number(product.averageRating).toFixed(1)}
-                          </span>
-                        </div>
-                        <span className={theme.combine('text-sm', theme.textMuted)}>
-                          ({product.reviewCount})
-                        </span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className={theme.combine('text-xl font-bold', theme.text)}>
-                          {getCurrencySymbol(currency)}{Number(product.price).toFixed(2)}
-                        </span>
-                        {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
-                          <span className={theme.combine('text-sm line-through', theme.textMuted)}>
-                            {getCurrencySymbol(currency)}{Number(product.compareAtPrice).toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                  );
-                })}
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-6 xl:grid-cols-5">
+                {products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
               </div>
             )}
 

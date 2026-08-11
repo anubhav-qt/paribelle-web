@@ -32,10 +32,10 @@ export function ShopByCategorySection({ categories, productsByCategory }: ShopBy
         >
           <div className="mx-auto max-w-7xl px-4 py-14 md:px-8">
             <SectionHeading eyebrow="Shop the Edit" title={cat.name} viewAllHref={`/category/${cat.slug}`} />
-            <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-6">
-              {products.slice(0, 8).map((product, i) => (
+            <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-6 xl:grid-cols-5">
+              {products.slice(0, 10).map((product, i) => (
                 <RevealOnScroll key={product.id} delayMs={i * 40}>
-                  <ProductCard product={product} />
+                  <ProductCard product={product} sectionBg={sectionIndex % 2 === 1 ? 'tinted' : 'light'} />
                 </RevealOnScroll>
               ))}
             </div>

@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Heart, ShoppingCart, Trash2 } from 'lucide-react';
+import { Heart, ShoppingCart } from 'lucide-react';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useCart } from '@/contexts/CartContext';
 import { getCurrencySymbol } from '@/lib/currency';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { AccountShell } from '@/components/account/AccountShell';
+import { ProductCardShell } from '@/components/product/ProductCardShell';
 
 export default function WishlistPage() {
   const { items, removeFromWishlist, clearWishlist } = useWishlist();
@@ -54,7 +55,7 @@ export default function WishlistPage() {
   }
 
   return (
-    <AccountShell>
+    <AccountShell wide>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-3 font-display text-3xl text-[hsl(var(--pb-ink))]">
@@ -70,42 +71,38 @@ export default function WishlistPage() {
         </Button>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-6 lg:grid-cols-4">
+      {/* Same hangtag chassis as the rest of the storefront — the wishlist
+          heart doubles as the remove action here (it's always filled, since
+          every item on this page is by definition already saved), so there's
+          no second icon-only button competing for the same corner. */}
+      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-6 xl:grid-cols-5">
         {items.map((item) => (
-          <div key={item.productId} className="group">
-            <Link
+          // The Add to Cart button sits outside ProductCardShell on
+          // purpose — its children render inside the card's own link, and a
+          // <button> nested in an <a> is invalid HTML that also fights the
+          // link for the click.
+          <div key={item.productId}>
+            <ProductCardShell
               href={`/products/${item.slug}`}
-              className="block aspect-[4/5] overflow-hidden rounded-sm bg-[hsl(var(--pb-shell))]"
+              name={item.name}
+              image={item.image || '/placeholder-image.svg'}
+              wishlisted
+              onToggleWishlist={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                removeFromWishlist(item.productId);
+              }}
             >
-              <img
-                src={item.image || '/placeholder-image.svg'}
-                alt={item.name}
-                className="h-full w-full object-cover transition-transform duration-500 ease-pb group-hover:scale-105"
-              />
-            </Link>
-            <div className="pt-3">
-              <Link
-                href={`/products/${item.slug}`}
-                className="line-clamp-2 text-sm font-medium text-[hsl(var(--pb-ink))] hover:text-[hsl(var(--pb-rose-deep))]"
-              >
+              <h3 className="line-clamp-2 min-h-[2.65rem] font-display text-[1.05rem] leading-tight text-[hsl(var(--pb-ink))] transition-colors duration-150 group-hover:text-[hsl(var(--pb-rose-deep))]">
                 {item.name}
-              </Link>
+              </h3>
               <p className="mt-1.5 font-display text-lg text-[hsl(var(--pb-ink))]">
                 {getCurrencySymbol(currency)}{item.price.toLocaleString()}
               </p>
-              <div className="mt-2 flex gap-2">
-                <Button size="sm" fullWidth onClick={() => handleMoveToCart(item)}>
-                  <ShoppingCart className="h-3.5 w-3.5" /> Add to Cart
-                </Button>
-                <button
-                  onClick={() => removeFromWishlist(item.productId)}
-                  aria-label="Remove from wishlist"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[hsl(var(--pb-linen))] text-[hsl(var(--pb-ink-muted))] hover:border-[hsl(var(--pb-danger))] hover:text-[hsl(var(--pb-danger))] transition-colors duration-150"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
+            </ProductCardShell>
+            <Button size="sm" fullWidth className="mt-2" onClick={() => handleMoveToCart(item)}>
+              <ShoppingCart className="h-3.5 w-3.5" /> Add to Cart
+            </Button>
           </div>
         ))}
       </div>

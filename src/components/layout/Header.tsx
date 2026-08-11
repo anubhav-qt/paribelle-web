@@ -61,19 +61,6 @@ export function Header() {
   const [accountOpen, setAccountOpen] = React.useState(false);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sliding nav highlighter: one shared pill measures the currently active
-  // link's own rect (relative to the nav container) and animates to it,
-  // rather than every link independently toggling its own background.
-  const navContainerRef = React.useRef<HTMLElement | null>(null);
-  const navLinkRefs = React.useRef<Map<string, HTMLAnchorElement>>(new Map());
-  const [pillRect, setPillRect] = React.useState<{ left: number; width: number } | null>(null);
-  const [pillAnimReady, setPillAnimReady] = React.useState(false);
-
-  const setNavLinkRef = (key: string) => (el: HTMLAnchorElement | null) => {
-    if (el) navLinkRefs.current.set(key, el);
-    else navLinkRefs.current.delete(key);
-  };
-
   const clearCloseTimer = () => {
     if (closeTimer.current) {
       clearTimeout(closeTimer.current);
@@ -147,42 +134,6 @@ export function Header() {
         : 'text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-blush-wash))] hover:text-[hsl(var(--pb-rose-deep))]'
     );
 
-  const measurePill = React.useCallback(() => {
-    const container = navContainerRef.current;
-    const key = activeNavKey;
-    if (!container || !key) {
-      setPillRect(null);
-      return;
-    }
-    const el = navLinkRefs.current.get(key);
-    if (!el) {
-      setPillRect(null);
-      return;
-    }
-    const containerRect = container.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    setPillRect({ left: elRect.left - containerRect.left, width: elRect.width });
-  }, [activeNavKey]);
-
-  React.useLayoutEffect(() => {
-    measurePill();
-  }, [measurePill]);
-
-  React.useEffect(() => {
-    window.addEventListener('resize', measurePill);
-    return () => window.removeEventListener('resize', measurePill);
-  }, [measurePill]);
-
-  // Skip the transition on the very first measurement so the pill doesn't
-  // animate in from a stale/zero position — only start animating once it has
-  // settled at its correct initial spot.
-  React.useEffect(() => {
-    if (pillRect && !pillAnimReady) {
-      const raf = requestAnimationFrame(() => setPillAnimReady(true));
-      return () => cancelAnimationFrame(raf);
-    }
-  }, [pillRect, pillAnimReady]);
-
   return (
     <>
       <header
@@ -208,25 +159,9 @@ export function Header() {
               <Menu className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
             </button>
 
-            <nav ref={navContainerRef} className="relative hidden items-center md:flex">
-              {pillRect && (
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    'pointer-events-none absolute inset-y-0 rounded-full bg-[hsl(var(--pb-blush-wash))]',
-                    pillAnimReady && 'transition-[transform,width] duration-300 ease-pb'
-                  )}
-                  style={{ transform: `translateX(${pillRect.left}px)`, width: pillRect.width }}
-                />
-              )}
-
+            <nav className="relative hidden items-center md:flex">
               {STATIC_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  ref={setNavLinkRef('home')}
-                  className={navLinkClass(activeNavKey === 'home')}
-                >
+                <Link key={link.href} href={link.href} className={navLinkClass(activeNavKey === 'home')}>
                   {link.label}
                 </Link>
               ))}
@@ -240,7 +175,6 @@ export function Header() {
                   <Link
                     key={cat.id}
                     href={`/category/${cat.slug}`}
-                    ref={setNavLinkRef(cat.id)}
                     // A category with no children has nothing for the panel to
                     // show — opening it anyway is the empty-white-panel bug.
                     onMouseEnter={hasChildren ? () => openMegaMenu(cat.id) : undefined}
@@ -253,15 +187,11 @@ export function Header() {
               })}
 
               {LOOKBOOK_ENABLED && (
-                <Link
-                  href="/lookbook"
-                  ref={setNavLinkRef('lookbook')}
-                  className={navLinkClass(activeNavKey === 'lookbook')}
-                >
+                <Link href="/lookbook" className={navLinkClass(activeNavKey === 'lookbook')}>
                   Lookbook
                 </Link>
               )}
-              <Link href="/about" ref={setNavLinkRef('about')} className={navLinkClass(activeNavKey === 'about')}>
+              <Link href="/about" className={navLinkClass(activeNavKey === 'about')}>
                 About
               </Link>
 

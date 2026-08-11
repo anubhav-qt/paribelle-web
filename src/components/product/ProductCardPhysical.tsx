@@ -5,13 +5,7 @@ import { Rating } from '@/components/ui/Rating';
 import { PriceTag } from '@/components/ui/PriceTag';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { STORE_VENDOR_ID } from '@/lib/auth';
-import {
-  calculateDiscountPercent,
-  hasDiscount,
-  isOutOfStock,
-  isLowStock,
-  getDisplayImage,
-} from '@/lib/utils/product-card-helpers';
+import { isOutOfStock, isLowStock, getDisplayImage } from '@/lib/utils/product-card-helpers';
 import type { BadgeVariant } from '@/components/ui/Badge';
 
 export interface ProductCardPhysicalProps {
@@ -28,6 +22,8 @@ export interface ProductCardPhysicalProps {
   vendorId?: string;
   variantSwatches?: string[];
   isNew?: boolean;
+  categoryLabel?: string;
+  sectionBg?: 'light' | 'tinted';
 }
 
 export default function ProductCardPhysical({
@@ -44,6 +40,8 @@ export default function ProductCardPhysical({
   vendorId,
   variantSwatches,
   isNew,
+  categoryLabel,
+  sectionBg,
 }: ProductCardPhysicalProps) {
   const { isInWishlist, toggleWishlist } = useWishlist();
   const displayImage = getDisplayImage(featuredImage, images) || '/placeholder-image.svg';
@@ -52,11 +50,12 @@ export default function ProductCardPhysical({
   const lowStock = isLowStock(stockQuantity);
   const wishlisted = isInWishlist(id);
 
+  // The discount percentage already surfaces inline in PriceTag below, right
+  // next to the struck-through price — a separate "X% Off" tag up here would
+  // just repeat it a few lines apart, which reads as clutter once both sit
+  // in the same caption instead of one floating over the photo.
   const badges: Array<{ label: string; variant: BadgeVariant }> = [];
   if (outOfStock) badges.push({ label: 'Sold Out', variant: 'sold-out' });
-  else if (hasDiscount(price, compareAtPrice)) {
-    badges.push({ label: `${calculateDiscountPercent(price, compareAtPrice)}% Off`, variant: 'sale' });
-  }
   if (isNew && !outOfStock) badges.push({ label: 'New', variant: 'new' });
 
   const handleToggleWishlist = (e: React.MouseEvent) => {
@@ -82,8 +81,20 @@ export default function ProductCardPhysical({
       badges={badges}
       wishlisted={wishlisted}
       onToggleWishlist={handleToggleWishlist}
+      sectionBg={sectionBg}
     >
-      <h3 className="mt-0.5 line-clamp-2 text-sm font-medium text-[hsl(var(--pb-ink))]">{name}</h3>
+      {categoryLabel && (
+        <p className="text-[0.65rem] font-medium uppercase tracking-[0.08em] text-[hsl(var(--pb-ink-faint))]">
+          {categoryLabel}
+        </p>
+      )}
+      {/* min-h reserves the full two-line slot even when a name only takes
+          one line — line-clamp-2 alone only caps the tall side, so short
+          and long names would otherwise leave cards in the same row sitting
+          at different heights. */}
+      <h3 className="mt-0.5 line-clamp-2 min-h-[2.65rem] font-display text-[1.05rem] leading-tight text-[hsl(var(--pb-ink))] transition-colors duration-150 group-hover:text-[hsl(var(--pb-rose-deep))]">
+        {name}
+      </h3>
 
       {variantSwatches && variantSwatches.length > 1 && (
         <div className="mt-1.5 flex gap-1">

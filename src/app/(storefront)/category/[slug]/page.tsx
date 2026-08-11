@@ -611,9 +611,9 @@ export default function CategoryPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-10 md:px-8">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+      <div className="mx-auto max-w-[1600px] px-4 py-10 md:px-8">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-6 xl:grid-cols-5">
+          {Array.from({ length: 10 }).map((_, i) => (
             <Skeleton key={i} className="aspect-[4/5] w-full" />
           ))}
         </div>
@@ -638,7 +638,7 @@ export default function CategoryPage() {
 
   return (
     <div className="bg-[hsl(var(--pb-ivory))]">
-      <div className="mx-auto max-w-7xl px-4 pt-6 md:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 pt-6 md:px-8">
         <Breadcrumb
           items={[
             { label: 'Home', href: '/' },
@@ -648,7 +648,7 @@ export default function CategoryPage() {
         />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 pb-8 pt-4 md:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 pb-8 pt-4 md:px-8">
         <SectionHeading
           eyebrow={`${filteredProducts.length} ${filteredProducts.length === 1 ? 'Piece' : 'Pieces'}`}
           title={category.name}
@@ -658,7 +658,7 @@ export default function CategoryPage() {
         )}
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 pb-16 md:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 pb-16 md:px-8">
         <div className="flex gap-10">
           <aside className="hidden w-56 shrink-0 lg:block">
             <div className="sticky top-24">
@@ -736,7 +736,7 @@ export default function CategoryPage() {
                 }
               />
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-6 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-6 xl:grid-cols-5">
                 {filteredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

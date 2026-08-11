@@ -2,17 +2,32 @@
 
 import * as React from 'react';
 
+// Anything genuinely operable — not a heuristic on computed `cursor` (button
+// elements don't get `cursor: pointer` from any browser's default styles,
+// and this codebase doesn't set it everywhere either, so that check would
+// silently miss most buttons). Matching by role instead reaches every
+// interactive element site-wide with no per-component opt-in required.
+const INTERACTIVE_SELECTOR =
+  'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), ' +
+  'textarea:not(:disabled), label, summary, [role="button"], [tabindex]:not([tabindex="-1"])';
+
 /**
  * A soft, small circular cursor that replaces the native OS pointer across
- * the storefront for a more premium feel — filled ivory, bordered in the
- * site's rose accent.
+ * the storefront for a more premium feel: a fixed-size ring, rose border,
+ * ivory fill — until the pointer lands on anything hoverable or selectable,
+ * where the fill switches to solid rose, then back to ivory the moment it
+ * leaves. One state, one rule; nothing about the ring's size or border
+ * changes, only which color is inside it.
  *
  * Position tracking mirrors the smoothing technique in FabricWeaveHero: a
  * raw pointer target is lerped toward each animation frame and written
- * directly to the DOM node's `transform`, rather than driving a per-frame
- * React re-render via setState. The lerp factor here (0.4) is snappier than
- * the hero's background-effect smoothing (0.15) — this element is used to
- * aim clicks, so it needs to read as responsive, not laggy.
+ * directly to the outer DOM node's `transform`, rather than driving a
+ * per-frame React re-render via setState. The lerp factor here (0.4) is
+ * snappier than the hero's background-effect smoothing (0.15) — this
+ * element is used to aim clicks, so it needs to read as responsive, not
+ * laggy. The fill toggle is a separate, much rarer update, applied via a
+ * plain DOM attribute on the inner dot rather than React state, so hovering
+ * doesn't re-render anything either.
  *
  * Skipped entirely on touch/coarse pointers (same `hover: hover and
  * pointer: fine` gate used elsewhere in the codebase) and, under
@@ -21,6 +36,7 @@ import * as React from 'react';
  */
 export function CustomCursor() {
   const cursorRef = React.useRef<HTMLDivElement>(null);
+  const dotRef = React.useRef<HTMLDivElement>(null);
   const [supported, setSupported] = React.useState(false);
 
   React.useEffect(() => {
@@ -32,7 +48,8 @@ export function CustomCursor() {
   React.useEffect(() => {
     if (!supported) return;
     const el = cursorRef.current;
-    if (!el) return;
+    const dot = dotRef.current;
+    if (!el || !dot) return;
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -44,7 +61,7 @@ export function CustomCursor() {
     let rafId: number | null = null;
 
     const applyTransform = (x: number, y: number) => {
-      el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+      el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     };
 
     const loop = () => {
@@ -72,6 +89,15 @@ export function CustomCursor() {
       }
     };
 
+    // Delegated on `document` rather than attached per-target: the set of
+    // links/buttons on a page changes constantly (pagination, filters,
+    // infinite scroll), and a single listener here needs no wiring-up when
+    // new ones mount.
+    const onPointerOver = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      dot.dataset.cursorActive = String(!!target?.closest(INTERACTIVE_SELECTOR));
+    };
+
     const onPointerEnter = () => {
       if (hasPosition) el.style.opacity = '1';
     };
@@ -80,6 +106,7 @@ export function CustomCursor() {
     };
 
     window.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerover', onPointerOver);
     document.documentElement.addEventListener('pointerenter', onPointerEnter);
     document.documentElement.addEventListener('pointerleave', onPointerLeave);
 
@@ -87,6 +114,7 @@ export function CustomCursor() {
       document.body.classList.remove('pb-custom-cursor-active');
       if (rafId !== null) cancelAnimationFrame(rafId);
       window.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerover', onPointerOver);
       document.documentElement.removeEventListener('pointerenter', onPointerEnter);
       document.documentElement.removeEventListener('pointerleave', onPointerLeave);
     };
@@ -98,8 +126,10 @@ export function CustomCursor() {
     <div
       ref={cursorRef}
       aria-hidden="true"
-      className="pointer-events-none fixed left-0 top-0 z-[100] h-4 w-4 rounded-full border-2 border-[hsl(var(--pb-rose))] bg-[hsl(var(--pb-ivory))] opacity-0 transition-opacity duration-200"
+      className="pointer-events-none fixed left-0 top-0 z-[100] opacity-0"
       style={{ willChange: 'transform' }}
-    />
+    >
+      <div ref={dotRef} className="pb-cursor-dot" />
+    </div>
   );
 }
