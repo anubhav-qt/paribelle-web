@@ -13,6 +13,7 @@ import { Radio } from '@/components/ui/Radio';
 import { Drawer } from '@/components/ui/Drawer';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { DualRangeSlider } from '@/components/ui/DualRangeSlider';
 import { SectionHeading } from '@/components/brand/SectionHeading';
 import { getCurrencySymbol } from '@/lib/currency';
 import { Product, Category } from '@/types/product';
@@ -149,14 +150,13 @@ function FilterPanel({
 
       <div className="border-b border-[hsl(var(--pb-linen))] pb-5">
         <h3 className="text-eyebrow mb-3 text-[hsl(var(--pb-ink-faint))]">Price</h3>
-        <input
-          type="range"
-          min="0"
+        <DualRangeSlider
+          min={0}
           max={maxProductPrice}
           step={Math.ceil(maxProductPrice / 100) || 1}
-          value={priceRange[1]}
-          onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-          className="w-full accent-[hsl(var(--pb-rose))]"
+          value={priceRange}
+          onChange={setPriceRange}
+          className="mb-2"
         />
         <div className="flex items-center justify-between text-xs text-[hsl(var(--pb-ink-muted))]">
           <span>{getCurrencySymbol(currency)}{priceRange[0].toLocaleString()}</span>
@@ -216,7 +216,7 @@ function FilterPanel({
           )}
           {(filter.type === 'multiselect' || filter.type === 'checkbox') && (
             <div className="max-h-48 space-y-1.5 overflow-y-auto">
-              {filter.options?.slice(0, 10).map((option) => (
+              {filter.options?.map((option) => (
                 <Checkbox
                   key={option.value}
                   checked={(dynamicFilters[filter.id] || []).includes(option.value)}

@@ -432,6 +432,44 @@
     fill: hsl(var(--pb-rose));
   }
 
+  /*
+   * DualRangeSlider (components/ui/DualRangeSlider.tsx): two of these sit
+   * stacked on the same track. The input itself ignores pointer events —
+   * only its thumb re-enables them — so a click on empty track always
+   * falls through to whichever input's thumb is actually nearest, instead
+   * of the top input's full-width hit area swallowing every click.
+   */
+  .pb-dual-range {
+    pointer-events: none;
+    height: 0;
+  }
+  .pb-dual-range::-webkit-slider-thumb {
+    pointer-events: auto;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    border: 2px solid hsl(var(--pb-rose));
+    background: hsl(var(--pb-ivory));
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+  .pb-dual-range::-moz-range-thumb {
+    pointer-events: auto;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    border: 2px solid hsl(var(--pb-rose));
+    background: hsl(var(--pb-ivory));
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+  .pb-dual-range::-moz-range-track {
+    background: transparent;
+    border: none;
+  }
+
   /* Vendor Theme Utilities */
   .vendor-bg {
     background-color: var(--vendor-bg, #FFFFFF) !important;

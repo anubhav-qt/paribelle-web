@@ -583,7 +583,6 @@ export default function ProductDetailPage() {
             <div className="mt-6">
               <div className="flex items-baseline gap-3">
                 <span className="font-display text-3xl text-[hsl(var(--pb-ink))]">
-                  {needsSelection && <span className="mr-1 text-lg font-normal text-[hsl(var(--pb-ink-faint))]">From</span>}
                   {getCurrencySymbol(currency)}{getDisplayPrice().toLocaleString()}
                 </span>
                 {selectedVariant?.compareAtPrice && Number(selectedVariant.compareAtPrice) > Number(selectedVariant.price) && (
