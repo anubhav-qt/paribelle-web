@@ -400,8 +400,19 @@ function CheckoutContent() {
       setConfirmedTax(tax);
       setConfirmedShipping(shippingCost);
 
-      // If Razorpay, check if configured and initiate payment
-      if (paymentMethod === 'razorpay') {
+      // Wallet balance can cover the order in full — the backend already
+      // settles that order as PAID via the wallet ledger and never expects a
+      // gateway charge for it. Razorpay refuses to create a ₹0 order, so
+      // routing this through the Razorpay branch below (it used to check only
+      // the chosen `paymentMethod`, ignoring whether anything was still owed)
+      // surfaced as "Failed to initiate payment. Please try again or use
+      // Cash on Delivery" — a same-page failure the shopper had no way to
+      // recover from since there was nothing left to pay.
+      if (finalTotal <= 0) {
+        clearCart();
+        setCurrentStep('confirmation');
+        showAlert('Payment complete — your wallet balance covered this order in full.', 'success');
+      } else if (paymentMethod === 'razorpay') {
         // Simulate only when Razorpay genuinely has no key to work with —
         // not whenever NODE_ENV happens to say "development". Gating on the
         // environment instead of on configuration meant `npm run dev` always

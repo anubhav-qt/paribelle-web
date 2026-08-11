@@ -14,5 +14,9 @@ export function PageShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === '/';
 
-  return <div className={cn(!isHome && 'pt-20 md:pt-24')}>{children}</div>;
+  // Matches the header's actual rendered height (61px, constant across
+  // breakpoints — its own padding doesn't change at `md`). The old
+  // `pt-20 md:pt-24` (80px / 96px) overshot it by 19–35px, leaving a bare
+  // white strip between the header and every non-home page's content.
+  return <div className={cn(!isHome && 'pt-[61px]')}>{children}</div>;
 }

@@ -30,6 +30,7 @@ interface ExchangeRequestModalProps {
     reason: string;
     exchangeVariantId?: string;
     customerNotes?: string;
+    topUpPaymentMethod?: 'wallet' | 'cod';
   }) => Promise<void>;
 }
 
@@ -45,10 +46,10 @@ type Mode = 'same_product' | 'different_product' | 'credit_only';
 /**
  * Requests an exchange for one order item — three routes (see the
  * implementation plan): a different variant of the same product (free, no
- * money moves), a different product of equal or lower price (the gap is
- * credited to your wallet), or no replacement at all (the full value is
- * credited). The backend enforces "no more expensive than the original" on
- * route 2 regardless of what's selected here.
+ * money moves), a different product at any price (the original item's value
+ * is credited; a pricier replacement needs its gap covered separately — see
+ * `topUpPaymentMethod`), or no replacement at all (the full value is
+ * credited).
  */
 export default function ExchangeRequestModal({
   isOpen,
@@ -69,6 +70,8 @@ export default function ExchangeRequestModal({
   const [selectedProduct, setSelectedProduct] = useState<ProductResult | null>(null);
   const [otherVariants, setOtherVariants] = useState<Variant[]>([]);
   const [selectedOtherVariantId, setSelectedOtherVariantId] = useState('');
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [topUpPaymentMethod, setTopUpPaymentMethod] = useState<'wallet' | 'cod' | ''>('');
 
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState('');
@@ -91,6 +94,7 @@ export default function ExchangeRequestModal({
     setOtherReason('');
     setCustomerNotes('');
     setError('');
+    setTopUpPaymentMethod('');
 
     setLoadingVariants(true);
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/${item.productId}/variants`)
@@ -101,6 +105,16 @@ export default function ExchangeRequestModal({
       })
       .catch(() => setVariants([]))
       .finally(() => setLoadingVariants(false));
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/wallet-balance`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => setWalletBalance(data ? Number(data.balance) || 0 : 0))
+        .catch(() => setWalletBalance(0));
+    }
   }, [isOpen, item.productId, item.variantId]);
 
   useEffect(() => {
@@ -138,6 +152,19 @@ export default function ExchangeRequestModal({
       .catch(() => setOtherVariants([]));
   }, [selectedProduct]);
 
+  // A stale top-up choice must not silently carry over to a different
+  // replacement/quantity — reset it whenever what's being priced changes.
+  useEffect(() => {
+    setTopUpPaymentMethod('');
+  }, [selectedOtherVariantId, quantity]);
+
+  const selectedOtherVariant = otherVariants.find((v) => v.id === selectedOtherVariantId) || null;
+  const topUpAmount =
+    mode === 'different_product' && selectedOtherVariant
+      ? Math.max(0, (Number(selectedOtherVariant.price) - Number(item.price)) * quantity)
+      : 0;
+  const canPayTopUpFromWallet = walletBalance !== null && walletBalance >= topUpAmount;
+
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
@@ -147,6 +174,10 @@ export default function ExchangeRequestModal({
     }
     if (mode === 'different_product' && (!selectedProduct || !selectedOtherVariantId)) {
       setError('Choose the product and option you want instead.');
+      return;
+    }
+    if (mode === 'different_product' && topUpAmount > 0 && !topUpPaymentMethod) {
+      setError('Choose how you want to pay the price difference.');
       return;
     }
     const finalReason = reason === 'other' ? otherReason.trim() : reason;
@@ -166,6 +197,7 @@ export default function ExchangeRequestModal({
           mode === 'different_product' ? selectedOtherVariantId :
           undefined,
         customerNotes: customerNotes.trim() || undefined,
+        topUpPaymentMethod: topUpAmount > 0 ? (topUpPaymentMethod as 'wallet' | 'cod') : undefined,
       });
     } catch (err: any) {
       setError(err?.message || 'Failed to submit exchange request. Please try again.');
@@ -204,7 +236,7 @@ export default function ExchangeRequestModal({
             <div className="grid grid-cols-1 gap-2">
               {([
                 { value: 'same_product', label: 'A different size/option of this item' },
-                { value: 'different_product', label: 'A different product (of equal or lower price)' },
+                { value: 'different_product', label: 'A different product' },
                 { value: 'credit_only', label: 'Nothing — just credit my account' },
               ] as { value: Mode; label: string }[]).map((opt) => (
                 <label
@@ -258,8 +290,8 @@ export default function ExchangeRequestModal({
           {mode === 'different_product' && (
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Only a product priced at or below what you paid can be exchanged this way — anything cheaper is
-                credited to your account.
+                What you paid for this item is credited to your account. If the replacement costs the same or less,
+                that's all that happens; if it costs more, you'll choose how to cover the difference below.
               </p>
               {!selectedProduct ? (
                 <div>
@@ -316,6 +348,52 @@ export default function ExchangeRequestModal({
                       ))}
                     </select>
                   </div>
+
+                  {topUpAmount > 0 && (
+                    <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                      <p className="text-sm font-medium text-foreground">
+                        This costs ₹{topUpAmount.toFixed(2)} more than what you paid.
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Choose how you'd like to cover the difference.
+                      </p>
+                      <div className="mt-2 space-y-2">
+                        <label
+                          className={`flex items-center gap-2 rounded-lg border p-2 cursor-pointer ${
+                            !canPayTopUpFromWallet ? 'opacity-50 cursor-not-allowed' :
+                            topUpPaymentMethod === 'wallet' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="topUpPaymentMethod"
+                            disabled={!canPayTopUpFromWallet}
+                            checked={topUpPaymentMethod === 'wallet'}
+                            onChange={() => setTopUpPaymentMethod('wallet')}
+                          />
+                          <span className="text-sm text-foreground">
+                            Pay from wallet balance
+                            {walletBalance !== null && ` (₹${walletBalance.toFixed(2)} available)`}
+                          </span>
+                        </label>
+                        <label
+                          className={`flex items-center gap-2 rounded-lg border p-2 cursor-pointer ${
+                            topUpPaymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="topUpPaymentMethod"
+                            checked={topUpPaymentMethod === 'cod'}
+                            onChange={() => setTopUpPaymentMethod('cod')}
+                          />
+                          <span className="text-sm text-foreground">
+                            Pay ₹{topUpAmount.toFixed(2)} on delivery of the replacement
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

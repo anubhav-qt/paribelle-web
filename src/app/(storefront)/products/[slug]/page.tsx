@@ -61,7 +61,7 @@ export default function ProductDetailPage() {
   const params = useParams();
   const productSlug = params.slug as string;
   const router = useRouter();
-  const { addToCart } = useCart();
+  const { addToCart, closeCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { fetchVendorPolicies } = usePolicies();
 
@@ -352,12 +352,19 @@ export default function ProductDetailPage() {
    * unconditionally, which navigated away from an out-of-stock warning nobody
    * had read yet and tore down whatever requests the page still had open.
    *
-   * Signed-out shoppers are sent straight to /login instead: skipping
-   * `handleAddToCart()` means the item is never added and the cart drawer
-   * never opens, so there's nothing left showing behind the login page.
+   * Signed-out shoppers still get the item added — skipping the add used to
+   * mean a shopper who "bought now" on one product while logged out, after
+   * already having a different product sitting in their cart from an earlier
+   * "Add to Bag", would find the second product simply missing once they
+   * logged in. `addToCart` still opens the drawer as a side effect, so it's
+   * closed right back before navigating to /login — there is nothing to
+   * check out yet, and the drawer would otherwise sit open behind the
+   * sign-in page.
    */
   const handleBuyNow = () => {
     if (!localStorage.getItem('token')) {
+      if (!handleAddToCart()) return; // Out of stock etc. — the alert already explains why.
+      closeCart();
       router.push(`/login?returnUrl=${encodeURIComponent(`/products/${productSlug}`)}`);
       return;
     }

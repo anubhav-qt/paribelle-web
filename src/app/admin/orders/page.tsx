@@ -82,13 +82,18 @@ function AdminOrdersPageInner() {
   // socket event reaches the right room, this just makes the page react to it.
   const latestNotificationId = notifications[0]?.id;
   useEffect(() => {
-    if (latestNotificationId) fetchOrders();
+    if (latestNotificationId) fetchOrders(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latestNotificationId]);
 
-  const fetchOrders = async () => {
+  // `silent` skips the full-table loading spinner — used for every refetch
+  // that follows an action on an already-visible list (a status change, an
+  // approval, …), where replacing the whole table with a spinner reads as
+  // "everything reloaded" even though only one row actually changed. Only
+  // the very first load and the notification-triggered refetch show it.
+  const fetchOrders = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/orders/admin/all`, {
         headers: {
@@ -108,9 +113,9 @@ function AdminOrdersPageInner() {
       setSelectedOrder((prev) => (prev ? data.find((o: Order) => o.id === prev.id) || prev : prev));
     } catch (error) {
       console.error('Error fetching orders:', error);
-      setOrders([]);
+      if (!silent) setOrders([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -136,7 +141,7 @@ function AdminOrdersPageInner() {
         throw new Error('Failed to update order status');
       }
 
-      fetchOrders();
+      fetchOrders(true);
     } catch (error) {
       console.error('Error updating order status:', error);
       showToast('Failed to update order status', 'error');
@@ -160,7 +165,7 @@ function AdminOrdersPageInner() {
       }
 
       showToast('Payment status updated successfully', 'success');
-      fetchOrders();
+      fetchOrders(true);
     } catch (error) {
       console.error('Error updating payment status:', error);
       showToast('Failed to update payment status', 'error');
@@ -192,9 +197,9 @@ function AdminOrdersPageInner() {
           
           hideConfirm();
           showToast('All return requests approved! Customer can now ship items back.', 'success');
-          
+
           // Refresh orders list
-          await fetchOrders();
+          await fetchOrders(true);
           
           // Refresh selected order details
           if (selectedOrder) {
@@ -242,9 +247,9 @@ function AdminOrdersPageInner() {
 
           hideConfirm();
           showToast('All items received confirmed! Refund processed and inventory restocked.', 'success');
-          
+
           // Refresh orders
-          await fetchOrders();
+          await fetchOrders(true);
           
           // Refresh selected order details
           if (selectedOrder) {
@@ -302,9 +307,9 @@ function AdminOrdersPageInner() {
           
           hideConfirm();
           showToast('All return requests rejected!', 'success');
-          
+
           // Refresh orders
-          await fetchOrders();
+          await fetchOrders(true);
           
           // Refresh selected order details
           if (selectedOrder) {
@@ -850,7 +855,7 @@ function AdminOrdersPageInner() {
               order={codRefusalOrder}
               onResolved={() => {
                 showToast('COD refusal resolved', 'success');
-                fetchOrders();
+                fetchOrders(true);
               }}
             />
           )}
@@ -868,7 +873,7 @@ function AdminOrdersPageInner() {
           formatCurrency={formatCurrency}
           formatDate={formatDate}
           getStatusColor={getStatusColor}
-          onExchangeUpdated={fetchOrders}
+          onExchangeUpdated={() => fetchOrders(true)}
         />
       )}
       
