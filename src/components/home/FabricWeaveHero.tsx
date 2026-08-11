@@ -236,10 +236,18 @@ export function FabricWeaveHero() {
                   src="/hero/pink_3.jpg"
                   alt="A coral-pink block-print anarkali kurta set with a matching dupatta"
                   fill
+                  quality={85}
+                  // Deliberately ~1.7x the card's actual rendered width
+                  // (max ~245px), not a tight fit: on first paint the
+                  // browser picks a srcset candidate from its earliest,
+                  // roughest guess at layout, and a snug `sizes` value
+                  // came out visibly soft until something (e.g. a zoom
+                  // change) forced a re-pick. The headroom means even a
+                  // bad first guess still lands on a large-enough image.
                   // 1px below `lg` because the card isn't rendered there —
                   // it keeps the browser from pulling a full-size candidate
                   // for something nobody sees.
-                  sizes="(min-width: 1280px) 245px, (min-width: 1024px) 19vw, 1px"
+                  sizes="(min-width: 1024px) 420px, 1px"
                   // Full-body shot cropped tight for a small card: framed a
                   // little below face height so the block-print bodice — the
                   // point of this card — reads clearly instead of the crop
@@ -261,7 +269,9 @@ export function FabricWeaveHero() {
                   src="/hero/black_3.jpg"
                   alt="A black kurta with floral scalloped embroidery on the hem and cuffs"
                   fill
-                  sizes="(min-width: 1280px) 245px, (min-width: 1024px) 19vw, 1px"
+                  quality={85}
+                  // Same headroom rationale as the pink_3 card above.
+                  sizes="(min-width: 1024px) 420px, 1px"
                   // Held a touch higher in frame than the left card so the
                   // scalloped hem embroidery — this garment's distinguishing
                   // detail — stays inside the crop alongside the face.
@@ -286,7 +296,13 @@ export function FabricWeaveHero() {
                   alt="A PariBelle kurti, styled with silver jhumka earrings"
                   fill
                   priority
-                  sizes="(min-width: 1280px) 380px, (min-width: 1024px) 30vw, (min-width: 768px) 45vw, 85vw"
+                  quality={85}
+                  // Same headroom rationale as the two side cards: the
+                  // card's actual rendered width tops out around 380px, but
+                  // asking for ~640/480px means the very first srcset pick
+                  // is already sharp instead of depending on a later
+                  // re-evaluation (e.g. a browser zoom change) to correct it.
+                  sizes="(min-width: 1024px) 640px, 480px"
                   className="object-cover object-top"
                 />
               </div>
