@@ -2,14 +2,14 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-
-// An organic, hand-drawn-feeling outline rather than a rounded rectangle —
-// four different corner radii blended on each axis so the curve reads as
-// irregular but still smooth. The inner clip is the same formula pulled in a
-// few points, so the blush mat shows as an even, consistent ring all the way
-// round instead of a rectangular border.
-const BLOB_OUTER = '62% 38% 55% 45% / 48% 62% 38% 52%';
-const BLOB_INNER = '58% 42% 51% 49% / 45% 58% 42% 55%';
+import {
+  BLOB_OUTER,
+  BLOB_INNER,
+  BLOB_LEFT_OUTER,
+  BLOB_LEFT_INNER,
+  BLOB_RIGHT_OUTER,
+  BLOB_RIGHT_INNER,
+} from './heroBlobShapes';
 
 /**
  * The hero — the headline on the left, the campaign photo on the right in a
@@ -205,19 +205,91 @@ export function FabricWeaveHero() {
         </div>
 
         <div className="flex items-center justify-center py-6 pb-10 md:justify-end md:py-8">
-          <div
-            className="relative aspect-[4/5] w-full max-w-sm bg-[hsl(var(--pb-blush-wash))] p-3 shadow-pb-lg md:p-4"
-            style={{ borderRadius: BLOB_OUTER }}
-          >
-            <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_INNER }}>
-              <Image
-                src="/hero/hero-main.jpg"
-                alt="A PariBelle kurti, styled with silver jhumka earrings"
-                fill
-                priority
-                sizes="(min-width: 768px) 36vw, 85vw"
-                className="object-cover object-top"
-              />
+          {/* The "stage" is the trio's bounding box, and it is pinned to
+              exactly the footprint the single photo used to occupy: 480px
+              tall from `lg` up, which is what `max-w-sm` at 4:5 came out to,
+              so the section's height is unchanged. Every card is positioned
+              inside it, which is what keeps the group from running off the
+              container edge — the old single card sat flush against the
+              column's right edge, so anything hung off its right side got
+              clipped by the section's `overflow-hidden`.
+
+              At `xl` the stage widens past its column (`w-[126%]`, overflowing
+              leftward because the row is `justify-end`) to claim the slack the
+              headline column isn't using — that slack is what lets the centre
+              print stay near its original size instead of shrinking to make
+              room. Between `lg` and `xl` that slack doesn't exist yet, so the
+              stage stays inside its column and the trio scales down together.
+              Below `lg` the column is too narrow for three prints to read as
+              anything but a smudge, so only the centre one renders, exactly
+              as before. */}
+          <div className="relative w-full max-w-sm shrink-0 lg:h-[480px] lg:max-w-none xl:w-[126%]">
+            {/* Left print: pink_3, riding low and a layer behind the centre
+                frame. A thinner mat and softer shadow than the centre card
+                sell the depth ordering at a glance. */}
+            <div
+              className="absolute bottom-[6%] left-0 z-0 hidden w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm lg:block xl:w-[33%]"
+              style={{ aspectRatio: '4 / 5', borderRadius: BLOB_LEFT_OUTER }}
+            >
+              <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_LEFT_INNER }}>
+                <Image
+                  src="/hero/pink_3.jpg"
+                  alt="A coral-pink block-print anarkali kurta set with a matching dupatta"
+                  fill
+                  // 1px below `lg` because the card isn't rendered there —
+                  // it keeps the browser from pulling a full-size candidate
+                  // for something nobody sees.
+                  sizes="(min-width: 1280px) 245px, (min-width: 1024px) 19vw, 1px"
+                  // Full-body shot cropped tight for a small card: framed a
+                  // little below face height so the block-print bodice — the
+                  // point of this card — reads clearly instead of the crop
+                  // landing on empty fabric below the waist.
+                  className="object-cover object-[50%_28%]"
+                />
+              </div>
+            </div>
+
+            {/* Right print: black_3, riding high and likewise behind the
+                centre frame. The opposing vertical offsets are what stop the
+                trio from reading as a flat row of three. */}
+            <div
+              className="absolute right-0 top-[4%] z-0 hidden w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm lg:block xl:w-[33%]"
+              style={{ aspectRatio: '4 / 5', borderRadius: BLOB_RIGHT_OUTER }}
+            >
+              <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_RIGHT_INNER }}>
+                <Image
+                  src="/hero/black_3.jpg"
+                  alt="A black kurta with floral scalloped embroidery on the hem and cuffs"
+                  fill
+                  sizes="(min-width: 1280px) 245px, (min-width: 1024px) 19vw, 1px"
+                  // Held a touch higher in frame than the left card so the
+                  // scalloped hem embroidery — this garment's distinguishing
+                  // detail — stays inside the crop alongside the face.
+                  className="object-cover object-[50%_32%]"
+                />
+              </div>
+            </div>
+
+            {/* Centre print: the hero shot, unchanged in content and still
+                the anchor. It leaves the flow at `lg` so the stage's fixed
+                height governs the section instead; below that it is the only
+                card, and stays in flow at its original size. Its left offset
+                is set so the two side prints tuck under it by roughly a
+                quarter of their own width on each side. */}
+            <div
+              className="relative z-10 aspect-[4/5] w-full bg-[hsl(var(--pb-blush-wash))] p-3 shadow-pb-lg md:p-4 lg:absolute lg:left-[22%] lg:top-1/2 lg:w-[56%] lg:-translate-y-1/2 xl:left-[24%] xl:w-[51%]"
+              style={{ borderRadius: BLOB_OUTER }}
+            >
+              <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_INNER }}>
+                <Image
+                  src="/hero/hero-main.jpg"
+                  alt="A PariBelle kurti, styled with silver jhumka earrings"
+                  fill
+                  priority
+                  sizes="(min-width: 1280px) 380px, (min-width: 1024px) 30vw, (min-width: 768px) 45vw, 85vw"
+                  className="object-cover object-top"
+                />
+              </div>
             </div>
           </div>
         </div>
