@@ -365,8 +365,7 @@
 
   /*
    * Product card resting tilt — every card pivots from its top-right
-   * corner, where the pin (ProductCardShell's `.pb-pin`) sits, marking
-   * that point. Hover/focus straighten and lift the print in one rule here
+   * corner. Hover/focus straighten and lift the print in one rule here
    * rather than through Tailwind's `hover:rotate-0`/`hover:-translate-y-*`
    * utilities: those compose `transform` from shared `--tw-*` custom
    * properties, which would fight this rule's own base `rotate(...)` for
