@@ -12,11 +12,12 @@ const INTERACTIVE_SELECTOR =
   'textarea:not(:disabled), label, summary, [role="button"], [tabindex]:not([tabindex="-1"])';
 
 /**
- * A soft, small circular cursor that replaces the native OS pointer across
- * the storefront for a more premium feel: a fixed-size ring, rose border,
- * ivory fill — until the pointer lands on anything hoverable or selectable,
- * where the fill switches to solid rose, then back to ivory the moment it
- * leaves. One state, one rule; nothing about the ring's size or border
+ * A custom cursor that keeps the ordinary arrow silhouette — ivory fill,
+ * rose outline — rather than inventing a new shape, so it still reads as
+ * "a cursor" at a glance. It replaces the native OS pointer across the
+ * storefront only for the fill swap: solid rose the moment the pointer
+ * lands on anything hoverable or selectable, back to ivory the moment it
+ * leaves. One state, one rule; nothing about the arrow's shape or size
  * changes, only which color is inside it.
  *
  * Position tracking mirrors the smoothing technique in FabricWeaveHero: a
@@ -36,7 +37,7 @@ const INTERACTIVE_SELECTOR =
  */
 export function CustomCursor() {
   const cursorRef = React.useRef<HTMLDivElement>(null);
-  const dotRef = React.useRef<HTMLDivElement>(null);
+  const dotRef = React.useRef<SVGSVGElement>(null);
   const [supported, setSupported] = React.useState(false);
 
   React.useEffect(() => {
@@ -129,7 +130,22 @@ export function CustomCursor() {
       className="pointer-events-none fixed left-0 top-0 z-[100] opacity-0"
       style={{ willChange: 'transform' }}
     >
-      <div ref={dotRef} className="pb-cursor-dot" />
+      {/* A plain arrow silhouette with a near-vertical left edge — the
+          shape an OS pointer actually has — rather than lucide's
+          MousePointer2, whose whole body leans hard to the right and
+          reads as "slanted" instead of "a cursor". Tip sits at (5,3) in
+          this 24x24 viewBox; `.pb-cursor-arrow` (globals.css) offsets the
+          element by that same (-5px, -3px) so the tip — not the shape's
+          center — lands on the actual pointer position, the way a real
+          cursor's hotspot works. */}
+      <svg
+        ref={dotRef}
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="pb-cursor-arrow"
+      >
+        <path d="M5 3 L5 17.5 L8.5 14.3 L11.2 20.5 L13.5 19.5 L10.9 13.4 L16 13.4 Z" />
+      </svg>
     </div>
   );
 }

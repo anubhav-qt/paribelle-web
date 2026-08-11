@@ -608,7 +608,7 @@ export default function ProductDetailPage() {
             <div className="mt-6">
                 <p className="mb-2 text-sm font-medium text-[hsl(var(--pb-ink))]">Quantity</p>
                 <QuantityStepper
-                  value={quantity}
+                  value={needsSelection ? 1 : quantity}
                   onChange={(q) => {
                     if (q > maxStock) {
                       alert(`Cannot add more. Maximum ${maxStock} items available in stock.`);
@@ -617,6 +617,7 @@ export default function ProductDetailPage() {
                     setQuantity(q);
                   }}
                   max={maxStock}
+                  disabled={needsSelection}
                 />
                 {stockOnHand !== null && (
                   <p className="mt-2 text-xs text-[hsl(var(--pb-ink-faint))]">

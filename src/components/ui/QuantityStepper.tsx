@@ -8,16 +8,18 @@ export interface QuantityStepperProps {
   onChange: (value: number) => void;
   min?: number;
   max?: number;
+  /** Locks both buttons regardless of min/max — e.g. before a required variant is chosen. */
+  disabled?: boolean;
   className?: string;
 }
 
-export function QuantityStepper({ value, onChange, min = 1, max = 99, className }: QuantityStepperProps) {
+export function QuantityStepper({ value, onChange, min = 1, max = 99, disabled, className }: QuantityStepperProps) {
   return (
     <div className={cn('inline-flex items-center border border-[hsl(var(--pb-linen))] rounded-sm', className)}>
       <button
         type="button"
         onClick={() => onChange(Math.max(min, value - 1))}
-        disabled={value <= min}
+        disabled={disabled || value <= min}
         aria-label="Decrease quantity"
         className="flex h-9 w-9 items-center justify-center text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-shell))] disabled:opacity-40 transition-colors duration-150"
       >
@@ -29,7 +31,7 @@ export function QuantityStepper({ value, onChange, min = 1, max = 99, className 
       <button
         type="button"
         onClick={() => onChange(Math.min(max, value + 1))}
-        disabled={value >= max}
+        disabled={disabled || value >= max}
         aria-label="Increase quantity"
         className="flex h-9 w-9 items-center justify-center text-[hsl(var(--pb-ink-muted))] hover:bg-[hsl(var(--pb-shell))] disabled:opacity-40 transition-colors duration-150"
       >

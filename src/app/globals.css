@@ -403,29 +403,33 @@
   }
 
   /*
-   * The cursor: a fixed-size ring, ivory inside, rose border, always.
+   * The cursor: an ordinary arrow, ivory fill, rose outline, always.
    * Position is written straight to the outer element's transform every
-   * animation frame (see CustomCursor.tsx) — this inner dot carries only
+   * animation frame (see CustomCursor.tsx) — this inner arrow carries only
    * appearance, so this transition can animate the fill without ever
-   * fighting the imperative position updates on its parent. The only state
-   * change is the fill itself: rose instead of ivory whenever the pointer
-   * is over anything actually interactive (see the selector list in
-   * CustomCursor.tsx), ivory otherwise.
+   * fighting the imperative position updates on its parent. The offset
+   * (rather than a centering transform) puts the arrow's own tip, not its
+   * shape center, on the actual pointer position — see the comment next to
+   * its markup in CustomCursor.tsx. The only state change is the fill
+   * itself: rose instead of ivory whenever the pointer is over anything
+   * actually interactive (see the selector list in CustomCursor.tsx),
+   * ivory otherwise.
    */
-  .pb-cursor-dot {
+  .pb-cursor-arrow {
     position: absolute;
     left: 0;
     top: 0;
-    height: 16px;
-    width: 16px;
-    border-radius: 9999px;
-    border: 1.5px solid hsl(var(--pb-rose));
-    background: hsl(var(--pb-ivory));
-    transform: translate(-50%, -50%);
-    transition: background-color var(--duration-micro) var(--ease-pb);
+    height: 22px;
+    width: 22px;
+    transform: translate(-5px, -3px);
+    fill: hsl(var(--pb-ivory));
+    stroke: hsl(var(--pb-rose));
+    stroke-width: 1.5px;
+    stroke-linejoin: round;
+    transition: fill var(--duration-micro) var(--ease-pb);
   }
-  .pb-cursor-dot[data-cursor-active='true'] {
-    background: hsl(var(--pb-rose));
+  .pb-cursor-arrow[data-cursor-active='true'] {
+    fill: hsl(var(--pb-rose));
   }
 
   /* Vendor Theme Utilities */
