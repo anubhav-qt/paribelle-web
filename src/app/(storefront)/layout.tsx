@@ -2,6 +2,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { PageShell } from '@/components/layout/PageShell';
 import { CustomCursor } from '@/components/CustomCursor';
+import { ExchangePickerBar } from '@/components/ExchangePickerBar';
 
 /**
  * PariBelle's shopfront chrome. Lives on the route group rather than the root
@@ -15,6 +16,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
       <Header />
       <PageShell>{children}</PageShell>
       <Footer />
+      <ExchangePickerBar />
     </>
   );
 }

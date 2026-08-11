@@ -26,6 +26,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { usePolicies } from '@/contexts/PoliciesContext';
 import { showAlert } from '@/lib/dialog';
+import { useExchangePicker, addExchangePick } from '@/lib/exchangePicker';
 import { cn } from '@/lib/utils';
 import { Product as BaseProduct, ProductVariant } from '@/types/product';
 
@@ -62,6 +63,7 @@ export default function ProductDetailPage() {
   const productSlug = params.slug as string;
   const router = useRouter();
   const { addToCart, closeCart } = useCart();
+  const exchangePicker = useExchangePicker();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { fetchVendorPolicies } = usePolicies();
 
@@ -371,6 +373,18 @@ export default function ProductDetailPage() {
     if (handleAddToCart()) router.push('/checkout');
   };
 
+  /** Only reachable while an exchange "browse for a replacement" session is active — see ExchangePickerBar. */
+  const handleSelectForExchange = () => {
+    if (!product) return;
+    const price = Number(selectedVariant?.price ?? selectedVariation?.price ?? product.price);
+    addExchangePick({
+      productId: product.id,
+      name: product.name,
+      price: Number.isFinite(price) ? price : 0,
+      image: product.images?.[0] || product.featuredImage || undefined,
+    });
+  };
+
   const handleWishlistToggle = () => {
     if (product) {
       toggleWishlist({
@@ -639,6 +653,25 @@ export default function ProductDetailPage() {
                   </p>
                 )}
             </div>
+
+            {exchangePicker && product && (
+              <div className="mt-6 rounded-sm border border-[hsl(var(--pb-rose-deep))] bg-[hsl(var(--pb-blush-wash))] p-4">
+                <p className="text-sm text-[hsl(var(--pb-ink))]">
+                  Picking a replacement for <strong>{exchangePicker.itemName}</strong>.
+                </p>
+                <Button
+                  size="md"
+                  fullWidth
+                  disabled={outOfStock}
+                  className="mt-3"
+                  onClick={handleSelectForExchange}
+                >
+                  {exchangePicker.picks.some((p) => p.productId === product.id)
+                    ? 'Selected ✓ — pick another, or return to your exchange'
+                    : 'Select for Exchange'}
+                </Button>
+              </div>
+            )}
 
             <div className="mt-6 flex gap-3">
               <Button

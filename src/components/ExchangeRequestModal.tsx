@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, AlertCircle, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { X, AlertCircle, ShoppingBag } from 'lucide-react';
 import { OrderItem } from '@/types/common';
+import { useExchangePicker, startExchangePicker, removeExchangePick, clearExchangePicker } from '@/lib/exchangePicker';
 
 interface Variant {
   id: string;
@@ -59,14 +61,15 @@ export default function ExchangeRequestModal({
   item,
   onSubmit,
 }: ExchangeRequestModalProps) {
+  const router = useRouter();
+  const picker = useExchangePicker();
+  const pickerIsForThisItem = picker?.orderItemId === item.id;
+
   const [mode, setMode] = useState<Mode>('same_product');
   const [variants, setVariants] = useState<Variant[]>([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
   const [selectedVariantId, setSelectedVariantId] = useState('');
 
-  const [productQuery, setProductQuery] = useState('');
-  const [productResults, setProductResults] = useState<ProductResult[]>([]);
-  const [searching, setSearching] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductResult | null>(null);
   const [otherVariants, setOtherVariants] = useState<Variant[]>([]);
   const [selectedOtherVariantId, setSelectedOtherVariantId] = useState('');
@@ -82,10 +85,10 @@ export default function ExchangeRequestModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    setMode('same_product');
+    // Reopened after "Browse Products" — land straight back in the
+    // different-product picks rather than resetting to the first option.
+    setMode(pickerIsForThisItem ? 'different_product' : 'same_product');
     setSelectedVariantId('');
-    setProductQuery('');
-    setProductResults([]);
     setSelectedProduct(null);
     setOtherVariants([]);
     setSelectedOtherVariantId('');
@@ -115,30 +118,21 @@ export default function ExchangeRequestModal({
         .then((data) => setWalletBalance(data ? Number(data.balance) || 0 : 0))
         .catch(() => setWalletBalance(0));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, item.productId, item.variantId]);
 
-  useEffect(() => {
-    if (mode !== 'different_product' || !productQuery.trim() || selectedProduct) {
-      setProductResults([]);
-      return;
-    }
-    const handle = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?search=${encodeURIComponent(productQuery)}&limit=8&status=active`,
-        );
-        const data = await res.json();
-        const results: ProductResult[] = (data.products || data || []).filter((p: ProductResult) => p.id !== item.productId);
-        setProductResults(results);
-      } catch {
-        setProductResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [productQuery, mode, selectedProduct, item.productId]);
+  /** "Browse Products" — send the shopper shopping normally instead of asking them to type a product name. */
+  const handleBrowseProducts = () => {
+    startExchangePicker({
+      orderId,
+      orderNumber,
+      orderItemId: item.id,
+      itemName: item.productName,
+      itemCredit: Number(item.price) * quantity,
+    });
+    onClose();
+    router.push('/');
+  };
 
   useEffect(() => {
     if (!selectedProduct) {
@@ -199,6 +193,7 @@ export default function ExchangeRequestModal({
         customerNotes: customerNotes.trim() || undefined,
         topUpPaymentMethod: topUpAmount > 0 ? (topUpPaymentMethod as 'wallet' | 'cod') : undefined,
       });
+      if (pickerIsForThisItem) clearExchangePicker();
     } catch (err: any) {
       setError(err?.message || 'Failed to submit exchange request. Please try again.');
     } finally {
@@ -294,36 +289,46 @@ export default function ExchangeRequestModal({
                 that's all that happens; if it costs more, you'll choose how to cover the difference below.
               </p>
               {!selectedProduct ? (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">Search products</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="text"
-                      value={productQuery}
-                      onChange={(e) => setProductQuery(e.target.value)}
-                      placeholder="Search…"
-                      className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-foreground"
-                    />
-                  </div>
-                  {searching && <p className="mt-1 text-xs text-muted-foreground">Searching…</p>}
-                  {productResults.length > 0 && (
-                    <div className="mt-2 max-h-48 divide-y divide-border overflow-y-auto rounded-lg border border-border">
-                      {productResults.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => {
-                            setSelectedProduct(p);
-                            setProductResults([]);
-                          }}
-                          className="flex w-full items-center justify-between p-2 text-left text-sm hover:bg-muted"
-                        >
-                          <span>{p.name}</span>
-                          <span className="text-muted-foreground">₹{p.price}</span>
-                        </button>
-                      ))}
+                <div className="space-y-3">
+                  {pickerIsForThisItem && picker && picker.picks.length > 0 && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">Your picks</label>
+                      <div className="max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+                        {picker.picks.map((p) => (
+                          <div key={p.productId} className="flex items-center justify-between gap-2 p-2">
+                            <button
+                              onClick={() => setSelectedProduct({ id: p.productId, name: p.name, price: p.price })}
+                              className="flex flex-1 items-center gap-3 text-left text-sm hover:text-primary"
+                            >
+                              {p.image && (
+                                <img src={p.image} alt="" className="h-10 w-10 rounded object-cover" />
+                              )}
+                              <span className="flex-1">{p.name}</span>
+                              <span className="text-muted-foreground">₹{p.price}</span>
+                            </button>
+                            <button
+                              onClick={() => removeExchangePick(p.productId)}
+                              aria-label={`Remove ${p.name}`}
+                              className="text-muted-foreground hover:text-red-600"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
+                  <button
+                    onClick={handleBrowseProducts}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-primary/50 p-3 text-sm font-medium text-primary hover:bg-primary/5"
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    Browse Products
+                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    Opens the store in a new view — pick anything you like, then use the bar at the bottom of the
+                    screen to come back here.
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-lg border border-border p-3">

@@ -13,6 +13,7 @@ import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ExchangeRequestModal from '@/components/ExchangeRequestModal';
+import { getExchangePicker } from '@/lib/exchangePicker';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 import ShipBackModal from '@/components/ShipBackModal';
@@ -127,6 +128,27 @@ function OrdersPageInner() {
     setSelectedOrder(target);
     router.replace('/orders', { scroll: false });
   }, [deepLinkOrderId, orders, router]);
+
+  // "Return to Exchange Request" (ExchangePickerBar) lands here via
+  // ?resumeExchange=1 — reopen the same item's modal rather than making the
+  // shopper find it again. Same one-shot-via-query-param pattern as
+  // deepLinkOrderId above (a ref alone can't handle a second "Return" click
+  // after the shopper manually closed the modal and kept browsing, since
+  // that's the same order item and would look "already consumed").
+  const resumeExchange = searchParams.get('resumeExchange');
+  useEffect(() => {
+    if (!resumeExchange || orders.length === 0) return;
+    const picker = getExchangePicker();
+    if (!picker) return;
+    const order = orders.find((o) => o.id === picker.orderId);
+    const orderItem = order?.items.find((i) => i.id === picker.orderItemId);
+    if (order && orderItem) {
+      setOrderToAction(order);
+      setItemForExchange(orderItem);
+      setShowExchangeModal(true);
+    }
+    router.replace('/orders', { scroll: false });
+  }, [resumeExchange, orders, router]);
 
   const fetchOrders = async () => {
     try {
