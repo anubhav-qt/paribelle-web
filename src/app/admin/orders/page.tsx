@@ -82,7 +82,14 @@ function AdminOrdersPageInner() {
   // effect can't reopen a modal the admin already closed.
   const consumedDeepLinkRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!deepLinkOrderId || orders.length === 0) return;
+    // Cleared as soon as the URL is clean again, so clicking the same
+    // notification a second time opens its panel a second time — see the
+    // matching comment on the storefront orders page.
+    if (!deepLinkOrderId) {
+      consumedDeepLinkRef.current = null;
+      return;
+    }
+    if (orders.length === 0) return;
     const key = `${deepLinkNonce || ''}:${deepLinkOrderId}:${deepLinkView || ''}`;
     if (consumedDeepLinkRef.current === key) return;
     const target = orders.find((o) => o.id === deepLinkOrderId);

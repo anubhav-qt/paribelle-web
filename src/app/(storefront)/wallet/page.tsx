@@ -21,6 +21,7 @@ const LEDGER_LABELS: Record<string, string> = {
   opening_balance: 'Opening balance',
   referral_credit: 'Referral bonus',
   exchange_credit: 'Exchange credit',
+  exchange_courier_charge: 'Exchange courier charge',
   cod_refusal_credit: 'COD refusal credit',
   admin_cancel_credit: 'Order cancelled (by admin)',
   customer_cancel_credit: 'Order cancelled',

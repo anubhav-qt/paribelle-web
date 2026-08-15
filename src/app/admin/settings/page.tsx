@@ -49,6 +49,9 @@ export default function AdminSettingsPage() {
   // setting already holds.
   const [commissionRate, setCommissionRate] = useState<number>(0);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(0);
+  // Flat fee charged for couriering an exchange replacement out. 0 = no
+  // charge, which is what every exchange did before this existed.
+  const [exchangeCourierCharge, setExchangeCourierCharge] = useState<number>(0);
   
   // Orphan cleanup state
   const [orphanImages, setOrphanImages] = useState<string[]>([]);
@@ -134,6 +137,11 @@ export default function AdminSettingsPage() {
             const freeShippingThresholdSetting = data.find((s: Setting) => s.key === 'default_free_shipping_threshold');
             if (freeShippingThresholdSetting) {
           setFreeShippingThreshold(parseFloat(freeShippingThresholdSetting.value) || 0);
+            }
+
+            const courierChargeSetting = data.find((s: Setting) => s.key === 'exchange_courier_charge');
+            if (courierChargeSetting) {
+          setExchangeCourierCharge(parseFloat(courierChargeSetting.value) || 0);
             }
       }
     } catch (error) {
@@ -267,7 +275,13 @@ export default function AdminSettingsPage() {
             'Default free shipping threshold amount. Orders above this amount get free shipping.'
       );
 
-      if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroHeightSuccess && heroBannersSuccess && logoSuccess && nameSuccess && returnPolicySuccess && cancellationPolicySuccess && commissionRateSuccess && freeShippingThresholdSuccess) {
+      const courierChargeSuccess = await updateSetting(
+            'exchange_courier_charge',
+            exchangeCourierCharge,
+            'Flat courier charge added to an exchange for shipping the replacement out. 0 disables the charge.'
+      );
+
+      if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroHeightSuccess && heroBannersSuccess && logoSuccess && nameSuccess && returnPolicySuccess && cancellationPolicySuccess && commissionRateSuccess && freeShippingThresholdSuccess && courierChargeSuccess) {
             showMessage('success', 'Settings saved successfully!');
             await fetchSettings(); // Refresh settings
       } else {
@@ -563,6 +577,34 @@ export default function AdminSettingsPage() {
               <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-sm text-yellow-800">
                 <p className="font-medium mb-1">⚙️ Vendor Override:</p>
                 <p>Individual vendors can set their own free shipping threshold in their settings, which will override this default value.</p>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="exchangeCourierCharge" className="block font-medium text-gray-900 mb-2">
+                Exchange Courier Charge ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency})
+              </label>
+              <input
+                type="number"
+                id="exchangeCourierCharge"
+                value={exchangeCourierCharge}
+                onChange={(e) => setExchangeCourierCharge(parseFloat(e.target.value) || 0)}
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-sm text-gray-600 mt-2">
+                Charged per replacement shipped out on an exchange. The customer is quoted this when they make
+                the request and chooses how to pay it — store credit, or cash on delivery. Set to 0 to ship
+                exchanges free of charge.
+              </p>
+              <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200 text-sm text-blue-800">
+                <p>
+                  The figure is frozen onto each exchange when it is requested, so changing it here only affects
+                  new requests — exchanges already in flight keep the price they were quoted. Exchanges settled
+                  as store credit only ship nothing and are never charged.
+                </p>
               </div>
             </div>
 

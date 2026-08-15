@@ -67,8 +67,17 @@ export function ExchangePickerBar() {
         {expanded && picks.length > 0 && (
           <div className="mx-auto max-w-7xl px-4 pt-3 md:px-6">
             <ul className="max-h-52 divide-y divide-[hsl(var(--pb-linen))] overflow-y-auto rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-shell))]">
-              {picks.map((p) => (
-                <li key={`${p.productId}:${p.variantId}`} className="flex items-center gap-3 p-2">
+              {picks.map((p) => {
+                // Selectable only at or below what the original item cost —
+                // one can still slip in here if its price changed after it
+                // was picked, so it's called out rather than left to fail on
+                // submit.
+                const overPriced = Number(p.price) > ctx.itemPrice;
+                return (
+                <li
+                  key={`${p.productId}:${p.variantId}`}
+                  className={`flex items-center gap-3 p-2 ${overPriced ? 'bg-[hsl(var(--pb-danger)/0.08)]' : ''}`}
+                >
                   {p.image ? (
                     <img src={p.image} alt="" className="h-10 w-10 shrink-0 rounded-sm object-cover" />
                   ) : (
@@ -76,7 +85,14 @@ export function ExchangePickerBar() {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-[hsl(var(--pb-ink))]">{p.name}</p>
-                    <p className="truncate text-xs text-[hsl(var(--pb-ink-faint))]">{p.variantLabel}</p>
+                    <p className="truncate text-xs text-[hsl(var(--pb-ink-faint))]">
+                      {p.variantLabel}
+                      {overPriced && (
+                        <span className="ml-1 text-[hsl(var(--pb-danger))]">
+                          · costs more than ₹{ctx.itemPrice.toFixed(2)} — remove it
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <span className="text-sm text-[hsl(var(--pb-ink-muted))]">₹{Number(p.price).toFixed(2)}</span>
                   <button
@@ -87,7 +103,8 @@ export function ExchangePickerBar() {
                     <X className="h-4 w-4" />
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         )}

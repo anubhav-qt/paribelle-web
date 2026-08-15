@@ -9,6 +9,11 @@ import { paymentStatusClass, paymentStatusLabel } from '@/lib/utils/payment-stat
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 import ShipBackModal from '@/components/ShipBackModal';
 import { Order, OrderItem } from '@/types/common';
+import {
+  summarizeItemExchanges,
+  exchangeStatusStyle,
+  exchangeStatusLabel,
+} from '@/lib/utils/exchange';
 
 // Format return reason from key to human-readable label
 const formatReturnReason = (reason: string): string => {
@@ -608,7 +613,11 @@ export default function OrderDetailsModal({
               </div>
             </div>
 
-            {/* Order Items */}
+            {/* Order Items — each line tinted by the state of its own
+                exchange, so on a multi-item order it is obvious which
+                product the exchange panel above is about. Without this every
+                line was the same plain card and the only link between an
+                exchange and its item was matching the product name by eye. */}
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-foreground mb-2">
                 {isAdmin ? 'Order Items' : 'Items Ordered'}
@@ -618,8 +627,15 @@ export default function OrderDetailsModal({
                   {order.items.map((item) => {
                     const productImage = item.productImage || item.product?.featuredImage;
                     const productSlug = item.product?.slug;
+                    const exchange = summarizeItemExchanges(returnsOverride, item);
+                    const style = exchangeStatusStyle(exchange.primary?.status);
                     return (
-                      <div key={item.id} className="flex items-center gap-4 p-3 bg-muted rounded-lg">
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-4 p-3 rounded-lg ${
+                          exchange.primary ? style.row : 'bg-muted'
+                        }`}
+                      >
                         {productImage && (
                           <Link href={`/products/${productSlug}`} className="flex-shrink-0">
                             <img
@@ -630,7 +646,7 @@ export default function OrderDetailsModal({
                           </Link>
                         )}
                         <div className="flex-1 min-w-0">
-                          <Link 
+                          <Link
                             href={`/products/${productSlug}`}
                             className="font-medium text-foreground hover:text-primary block mb-1"
                           >
@@ -639,6 +655,12 @@ export default function OrderDetailsModal({
                           <p className="text-sm text-muted-foreground">
                             Qty: {item.quantity} × {formatPrice(item.price, 'INR')}
                           </p>
+                          {exchange.primary && (
+                            <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${style.chip}`}>
+                              {exchangeStatusLabel(exchange.primary.status)}
+                              {exchange.rows.length > 1 ? ` · ${exchange.rows.length} requests` : ''}
+                            </span>
+                          )}
                         </div>
                         <p className="font-semibold flex-shrink-0 text-foreground">
                           {formatPrice(item.price * item.quantity, 'INR')}
@@ -649,14 +671,28 @@ export default function OrderDetailsModal({
                 </div>
               ) : (
                 <div className="bg-gray-50 dark:bg-muted p-4 rounded-lg space-y-2">
-                  {order.items?.map((item, idx) => (
-                    <div key={idx} className="flex justify-between">
-                      <span>
-                        {item.productName} x {item.quantity}
-                      </span>
-                      <span className="font-medium">{currencyFormatter(item.price * item.quantity)}</span>
-                    </div>
-                  ))}
+                  {order.items?.map((item, idx) => {
+                    const exchange = summarizeItemExchanges(returnsOverride, item);
+                    const style = exchangeStatusStyle(exchange.primary?.status);
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex justify-between items-center gap-3 ${
+                          exchange.primary ? `${style.row} rounded px-2 py-1.5` : ''
+                        }`}
+                      >
+                        <span className="min-w-0">
+                          {item.productName} x {item.quantity}
+                          {exchange.primary && (
+                            <span className={`ml-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${style.chip}`}>
+                              {exchangeStatusLabel(exchange.primary.status)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-medium flex-shrink-0">{currencyFormatter(item.price * item.quantity)}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

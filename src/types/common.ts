@@ -159,6 +159,13 @@ export interface Order {
    */
   canCancel?: boolean;
   canExchange?: boolean;
+  /**
+   * Something is still owing on a card/UPI order — a checkout payment that
+   * was dismissed or declined, or the replacement order an exchange creates,
+   * which an admin places with nobody at a checkout screen to pay it. The
+   * amount due is the order's own `total`.
+   */
+  canPayOnline?: boolean;
   exchangeWindowExpiresAt?: string | null;
 }
 

@@ -24,6 +24,14 @@ interface Variant {
   price: number;
 }
 
+/**
+ * How the customer wants to pay the courier charge. 'online' is only offered
+ * on a different-product exchange: it is settled on the replacement order
+ * that route creates, and a same-product swap creates no such order (the
+ * backend refuses the combination outright).
+ */
+export type CourierPaymentMethod = 'wallet' | 'cod' | 'online';
+
 /** One exchange request as the API expects it — see `ExchangesService.request`. */
 export interface ExchangeSubmission {
   quantity: number;
@@ -31,7 +39,8 @@ export interface ExchangeSubmission {
   exchangeVariantId?: string;
   videoUrl: string;
   customerNotes?: string;
-  topUpPaymentMethod?: 'wallet' | 'cod';
+  /** How the courier charge is being paid, when the store charges one. */
+  courierChargePaymentMethod?: CourierPaymentMethod;
 }
 
 interface ExchangeRequestModalProps {
@@ -70,7 +79,7 @@ const MODE_OPTIONS: { value: Mode; label: string; hint: string }[] = [
   {
     value: 'different_product',
     label: 'A different product from the store',
-    hint: "We credit what you paid, then you pick anything you like. If it costs more, you choose how to cover the difference.",
+    hint: 'We credit what you paid, then you pick anything of the same value or less. Anything left over stays as store credit.',
   },
   {
     value: 'credit_only',
@@ -96,11 +105,20 @@ function distributeQuantity(count: number, total: number): number[] {
 
 /**
  * Requests an exchange for one order item — three routes (see the
- * implementation plan): a different variant of the same product (free, no
- * money moves), one or more different products at any price (the original
- * item's value is credited; a pricier replacement needs its gap covered
- * separately — see `topUpPaymentMethod`), or no replacement at all (the
- * full value is credited).
+ * implementation plan): a different variant of the same product (a straight
+ * swap, no money moves), one or more different products (the original item's
+ * value is credited and the replacements come out of that credit), or no
+ * replacement at all (the full value is credited).
+ *
+ * Every replacement must cost the same as the original item or less.
+ * Exchanging *up* is not offered anywhere — the store takes no further
+ * payment for the goods, so there is nothing a price gap could be paid with;
+ * `ExchangesService.request` refuses one, and the storefront won't let a
+ * dearer item be selected.
+ *
+ * The one thing an exchange can cost is the courier charge for posting the
+ * replacement out, which the customer chooses how to pay here rather than
+ * inheriting whatever the original order was paid by.
  *
  * A video of the item is mandatory: it is the only evidence the admin has
  * when deciding, and the backend refuses a request without one
@@ -124,7 +142,11 @@ export default function ExchangeRequestModal({
   const [selectedVariantId, setSelectedVariantId] = useState('');
 
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [topUpPaymentMethod, setTopUpPaymentMethod] = useState<'wallet' | 'cod' | ''>('');
+  // The store's flat charge for couriering the replacement out (0 = off) and
+  // how the customer wants to pay it. Their choice, not inherited from how
+  // the original order was paid.
+  const [courierCharge, setCourierCharge] = useState(0);
+  const [courierPaymentMethod, setCourierPaymentMethod] = useState<CourierPaymentMethod | ''>('');
 
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState('');
@@ -160,7 +182,7 @@ export default function ExchangeRequestModal({
 
     setMode(resuming ? 'different_product' : 'same_product');
     setSelectedVariantId('');
-    setTopUpPaymentMethod('');
+    setCourierPaymentMethod('');
     setError('');
     setVideoError('');
 
@@ -182,6 +204,16 @@ export default function ExchangeRequestModal({
       })
       .catch(() => setVariants([]))
       .finally(() => setLoadingVariants(false));
+
+    // Settings are public — the same figure the backend quotes from
+    // `exchange_courier_charge` when the request is actually created.
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const charge = Number(data?.exchange_courier_charge);
+        setCourierCharge(Number.isFinite(charge) && charge > 0 ? charge : 0);
+      })
+      .catch(() => setCourierCharge(0));
 
     const token = localStorage.getItem('token');
     if (token) {
@@ -205,20 +237,38 @@ export default function ExchangeRequestModal({
   const pickAssignments = mode === 'different_product' ? distributeQuantity(picks.length, quantity) : [];
   const tooManyPicks = mode === 'different_product' && picks.length > 0 && picks.length > quantity;
 
-  const pickTopUp = (index: number) => {
-    const qty = pickAssignments[index] || 0;
-    if (qty <= 0) return 0;
-    return Math.max(0, Number(((Number(picks[index].price) - itemUnitPrice) * qty).toFixed(2)));
-  };
-  const totalTopUp = picks.reduce((sum, _p, i) => sum + pickTopUp(i), 0);
-  const canPayTopUpFromWallet = walletBalance !== null && walletBalance >= totalTopUp;
+  // Exchanging into something dearer isn't offered — the backend refuses it
+  // outright (`ExchangesService.request`) and the storefront won't let one be
+  // selected. A pick can still turn up here if its price changed after it was
+  // selected, so it's flagged rather than silently submitted and rejected.
+  const overPricedPicks = picks.filter((p) => Number(p.price) > itemUnitPrice);
+  const hasOverPricedPick = mode === 'different_product' && overPricedPicks.length > 0;
 
-  // A stale top-up choice must not silently carry over to a different set of
-  // replacements or quantity — reset it whenever what's being priced changes.
+  /**
+   * What this exchange actually costs the customer: only the courier charge,
+   * and only when something is being shipped back out. A credit-only
+   * exchange posts nothing, so it is never charged for shipping.
+   *
+   * Charged per parcel: each replacement the shopper picked becomes its own
+   * exchange request and its own delivery, so two replacements means two
+   * courier charges — said out loud below rather than left as a surprise.
+   */
+  const shipments =
+    mode === 'credit_only' ? 0 : mode === 'same_product' ? 1 : pickAssignments.filter((q) => q > 0).length;
+  const payableCourierCharge = Number((courierCharge * shipments).toFixed(2));
+  const canPayCourierFromWallet = walletBalance !== null && walletBalance >= payableCourierCharge;
+  // Paying online means paying it on the replacement order, and only a
+  // different-product exchange creates one — a same-product swap ships off
+  // the original order, which was paid for long ago and has nothing left to
+  // charge against.
+  const canPayCourierOnline = mode === 'different_product';
+
+  // A stale payment choice must not silently carry over once what's being
+  // charged changes — nor once the route changes, since switching to a
+  // same-product swap withdraws the online option entirely.
   useEffect(() => {
-    setTopUpPaymentMethod('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picks.map((p) => p.variantId).join(','), quantity]);
+    setCourierPaymentMethod('');
+  }, [payableCourierCharge, mode]);
 
   /** "Browse Products" — send the shopper shopping normally instead of asking them to type a product name. */
   const handleBrowseProducts = () => {
@@ -302,8 +352,14 @@ export default function ExchangeRequestModal({
       setError(`You've selected ${picks.length} replacements but are only exchanging ${quantity} unit${quantity === 1 ? '' : 's'} — remove some, or raise the quantity below.`);
       return;
     }
-    if (mode === 'different_product' && totalTopUp > 0 && !topUpPaymentMethod) {
-      setError('Choose how you want to pay the price difference.');
+    if (hasOverPricedPick) {
+      setError(
+        `${overPricedPicks[0].name} costs more than the item you're exchanging — remove it and pick something at ₹${itemUnitPrice.toFixed(2)} or under.`,
+      );
+      return;
+    }
+    if (payableCourierCharge > 0 && !courierPaymentMethod) {
+      setError('Choose how you want to pay the courier charge.');
       return;
     }
     const finalReason = reason === 'other' ? otherReason.trim() : reason;
@@ -324,7 +380,7 @@ export default function ExchangeRequestModal({
                 exchangeVariantId: p.variantId,
                 videoUrl,
                 customerNotes: customerNotes.trim() || undefined,
-                topUpPaymentMethod: pickTopUp(i) > 0 ? (topUpPaymentMethod as 'wallet' | 'cod') : undefined,
+                courierChargePaymentMethod: courierCharge > 0 ? (courierPaymentMethod as CourierPaymentMethod) : undefined,
               }))
               .filter((s) => s.quantity > 0)
           : [
@@ -334,6 +390,10 @@ export default function ExchangeRequestModal({
                 exchangeVariantId: mode === 'same_product' ? selectedVariantId : undefined,
                 videoUrl,
                 customerNotes: customerNotes.trim() || undefined,
+                courierChargePaymentMethod:
+                  mode === 'same_product' && courierCharge > 0
+                    ? (courierPaymentMethod as CourierPaymentMethod)
+                    : undefined,
               },
             ];
       await onSubmit(submissions);
@@ -495,7 +555,10 @@ export default function ExchangeRequestModal({
               <div className="rounded-lg border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground">How this works</p>
                 <ol className="mt-1 list-decimal space-y-0.5 pl-4">
-                  <li>Browse the store — hit "Select for Exchange" on anything you want (any number of items).</li>
+                  <li>
+                    Browse the store — hit &quot;Select for Exchange&quot; on anything priced at
+                    ₹{itemUnitPrice.toFixed(2)} or under (any number of items).
+                  </li>
                   <li>Come back here and submit — everything you selected is used, no extra picking here.</li>
                   <li>
                     Once we receive and check the returned item, ₹{itemCredit.toFixed(2)} goes to your store
@@ -519,9 +582,14 @@ export default function ExchangeRequestModal({
                   <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
                     {picks.map((p, i) => {
                       const assignedQty = pickAssignments[i] || 0;
-                      const difference = pickTopUp(i);
+                      const overPriced = Number(p.price) > itemUnitPrice;
                       return (
-                        <div key={`${p.productId}:${p.variantId}`} className="flex items-center gap-3 p-2">
+                        <div
+                          key={`${p.productId}:${p.variantId}`}
+                          className={`flex items-center gap-3 p-2 ${
+                            overPriced ? 'bg-red-50 dark:bg-red-900/20' : ''
+                          }`}
+                        >
                           {p.image && <img src={p.image} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />}
                           <div className="min-w-0 flex-1">
                             <span className="block truncate text-sm text-foreground">{p.name}</span>
@@ -534,9 +602,9 @@ export default function ExchangeRequestModal({
                             <span className="block text-sm text-foreground">₹{Number(p.price).toFixed(2)}</span>
                             {!tooManyPicks && (
                               <span
-                                className={`block text-xs ${difference > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}
+                                className={`block text-xs ${overPriced ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}
                               >
-                                {difference > 0 ? `+₹${difference.toFixed(2)}` : 'covered'}
+                                {overPriced ? 'costs more — remove' : 'covered'}
                               </span>
                             )}
                           </span>
@@ -557,6 +625,12 @@ export default function ExchangeRequestModal({
                       quantity below.
                     </p>
                   )}
+                  {hasOverPricedPick && (
+                    <p className="mt-2 text-xs text-red-600">
+                      An exchange has to be for something of the same value or less. Remove anything above
+                      ₹{itemUnitPrice.toFixed(2)} — the price may have changed since you selected it.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -573,54 +647,99 @@ export default function ExchangeRequestModal({
                   : "This takes you to the store. Open an item, choose its size, and hit “Select for Exchange” — then use the bar at the bottom of the screen to come back here."}
               </p>
 
-              {totalTopUp > 0 && !tooManyPicks && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
-                  <p className="text-sm font-medium text-foreground">
-                    {picks.length > 1 ? 'Your selections cost' : 'This costs'} ₹{totalTopUp.toFixed(2)} more than
-                    what you paid.
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Choose how you&apos;d like to cover the difference.
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    <label
-                      className={`flex items-center gap-2 rounded-lg border p-2 ${
-                        !canPayTopUpFromWallet ? 'cursor-not-allowed opacity-50' :
-                        topUpPaymentMethod === 'wallet' ? 'cursor-pointer border-primary bg-primary/5' : 'cursor-pointer border-border hover:bg-muted'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="topUpPaymentMethod"
-                        disabled={!canPayTopUpFromWallet}
-                        checked={topUpPaymentMethod === 'wallet'}
-                        onChange={() => setTopUpPaymentMethod('wallet')}
-                      />
-                      <span className="text-sm text-foreground">
-                        Pay from wallet balance
-                        {walletBalance === null
-                          ? ' (checking…)'
-                          : ` (₹${walletBalance.toFixed(2)} available${canPayTopUpFromWallet ? '' : ' — not enough'})`}
+            </div>
+          )}
+
+          {/* ---- Courier charge ----
+              The only thing an exchange can cost, and the one decision the
+              customer gets to make about payment: it is theirs to choose
+              here, rather than being pushed onto whatever the original
+              order was paid by. Hidden entirely when the store charges
+              nothing (`exchange_courier_charge` = 0). */}
+          {payableCourierCharge > 0 && !tooManyPicks && !hasOverPricedPick && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+              <p className="text-sm font-medium text-foreground">
+                Courier charge: ₹{payableCourierCharge.toFixed(2)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {shipments > 1
+                  ? `₹${courierCharge.toFixed(2)} for each of the ${shipments} replacements we'll send you.`
+                  : 'For posting your replacement out to you.'}{' '}
+                Choose how you&apos;d like to pay it.
+              </p>
+              <div className="mt-2 space-y-2">
+                <label
+                  className={`flex items-center gap-2 rounded-lg border p-2 ${
+                    !canPayCourierFromWallet
+                      ? 'cursor-not-allowed opacity-50'
+                      : courierPaymentMethod === 'wallet'
+                        ? 'cursor-pointer border-primary bg-primary/5'
+                        : 'cursor-pointer border-border hover:bg-muted'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="courierPaymentMethod"
+                    disabled={!canPayCourierFromWallet}
+                    checked={courierPaymentMethod === 'wallet'}
+                    onChange={() => setCourierPaymentMethod('wallet')}
+                  />
+                  <span className="text-sm text-foreground">
+                    Pay from store credit
+                    {walletBalance === null
+                      ? ' (checking…)'
+                      : ` (₹${walletBalance.toFixed(2)} available${canPayCourierFromWallet ? '' : ' — not enough'})`}
+                    <span className="block text-xs text-muted-foreground">
+                      Taken only when your replacement actually ships.
+                    </span>
+                  </span>
+                </label>
+                <label
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2 ${
+                    courierPaymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="courierPaymentMethod"
+                    checked={courierPaymentMethod === 'cod'}
+                    onChange={() => setCourierPaymentMethod('cod')}
+                  />
+                  <span className="text-sm text-foreground">
+                    Pay ₹{payableCourierCharge.toFixed(2)} on delivery
+                    <span className="block text-xs text-muted-foreground">
+                      Cash or UPI to the courier when the replacement{shipments > 1 ? 's arrive' : ' arrives'}.
+                    </span>
+                  </span>
+                </label>
+                {canPayCourierOnline ? (
+                  <label
+                    className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2 ${
+                      courierPaymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="courierPaymentMethod"
+                      checked={courierPaymentMethod === 'online'}
+                      onChange={() => setCourierPaymentMethod('online')}
+                    />
+                    <span className="text-sm text-foreground">
+                      Pay online — card, UPI or netbanking
+                      <span className="block text-xs text-muted-foreground">
+                        Nothing to pay now. Once we&apos;ve checked your returned item we place your
+                        replacement order, and a <strong>Pay Now</strong> button appears on it in My Orders.
                       </span>
-                    </label>
-                    <label
-                      className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2 ${
-                        topUpPaymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="topUpPaymentMethod"
-                        checked={topUpPaymentMethod === 'cod'}
-                        onChange={() => setTopUpPaymentMethod('cod')}
-                      />
-                      <span className="text-sm text-foreground">
-                        Pay ₹{totalTopUp.toFixed(2)} on delivery of the replacement{picks.length > 1 ? 's' : ''}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              )}
+                    </span>
+                  </label>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-border p-2 text-xs text-muted-foreground">
+                    Paying online isn&apos;t available for a straight size or colour swap — there&apos;s no new
+                    order for the charge to sit on. Choose a different product above if you&apos;d rather pay by
+                    card or UPI.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -698,11 +817,13 @@ export default function ExchangeRequestModal({
                     ? 'Browse the store and select at least one replacement.'
                     : tooManyPicks
                       ? 'Remove a replacement, or raise the quantity, so they match.'
-                      : mode === 'different_product' && totalTopUp > 0 && !topUpPaymentMethod
-                        ? 'Choose how to cover the price difference.'
-                        : !(reason === 'other' ? otherReason.trim() : reason)
-                          ? 'Select a reason for the exchange.'
-                          : '';
+                      : hasOverPricedPick
+                        ? `Remove anything that costs more than ₹${itemUnitPrice.toFixed(2)} — an exchange can't be for something dearer.`
+                        : payableCourierCharge > 0 && !courierPaymentMethod
+                          ? 'Choose how to pay the courier charge.'
+                          : !(reason === 'other' ? otherReason.trim() : reason)
+                            ? 'Select a reason for the exchange.'
+                            : '';
             return (
               <>
                 {blocker && <p className="mb-2 text-xs text-muted-foreground">{blocker}</p>}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import Link from 'next/link';
 import { showPrompt } from '@/lib/dialog';
+import { exchangeStatusStyle, exchangeStatusLabel } from '@/lib/utils/exchange';
 
 interface ExchangeRequest {
   id: string;
@@ -32,6 +33,9 @@ interface ExchangeRequest {
   completedOrderId: string | null;
   completedOrder: { id: string; orderNumber: string } | null;
   orderItem: { productId: string } | null;
+  courierCharge: number | string | null;
+  courierChargePaymentMethod: 'wallet' | 'cod' | 'online' | null;
+  courierChargePaidAt: string | null;
 }
 
 interface AdminExchangePanelProps {
@@ -68,6 +72,13 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
   // Inline inspection notes, keyed by exchange id — typed directly into the
   // card rather than a separate prompt dialog stacked on top of this one.
   const [inspectionNotes, setInspectionNotes] = useState<Record<string, string>>({});
+  // Same treatment for the rejection reason: it used to be a `showPrompt`
+  // dialog stacked over this panel, which is exactly the sort of overlay
+  // that ends up underneath the thing that opened it. Typed on the card, it
+  // can't land behind anything — and the admin can see the customer's video
+  // while writing the reason, which they couldn't through a modal.
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -148,13 +159,26 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
               const awaitingReplacementDecision =
                 exc.status === 'received' && exc.inspectionResult === 'passed' && !!exc.exchangeVariant && !exc.completedOrderId;
 
+              const style = exchangeStatusStyle(exc.status);
+
               return (
-                <div key={exc.id} className="rounded-lg border p-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="font-medium text-gray-900">{exc.returnNumber}</span>
-                    <span className="text-xs text-gray-500">{new Date(exc.requestedAt).toLocaleDateString()}</span>
+                // Colour-coded by status, and with the product being
+                // exchanged called out as the card's headline: an order with
+                // several exchange requests on it used to be a stack of
+                // identical white cards, where working out which product each
+                // one was about meant reading down to the third line.
+                <div key={exc.id} className={`rounded-lg border-2 ${style.border} ${style.row} p-4`}>
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-gray-900">{exc.productName}</p>
+                      <span className="text-xs text-gray-500">
+                        {exc.returnNumber} · Qty {exc.quantity} · {new Date(exc.requestedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${style.chip}`}>
+                      {exchangeStatusLabel(exc.status)}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-700">{exc.productName} — Qty {exc.quantity}</p>
 
                   {exc.exchangeVariant && (
                     <p className="text-sm text-gray-700">
@@ -176,6 +200,31 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                   )}
                   {Number(exc.refundTotal) > 0 && (
                     <p className="text-sm text-gray-700">Credit: <span className="font-medium">{money(exc.refundTotal)}</span></p>
+                  )}
+                  {Number(exc.courierCharge) > 0 && (
+                    <p className="text-sm text-gray-700">
+                      Courier charge: <span className="font-medium">{money(exc.courierCharge!)}</span>{' '}
+                      {exc.courierChargePaymentMethod === 'cod' ? (
+                        <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-800">
+                          collect on delivery
+                        </span>
+                      ) : exc.courierChargePaymentMethod === 'online' ? (
+                        <span
+                          className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-800"
+                          title="Left owing on the replacement order — the customer pays it from their orders page"
+                        >
+                          {exc.completedOrder ? 'payable online on the replacement order' : 'paying online'}
+                        </span>
+                      ) : exc.courierChargePaidAt ? (
+                        <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800">
+                          paid from store credit
+                        </span>
+                      ) : (
+                        <span className="rounded bg-gray-200 px-1.5 py-0.5 text-xs font-medium text-gray-700">
+                          from store credit when it ships
+                        </span>
+                      )}
+                    </p>
                   )}
 
                   <p className="text-sm text-gray-600">Reason: {exc.reason}</p>
@@ -235,9 +284,9 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                         </button>
                         <button
                           disabled={busyId === exc.id}
-                          onClick={async () => {
-                            const reason = await showPrompt({ title: 'Reject Exchange Request', message: 'Reason for rejecting this exchange request:', required: true });
-                            if (reason) withBusy(exc.id, () => call(`exchanges/${exc.id}/reject`, { reason }));
+                          onClick={() => {
+                            setRejectingId(rejectingId === exc.id ? null : exc.id);
+                            setRejectReason('');
                           }}
                           className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
                         >
@@ -259,6 +308,49 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                       </button>
                     )}
                   </div>
+
+                  {/* Rejection reason, inline. The customer is shown this
+                      verbatim, so it's required. */}
+                  {rejectingId === exc.id && exc.status === 'requested' && (
+                    <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                      <label className="mb-1 block text-xs font-medium text-gray-700">
+                        Why are you rejecting this? The customer sees this word for word.
+                      </label>
+                      <textarea
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        rows={2}
+                        autoFocus
+                        placeholder="e.g. The video shows the item has been worn — exchanges are for unused items only."
+                        className="w-full rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 placeholder:text-gray-400"
+                      />
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          disabled={busyId === exc.id || !rejectReason.trim()}
+                          title={!rejectReason.trim() ? 'A reason is required' : undefined}
+                          onClick={() =>
+                            withBusy(exc.id, async () => {
+                              await call(`exchanges/${exc.id}/reject`, { reason: rejectReason.trim() });
+                              setRejectingId(null);
+                              setRejectReason('');
+                            })
+                          }
+                          className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Confirm Rejection
+                        </button>
+                        <button
+                          onClick={() => {
+                            setRejectingId(null);
+                            setRejectReason('');
+                          }}
+                          className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Inline inspection, in place of a stacked "notes" prompt
                       dialog — the whole point is that typing notes and

@@ -14,10 +14,16 @@ import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ExchangeRequestModal, { ExchangeSubmission } from '@/components/ExchangeRequestModal';
 import { getExchangePicker } from '@/lib/exchangePicker';
+import {
+  summarizeItemExchanges,
+  exchangeStatusStyle,
+  exchangeStatusLabel,
+} from '@/lib/utils/exchange';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 import ShipBackModal from '@/components/ShipBackModal';
 import { useMarketplaceWebSocket } from '@/contexts/StockWebSocketContext';
+import { useRazorpay } from '@/hooks/useRazorpay';
 import { Order, OrderItem } from '@/types/common';
 import { Loader } from '@/components/ui/Loader';
 
@@ -54,6 +60,13 @@ function OrdersPageInner() {
   const { toast, showToast, hideToast } = useToast();
   const { confirm, showConfirm, hideConfirm } = useConfirm();
   const { subscribeToOrderStatusUpdates } = useMarketplaceWebSocket();
+  const {
+    createOrder: createRazorpayOrder,
+    verifyPayment,
+    openCheckout,
+    razorpayKeyId,
+  } = useRazorpay();
+  const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -121,7 +134,18 @@ function OrdersPageInner() {
   const deepLinkNonce = searchParams.get('n');
   const consumedDeepLinkRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!deepLinkOrderId || orders.length === 0) return;
+    // Forget what was consumed the moment the URL is clean again. Without
+    // this the guard was permanent for as long as the page stayed mounted:
+    // a notification opened its order once, and clicking that same
+    // notification again — the obvious thing to do to look at it a second
+    // time — matched the remembered key and did nothing at all. The guard
+    // only ever needed to cover the render or two between opening the modal
+    // and `router.replace` landing.
+    if (!deepLinkOrderId) {
+      consumedDeepLinkRef.current = null;
+      return;
+    }
+    if (orders.length === 0) return;
     // Keyed on the notification id as well as the order, so clicking the
     // same order's notification a second time reopens it rather than
     // reading as "already consumed".
@@ -303,18 +327,14 @@ function OrdersPageInner() {
    */
   /**
    * How many units of this item are still eligible for an exchange request,
-   * and whether one is already pending — mirrors the backend's
-   * `alreadyRequested + quantity > item.quantity` check in
-   * ExchangesService.request so the button doesn't invite a request the
-   * server will just reject.
+   * whether one is already pending, and whether the item has been closed out
+   * for exchanges altogether — mirrors the checks in
+   * `ExchangesService.request` so no button invites a request the server
+   * will just refuse. Shared with the order details modal so both spell the
+   * same rules the same way (see `lib/utils/exchange`).
    */
-  const getItemExchangeInfo = (order: Order, item: OrderItem) => {
-    const itemReturns = (order.returns || []).filter((r: any) => r.orderItemId === item.id);
-    const active = itemReturns.filter((r: any) => r.status !== 'rejected');
-    const requestedQty = active.reduce((sum: number, r: any) => sum + (r.quantity || 0), 0);
-    const remaining = Math.max(0, (item.quantity || 0) - requestedQty);
-    return { remaining, hasActive: active.length > 0 };
-  };
+  const getItemExchangeInfo = (order: Order, item: OrderItem) =>
+    summarizeItemExchanges(order.returns as any, item);
 
   const handleMarkExchangeShipped = async (returnId: string, trackingNumber?: string) => {
     const token = localStorage.getItem('token');
@@ -329,6 +349,79 @@ function OrdersPageInner() {
     }
     showToast('Marked as shipped — thanks!', 'success');
     fetchOrders();
+  };
+
+  /**
+   * Settles whatever is still owing on an existing card/UPI order — a
+   * checkout payment that was dismissed or declined, or the courier charge
+   * on the replacement order an exchange creates, which an admin places with
+   * nobody at a checkout screen to pay it.
+   *
+   * The amount is never sent from here: the backend charges the order's own
+   * stored `total`, which is already the post-wallet outstanding figure.
+   *
+   * Deliberately *unlike* checkout's version, which releases the order when
+   * the customer dismisses the payment sheet — that order was only just
+   * created and is holding stock nobody has paid for. This one already
+   * exists and is part of the customer's history; walking away from the
+   * payment sheet means "not right now", not "cancel my order".
+   */
+  const handlePayOnline = async (order: Order) => {
+    if (!razorpayKeyId) {
+      showToast('Online payment is unavailable right now. Please try again later.', 'error');
+      return;
+    }
+    setPayingOrderId(order.id);
+    try {
+      const razorpayOrder = await createRazorpayOrder(order.id);
+      openCheckout(
+        {
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          order_id: razorpayOrder.id,
+          name: 'PariBelle',
+          description: `Order #${order.orderNumber}`,
+          prefill: {
+            name: order.shippingName || undefined,
+            contact: order.shippingPhone || undefined,
+          },
+        },
+        async (response) => {
+          try {
+            await verifyPayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              'success',
+            );
+            showToast('Payment received — thank you!', 'success');
+            await fetchOrders();
+          } catch (err) {
+            console.error('Payment verification failed:', err);
+            showToast('We couldn\'t confirm that payment. If you were charged, please contact support.', 'error');
+          } finally {
+            setPayingOrderId(null);
+          }
+        },
+        (error) => {
+          const cancelled = error?.message === 'Payment cancelled by user';
+          if (!cancelled) {
+            console.error('Payment failed:', error);
+            showToast('Payment failed — nothing was charged. You can try again any time.', 'warning');
+          }
+          setPayingOrderId(null);
+        },
+      );
+    } catch (error) {
+      console.error('Error starting payment:', error);
+      showToast(
+        error instanceof Error && error.message.includes('not configured')
+          ? 'Online payment is not configured. Please contact support.'
+          : 'Could not start the payment. Please try again.',
+        'error',
+      );
+      setPayingOrderId(null);
+    }
   };
 
   const getExchangeWindowMessage = (order: Order): string => {
@@ -756,47 +849,153 @@ function OrdersPageInner() {
                     </div>
                   </div>
 
-                  {/* Order Items Preview */}
+                  {/* Order Items Preview — normally the first two items, but
+                      never at the cost of hiding one that's mid-exchange:
+                      the whole point of colouring these rows is to show
+                      which item on a multi-item order is being exchanged,
+                      and that fails if the item in question is the one
+                      behind "+2 more items". */}
                   <div className="border-t pt-4">
-                    <div className="space-y-3">
-                      {order.items?.slice(0, 2).map((item) => {
-                        const productImage = item.productImage || item.product?.featuredImage;
-                        const productSlug = item.product?.slug;
-                        return (
-                          <div key={item.id} className="flex items-center gap-4">
-                            {productImage && (
-                              <Link href={`/products/${productSlug}`} className="flex-shrink-0">
-                                <img
-                                  src={productImage.startsWith('http') ? productImage : `${process.env.NEXT_PUBLIC_API_URL}${productImage}`}
-                                  alt={item.productName}
-                                  className="w-16 h-16 object-cover rounded hover:opacity-80 transition-opacity"
-                                />
-                              </Link>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <Link 
-                                href={`/products/${productSlug}`}
-                                className="font-medium text-foreground hover:text-primary line-clamp-1 block"
+                    {(() => {
+                      const items = order.items || [];
+                      const withExchange = items.filter(
+                        (i) => getItemExchangeInfo(order, i).rows.length > 0,
+                      );
+                      const shown = withExchange.length > 0
+                        ? [...withExchange, ...items.filter((i) => !withExchange.includes(i))].slice(
+                            0,
+                            Math.max(2, withExchange.length),
+                          )
+                        : items.slice(0, 2);
+                      const hidden = items.length - shown.length;
+
+                      return (
+                        <div className="space-y-3">
+                          {shown.map((item) => {
+                            const productImage = item.productImage || item.product?.featuredImage;
+                            const productSlug = item.product?.slug;
+                            const exchange = getItemExchangeInfo(order, item);
+                            const style = exchangeStatusStyle(exchange.primary?.status);
+                            const highlighted = !!exchange.primary;
+                            return (
+                              <div
+                                key={item.id}
+                                className={`flex items-center gap-4 rounded-lg ${
+                                  highlighted ? `${style.row} p-3` : ''
+                                }`}
                               >
-                                {item.productName}
-                              </Link>
-                              <p className="text-sm text-muted-foreground">
-                                Qty: {item.quantity} × {formatPrice(item.price, 'INR')}
-                              </p>
-                            </div>
-                            <p className="font-semibold flex-shrink-0 text-foreground">
-                              {formatPrice(item.price * item.quantity, 'INR')}
+                                {productImage && (
+                                  <Link href={`/products/${productSlug}`} className="flex-shrink-0">
+                                    <img
+                                      src={productImage.startsWith('http') ? productImage : `${process.env.NEXT_PUBLIC_API_URL}${productImage}`}
+                                      alt={item.productName}
+                                      className="w-16 h-16 object-cover rounded hover:opacity-80 transition-opacity"
+                                    />
+                                  </Link>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <Link
+                                    href={`/products/${productSlug}`}
+                                    className="font-medium text-foreground hover:text-primary line-clamp-1 block"
+                                  >
+                                    {item.productName}
+                                  </Link>
+                                  <p className="text-sm text-muted-foreground">
+                                    Qty: {item.quantity} × {formatPrice(item.price, 'INR')}
+                                  </p>
+                                  {highlighted && (
+                                    <span
+                                      className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${style.chip}`}
+                                    >
+                                      {exchangeStatusLabel(exchange.primary?.status)}
+                                      {exchange.rows.length > 1 ? ` · ${exchange.rows.length} requests` : ''}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="font-semibold flex-shrink-0 text-foreground">
+                                  {formatPrice(item.price * item.quantity, 'INR')}
+                                </p>
+                              </div>
+                            );
+                          })}
+                          {hidden > 0 && (
+                            <p className="text-sm text-muted-foreground">
+                              +{hidden} more item{hidden === 1 ? '' : 's'}
                             </p>
-                          </div>
-                        );
-                      })}
-                      {order.items && order.items.length > 2 && (
-                        <p className="text-sm text-muted-foreground">
-                          +{order.items.length - 2} more items
-                        </p>
-                      )}
-                    </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
+
+                  {/* Money still owing on this order, with the way to settle
+                      it right next to the amount. Reached this state either
+                      by dismissing the payment sheet at checkout or via an
+                      exchange's replacement order, which an admin places
+                      with nobody at a checkout screen to pay for it — before
+                      this, neither had any route to payment at all. */}
+                  {order.canPayOnline && (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-900/20">
+                      <p className="text-sm text-amber-900 dark:text-amber-200">
+                        <span className="font-semibold">
+                          {formatPrice(order.total || 0, 'INR')} due
+                        </span>{' '}
+                        on this order — pay by card, UPI or netbanking.
+                      </p>
+                      <button
+                        onClick={() => handlePayOnline(order)}
+                        disabled={payingOrderId === order.id}
+                        className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                      >
+                        {payingOrderId === order.id ? 'Opening payment…' : 'Pay Now'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* What the customer has to do next about an exchange, said
+                      once, in colour, where they will actually see it. The
+                      approval used to be announced only in a notification —
+                      click it once and the pop-up was gone for good, with
+                      nothing on the page to go back to. */}
+                  {(() => {
+                    const approved = (order.returns || []).filter((r: any) => r.status === 'approved');
+                    const inTransit = (order.returns || []).filter((r: any) => r.status === 'in_transit');
+                    if (approved.length === 0 && inTransit.length === 0) return null;
+                    return (
+                      <div className="mt-4 space-y-2">
+                        {approved.map((r: any) => (
+                          <div
+                            key={r.id}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-300 bg-blue-50 p-3 dark:border-blue-700 dark:bg-blue-900/20"
+                          >
+                            <p className="text-sm text-blue-900 dark:text-blue-200">
+                              <span className="font-semibold">Exchange approved</span>
+                              {order.items && order.items.length > 1 ? ` — ${r.productName}` : ''}. Ship the item
+                              back to us and let us know it&apos;s on its way.
+                            </p>
+                            <button
+                              onClick={() => {
+                                setShipBackReturnId(r.id);
+                                setShipBackProductName(r.productName);
+                              }}
+                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                            >
+                              Where do I send it?
+                            </button>
+                          </div>
+                        ))}
+                        {inTransit.map((r: any) => (
+                          <div
+                            key={r.id}
+                            className="rounded-lg border border-indigo-300 bg-indigo-50 p-3 text-sm text-indigo-900 dark:border-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-200"
+                          >
+                            📦 <span className="font-semibold">{r.productName}</span> is on its way back to us —
+                            we&apos;ll inspect it as soon as it arrives.
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {/* Order Actions */}
                   <div className="border-t border-border mt-4 pt-4 flex flex-wrap gap-3">
@@ -854,7 +1053,22 @@ function OrdersPageInner() {
                         its own button, hidden once every unit of that item
                         already has a non-rejected exchange request. */}
                     {order.canExchange && order.items?.map((item) => {
-                      const { remaining, hasActive } = getItemExchangeInfo(order, item);
+                      const { remaining, hasActive, blocked, blockedReason } = getItemExchangeInfo(order, item);
+                      // Closed out for good: an exchange on this item was
+                      // approved and then rejected once we had the item back
+                      // — see `ExchangesService.request`. Said plainly rather
+                      // than by silently dropping the button.
+                      if (blocked) {
+                        return (
+                          <span
+                            key={item.id}
+                            className="px-4 py-2 border border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300 rounded-lg font-medium text-sm flex items-center"
+                            title={blockedReason || undefined}
+                          >
+                            {order.items.length > 1 ? `${item.productName}: ` : ''}No longer exchangeable
+                          </span>
+                        );
+                      }
                       if (remaining <= 0) {
                         return hasActive ? (
                           <span
@@ -895,20 +1109,11 @@ function OrdersPageInner() {
                         Cancel Order
                       </button>
                     )}
-                    {/* Approved exchange — customer still needs to physically
-                        ship the item back before an admin can inspect it. */}
-                    {(order.returns || []).filter((r: any) => r.status === 'approved').map((r: any) => (
-                      <button
-                        key={r.id}
-                        onClick={() => {
-                          setShipBackReturnId(r.id);
-                          setShipBackProductName(r.productName);
-                        }}
-                        className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-medium"
-                      >
-                        Ship Exchange Back
-                      </button>
-                    ))}
+                    {/* The "ship it back" action for an approved exchange
+                        lives in the coloured banner above this row, next to
+                        the sentence explaining why it's needed — repeating
+                        it here as a bare button among six others was the
+                        version nobody found. */}
                   </div>
                 </div>
               </div>

@@ -177,6 +177,13 @@ export function DialogHost() {
       // at z-50) — this can be triggered from inside one of them (e.g. the
       // admin exchange panel's reject/tracking-number prompts), and must
       // always land on top of it, never behind.
+      //
+      // Set as an inline style, not only as `z-[500]`: this file sat outside
+      // Tailwind's `content` globs, so that class was purged and the overlay
+      // rendered *behind* the very modal it was opened from. The glob is
+      // fixed (see tailwind.config.js), and this makes the stacking a
+      // property of the component rather than of the build configuration.
+      style={{ zIndex: 500 }}
       className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150"
       onClick={() => {
         dismiss(current);

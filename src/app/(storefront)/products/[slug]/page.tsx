@@ -673,6 +673,15 @@ export default function ProductDetailPage() {
               const canBeReplacement = !!product.hasVariants && (product.productVariants?.length || 0) > 0;
               const alreadyPicked =
                 !!selectedVariant && exchangePicker.picks.some((p) => p.variantId === selectedVariant.id);
+              // An exchange is a like-for-like-or-less swap: the store takes
+              // no further payment for the goods, so there is no route by
+              // which a dearer replacement could be paid for. The backend
+              // refuses one outright — this stops it being selectable in the
+              // first place, rather than letting it be carried all the way
+              // back to the request modal to fail there.
+              const unitCredit = exchangePicker.itemPrice;
+              const tooExpensive =
+                !!selectedVariant && Number(selectedVariant.price) > unitCredit;
 
               return (
                 <div className="mt-6 rounded-sm border border-[hsl(var(--pb-rose-deep))] bg-[hsl(var(--pb-blush-wash))] p-4">
@@ -681,7 +690,7 @@ export default function ProductDetailPage() {
                     <span className="text-[hsl(var(--pb-rose-deep))]">
                       ₹{exchangePicker.itemCredit.toFixed(2)} credit
                     </span>
-                    .
+                    . Anything up to ₹{unitCredit.toFixed(2)} per item.
                   </p>
 
                   {!canBeReplacement ? (
@@ -694,7 +703,7 @@ export default function ProductDetailPage() {
                       <Button
                         size="md"
                         fullWidth
-                        disabled={outOfStock || needsSelection || alreadyPicked}
+                        disabled={outOfStock || needsSelection || alreadyPicked || tooExpensive}
                         className="mt-3"
                         onClick={handleSelectForExchange}
                       >
@@ -702,23 +711,32 @@ export default function ProductDetailPage() {
                           ? 'Choose a size or option above first'
                           : outOfStock
                             ? 'Sold out — pick another option'
-                            : alreadyPicked
-                              ? 'Added to your exchange ✓'
-                              : 'Select for Exchange'}
+                            : tooExpensive
+                              ? `Costs more than ₹${unitCredit.toFixed(2)}`
+                              : alreadyPicked
+                                ? 'Added to your exchange ✓'
+                                : 'Select for Exchange'}
                       </Button>
+                      {tooExpensive && !needsSelection && (
+                        <p className="mt-2 text-sm text-[hsl(var(--pb-danger))]">
+                          An exchange has to be for something of the same value or less. This option is
+                          ₹{(Number(selectedVariant!.price) - unitCredit).toFixed(2)} above the
+                          ₹{unitCredit.toFixed(2)} you paid — pick a different option, or a different item.
+                        </p>
+                      )}
                       {alreadyPicked && (
                         <p className="mt-2 text-sm text-[hsl(var(--pb-ink-muted))]">
                           Saved. Keep browsing to compare, or use the bar at the bottom of the screen to
                           finish your exchange request.
                         </p>
                       )}
-                      {!alreadyPicked && !needsSelection && selectedVariant && (
+                      {!alreadyPicked && !needsSelection && !tooExpensive && selectedVariant && (
                         <p className="mt-2 text-xs text-[hsl(var(--pb-ink-faint))]">
                           You&apos;re selecting {formatVariantLabel(selectedVariant.variantAttributes) || selectedVariant.sku}
-                          {' — '}₹{Number(selectedVariant.price).toFixed(2)}
-                          {Number(selectedVariant.price) * exchangePicker.quantity > exchangePicker.itemCredit
-                            ? `. That's ₹${(Number(selectedVariant.price) * exchangePicker.quantity - exchangePicker.itemCredit).toFixed(2)} more than your credit — you'll choose how to cover it.`
-                            : '. Fully covered by your credit.'}
+                          {' — '}₹{Number(selectedVariant.price).toFixed(2)}. Fully covered by your credit
+                          {Number(selectedVariant.price) < unitCredit
+                            ? `, with ₹${((unitCredit - Number(selectedVariant.price)) * exchangePicker.quantity).toFixed(2)} left over as store credit.`
+                            : '.'}
                         </p>
                       )}
                     </>

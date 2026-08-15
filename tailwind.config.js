@@ -5,6 +5,13 @@ module.exports = {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    // `src/lib` renders UI too — DialogHost lives in lib/dialog.tsx. Leaving
+    // it out meant any class used *only* there was purged: the global
+    // alert/confirm/prompt overlay lost its `z-[500]`, so it fell back to
+    // `z-auto` and rendered *behind* the z-50 modal that opened it.
+    './src/lib/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/contexts/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/hooks/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   safelist: [
     // Vendor theme classes - prevent Tailwind from purging these
