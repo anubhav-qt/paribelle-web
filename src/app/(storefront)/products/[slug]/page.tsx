@@ -727,22 +727,29 @@ export default function ProductDetailPage() {
               );
             })()}
 
+            {/* Both are switched off for the whole time an exchange "browse
+                for a replacement" session is active — this trip through the
+                store is for picking a replacement, not for buying something
+                new, and a live Add to Bag/Buy Now sitting right under the
+                exchange card invited exactly that mix-up. */}
             <div className="mt-6 flex gap-3">
               <Button
                 size="lg"
                 fullWidth
                 loading={addToCartLoading}
-                disabled={addToCartLoading || needsSelection || outOfStock}
+                disabled={!!exchangePicker || addToCartLoading || needsSelection || outOfStock}
                 onClick={handleAddToCart}
+                title={exchangePicker ? "Finish or cancel your exchange to shop normally again" : undefined}
               >
-                {needsSelection ? 'Select Options' : outOfStock ? 'Sold Out' : 'Add to Bag'}
+                {exchangePicker ? 'Unavailable during exchange' : needsSelection ? 'Select Options' : outOfStock ? 'Sold Out' : 'Add to Bag'}
               </Button>
               <Button
                 size="lg"
                 variant="secondary"
                 fullWidth
-                disabled={addToCartLoading || needsSelection || outOfStock}
+                disabled={!!exchangePicker || addToCartLoading || needsSelection || outOfStock}
                 onClick={handleBuyNow}
+                title={exchangePicker ? "Finish or cancel your exchange to shop normally again" : undefined}
               >
                 Buy Now
               </Button>

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { X, AlertCircle, ShoppingBag, Video, Trash2, Check } from 'lucide-react';
 import { OrderItem } from '@/types/common';
 import {
-  ExchangePick,
   getExchangePicker,
   startExchangePicker,
   removeExchangePick,
@@ -24,20 +23,30 @@ interface Variant {
   price: number;
 }
 
+/** One exchange request as the API expects it — see `ExchangesService.request`. */
+export interface ExchangeSubmission {
+  quantity: number;
+  reason: string;
+  exchangeVariantId?: string;
+  videoUrl: string;
+  customerNotes?: string;
+  topUpPaymentMethod?: 'wallet' | 'cod';
+}
+
 interface ExchangeRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
   orderId: string;
   orderNumber: string;
   item: OrderItem;
-  onSubmit: (data: {
-    quantity: number;
-    reason: string;
-    exchangeVariantId?: string;
-    videoUrl: string;
-    customerNotes?: string;
-    topUpPaymentMethod?: 'wallet' | 'cod';
-  }) => Promise<void>;
+  /**
+   * A different-product exchange can submit more than one request at once —
+   * one per replacement the shopper picked while browsing, since the backend
+   * has no notion of "one exchange, several replacements" (each `Return` row
+   * carries exactly one `exchangeVariantId`). Same-product and credit-only
+   * exchanges always submit a single-item array.
+   */
+  onSubmit: (submissions: ExchangeSubmission[]) => Promise<void>;
 }
 
 const EXCHANGE_REASONS = [
@@ -70,12 +79,27 @@ const MODE_OPTIONS: { value: Mode; label: string; hint: string }[] = [
 ];
 
 /**
+ * Splits `total` units as evenly as possible across `count` picks — e.g. 3
+ * units across 2 picks is [2, 1], not left for the shopper to divide up
+ * themselves. There is no separate "choose your replacement" step: whatever
+ * is in `picks` (added via "Select for Exchange" while browsing) *is* the
+ * replacement set, in full — the picking already happened out on the
+ * storefront.
+ */
+function distributeQuantity(count: number, total: number): number[] {
+  if (count <= 0 || total < count) return [];
+  const base = Math.floor(total / count);
+  const extra = total % count;
+  return Array.from({ length: count }, (_, i) => base + (i < extra ? 1 : 0));
+}
+
+/**
  * Requests an exchange for one order item — three routes (see the
  * implementation plan): a different variant of the same product (free, no
- * money moves), a different product at any price (the original item's value
- * is credited; a pricier replacement needs its gap covered separately — see
- * `topUpPaymentMethod`), or no replacement at all (the full value is
- * credited).
+ * money moves), one or more different products at any price (the original
+ * item's value is credited; a pricier replacement needs its gap covered
+ * separately — see `topUpPaymentMethod`), or no replacement at all (the
+ * full value is credited).
  *
  * A video of the item is mandatory: it is the only evidence the admin has
  * when deciding, and the backend refuses a request without one
@@ -98,8 +122,6 @@ export default function ExchangeRequestModal({
   const [loadingVariants, setLoadingVariants] = useState(false);
   const [selectedVariantId, setSelectedVariantId] = useState('');
 
-  /** The replacement chosen while browsing — product *and* variant together. */
-  const [chosenPick, setChosenPick] = useState<ExchangePick | null>(null);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [topUpPaymentMethod, setTopUpPaymentMethod] = useState<'wallet' | 'cod' | ''>('');
 
@@ -128,7 +150,6 @@ export default function ExchangeRequestModal({
 
     setMode(resuming ? 'different_product' : 'same_product');
     setSelectedVariantId('');
-    setChosenPick(null);
     setTopUpPaymentMethod('');
     setError('');
     setVideoError('');
@@ -164,28 +185,30 @@ export default function ExchangeRequestModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, item.id, item.productId, item.variantId]);
 
-  // A stale top-up choice must not silently carry over to a different
-  // replacement/quantity — reset it whenever what's being priced changes.
-  useEffect(() => {
-    setTopUpPaymentMethod('');
-  }, [chosenPick?.variantId, quantity]);
-
-  // Coming back with exactly one selection, that is obviously the
-  // replacement — making the shopper tick it again taught them nothing. With
-  // several, they picked them to compare, so leave the choice to them.
-  const soleChoice = pickerIsForThisItem && picker?.picks.length === 1 ? picker.picks[0] : null;
-  useEffect(() => {
-    if (mode === 'different_product' && !chosenPick && soleChoice) setChosenPick(soleChoice);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, soleChoice?.variantId]);
+  const picks = pickerIsForThisItem && picker ? picker.picks : [];
 
   const itemUnitPrice = Number(item.price) || 0;
   const itemCredit = itemUnitPrice * quantity;
-  const topUpAmount =
-    mode === 'different_product' && chosenPick
-      ? Math.max(0, Number(((Number(chosenPick.price) - itemUnitPrice) * quantity).toFixed(2)))
-      : 0;
-  const canPayTopUpFromWallet = walletBalance !== null && walletBalance >= topUpAmount;
+
+  // Every pick is used, in full — see `distributeQuantity`. Only invalid
+  // (more picks than units to exchange) when it comes back empty.
+  const pickAssignments = mode === 'different_product' ? distributeQuantity(picks.length, quantity) : [];
+  const tooManyPicks = mode === 'different_product' && picks.length > 0 && picks.length > quantity;
+
+  const pickTopUp = (index: number) => {
+    const qty = pickAssignments[index] || 0;
+    if (qty <= 0) return 0;
+    return Math.max(0, Number(((Number(picks[index].price) - itemUnitPrice) * qty).toFixed(2)));
+  };
+  const totalTopUp = picks.reduce((sum, _p, i) => sum + pickTopUp(i), 0);
+  const canPayTopUpFromWallet = walletBalance !== null && walletBalance >= totalTopUp;
+
+  // A stale top-up choice must not silently carry over to a different set of
+  // replacements or quantity — reset it whenever what's being priced changes.
+  useEffect(() => {
+    setTopUpPaymentMethod('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks.map((p) => p.variantId).join(','), quantity]);
 
   /** "Browse Products" — send the shopper shopping normally instead of asking them to type a product name. */
   const handleBrowseProducts = () => {
@@ -227,7 +250,11 @@ export default function ExchangeRequestModal({
       setVideoName(file.name);
       // Persist immediately — a shopper who uploads and then goes off to
       // browse should not have to upload the same clip twice.
-      if (pickerIsForThisItem) updateExchangeDraft({ videoUrl: data.url, videoName: file.name });
+      // `updateExchangeDraft` is a safe no-op with no session open, so this
+      // doesn't need to gate on `pickerIsForThisItem` (which reflects the
+      // `useExchangePicker` hook and can lag one tick behind a session that
+      // was just created).
+      updateExchangeDraft({ videoUrl: data.url, videoName: file.name });
       setError('');
     } catch (err: any) {
       setVideoError(err?.message || 'Upload failed. Please try again.');
@@ -240,7 +267,10 @@ export default function ExchangeRequestModal({
   const clearVideo = () => {
     setVideoUrl('');
     setVideoName('');
-    if (pickerIsForThisItem) updateExchangeDraft({ videoUrl: '', videoName: '' });
+    // The one place an empty value is a deliberate write, not a stale one —
+    // `updateExchangeDraft` (unlike `startExchangePicker`'s merge) always
+    // applies exactly what it's given.
+    updateExchangeDraft({ videoUrl: '', videoName: '' });
   };
 
   if (!isOpen) return null;
@@ -254,11 +284,15 @@ export default function ExchangeRequestModal({
       setError('Choose which option you want instead.');
       return;
     }
-    if (mode === 'different_product' && !chosenPick) {
-      setError('Choose the replacement you want — browse the store to pick one.');
+    if (mode === 'different_product' && picks.length === 0) {
+      setError('Browse the store and select at least one replacement.');
       return;
     }
-    if (mode === 'different_product' && topUpAmount > 0 && !topUpPaymentMethod) {
+    if (tooManyPicks) {
+      setError(`You've selected ${picks.length} replacements but are only exchanging ${quantity} unit${quantity === 1 ? '' : 's'} — remove some, or raise the quantity below.`);
+      return;
+    }
+    if (mode === 'different_product' && totalTopUp > 0 && !topUpPaymentMethod) {
       setError('Choose how you want to pay the price difference.');
       return;
     }
@@ -271,17 +305,28 @@ export default function ExchangeRequestModal({
     setSubmitting(true);
     setError('');
     try {
-      await onSubmit({
-        quantity,
-        reason: finalReason,
-        exchangeVariantId:
-          mode === 'same_product' ? selectedVariantId :
-          mode === 'different_product' ? chosenPick!.variantId :
-          undefined,
-        videoUrl,
-        customerNotes: customerNotes.trim() || undefined,
-        topUpPaymentMethod: topUpAmount > 0 ? (topUpPaymentMethod as 'wallet' | 'cod') : undefined,
-      });
+      const submissions: ExchangeSubmission[] =
+        mode === 'different_product'
+          ? picks
+              .map((p, i) => ({
+                quantity: pickAssignments[i] || 0,
+                reason: finalReason,
+                exchangeVariantId: p.variantId,
+                videoUrl,
+                customerNotes: customerNotes.trim() || undefined,
+                topUpPaymentMethod: pickTopUp(i) > 0 ? (topUpPaymentMethod as 'wallet' | 'cod') : undefined,
+              }))
+              .filter((s) => s.quantity > 0)
+          : [
+              {
+                quantity,
+                reason: finalReason,
+                exchangeVariantId: mode === 'same_product' ? selectedVariantId : undefined,
+                videoUrl,
+                customerNotes: customerNotes.trim() || undefined,
+              },
+            ];
+      await onSubmit(submissions);
       // Only this item's session — a picker left open for a different item
       // is someone else's half-finished exchange, not ours to end.
       if (pickerIsForThisItem) clearExchangePicker();
@@ -299,8 +344,6 @@ export default function ExchangeRequestModal({
     if (pickerIsForThisItem) clearExchangePicker();
     onClose();
   };
-
-  const picks = pickerIsForThisItem && picker ? picker.picks : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -331,7 +374,7 @@ export default function ExchangeRequestModal({
             </label>
             <p className="mb-2 text-xs text-muted-foreground">
               Record a short clip showing the item and what&apos;s wrong with it. We can&apos;t review an
-              exchange without one. MP4, MOV or WebM, up to 50MB.
+              exchange without one. MP4, MOV or WebM, up to 100MB.
             </p>
 
             {videoUrl ? (
@@ -442,55 +485,53 @@ export default function ExchangeRequestModal({
               <div className="rounded-lg border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground">How this works</p>
                 <ol className="mt-1 list-decimal space-y-0.5 pl-4">
-                  <li>Browse the store and select the item and size you want.</li>
-                  <li>Come back here and submit — we&apos;ll review your video.</li>
+                  <li>Browse the store — hit "Select for Exchange" on anything you want (any number of items).</li>
+                  <li>Come back here and submit — everything you selected is used, no extra picking here.</li>
                   <li>
                     Once we receive and check the returned item, ₹{itemCredit.toFixed(2)} goes to your store
-                    credit and we place the replacement order for you.
+                    credit and we place the replacement order(s) for you.
                   </li>
                 </ol>
               </div>
 
               {picks.length > 0 && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
-                    {chosenPick ? 'Your replacement' : 'Pick your replacement'}
-                  </label>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="block text-sm font-medium text-foreground">
+                      Your replacement{picks.length > 1 ? 's' : ''}
+                    </label>
+                    {picks.length > 1 && (
+                      <span className={`text-xs ${tooManyPicks ? 'text-red-600' : 'text-muted-foreground'}`}>
+                        {quantity} unit{quantity === 1 ? '' : 's'} split across {picks.length}
+                      </span>
+                    )}
+                  </div>
                   <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
-                    {picks.map((p) => {
-                      const selected = chosenPick?.variantId === p.variantId;
-                      const difference = (Number(p.price) - itemUnitPrice) * quantity;
+                    {picks.map((p, i) => {
+                      const assignedQty = pickAssignments[i] || 0;
+                      const difference = pickTopUp(i);
                       return (
-                        <div
-                          key={`${p.productId}:${p.variantId}`}
-                          className={`flex items-center gap-2 p-2 ${selected ? 'bg-primary/5' : ''}`}
-                        >
-                          <button
-                            onClick={() => setChosenPick(selected ? null : p)}
-                            className="flex flex-1 items-center gap-3 text-left"
-                          >
-                            <input type="radio" readOnly checked={selected} name="exchangeReplacement" />
-                            {p.image && <img src={p.image} alt="" className="h-10 w-10 rounded object-cover" />}
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm text-foreground">{p.name}</span>
-                              <span className="block truncate text-xs text-muted-foreground">
-                                {p.variantLabel}
-                              </span>
+                        <div key={`${p.productId}:${p.variantId}`} className="flex items-center gap-3 p-2">
+                          {p.image && <img src={p.image} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />}
+                          <div className="min-w-0 flex-1">
+                            <span className="block truncate text-sm text-foreground">{p.name}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {p.variantLabel}
+                              {!tooManyPicks && picks.length > 1 && ` · Qty ${assignedQty}`}
                             </span>
-                            <span className="shrink-0 text-right">
-                              <span className="block text-sm text-foreground">₹{Number(p.price).toFixed(2)}</span>
+                          </div>
+                          <span className="shrink-0 text-right">
+                            <span className="block text-sm text-foreground">₹{Number(p.price).toFixed(2)}</span>
+                            {!tooManyPicks && (
                               <span
                                 className={`block text-xs ${difference > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}
                               >
                                 {difference > 0 ? `+₹${difference.toFixed(2)}` : 'covered'}
                               </span>
-                            </span>
-                          </button>
+                            )}
+                          </span>
                           <button
-                            onClick={() => {
-                              if (chosenPick?.variantId === p.variantId) setChosenPick(null);
-                              removeExchangePick(p.productId, p.variantId);
-                            }}
+                            onClick={() => removeExchangePick(p.productId, p.variantId)}
                             aria-label={`Remove ${p.name}`}
                             className="shrink-0 text-muted-foreground hover:text-red-600"
                           >
@@ -500,6 +541,12 @@ export default function ExchangeRequestModal({
                       );
                     })}
                   </div>
+                  {tooManyPicks && (
+                    <p className="mt-2 text-xs text-red-600">
+                      That&apos;s more replacements than units you&apos;re exchanging — remove one, or raise the
+                      quantity below.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -516,10 +563,11 @@ export default function ExchangeRequestModal({
                   : "This takes you to the store. Open an item, choose its size, and hit “Select for Exchange” — then use the bar at the bottom of the screen to come back here."}
               </p>
 
-              {topUpAmount > 0 && chosenPick && (
+              {totalTopUp > 0 && !tooManyPicks && (
                 <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
                   <p className="text-sm font-medium text-foreground">
-                    {chosenPick.name} costs ₹{topUpAmount.toFixed(2)} more than what you paid.
+                    {picks.length > 1 ? 'Your selections cost' : 'This costs'} ₹{totalTopUp.toFixed(2)} more than
+                    what you paid.
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     Choose how you&apos;d like to cover the difference.
@@ -557,7 +605,7 @@ export default function ExchangeRequestModal({
                         onChange={() => setTopUpPaymentMethod('cod')}
                       />
                       <span className="text-sm text-foreground">
-                        Pay ₹{topUpAmount.toFixed(2)} on delivery of the replacement
+                        Pay ₹{totalTopUp.toFixed(2)} on delivery of the replacement{picks.length > 1 ? 's' : ''}
                       </span>
                     </label>
                   </div>
@@ -636,13 +684,15 @@ export default function ExchangeRequestModal({
                 ? 'No other option of this item is available — pick a different product or store credit above.'
                 : mode === 'same_product' && !selectedVariantId
                   ? 'Choose which option you want instead.'
-                  : mode === 'different_product' && !chosenPick
-                    ? 'Browse the store and select your replacement.'
-                    : mode === 'different_product' && topUpAmount > 0 && !topUpPaymentMethod
-                      ? 'Choose how to cover the price difference.'
-                      : !(reason === 'other' ? otherReason.trim() : reason)
-                        ? 'Select a reason for the exchange.'
-                        : '';
+                  : mode === 'different_product' && picks.length === 0
+                    ? 'Browse the store and select at least one replacement.'
+                    : tooManyPicks
+                      ? 'Remove a replacement, or raise the quantity, so they match.'
+                      : mode === 'different_product' && totalTopUp > 0 && !topUpPaymentMethod
+                        ? 'Choose how to cover the price difference.'
+                        : !(reason === 'other' ? otherReason.trim() : reason)
+                          ? 'Select a reason for the exchange.'
+                          : '';
             return (
               <>
                 {blocker && <p className="mb-2 text-xs text-muted-foreground">{blocker}</p>}

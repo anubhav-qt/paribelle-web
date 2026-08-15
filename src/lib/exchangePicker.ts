@@ -83,7 +83,8 @@ export interface ExchangePickerContext {
 type Listener = (ctx: ExchangePickerContext | null) => void;
 const listeners = new Set<Listener>();
 
-const pickKey = (p: { productId: string; variantId: string }) => `${p.productId}:${p.variantId}`;
+/** Shared identity for a pick — product *and* variant, since the same dress in two sizes is two distinct candidates. */
+export const pickKey = (p: { productId: string; variantId: string }) => `${p.productId}:${p.variantId}`;
 
 function read(): ExchangePickerContext | null {
   if (typeof window === 'undefined') return null;
@@ -114,16 +115,31 @@ export function getExchangePicker(): ExchangePickerContext | null {
  * already open. Resuming matters: "Browse Products" unconditionally reset
  * `picks` to `[]`, so a shopper who had selected two products and clicked
  * through to look at a third silently lost both.
+ *
+ * The draft merge is additive only: an incoming field is applied *only* when
+ * it is non-empty. This is called every time "Browse Products" is clicked,
+ * passing whatever the modal's local state holds at that instant — if that
+ * local copy is ever momentarily behind what's already saved (e.g. the
+ * modal only just remounted), a plain overwrite would silently blank out an
+ * already-uploaded video. Something already saved here — the video above
+ * all — is worth more than a possibly-stale value from the caller.
  */
 export function startExchangePicker(
   ctx: Omit<ExchangePickerContext, 'picks' | 'draft'> & { draft?: ExchangeDraft },
 ) {
   const current = read();
   const isSameItem = current?.orderItemId === ctx.orderItemId;
+  const base = isSameItem ? current!.draft : {};
+  const incoming = ctx.draft || {};
+  const merged: ExchangeDraft = { ...base };
+  (Object.keys(incoming) as (keyof ExchangeDraft)[]).forEach((key) => {
+    const value = incoming[key];
+    if (value) merged[key] = value;
+  });
   write({
     ...ctx,
     picks: isSameItem ? current!.picks : [],
-    draft: { ...(isSameItem ? current!.draft : {}), ...(ctx.draft || {}) },
+    draft: merged,
   });
 }
 

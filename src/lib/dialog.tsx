@@ -173,7 +173,11 @@ export function DialogHost() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150"
+      // Above every other fixed overlay in the app (product/order modals sit
+      // at z-50) — this can be triggered from inside one of them (e.g. the
+      // admin exchange panel's reject/tracking-number prompts), and must
+      // always land on top of it, never behind.
+      className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150"
       onClick={() => {
         dismiss(current);
         close();

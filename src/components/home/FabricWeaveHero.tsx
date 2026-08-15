@@ -41,25 +41,30 @@ export function FabricWeaveHero() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  // Starts on the bundled defaults (so first paint never waits on the
-  // network) and swaps in whatever an admin has replaced them with, per
-  // slot, once `hero_section_images` resolves — see
-  // src/lib/heroSectionImages.ts for the shared shape with the admin editor.
-  const [images, setImages] = React.useState(DEFAULT_HERO_IMAGES);
+  // Deliberately starts as `null`, not the bundled defaults: rendering the
+  // bundled photos immediately and then swapping in the admin-configured
+  // ones a moment later (once `hero_section_images` resolves) is exactly the
+  // visible "flash" this used to have. Nothing is rendered below until the
+  // fetch settles — the bundled images are only ever used as a per-slot
+  // fallback *within* that resolved value (a slot the admin never touched),
+  // never as a placeholder shown before it.
+  const [images, setImages] = React.useState<HeroSectionImages | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/${HERO_SECTION_IMAGES_KEY}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { value?: Partial<HeroSectionImages> } | null) => {
-        if (cancelled || !data?.value) return;
-        setImages((prev) => ({
-          main: data.value!.main?.url ? { ...prev.main, url: data.value!.main!.url } : prev.main,
-          pink: data.value!.pink?.url ? { ...prev.pink, url: data.value!.pink!.url } : prev.pink,
-          black: data.value!.black?.url ? { ...prev.black, url: data.value!.black!.url } : prev.black,
-        }));
+        if (cancelled) return;
+        setImages({
+          main: data?.value?.main?.url ? data.value.main : DEFAULT_HERO_IMAGES.main,
+          pink: data?.value?.pink?.url ? data.value.pink : DEFAULT_HERO_IMAGES.pink,
+          black: data?.value?.black?.url ? data.value.black : DEFAULT_HERO_IMAGES.black,
+        });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setImages(DEFAULT_HERO_IMAGES);
+      });
     return () => {
       cancelled = true;
     };
@@ -263,28 +268,36 @@ export function FabricWeaveHero() {
               style={{ aspectRatio: '4 / 5', borderRadius: BLOB_LEFT_OUTER }}
             >
               <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_LEFT_INNER }}>
-                <Image
-                  src={resolveHeroImageUrl(images.pink.url, getImageUrl)}
-                  alt="A coral-pink block-print anarkali kurta set with a matching dupatta"
-                  fill
-                  quality={85}
-                  // Deliberately ~1.7x the card's actual rendered width
-                  // (max ~245px), not a tight fit: on first paint the
-                  // browser picks a srcset candidate from its earliest,
-                  // roughest guess at layout, and a snug `sizes` value
-                  // came out visibly soft until something (e.g. a zoom
-                  // change) forced a re-pick. The headroom means even a
-                  // bad first guess still lands on a large-enough image.
-                  // 1px below `lg` because the card isn't rendered there —
-                  // it keeps the browser from pulling a full-size candidate
-                  // for something nobody sees.
-                  sizes="(min-width: 1024px) 420px, 1px"
-                  // Full-body shot cropped tight for a small card: framed a
-                  // little below face height so the block-print bodice — the
-                  // point of this card — reads clearly instead of the crop
-                  // landing on empty fabric below the waist.
-                  className="object-cover object-[50%_28%]"
-                />
+                {/* The mat/frame around each photo is always present, so the
+                    layout never shifts — only the photo inside waits on
+                    `images`, showing a plain pulse rather than a bundled
+                    stand-in while it does. */}
+                {images ? (
+                  <Image
+                    src={resolveHeroImageUrl(images.pink.url, getImageUrl)}
+                    alt="A coral-pink block-print anarkali kurta set with a matching dupatta"
+                    fill
+                    quality={85}
+                    // Deliberately ~1.7x the card's actual rendered width
+                    // (max ~245px), not a tight fit: on first paint the
+                    // browser picks a srcset candidate from its earliest,
+                    // roughest guess at layout, and a snug `sizes` value
+                    // came out visibly soft until something (e.g. a zoom
+                    // change) forced a re-pick. The headroom means even a
+                    // bad first guess still lands on a large-enough image.
+                    // 1px below `lg` because the card isn't rendered there —
+                    // it keeps the browser from pulling a full-size candidate
+                    // for something nobody sees.
+                    sizes="(min-width: 1024px) 420px, 1px"
+                    // Full-body shot cropped tight for a small card: framed a
+                    // little below face height so the block-print bodice — the
+                    // point of this card — reads clearly instead of the crop
+                    // landing on empty fabric below the waist.
+                    className="object-cover object-[50%_28%]"
+                  />
+                ) : (
+                  <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
+                )}
               </div>
             </div>
 
@@ -296,18 +309,22 @@ export function FabricWeaveHero() {
               style={{ aspectRatio: '4 / 5', borderRadius: BLOB_RIGHT_OUTER }}
             >
               <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_RIGHT_INNER }}>
-                <Image
-                  src={resolveHeroImageUrl(images.black.url, getImageUrl)}
-                  alt="A black kurta with floral scalloped embroidery on the hem and cuffs"
-                  fill
-                  quality={85}
-                  // Same headroom rationale as the pink_3 card above.
-                  sizes="(min-width: 1024px) 420px, 1px"
-                  // Held a touch higher in frame than the left card so the
-                  // scalloped hem embroidery — this garment's distinguishing
-                  // detail — stays inside the crop alongside the face.
-                  className="object-cover object-[50%_32%]"
-                />
+                {images ? (
+                  <Image
+                    src={resolveHeroImageUrl(images.black.url, getImageUrl)}
+                    alt="A black kurta with floral scalloped embroidery on the hem and cuffs"
+                    fill
+                    quality={85}
+                    // Same headroom rationale as the pink_3 card above.
+                    sizes="(min-width: 1024px) 420px, 1px"
+                    // Held a touch higher in frame than the left card so the
+                    // scalloped hem embroidery — this garment's distinguishing
+                    // detail — stays inside the crop alongside the face.
+                    className="object-cover object-[50%_32%]"
+                  />
+                ) : (
+                  <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
+                )}
               </div>
             </div>
 
@@ -322,20 +339,24 @@ export function FabricWeaveHero() {
               style={{ borderRadius: BLOB_OUTER }}
             >
               <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_INNER }}>
-                <Image
-                  src={resolveHeroImageUrl(images.main.url, getImageUrl)}
-                  alt="A PariBelle kurti, styled with silver jhumka earrings"
-                  fill
-                  priority
-                  quality={85}
-                  // Same headroom rationale as the two side cards: the
-                  // card's actual rendered width tops out around 380px, but
-                  // asking for ~640/480px means the very first srcset pick
-                  // is already sharp instead of depending on a later
-                  // re-evaluation (e.g. a browser zoom change) to correct it.
-                  sizes="(min-width: 1024px) 640px, 480px"
-                  className="object-cover object-top"
-                />
+                {images ? (
+                  <Image
+                    src={resolveHeroImageUrl(images.main.url, getImageUrl)}
+                    alt="A PariBelle kurti, styled with silver jhumka earrings"
+                    fill
+                    priority
+                    quality={85}
+                    // Same headroom rationale as the two side cards: the
+                    // card's actual rendered width tops out around 380px, but
+                    // asking for ~640/480px means the very first srcset pick
+                    // is already sharp instead of depending on a later
+                    // re-evaluation (e.g. a browser zoom change) to correct it.
+                    sizes="(min-width: 1024px) 640px, 480px"
+                    className="object-cover object-top"
+                  />
+                ) : (
+                  <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
+                )}
               </div>
             </div>
           </div>

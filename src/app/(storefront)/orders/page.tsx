@@ -12,7 +12,7 @@ import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { useToast, useConfirm } from '@/hooks/useDialogs';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import ExchangeRequestModal from '@/components/ExchangeRequestModal';
+import ExchangeRequestModal, { ExchangeSubmission } from '@/components/ExchangeRequestModal';
 import { getExchangePicker } from '@/lib/exchangePicker';
 import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
@@ -402,43 +402,80 @@ function OrdersPageInner() {
     }
   };
 
-  const handleExchangeRequest = async (data: {
-    quantity: number;
-    reason: string;
-    exchangeVariantId?: string;
-    /** Required by the API — see ExchangesService.request. */
-    videoUrl: string;
-    customerNotes?: string;
-    topUpPaymentMethod?: 'wallet' | 'cod';
-  }) => {
+  /**
+   * A different-product exchange can arrive as several submissions — one per
+   * replacement the shopper picked while browsing (see ExchangeRequestModal
+   * and ExchangeSubmission) — since the backend has no concept of "one
+   * exchange, several replacements". Submitted sequentially, not in
+   * parallel: each one's "how much is left of this item to exchange" check
+   * is computed server-side from what's already been requested, so a later
+   * submission must see the earlier one's row already committed.
+   */
+  const handleExchangeRequest = async (submissions: ExchangeSubmission[]) => {
     if (!orderToAction || !itemForExchange) {
       showToast('No order selected', 'error');
       return;
     }
 
     const token = localStorage.getItem('token');
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderToAction.id}/items/${itemForExchange.id}/exchange`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
+    const results: { ok: boolean; message?: string }[] = [];
+    for (const data of submissions) {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${orderToAction.id}/items/${itemForExchange.id}/exchange`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(data),
+          }
+        );
+        if (response.ok) {
+          results.push({ ok: true });
+        } else {
+          const error = await response.json().catch(() => ({}));
+          results.push({ ok: false, message: error.message || 'Failed to submit exchange request' });
+        }
+      } catch {
+        results.push({ ok: false, message: 'Network error — check your connection and try again.' });
       }
-    );
+    }
 
-    if (response.ok) {
-      showToast('Exchange request submitted successfully', 'success');
+    const succeeded = results.filter((r) => r.ok).length;
+    const failed = results.length - succeeded;
+
+    if (failed === 0) {
+      showToast(
+        submissions.length > 1 ? `${succeeded} exchange requests submitted successfully` : 'Exchange request submitted successfully',
+        'success'
+      );
       setShowExchangeModal(false);
       setOrderToAction(null);
       setItemForExchange(null);
       fetchOrders();
-    } else {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to submit exchange request');
+      return;
     }
+
+    if (succeeded > 0) {
+      // Partial failure: don't throw (the modal would otherwise treat this
+      // as a total failure and keep the picks/session around for a retry,
+      // which would resubmit the ones that already went through). Close and
+      // report the split instead.
+      showToast(`${succeeded} of ${submissions.length} exchange requests went through — ${failed} failed`, 'warning');
+      const firstError = results.find((r) => !r.ok)?.message;
+      if (firstError) showToast(firstError, 'error');
+      setShowExchangeModal(false);
+      setOrderToAction(null);
+      setItemForExchange(null);
+      fetchOrders();
+      return;
+    }
+
+    // Nothing went through — throw so the modal shows the error inline and
+    // keeps the form (and any browsing session) intact for a retry.
+    throw new Error(results[0]?.message || 'Failed to submit exchange request');
   };
 
   const getStatusIcon = (status: string) => {

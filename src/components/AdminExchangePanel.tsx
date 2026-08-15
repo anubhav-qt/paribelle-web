@@ -65,6 +65,9 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // Inline inspection notes, keyed by exchange id — typed directly into the
+  // card rather than a separate prompt dialog stacked on top of this one.
+  const [inspectionNotes, setInspectionNotes] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -242,30 +245,6 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                         </button>
                       </>
                     )}
-                    {exc.status === 'in_transit' && (
-                      <>
-                        <button
-                          disabled={busyId === exc.id}
-                          onClick={async () => {
-                            const notes = (await showPrompt({ title: 'Passed Inspection', message: 'Inspection notes (optional):' })) || undefined;
-                            withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'passed', notes }));
-                          }}
-                          className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
-                        >
-                          Passed Inspection
-                        </button>
-                        <button
-                          disabled={busyId === exc.id}
-                          onClick={async () => {
-                            const notes = (await showPrompt({ title: 'Failed Inspection', message: 'Why did it fail inspection?' })) || undefined;
-                            withBusy(exc.id, () => call(`exchanges/${exc.id}/inspection`, { result: 'failed', notes }));
-                          }}
-                          className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          Failed Inspection
-                        </button>
-                      </>
-                    )}
                     {/* Route 1: same product, different variant — ships directly off this row. */}
                     {exc.status === 'received' && exc.inspectionResult === 'passed' && exc.exchangeVariant && !isDifferentProduct && (
                       <button
@@ -279,9 +258,70 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                         Ship Replacement
                       </button>
                     )}
-                    {/* Route 2: different product — the credit was already issued; place the actual replacement order, or bail to credit-only. */}
-                    {awaitingReplacementDecision && isDifferentProduct && (
-                      <>
+                  </div>
+
+                  {/* Inline inspection, in place of a stacked "notes" prompt
+                      dialog — the whole point is that typing notes and
+                      recording the result happen in one place, on this card,
+                      not behind a second modal on top of this one. */}
+                  {exc.status === 'in_transit' && (
+                    <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+                      <label className="mb-1 block text-xs font-medium text-gray-700">
+                        Inspection notes
+                      </label>
+                      <textarea
+                        value={inspectionNotes[exc.id] || ''}
+                        onChange={(e) => setInspectionNotes((prev) => ({ ...prev, [exc.id]: e.target.value }))}
+                        rows={2}
+                        placeholder="What did you find when you opened the parcel?"
+                        className="w-full rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 placeholder:text-gray-400"
+                      />
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          disabled={busyId === exc.id}
+                          onClick={() =>
+                            withBusy(exc.id, () =>
+                              call(`exchanges/${exc.id}/inspection`, {
+                                result: 'passed',
+                                notes: inspectionNotes[exc.id]?.trim() || undefined,
+                              }),
+                            )
+                          }
+                          className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
+                        >
+                          Passed Inspection
+                        </button>
+                        <button
+                          disabled={busyId === exc.id || !inspectionNotes[exc.id]?.trim()}
+                          title={!inspectionNotes[exc.id]?.trim() ? 'Say why it failed — the customer sees this note' : undefined}
+                          onClick={() =>
+                            withBusy(exc.id, () =>
+                              call(`exchanges/${exc.id}/inspection`, {
+                                result: 'failed',
+                                notes: inspectionNotes[exc.id]!.trim(),
+                              }),
+                            )
+                          }
+                          className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Failed Inspection
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Route 2: different product — the credit was already
+                      issued; place the actual replacement order, or bail to
+                      credit-only. Directly below where Passed Inspection was
+                      just clicked, in the same card — the next step to take,
+                      not something to go find via a notification. */}
+                  {awaitingReplacementDecision && isDifferentProduct && (
+                    <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
+                      <p className="mb-2 text-xs font-medium text-green-800">
+                        ✓ Inspection passed — the customer&apos;s credit is issued. Next: place their replacement,
+                        or settle as credit only.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
                         <button
                           disabled={busyId === exc.id}
                           onClick={() => withBusy(exc.id, () => call(`exchanges/${exc.id}/create-replacement-order`))}
@@ -297,9 +337,9 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
                         >
                           Settle as Credit Instead
                         </button>
-                      </>
-                    )}
-                  </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })
