@@ -220,10 +220,6 @@ export function Header() {
               to shrink. */}
           <Link
             href="/"
-            // `data-pb-wordmark` is the landing target SplashIntro measures
-            // and flies its copy of the wordmark into — keep it on whichever
-            // element actually renders the text.
-            data-pb-wordmark
             className={`${PILL_ITEM} absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap px-3 py-1 font-logo text-2xl tracking-wide text-[hsl(var(--pb-ink))] hover:text-[hsl(var(--pb-rose-deep))] md:text-3xl`}
           >
             PariBelle

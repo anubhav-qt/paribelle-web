@@ -8,6 +8,20 @@
   * {
     @apply border-border;
   }
+  /**
+   * Keeps the scrollbar's track reserved whether or not a scrollbar is
+   * currently drawn, so locking scroll never changes the width of the
+   * viewport. Without it, anything that sets `overflow: hidden` — the
+   * opening curtain (SplashIntro), the cart Drawer, Modal — removes the
+   * scrollbar, widens the page, and shifts the entire layout sideways as it
+   * opens and again as it closes.
+   *
+   * Only affects desktop-style classic scrollbars; mobile overlay
+   * scrollbars take no space to begin with, so nothing changes there.
+   */
+  html {
+    scrollbar-gutter: stable;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--marketplace-font, var(--font-sans));
@@ -625,14 +639,3 @@
   }
 }
 
-
-/**
- * While SplashIntro's curtain is up, its own copy of the wordmark is the one
- * flying into place — the real one in the header stays hidden until that
- * copy lands exactly on top of it, so the two never render doubled as the
- * blush field dissolves. `visibility` rather than `display` so the header
- * keeps its layout and the copy has a stable rect to measure against.
- */
-.pb-intro-active [data-pb-wordmark] {
-  visibility: hidden;
-}
