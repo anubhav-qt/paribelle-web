@@ -625,3 +625,14 @@
   }
 }
 
+
+/**
+ * While SplashIntro's curtain is up, its own copy of the wordmark is the one
+ * flying into place — the real one in the header stays hidden until that
+ * copy lands exactly on top of it, so the two never render doubled as the
+ * blush field dissolves. `visibility` rather than `display` so the header
+ * keeps its layout and the copy has a stable rect to measure against.
+ */
+.pb-intro-active [data-pb-wordmark] {
+  visibility: hidden;
+}

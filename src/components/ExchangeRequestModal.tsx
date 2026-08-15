@@ -12,6 +12,7 @@ import {
   updateExchangeDraft,
   useExchangePicker,
   formatVariantLabel,
+  setExchangeModalOpen,
 } from '@/lib/exchangePicker';
 
 interface Variant {
@@ -136,6 +137,15 @@ export default function ExchangeRequestModal({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Tells ExchangePickerBar to stand down while this is open — its fixed
+  // bottom bar otherwise sits over this modal's sticky footer, hiding the
+  // Submit button the shopper came back here to press.
+  useEffect(() => {
+    if (!isOpen) return;
+    setExchangeModalOpen(true);
+    return () => setExchangeModalOpen(false);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -173,6 +173,37 @@ export function clearExchangePicker() {
   write(null);
 }
 
+/**
+ * Whether the exchange request modal is currently on screen.
+ *
+ * Lives here, next to the rest of this flow's cross-component state, purely
+ * so `ExchangePickerBar` can get out of the way: the bar is fixed to the
+ * bottom of the viewport and was covering the modal's own sticky footer —
+ * i.e. the Submit button the shopper came back to press. Deliberately not
+ * part of `ExchangePickerContext`: this is ephemeral UI state, and writing
+ * it to sessionStorage would leave the bar hidden after a reload.
+ */
+let modalOpen = false;
+const modalListeners = new Set<(open: boolean) => void>();
+
+export function setExchangeModalOpen(open: boolean) {
+  if (modalOpen === open) return;
+  modalOpen = open;
+  modalListeners.forEach((l) => l(open));
+}
+
+export function useExchangeModalOpen(): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    setOpen(modalOpen);
+    modalListeners.add(setOpen);
+    return () => {
+      modalListeners.delete(setOpen);
+    };
+  }, []);
+  return open;
+}
+
 /** Live-updating view of the current picker context, or null when no session is active. */
 export function useExchangePicker(): ExchangePickerContext | null {
   // Initialised from storage on the first client render rather than in an

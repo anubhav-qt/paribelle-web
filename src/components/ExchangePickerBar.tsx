@@ -3,7 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, X, ChevronUp, ChevronDown, Wallet } from 'lucide-react';
-import { useExchangePicker, clearExchangePicker, removeExchangePick } from '@/lib/exchangePicker';
+import {
+  useExchangePicker,
+  clearExchangePicker,
+  removeExchangePick,
+  useExchangeModalOpen,
+} from '@/lib/exchangePicker';
 
 /**
  * Persistent bar shown across the storefront while a "browse for an exchange
@@ -22,6 +27,7 @@ import { useExchangePicker, clearExchangePicker, removeExchangePick } from '@/li
  */
 export function ExchangePickerBar() {
   const ctx = useExchangePicker();
+  const modalOpen = useExchangeModalOpen();
   const router = useRouter();
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -41,7 +47,9 @@ export function ExchangePickerBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx?.orderItemId]);
 
-  if (!ctx) return null;
+  // Once the shopper is back in the request modal the bar has done its job —
+  // and staying up would only cover the modal's Submit button.
+  if (!ctx || modalOpen) return null;
 
   const picks = ctx.picks;
 
@@ -84,62 +92,65 @@ export function ExchangePickerBar() {
           </div>
         )}
 
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 md:px-6">
-          {/* The item — a face to the bar, not just a line of text among others. */}
-          <div className="flex min-w-0 items-center gap-3">
-            {ctx.itemImage ? (
-              <img
-                src={ctx.itemImage}
-                alt=""
-                className="h-11 w-11 shrink-0 rounded-sm border border-[hsl(var(--pb-linen))] object-cover"
-              />
-            ) : (
-              <div className="h-11 w-11 shrink-0 rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-blush-wash))]" />
-            )}
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[hsl(var(--pb-ink-faint))]">
-                Exchanging
-              </p>
-              <p className="truncate font-display text-base italic leading-tight text-[hsl(var(--pb-ink))]">
-                {ctx.quantity > 1 ? `${ctx.quantity} × ` : ''}
-                {ctx.itemName}
-              </p>
+        {/* Two halves: everything *about* the exchange on the left, the two
+            things you can *do* on the right. `items-start` so the actions sit
+            on the same line as the product name rather than drifting to the
+            vertical middle of a left column that is two rows tall. */}
+        <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-4 py-3 md:px-6">
+          <div className="min-w-0 flex-1">
+            {/* Row 1: the item — a face to the bar, not just a line of text. */}
+            <div className="flex min-w-0 items-center gap-3">
+              {ctx.itemImage ? (
+                <img
+                  src={ctx.itemImage}
+                  alt=""
+                  className="h-11 w-11 shrink-0 rounded-sm border border-[hsl(var(--pb-linen))] object-cover"
+                />
+              ) : (
+                <div className="h-11 w-11 shrink-0 rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-blush-wash))]" />
+              )}
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[hsl(var(--pb-ink-faint))]">
+                  Exchanging
+                </p>
+                <p className="truncate font-display text-base italic leading-tight text-[hsl(var(--pb-ink))]">
+                  {ctx.quantity > 1 ? `${ctx.quantity} × ` : ''}
+                  {ctx.itemName}
+                </p>
+              </div>
+            </div>
+
+            {/* Row 2: the figures and the hint, indented to line up under the
+                product name (image 2.75rem + gap 0.75rem) rather than under
+                the thumbnail. Quiet stat chips instead of run-on inline text,
+                so each reads on its own. */}
+            <div className="mt-2 flex flex-wrap items-center gap-2 sm:pl-14">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-shell))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))]">
+                Credit <strong className="font-medium text-[hsl(var(--pb-rose-deep))]">₹{ctx.itemCredit.toFixed(2)}</strong>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-shell))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))]">
+                <Wallet className="h-3 w-3" />
+                {walletBalance === null ? '…' : `₹${walletBalance.toFixed(2)}`}
+              </span>
+              {picks.length > 0 ? (
+                <button
+                  onClick={() => setExpanded((v) => !v)}
+                  className="inline-flex items-center gap-1 rounded-full border border-[hsl(var(--pb-rose))] bg-[hsl(var(--pb-blush-wash))] px-3 py-1 text-xs font-medium text-[hsl(var(--pb-rose-deep))] hover:bg-[hsl(var(--pb-blush))]"
+                >
+                  {picks.length} selected
+                  {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+                </button>
+              ) : (
+                <p className="text-xs italic text-[hsl(var(--pb-ink-faint))]">
+                  Open any item and choose a size to select it
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="hidden h-9 w-px shrink-0 bg-[hsl(var(--pb-linen))] sm:block" />
-
-          {/* Figures as quiet stat chips rather than run-on inline text —
-              each one reads on its own instead of blurring into the next. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-shell))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))]">
-              Credit <strong className="font-medium text-[hsl(var(--pb-rose-deep))]">₹{ctx.itemCredit.toFixed(2)}</strong>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-shell))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))]">
-              <Wallet className="h-3 w-3" />
-              {walletBalance === null ? '…' : `₹${walletBalance.toFixed(2)}`}
-            </span>
-            {picks.length > 0 && (
-              <button
-                onClick={() => setExpanded((v) => !v)}
-                className="inline-flex items-center gap-1 rounded-full border border-[hsl(var(--pb-rose))] bg-[hsl(var(--pb-blush-wash))] px-3 py-1 text-xs font-medium text-[hsl(var(--pb-rose-deep))] hover:bg-[hsl(var(--pb-blush))]"
-              >
-                {picks.length} selected
-                {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
-              </button>
-            )}
-          </div>
-
-          {picks.length === 0 && (
-            <p className="text-xs italic text-[hsl(var(--pb-ink-faint))]">
-              Open any item and choose a size to select it
-            </p>
-          )}
-
-          {/* Pushes the actions to the far edge on wide screens; wraps below
-              the info on narrow ones rather than crushing everything into
-              one unreadable line. */}
-          <div className="ml-auto flex items-center gap-2">
+          {/* Right half: just the two actions, centred against the item row so
+              they sit level with the product name. */}
+          <div className="flex h-11 shrink-0 items-center gap-2">
             <button
               onClick={() => router.push('/orders?resumeExchange=1')}
               className="flex items-center gap-2 whitespace-nowrap rounded-full bg-[hsl(var(--pb-rose-deep))] px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-white shadow-pb-sm transition-colors hover:bg-[hsl(var(--pb-rose-ink))]"
