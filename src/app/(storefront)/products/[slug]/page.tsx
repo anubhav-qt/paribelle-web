@@ -26,7 +26,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { usePolicies } from '@/contexts/PoliciesContext';
 import { showAlert } from '@/lib/dialog';
-import { useExchangePicker, addExchangePick } from '@/lib/exchangePicker';
+import { useExchangePicker, addExchangePick, formatVariantLabel } from '@/lib/exchangePicker';
 import { cn } from '@/lib/utils';
 import { Product as BaseProduct, ProductVariant } from '@/types/product';
 
@@ -373,15 +373,25 @@ export default function ProductDetailPage() {
     if (handleAddToCart()) router.push('/checkout');
   };
 
-  /** Only reachable while an exchange "browse for a replacement" session is active — see ExchangePickerBar. */
+  /**
+   * Only reachable while an exchange "browse for a replacement" session is
+   * active — see ExchangePickerBar. Records the *variant* the shopper picked,
+   * not just the product: an exchange swaps one variant for another, and
+   * making them re-choose the size back in the exchange modal (from a bare
+   * dropdown of raw attributes) was the flow's worst step.
+   */
   const handleSelectForExchange = () => {
-    if (!product) return;
-    const price = Number(selectedVariant?.price ?? selectedVariation?.price ?? product.price);
+    if (!product || !selectedVariant) return;
+    const price = Number(selectedVariant.price ?? product.price);
     addExchangePick({
       productId: product.id,
+      productSlug: product.slug,
       name: product.name,
+      variantId: selectedVariant.id,
+      variantLabel: formatVariantLabel(selectedVariant.variantAttributes) || selectedVariant.sku,
       price: Number.isFinite(price) ? price : 0,
-      image: product.images?.[0] || product.featuredImage || undefined,
+      image: selectedVariant.images?.[0] || product.images?.[0] || product.featuredImage || undefined,
+      stockQuantity: selectedVariant.stockQuantity,
     });
   };
 
@@ -654,26 +664,68 @@ export default function ProductDetailPage() {
                 )}
             </div>
 
-            {exchangePicker && product && (
-              <div className="mt-6 rounded-sm border border-[hsl(var(--pb-rose-deep))] bg-[hsl(var(--pb-blush-wash))] p-4">
-                <p className="text-sm text-[hsl(var(--pb-ink))]">
-                  Picking a replacement for <strong>{exchangePicker.itemName}</strong>.
-                </p>
-                <Button
-                  size="md"
-                  fullWidth
-                  disabled={outOfStock || needsSelection}
-                  className="mt-3"
-                  onClick={handleSelectForExchange}
-                >
-                  {needsSelection
-                    ? 'Choose an option first'
-                    : exchangePicker.picks.some((p) => p.productId === product.id)
-                      ? 'Selected ✓ — pick another, or return to your exchange'
-                      : 'Select for Exchange'}
-                </Button>
-              </div>
-            )}
+            {exchangePicker && product && (() => {
+              // An exchange swaps one variant for another, so a product with
+              // no variants at all cannot be a replacement. Saying so here —
+              // rather than letting it be picked and then dead-ending in the
+              // exchange modal with an empty, unselectable option list — is
+              // the whole point of this branch.
+              const canBeReplacement = !!product.hasVariants && (product.productVariants?.length || 0) > 0;
+              const alreadyPicked =
+                !!selectedVariant && exchangePicker.picks.some((p) => p.variantId === selectedVariant.id);
+
+              return (
+                <div className="mt-6 rounded-sm border border-[hsl(var(--pb-rose-deep))] bg-[hsl(var(--pb-blush-wash))] p-4">
+                  <p className="text-sm text-[hsl(var(--pb-ink))]">
+                    Picking a replacement for <strong>{exchangePicker.itemName}</strong> —{' '}
+                    <span className="text-[hsl(var(--pb-rose-deep))]">
+                      ₹{exchangePicker.itemCredit.toFixed(2)} credit
+                    </span>
+                    .
+                  </p>
+
+                  {!canBeReplacement ? (
+                    <p className="mt-2 text-sm text-[hsl(var(--pb-ink-muted))]">
+                      This item can&apos;t be chosen as a replacement — it has no size or colour options to
+                      exchange into. Pick something else, or return to your request and take store credit instead.
+                    </p>
+                  ) : (
+                    <>
+                      <Button
+                        size="md"
+                        fullWidth
+                        disabled={outOfStock || needsSelection || alreadyPicked}
+                        className="mt-3"
+                        onClick={handleSelectForExchange}
+                      >
+                        {needsSelection
+                          ? 'Choose a size or option above first'
+                          : outOfStock
+                            ? 'Sold out — pick another option'
+                            : alreadyPicked
+                              ? 'Added to your exchange ✓'
+                              : 'Select for Exchange'}
+                      </Button>
+                      {alreadyPicked && (
+                        <p className="mt-2 text-sm text-[hsl(var(--pb-ink-muted))]">
+                          Saved. Keep browsing to compare, or use the bar at the bottom of the screen to
+                          finish your exchange request.
+                        </p>
+                      )}
+                      {!alreadyPicked && !needsSelection && selectedVariant && (
+                        <p className="mt-2 text-xs text-[hsl(var(--pb-ink-faint))]">
+                          You&apos;re selecting {formatVariantLabel(selectedVariant.variantAttributes) || selectedVariant.sku}
+                          {' — '}₹{Number(selectedVariant.price).toFixed(2)}
+                          {Number(selectedVariant.price) * exchangePicker.quantity > exchangePicker.itemCredit
+                            ? `. That's ₹${(Number(selectedVariant.price) * exchangePicker.quantity - exchangePicker.itemCredit).toFixed(2)} more than your credit — you'll choose how to cover it.`
+                            : '. Fully covered by your credit.'}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="mt-6 flex gap-3">
               <Button

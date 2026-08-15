@@ -13,15 +13,55 @@ import { useEffect, useState } from 'react';
  * bar, and the product page reads it to offer a "Select for Exchange" action
  * in place of Add to Bag while it's active. sessionStorage (not localStorage)
  * so an abandoned pick doesn't linger into an unrelated later session.
+ *
+ * A pick carries the exact *variant* the shopper chose, not just the
+ * product. The backend exchanges one variant for another
+ * (`ExchangesService.request` needs an `exchangeVariantId`), so a pick
+ * without one is not something that can actually be submitted — and asking
+ * the shopper to re-pick the size in a bare dropdown after they already
+ * chose it on the product page was the single most confusing step in this
+ * flow.
+ *
+ * `draft` carries the half-filled form across the round trip. Going off to
+ * browse used to wipe the reason, quantity, notes and the uploaded video,
+ * so shoppers came back to a blank form and had to start over.
  */
 
 const STORAGE_KEY = 'pb_exchange_picker';
 
+/**
+ * "Size: M · Colour: White" — one spelling of a variant's options, shared by
+ * everything in the exchange flow so the label on the product page, in the
+ * picker bar and in the request modal all read the same.
+ */
+export function formatVariantLabel(attrs?: Record<string, string> | null): string {
+  return Object.entries(attrs || {})
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(' · ');
+}
+
 export interface ExchangePick {
   productId: string;
+  productSlug?: string;
   name: string;
+  /** The chosen variant — required; see the note above. */
+  variantId: string;
+  /** Human-readable options, e.g. "Size: M · Colour: White". */
+  variantLabel: string;
+  /** Unit price of that variant. */
   price: number;
   image?: string;
+  stockQuantity?: number;
+}
+
+/** The exchange form's in-progress answers, preserved across browsing. */
+export interface ExchangeDraft {
+  reason?: string;
+  otherReason?: string;
+  customerNotes?: string;
+  /** Uploaded ahead of submission — see `POST upload/exchange-video`. */
+  videoUrl?: string;
+  videoName?: string;
 }
 
 export interface ExchangePickerContext {
@@ -29,19 +69,30 @@ export interface ExchangePickerContext {
   orderNumber: string;
   orderItemId: string;
   itemName: string;
-  /** What this item's return value credits — quantity already applied. */
+  itemImage?: string;
+  /** Unit price of the item being exchanged. */
+  itemPrice: number;
+  /** How many units are being exchanged — fixed when browsing starts. */
+  quantity: number;
+  /** What this exchange credits: `itemPrice * quantity`. */
   itemCredit: number;
+  draft: ExchangeDraft;
   picks: ExchangePick[];
 }
 
 type Listener = (ctx: ExchangePickerContext | null) => void;
 const listeners = new Set<Listener>();
 
+const pickKey = (p: { productId: string; variantId: string }) => `${p.productId}:${p.variantId}`;
+
 function read(): ExchangePickerContext | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Defensive: a session started by an older build has no `draft`/`picks`.
+    return { ...parsed, draft: parsed.draft || {}, picks: parsed.picks || [] };
   } catch {
     return null;
   }
@@ -58,30 +109,60 @@ export function getExchangePicker(): ExchangePickerContext | null {
   return read();
 }
 
-export function startExchangePicker(ctx: Omit<ExchangePickerContext, 'picks'>) {
-  write({ ...ctx, picks: [] });
+/**
+ * Starts browsing — or resumes it, if a session for this same order item is
+ * already open. Resuming matters: "Browse Products" unconditionally reset
+ * `picks` to `[]`, so a shopper who had selected two products and clicked
+ * through to look at a third silently lost both.
+ */
+export function startExchangePicker(
+  ctx: Omit<ExchangePickerContext, 'picks' | 'draft'> & { draft?: ExchangeDraft },
+) {
+  const current = read();
+  const isSameItem = current?.orderItemId === ctx.orderItemId;
+  write({
+    ...ctx,
+    picks: isSameItem ? current!.picks : [],
+    draft: { ...(isSameItem ? current!.draft : {}), ...(ctx.draft || {}) },
+  });
 }
 
 export function addExchangePick(pick: ExchangePick) {
   const current = read();
   if (!current) return;
-  if (current.picks.some((p) => p.productId === pick.productId)) return;
+  // Keyed on product *and* variant: the same dress in two sizes is two
+  // distinct candidates, and the shopper may well want to compare them.
+  if (current.picks.some((p) => pickKey(p) === pickKey(pick))) return;
   write({ ...current, picks: [...current.picks, pick] });
 }
 
-export function removeExchangePick(productId: string) {
+export function removeExchangePick(productId: string, variantId: string) {
   const current = read();
   if (!current) return;
-  write({ ...current, picks: current.picks.filter((p) => p.productId !== productId) });
+  write({
+    ...current,
+    picks: current.picks.filter((p) => pickKey(p) !== pickKey({ productId, variantId })),
+  });
 }
 
-/** Ends the picker session — called on cancel, on successful submit, and once the modal reopens with it. */
+/** Merges into the saved form draft, so nothing typed is lost while browsing. */
+export function updateExchangeDraft(partial: ExchangeDraft) {
+  const current = read();
+  if (!current) return;
+  write({ ...current, draft: { ...current.draft, ...partial } });
+}
+
+/** Ends the picker session — called on cancel and on successful submit. */
 export function clearExchangePicker() {
   write(null);
 }
 
 /** Live-updating view of the current picker context, or null when no session is active. */
 export function useExchangePicker(): ExchangePickerContext | null {
+  // Initialised from storage on the first client render rather than in an
+  // effect: consumers decide what to show based on whether a session is
+  // active, and a null-then-value flip made the exchange modal open on the
+  // wrong tab when a shopper returned from browsing.
   const [ctx, setCtx] = useState<ExchangePickerContext | null>(null);
 
   useEffect(() => {

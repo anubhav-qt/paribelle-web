@@ -168,24 +168,43 @@ export default function OrderDetailsModal({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-6">
-            {/* Status */}
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">Status</h3>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                {order.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-              </span>
-              {order.paymentStatus && (
-                <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${paymentStatusClass(order.paymentStatus)}`}>
-                  {paymentStatusLabel(order.paymentStatus)}
+            {/* Status — the two badges are separately labelled because they
+                mean unrelated things (where the parcel is vs. whether the
+                money has arrived), and side by side unlabelled they read as
+                one confusing pair: "Shipped / Pending" looked like a
+                contradiction rather than "shipped, COD not yet collected". */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+                  Order Status
+                </h3>
+                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                  {order.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                 </span>
-              )}
-              {order.status === 'cancelled' && order.cancellationReason && (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">Cancellation reason: </span>
-                  {order.cancellationReason}
+                <p className="mt-1 text-xs text-muted-foreground">Where this order is in fulfilment</p>
+              </div>
+              {order.paymentStatus && (
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+                    Payment Status
+                  </h3>
+                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${paymentStatusClass(order.paymentStatus)}`}>
+                    {paymentStatusLabel(order.paymentStatus)}
+                  </span>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {order.paymentMethod === 'cod'
+                      ? 'Cash on Delivery — collected on delivery'
+                      : 'Whether payment has been received'}
+                  </p>
                 </div>
               )}
             </div>
+            {order.status === 'cancelled' && order.cancellationReason && (
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Cancellation reason: </span>
+                {order.cancellationReason}
+              </div>
+            )}
 
             {/* Collapsible Return Information Section */}
             {showReturnSection && (
@@ -281,10 +300,26 @@ export default function OrderDetailsModal({
                                 <p className="text-foreground bg-background/50 p-2 rounded">{formatReturnReason(returnItem.reason)}</p>
                               </div>
 
-                              {returnItem.customer_notes && (
+                              {(returnItem.customer_notes || returnItem.customerNotes) && (
                                 <div className="text-sm mt-2">
                                   <p className="text-muted-foreground mb-1">Customer Notes:</p>
-                                  <p className="text-foreground bg-background/50 p-2 rounded">{returnItem.customer_notes}</p>
+                                  <p className="text-foreground bg-background/50 p-2 rounded">
+                                    {returnItem.customer_notes || returnItem.customerNotes}
+                                  </p>
+                                </div>
+                              )}
+
+                              {(returnItem.video_url || returnItem.videoUrl) && (
+                                <div className="text-sm mt-2">
+                                  <p className="text-muted-foreground mb-1">
+                                    {isAdmin ? "Customer's video" : 'Video you attached'}:
+                                  </p>
+                                  <video
+                                    src={returnItem.video_url || returnItem.videoUrl}
+                                    controls
+                                    preload="metadata"
+                                    className="max-h-56 w-full rounded bg-black"
+                                  />
                                 </div>
                               )}
 

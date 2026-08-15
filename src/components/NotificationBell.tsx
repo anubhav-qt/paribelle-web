@@ -123,14 +123,26 @@ export function NotificationBell({ buttonClassName, iconClassName, variant = 'st
                     </p>
                   </div>
                 );
-                // Deep-link to the specific order, not just the orders list —
-                // the notification already carries orderId, the link just
-                // wasn't using it. `?orderId=` is read by the orders pages to
-                // open that order's details and force a fresh fetch even if
-                // the page was already mounted with stale data.
-                const href = n.link && n.orderId
-                  ? `${n.link}${n.link.includes('?') ? '&' : '?'}orderId=${n.orderId}`
-                  : n.link;
+                // Deep-link to the specific thing the notification is about,
+                // not just the list it lives in: `orderId` is read by both
+                // orders pages to open that order, and whatever the backend
+                // put on `link` (e.g. `?view=exchanges`, `?search=` for low
+                // stock) decides which view opens.
+                //
+                // `n=<notification id>` makes every click a distinct URL.
+                // Without it, clicking a notification while already sitting
+                // on its target URL is a no-op — Next skips the navigation,
+                // the query string never changes, and the deep-link effect
+                // on the destination page never re-runs. It also lets those
+                // pages treat each click as one-shot (open once, then clean
+                // the URL) without a second click being swallowed.
+                const href = (() => {
+                  if (!n.link) return null;
+                  const params = new URLSearchParams();
+                  if (n.orderId) params.set('orderId', n.orderId);
+                  params.set('n', n.id);
+                  return `${n.link}${n.link.includes('?') ? '&' : '?'}${params.toString()}`;
+                })();
                 return href ? (
                   <Link key={n.id} href={href}>
                     {content}

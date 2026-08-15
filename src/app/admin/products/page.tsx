@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, Fragment } from 'react';
+import { useEffect, useState, Fragment, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import JSZip from 'jszip';
 import ImageUpload from '@/components/ImageUpload';
@@ -28,8 +29,21 @@ import { showAlert, showConfirm } from '@/lib/dialog';
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
 export default function AdminProductsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader size="md" /></div>}>
+      <AdminProductsPageInner />
+    </Suspense>
+  );
+}
+
+function AdminProductsPageInner() {
   const { isAuthenticated, loading: authLoading } = useAdminAuth();
-  const [searchTerm, setSearchTerm] = useState('');
+  const searchParams = useSearchParams();
+  // A low-stock notification links here with `?search=<product name>` so the
+  // click lands on the product it is about rather than page 1 of the whole
+  // catalogue — see NotificationType.LOW_STOCK in the backend. Read once as
+  // the initial value: the admin must stay free to clear or edit the box.
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock' | 'status'>('name');

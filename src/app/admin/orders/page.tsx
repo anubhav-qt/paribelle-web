@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -65,19 +65,37 @@ function AdminOrdersPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const deepLinkOrderId = searchParams.get('orderId');
+  // Which view the notification wants: `exchanges` opens the exchange
+  // decision panel (approve/reject/inspect), anything else the order details.
+  const deepLinkView = searchParams.get('view');
+  // Distinct per notification click — see the comment in NotificationBell.
+  const deepLinkNonce = searchParams.get('n');
   const { notifications } = useNotifications();
 
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  // A notification carrying an orderId deep-links here (see NotificationBell)
-  // — open that order's details as soon as the list has loaded.
+  // A notification deep-links here (see NotificationBell) — open what it is
+  // about as soon as the list has loaded. One-shot: the params are consumed
+  // and the URL cleaned immediately, so a background refetch re-running this
+  // effect can't reopen a modal the admin already closed.
+  const consumedDeepLinkRef = useRef<string | null>(null);
   useEffect(() => {
     if (!deepLinkOrderId || orders.length === 0) return;
+    const key = `${deepLinkNonce || ''}:${deepLinkOrderId}:${deepLinkView || ''}`;
+    if (consumedDeepLinkRef.current === key) return;
     const target = orders.find((o) => o.id === deepLinkOrderId);
-    if (target) viewOrderDetails(target);
-  }, [deepLinkOrderId, orders]);
+    if (!target) return;
+    consumedDeepLinkRef.current = key;
+    if (deepLinkView === 'exchanges') {
+      setExchangeOrder(target);
+    } else {
+      viewOrderDetails(target);
+    }
+    router.replace('/admin/orders', { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkOrderId, deepLinkView, deepLinkNonce, orders]);
 
   // Refetch when a notification arrives while already on this page — the
   // socket event reaches the right room, this just makes the page react to it.
@@ -660,13 +678,16 @@ function AdminOrdersPageInner() {
                       <button
                         onClick={() => handleSort('status')}
                         className="flex items-center gap-1 font-medium text-gray-700 hover:text-gray-900"
+                        title="Where the order is in fulfilment"
                       >
-                        Status
+                        Order Status
                         <ArrowUpDown className="w-4 h-4" />
                       </button>
                     </th>
                     <th className="px-6 py-3 text-left">
-                      <span className="font-medium text-gray-700">Payment</span>
+                      <span className="font-medium text-gray-700" title="Whether payment has been received">
+                        Payment Status
+                      </span>
                     </th>
                     <th className="px-6 py-3 text-left">
                       <button

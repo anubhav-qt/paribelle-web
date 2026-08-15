@@ -13,6 +13,8 @@ interface ExchangeRequest {
   reason: string;
   productName: string;
   customerNotes: string | null;
+  /** Null only for requests made before the video became mandatory. */
+  videoUrl: string | null;
   customerTrackingNumber: string | null;
   inspectionResult: string | null;
   inspectionNotes: string | null;
@@ -175,6 +177,25 @@ export default function AdminExchangePanel({ isOpen, onClose, orderId, orderNumb
 
                   <p className="text-sm text-gray-600">Reason: {exc.reason}</p>
                   {exc.customerNotes && <p className="text-sm text-gray-500">Notes: {exc.customerNotes}</p>}
+
+                  {/* The customer's evidence — the thing an approve/reject
+                      decision is actually supposed to be based on, so it sits
+                      above the buttons rather than behind a link. */}
+                  {exc.videoUrl ? (
+                    <div className="mt-3">
+                      <p className="mb-1 text-xs font-medium text-gray-700">Customer&apos;s video</p>
+                      <video
+                        src={exc.videoUrl}
+                        controls
+                        preload="metadata"
+                        className="max-h-64 w-full rounded bg-black"
+                      />
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-gray-400">
+                      No video — this request predates the video requirement.
+                    </p>
+                  )}
                   <p className="mt-2 text-sm font-medium text-blue-700">
                     {STATUS_LABEL[exc.status] || exc.status}
                   </p>

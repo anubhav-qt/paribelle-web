@@ -118,16 +118,21 @@ function OrdersPageInner() {
   // orderId is consumed and the URL is cleaned up immediately after opening,
   // so navigating away and back (or a background refetch re-running this
   // effect) can't reopen a modal the customer already closed.
+  const deepLinkNonce = searchParams.get('n');
   const consumedDeepLinkRef = useRef<string | null>(null);
   useEffect(() => {
     if (!deepLinkOrderId || orders.length === 0) return;
-    if (consumedDeepLinkRef.current === deepLinkOrderId) return;
+    // Keyed on the notification id as well as the order, so clicking the
+    // same order's notification a second time reopens it rather than
+    // reading as "already consumed".
+    const key = `${deepLinkNonce || ''}:${deepLinkOrderId}`;
+    if (consumedDeepLinkRef.current === key) return;
     const target = orders.find((o) => o.id === deepLinkOrderId);
     if (!target) return;
-    consumedDeepLinkRef.current = deepLinkOrderId;
+    consumedDeepLinkRef.current = key;
     setSelectedOrder(target);
     router.replace('/orders', { scroll: false });
-  }, [deepLinkOrderId, orders, router]);
+  }, [deepLinkOrderId, deepLinkNonce, orders, router]);
 
   // "Return to Exchange Request" (ExchangePickerBar) lands here via
   // ?resumeExchange=1 — reopen the same item's modal rather than making the
@@ -401,7 +406,10 @@ function OrdersPageInner() {
     quantity: number;
     reason: string;
     exchangeVariantId?: string;
+    /** Required by the API — see ExchangesService.request. */
+    videoUrl: string;
     customerNotes?: string;
+    topUpPaymentMethod?: 'wallet' | 'cod';
   }) => {
     if (!orderToAction || !itemForExchange) {
       showToast('No order selected', 'error');
