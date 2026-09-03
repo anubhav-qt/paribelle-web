@@ -6,7 +6,6 @@ import { FabricWeaveHero } from '@/components/home/FabricWeaveHero';
 import { ProductRail } from '@/components/home/ProductRail';
 import { ShopByCategorySection } from '@/components/home/ShopByCategorySection';
 import { LookbookTeaser } from '@/components/home/LookbookTeaser';
-import { TrustStrip } from '@/components/home/TrustStrip';
 import { LOOKBOOK_ENABLED } from '@/lib/features';
 import type { Category, Product } from '@/types/product';
 
@@ -93,7 +92,6 @@ export default function MainPageClient({
       {bookingProducts.length > 0 && (
         <ProductRail eyebrow="Book an Experience" title="Bookings & Services" products={bookingProducts} />
       )}
-      <TrustStrip />
     </div>
   );
 }

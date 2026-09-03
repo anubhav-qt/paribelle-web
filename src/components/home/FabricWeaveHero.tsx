@@ -232,8 +232,9 @@ export function FabricWeaveHero() {
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none absolute inset-0" />
 
       <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-6 px-4 md:grid-cols-2 md:gap-10 md:px-8">
-        <div className="flex items-center justify-center py-8 md:justify-start md:py-8">
-          <h1 className="max-w-md font-display text-display-lg italic text-[hsl(var(--pb-ink))] md:text-6xl">
+        <div className="flex flex-col items-center py-8 md:items-start md:py-8">
+          <p className="text-eyebrow mb-3 text-[hsl(var(--pb-rose-deep))]">New this Season</p>
+          <h1 className="max-w-md text-center font-display text-display-lg italic text-[hsl(var(--pb-ink))] md:text-left md:text-6xl">
             Designed to be <span className="text-[hsl(var(--pb-rose-deep))]">worn</span>,
             <br />
             not just bought.
@@ -241,10 +242,55 @@ export function FabricWeaveHero() {
         </div>
 
         <div className="flex items-center justify-center py-6 pb-10 md:justify-end md:py-8">
-          {/* The "stage" is the trio's bounding box, and it is pinned to
+          {/* Below `lg` the column is too narrow for three prints to read as
+              anything but a smudge, so it gets its own static two-photo
+              collage instead of a shrunk-down trio — the Centre and Right
+              images, tilted like prints tossed on a table, no motion beyond
+              a hover lift on pointer devices. */}
+          <div className="relative h-[280px] w-full max-w-sm shrink-0 sm:h-[320px] lg:hidden">
+            <div
+              className="absolute right-[4%] top-[22%] z-0 w-[54%] rotate-[3deg] bg-[hsl(var(--pb-ivory))] p-1.5 pb-5 shadow-pb-sm transition-transform duration-500 ease-pb hover:translate-y-[-4px] hover:rotate-0"
+            >
+              <div className="relative aspect-[4/5] w-full overflow-hidden bg-[hsl(var(--pb-blush-wash))]">
+                {images ? (
+                  <Image
+                    src={resolveHeroImageUrl(images.black.url, getImageUrl)}
+                    alt="A black kurta with floral scalloped embroidery on the hem and cuffs"
+                    fill
+                    quality={85}
+                    sizes="(max-width: 1023px) 260px, 1px"
+                    className="object-cover object-[50%_32%]"
+                  />
+                ) : (
+                  <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
+                )}
+              </div>
+            </div>
+            <div
+              className="absolute left-[2%] top-[6%] z-10 w-[62%] rotate-[-4deg] bg-[hsl(var(--pb-ivory))] p-1.5 pb-5 shadow-pb-md transition-transform duration-500 ease-pb hover:translate-y-[-4px] hover:rotate-0"
+            >
+              <div className="relative aspect-[4/5] w-full overflow-hidden bg-[hsl(var(--pb-blush-wash))]">
+                {images ? (
+                  <Image
+                    src={resolveHeroImageUrl(images.main.url, getImageUrl)}
+                    alt="A PariBelle kurti, styled with silver jhumka earrings"
+                    fill
+                    priority
+                    quality={85}
+                    sizes="(max-width: 1023px) 300px, 1px"
+                    className="object-cover object-top"
+                  />
+                ) : (
+                  <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* `lg` and up: the original three-print stage, pinned to
               exactly the footprint the single photo used to occupy: 480px
-              tall from `lg` up, which is what `max-w-sm` at 4:5 came out to,
-              so the section's height is unchanged. Every card is positioned
+              tall, which is what `max-w-sm` at 4:5 came out to, so the
+              section's height is unchanged. Every card is positioned
               inside it, which is what keeps the group from running off the
               container edge — the old single card sat flush against the
               column's right edge, so anything hung off its right side got
@@ -255,16 +301,13 @@ export function FabricWeaveHero() {
               headline column isn't using — that slack is what lets the centre
               print stay near its original size instead of shrinking to make
               room. Between `lg` and `xl` that slack doesn't exist yet, so the
-              stage stays inside its column and the trio scales down together.
-              Below `lg` the column is too narrow for three prints to read as
-              anything but a smudge, so only the centre one renders, exactly
-              as before. */}
-          <div className="relative w-full max-w-sm shrink-0 lg:h-[480px] lg:max-w-none xl:w-[126%]">
+              stage stays inside its column and the trio scales down together. */}
+          <div className="relative hidden w-full max-w-sm shrink-0 lg:block lg:h-[480px] lg:max-w-none xl:w-[126%]">
             {/* Left print: pink_3, riding low and a layer behind the centre
                 frame. A thinner mat and softer shadow than the centre card
                 sell the depth ordering at a glance. */}
             <div
-              className="absolute bottom-[6%] left-0 z-0 hidden w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm lg:block xl:w-[33%]"
+              className="absolute bottom-[6%] left-0 z-0 w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm xl:w-[33%]"
               style={{ aspectRatio: '4 / 5', borderRadius: BLOB_LEFT_OUTER }}
             >
               <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_LEFT_INNER }}>
@@ -305,7 +348,7 @@ export function FabricWeaveHero() {
                 centre frame. The opposing vertical offsets are what stop the
                 trio from reading as a flat row of three. */}
             <div
-              className="absolute right-0 top-[4%] z-0 hidden w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm lg:block xl:w-[33%]"
+              className="absolute right-0 top-[4%] z-0 w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm xl:w-[33%]"
               style={{ aspectRatio: '4 / 5', borderRadius: BLOB_RIGHT_OUTER }}
             >
               <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_RIGHT_INNER }}>
@@ -329,13 +372,11 @@ export function FabricWeaveHero() {
             </div>
 
             {/* Centre print: the hero shot, unchanged in content and still
-                the anchor. It leaves the flow at `lg` so the stage's fixed
-                height governs the section instead; below that it is the only
-                card, and stays in flow at its original size. Its left offset
-                is set so the two side prints tuck under it by roughly a
-                quarter of their own width on each side. */}
+                the anchor. Its left offset is set so the two side prints
+                tuck under it by roughly a quarter of their own width on
+                each side. */}
             <div
-              className="relative z-10 aspect-[4/5] w-full bg-[hsl(var(--pb-blush-wash))] p-3 shadow-pb-lg md:p-4 lg:absolute lg:left-[22%] lg:top-1/2 lg:w-[56%] lg:-translate-y-1/2 xl:left-[24%] xl:w-[51%]"
+              className="absolute left-[22%] top-1/2 z-10 aspect-[4/5] w-[56%] -translate-y-1/2 bg-[hsl(var(--pb-blush-wash))] p-4 shadow-pb-lg xl:left-[24%] xl:w-[51%]"
               style={{ borderRadius: BLOB_OUTER }}
             >
               <div className="relative h-full w-full overflow-hidden" style={{ borderRadius: BLOB_INNER }}>
@@ -346,12 +387,15 @@ export function FabricWeaveHero() {
                     fill
                     priority
                     quality={85}
-                    // Same headroom rationale as the two side cards: the
-                    // card's actual rendered width tops out around 380px, but
-                    // asking for ~640/480px means the very first srcset pick
-                    // is already sharp instead of depending on a later
-                    // re-evaluation (e.g. a browser zoom change) to correct it.
-                    sizes="(min-width: 1024px) 640px, 480px"
+                    // Headroom rationale as the two side cards: the card's
+                    // actual rendered width tops out around 380px, but
+                    // asking for ~640px means the very first srcset pick is
+                    // already sharp instead of depending on a later
+                    // re-evaluation (e.g. a browser zoom change) to correct
+                    // it. 1px below `lg` — the mobile collage above renders
+                    // this same photo at its own size, so this instance is
+                    // never what's on screen there.
+                    sizes="(min-width: 1024px) 640px, 1px"
                     className="object-cover object-top"
                   />
                 ) : (
