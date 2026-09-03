@@ -16,6 +16,14 @@ interface ProductVariantSelectorProps {
   variantOptions: VariantOption[];
   productVariants: ProductVariant[];
   onVariantSelect: (variant: ProductVariant | null) => void;
+  /**
+   * Every change to the chosen attributes, including partial ones.
+   *
+   * `onVariantSelect` only fires once *every* axis has a value, which is right
+   * for pricing and add-to-cart but too late for the gallery: picking a colour
+   * should change the photographs immediately, before a size is chosen.
+   */
+  onAttributesChange?: (attributes: Record<string, string>) => void;
   currency: string;
 }
 
@@ -49,6 +57,7 @@ export default function ProductVariantSelector({
   variantOptions,
   productVariants,
   onVariantSelect,
+  onAttributesChange,
   currency,
 }: ProductVariantSelectorProps) {
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
@@ -69,6 +78,10 @@ export default function ProductVariantSelector({
   useEffect(() => {
     onVariantSelect(selectedVariant);
   }, [selectedVariant, onVariantSelect]);
+
+  useEffect(() => {
+    onAttributesChange?.(selectedAttributes);
+  }, [selectedAttributes, onAttributesChange]);
 
   /**
    * Whether any in-stock variant carries this value at all — ignoring what

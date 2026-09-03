@@ -3,7 +3,7 @@
 // Note: This page uses 'use client' for interactive features
 // ISR can still be configured when converted to Server Component in the future
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Star, Heart, Share2, Package, Facebook, Twitter, Linkedin, Link as LinkIcon, Check } from 'lucide-react';
@@ -87,6 +87,7 @@ export default function ProductDetailPage() {
   const [userOrderItemId, setUserOrderItemId] = useState<string | undefined>();
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
   // Clamp quantity to available stock whenever stock or variant changes
@@ -445,6 +446,43 @@ export default function ProductDetailPage() {
     }
   };
 
+  /**
+   * The photographs to show right now.
+   *
+   * A variant only carries its own images when it needs to — that is how one
+   * product holds several colours. Resolution runs most-specific first: the
+   * fully chosen variant, then the first variant matching whatever has been
+   * picked so far (so a colour swaps the gallery before a size is chosen), and
+   * finally the product's own gallery.
+   */
+  const galleryImages = useMemo(() => {
+    const fallback = product?.images?.length
+      ? product.images
+      : [product?.featuredImage || '/placeholder-image.svg'];
+
+    if (selectedVariant?.images?.length) return selectedVariant.images;
+
+    const chosen = Object.entries(selectedAttributes).filter(([, v]) => v);
+    if (chosen.length > 0 && product?.productVariants?.length) {
+      const same = (a: unknown, b: unknown) =>
+        a != null && b != null &&
+        String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+
+      const match = product.productVariants.find((variant: any) => {
+        if (!variant.images?.length) return false;
+        const attributes = variant.variantAttributes || {};
+        return chosen.every(([key, value]) => {
+          const actual =
+            attributes[key] ?? attributes[Object.keys(attributes).find((k) => same(k, key)) ?? ''];
+          return same(actual, value);
+        });
+      });
+      if (match?.images?.length) return match.images;
+    }
+
+    return fallback;
+  }, [product, selectedVariant, selectedAttributes]);
+
   const getDiscount = (price: string | number, compareAtPrice?: string | number) => {
     if (!compareAtPrice || Number(compareAtPrice) <= Number(price)) return null;
     return Math.round(((Number(compareAtPrice) - Number(price)) / Number(compareAtPrice)) * 100);
@@ -577,7 +615,11 @@ export default function ProductDetailPage() {
         <div className="grid gap-10 md:grid-cols-2">
           {/* Gallery */}
           <ProductImageGallery
-            images={product.images && product.images.length > 0 ? product.images : [product.featuredImage || '/placeholder-image.svg']}
+            // Remount when the set of photographs changes, so the gallery's
+            // own selected-thumbnail index resets to the first shot of the
+            // newly chosen colour rather than pointing into the old set.
+            key={galleryImages.join('|')}
+            images={galleryImages}
             productName={product.name}
             discount={discount || undefined}
             layout={thumbnailLayout}
@@ -602,6 +644,7 @@ export default function ProductDetailPage() {
                   variantOptions={product.variantOptions}
                   productVariants={product.productVariants || []}
                   onVariantSelect={setSelectedVariant}
+                  onAttributesChange={setSelectedAttributes}
                   currency={currency}
                 />
               </div>
