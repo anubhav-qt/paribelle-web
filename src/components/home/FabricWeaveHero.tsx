@@ -80,6 +80,15 @@ export function FabricWeaveHero() {
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const supportsHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    // The weave is a desktop/big-laptop flourish only — on anything narrower
+    // it sits behind the mobile collage or the tablet single print, where it
+    // reads as visual noise rather than texture. `xl` (1280px) is the same
+    // "big" tier this component already uses for the trio's widened stage,
+    // so it's the natural cutoff here too. A live MediaQueryList (read on
+    // every check, not cached) rather than a resize listener, so resizing
+    // the window across the breakpoint turns the weave on/off without extra
+    // wiring.
+    const weaveMql = window.matchMedia('(min-width: 1280px)');
 
     let width = 0;
     let height = 0;
@@ -168,13 +177,14 @@ export function FabricWeaveHero() {
 
     if (prefersReducedMotion) {
       // A single still frame — the composition should hold up motionless,
-      // not just disappear for anyone who has motion reduced.
-      draw(0);
+      // not just disappear for anyone who has motion reduced. Below `xl`
+      // there's nothing to draw at all.
+      if (weaveMql.matches) draw(0);
     } else {
       let lastFrame = 0;
       const loop = (now: number) => {
         const targetInterval = rendered.influence > 0.01 || pointer.active ? 1000 / 60 : 1000 / 30;
-        if (visible && now - lastFrame >= targetInterval) {
+        if (visible && weaveMql.matches && now - lastFrame >= targetInterval) {
           const targetInfluence = supportsHover && pointer.active ? 1 : 0;
           rendered.x = pointer.x;
           rendered.y = pointer.y;
@@ -188,7 +198,13 @@ export function FabricWeaveHero() {
       rafId = requestAnimationFrame(loop);
     }
 
-    const onResize = () => resize();
+    const onResize = () => {
+      resize();
+      // Crossing back above `xl` after a resize: redraw the still frame
+      // immediately rather than waiting on a pointer move that may never
+      // come (reduced motion has no per-frame loop to pick this up).
+      if (prefersReducedMotion && weaveMql.matches) draw(0);
+    };
     window.addEventListener('resize', onResize);
 
     const observer = new IntersectionObserver(
@@ -229,7 +245,15 @@ export function FabricWeaveHero() {
       ref={containerRef}
       className="relative overflow-hidden bg-[hsl(var(--pb-ivory))] pt-16 md:pt-20"
     >
-      <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none absolute inset-0" />
+      {/* Desktop/big-laptop only (see the `weaveMql` check in the effect
+          above, which also skips the draw work below `xl`) — declaratively
+          hidden here too so there's no flash of the pattern before the
+          effect runs. */}
+      <canvas
+        ref={canvasRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 hidden xl:block"
+      />
 
       <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-6 px-4 md:grid-cols-2 md:gap-10 md:px-8">
         <div className="flex flex-col items-center py-8 md:items-start md:py-8">
