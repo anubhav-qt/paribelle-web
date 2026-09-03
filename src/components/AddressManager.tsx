@@ -5,6 +5,7 @@ import { MapPin, Edit2, Trash2, Plus, Phone, Home, ChevronDown, Loader2 } from '
 import { initAuthFromCookie } from '@/lib/cross-domain-auth';
 import { api, errorMessage } from '@/lib/api';
 import { showAlert, showConfirm } from '@/lib/dialog';
+import { isIndianPincode, lookupPincode, stateForCity } from '@/lib/indiaPincode';
 
 const COUNTRIES = [
   { code: 'IN', name: 'India', flag: '🇮🇳' },
@@ -117,8 +118,16 @@ export default function AddressManager({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
+  const [pinStatus, setPinStatus] = useState<'idle' | 'loading' | 'filled' | 'notfound'>('idle');
   const countryDropdownRef = useRef<HTMLDivElement>(null);
   const phoneDropdownRef = useRef<HTMLDivElement>(null);
+  /**
+   * The City/State we last wrote from a PIN or city lookup. City/State are
+   * only overwritten by a later lookup when they still hold this — a value the
+   * user has since typed over is left alone.
+   */
+  const autoFilledRef = useRef<{ city: string; state: string }>({ city: '', state: '' });
+  const pinAbortRef = useRef<AbortController | null>(null);
 
   const getAuthToken = async (): Promise<string | null> => {
     const existingToken = localStorage.getItem('token');
@@ -209,6 +218,60 @@ export default function AddressManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * PIN-driven autofill. A 6-digit Indian PIN maps to one district and state,
+   * so entering one fills City and State (unless the user has typed over an
+   * earlier autofill). Debounced, and a newer PIN aborts an in-flight lookup.
+   */
+  useEffect(() => {
+    const pin = addressForm.postalCode.trim();
+    if (addressForm.country !== 'India' || !isIndianPincode(pin)) {
+      setPinStatus('idle');
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      pinAbortRef.current?.abort();
+      const controller = new AbortController();
+      pinAbortRef.current = controller;
+
+      setPinStatus('loading');
+      const match = await lookupPincode(pin, controller.signal);
+      if (controller.signal.aborted) return;
+
+      if (!match) {
+        setPinStatus('notfound');
+        return;
+      }
+
+      setAddressForm((prev) => {
+        const auto = autoFilledRef.current;
+        const next = { ...prev };
+        if (!prev.city || prev.city === auto.city) next.city = match.city;
+        if (!prev.state || prev.state === auto.state) next.state = match.state;
+        autoFilledRef.current = { city: next.city, state: next.state };
+        return next;
+      });
+      setPinStatus('filled');
+    }, 450);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addressForm.postalCode, addressForm.country]);
+
+  /** Weaker hint: a well-known city name fills State when State is still blank
+   *  (or still holds a previous autofill) and no PIN has resolved it. */
+  const applyCityStateHint = (city: string) => {
+    if (addressForm.country !== 'India') return;
+    const state = stateForCity(city);
+    if (!state) return;
+    setAddressForm((prev) => {
+      if (prev.state && prev.state !== autoFilledRef.current.state) return prev;
+      autoFilledRef.current = { city: prev.city, state };
+      return { ...prev, state };
+    });
+  };
+
   const fetchAddresses = async (): Promise<boolean> => {
     const token = await getAuthToken();
     if (!token) {
@@ -287,6 +350,8 @@ export default function AddressManager({
       country: 'India',
       isDefault: false,
     });
+    autoFilledRef.current = { city: '', state: '' };
+    setPinStatus('idle');
   };
 
   /**
@@ -399,6 +464,11 @@ export default function AddressManager({
       country: address.country || 'India',
       isDefault: address.isDefault || false,
     });
+    // Treat the loaded values as the current autofill baseline, so a later PIN
+    // edit refines them but simply opening an address to edit never rewrites
+    // its City/State from an unrelated lookup.
+    autoFilledRef.current = { city: address.city, state: address.state };
+    setPinStatus('idle');
     setEditingAddressId(address.id || null);
     setShowAddressForm(true);
   };
@@ -581,6 +651,7 @@ export default function AddressManager({
                 type="text"
                 value={addressForm.city}
                 onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                onBlur={(e) => applyCityStateHint(e.target.value)}
                 placeholder="Mumbai"
                 className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
                 required
@@ -610,6 +681,13 @@ export default function AddressManager({
                 className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
                 required
               />
+              {addressForm.country === 'India' && pinStatus !== 'idle' && (
+                <p className={`mt-1 text-xs ${pinStatus === 'notfound' ? 'text-[hsl(var(--pb-danger))]' : 'text-[hsl(var(--pb-ink-faint))]'}`}>
+                  {pinStatus === 'loading' && 'Looking up PIN code…'}
+                  {pinStatus === 'filled' && `City and State filled from ${addressForm.postalCode.trim()}`}
+                  {pinStatus === 'notfound' && 'PIN code not found — enter City and State manually'}
+                </p>
+              )}
             </div>
           </div>
           
