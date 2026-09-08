@@ -14,6 +14,14 @@ export interface Category {
   vendorId?: string | null;
   /** Product an admin pinned as this category's mega-menu Editor's Pick. */
   featuredProductId?: string | null;
+  /**
+   * Which of that product's images the Editor's Pick tile shows. May be one of
+   * the product's own or one of its variants'. Null falls back to the
+   * product's first image.
+   */
+  featuredImageUrl?: string | null;
+  /** CSS `object-position` for that image inside the tile's tall crop, e.g. "50% 30%". */
+  featuredImagePosition?: string | null;
   children?: Category[];
   parent?: Category;
   _count?: {

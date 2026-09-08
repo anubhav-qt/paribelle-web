@@ -8,6 +8,7 @@ import { generateSlug } from '@/lib/utils/string';
 import { Loader } from '@/components/ui/Loader';
 import { api, errorMessage } from '@/lib/api';
 import { showAlert, showConfirm } from '@/lib/dialog';
+import { EditorsPickImageModal } from './EditorsPickImageModal';
 
 export default function ManageCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -15,6 +16,8 @@ export default function ManageCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  /** The category whose Editor's Pick image is being chosen, if any. */
+  const [imageModalCategory, setImageModalCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -137,22 +140,42 @@ export default function ManageCategoriesPage() {
                   />
                   <label className="text-xs text-gray-600">
                     Editor&apos;s Pick (mega menu)
-                    <select
-                      defaultValue={category.featuredProductId ?? ''}
-                      className="mt-1 block w-72 px-3 py-1 border rounded text-sm"
-                      onChange={(e) =>
-                        handleUpdateCategory(category.id, {
-                          featuredProductId: e.target.value || null,
-                        } as Partial<Category>)
-                      }
-                    >
-                      <option value="">Auto (first product in category)</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="mt-1 flex items-center gap-2">
+                      <select
+                        defaultValue={category.featuredProductId ?? ''}
+                        className="block w-72 px-3 py-1 border rounded text-sm"
+                        onChange={(e) =>
+                          handleUpdateCategory(category.id, {
+                            // Changing the product invalidates any image chosen
+                            // from the previous one — that URL belongs to a
+                            // product this category no longer features.
+                            featuredProductId: e.target.value || null,
+                            featuredImageUrl: null,
+                            featuredImagePosition: null,
+                          } as Partial<Category>)
+                        }
+                      >
+                        <option value="">Auto (first product in category)</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setImageModalCategory(category)}
+                        disabled={!category.featuredProductId}
+                        title={
+                          category.featuredProductId
+                            ? "Choose which of the product's images the tile shows, and how it's cropped"
+                            : 'Pin a product first'
+                        }
+                        className="whitespace-nowrap rounded border px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Choose image
+                      </button>
+                    </div>
                   </label>
                 </div>
               ) : (
@@ -369,6 +392,18 @@ export default function ManageCategoriesPage() {
           </div>
         </div>
       </div>
+
+      {imageModalCategory && (
+        <EditorsPickImageModal
+          // Remount per category so the modal's own draft state starts from
+          // that category's saved values rather than the last one's.
+          key={imageModalCategory.id}
+          category={imageModalCategory}
+          open
+          onClose={() => setImageModalCategory(null)}
+          onSave={(patch) => handleUpdateCategory(imageModalCategory.id, patch as Partial<Category>)}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useCachedData, TTL } from '@/lib/store/dataCache';
 import { getImageUrl } from '@/lib/image-url';
 import { Monogram } from '@/components/brand/Monogram';
 import type { Category, Product } from '@/types/product';
@@ -29,12 +29,9 @@ export interface MegaMenuProps {
 
 function useFeaturedProduct(category: Category) {
   const { id, featuredProductId } = category;
-  return useQuery({
-    queryKey: ['megamenu-featured', id, featuredProductId ?? null],
-    enabled: !!id,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-    queryFn: async (): Promise<Product | null> => {
+  return useCachedData<Product | null>(
+    id ? `megamenu-featured:${id}:${featuredProductId ?? 'auto'}` : null,
+    async () => {
       const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       // An admin-pinned pick wins; otherwise show the category's first product.
       if (featuredProductId) {
@@ -47,7 +44,10 @@ function useFeaturedProduct(category: Category) {
       const list: Product[] = Array.isArray(data) ? data : data.products || [];
       return list[0] ?? null;
     },
-  });
+    // Written through to disk: the panel opens on hover, so the pick has to be
+    // there already or the tile visibly fills in under the pointer.
+    { ttl: TTL.CATALOGUE, persistToDisk: true }
+  );
 }
 
 function SubCategoryRow({ child, onNavigate }: { child: Category; onNavigate: () => void }) {
@@ -68,7 +68,11 @@ function SubCategoryRow({ child, onNavigate }: { child: Category; onNavigate: ()
 
 function EditorsPick({ category, onNavigate }: { category: Category; onNavigate: () => void }) {
   const { data: featured } = useFeaturedProduct(category);
-  const image = featured?.featuredImage || featured?.images?.[0] || category.image;
+  // An admin-chosen image wins over the product's own first shot — the tile is
+  // a tall crop, and the image that leads a product page is often the wrong
+  // one for it.
+  const image =
+    category.featuredImageUrl || featured?.featuredImage || featured?.images?.[0] || category.image;
   const href = featured ? `/products/${featured.slug}` : `/category/${category.slug}`;
   const price =
     featured && featured.price != null ? Number(featured.price) : undefined;
@@ -85,7 +89,12 @@ function EditorsPick({ category, onNavigate }: { category: Category; onNavigate:
         {image ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={getImageUrl(image)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img
+              src={getImageUrl(image)}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ objectPosition: category.featuredImagePosition || 'center' }}
+            />
             <span className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--pb-wine-deep)/0.9)] via-[hsl(var(--pb-wine-deep)/0.35)] to-transparent" />
           </>
         ) : (
