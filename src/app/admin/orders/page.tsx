@@ -431,8 +431,7 @@ function AdminOrdersPageInner() {
       const matchesSearch = 
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.shippingName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.shippingEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.vendor?.businessName?.toLowerCase().includes(searchTerm.toLowerCase());
+        order.shippingEmail?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus =
         statusFilter === 'all' ||
@@ -505,11 +504,10 @@ function AdminOrdersPageInner() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Order Number', 'Customer', 'Vendor', 'Status', 'Total', 'Date'];
+    const headers = ['Order Number', 'Customer', 'Status', 'Total', 'Date'];
     const rows = filteredOrders.map(order => [
       order.orderNumber,
       order.shippingName,
-      order.vendor?.businessName || 'N/A',
       order.status,
       order.total,
       formatDate(order.createdAt),
@@ -605,7 +603,7 @@ function AdminOrdersPageInner() {
               </label>
               <input
                 type="text"
-                placeholder="Order number, customer, vendor..."
+                placeholder="Order number or customer..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -679,9 +677,6 @@ function AdminOrdersPageInner() {
                       <span className="font-medium text-gray-700">Customer</span>
                     </th>
                     <th className="px-6 py-3 text-left">
-                      <span className="font-medium text-gray-700">Vendor</span>
-                    </th>
-                    <th className="px-6 py-3 text-left">
                       <button
                         onClick={() => handleSort('status')}
                         className="flex items-center gap-1 font-medium text-gray-700 hover:text-gray-900"
@@ -701,7 +696,7 @@ function AdminOrdersPageInner() {
                         onClick={() => handleSort('total')}
                         className="flex items-center gap-1 font-medium text-gray-700 hover:text-gray-900"
                       >
-                        Vendor Payout
+                        Total
                         <ArrowUpDown className="w-4 h-4" />
                       </button>
                     </th>
@@ -749,11 +744,6 @@ function AdminOrdersPageInner() {
                         <div className="text-sm">
                           <div className="font-medium text-gray-900">{order.shippingName}</div>
                           <div className="text-gray-500">{order.shippingEmail}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
-                          {order.vendor?.businessName || 'N/A'}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -811,33 +801,9 @@ function AdminOrdersPageInner() {
                         </select>
                       </td>
                       <td className="px-6 py-4">
-                        {(() => {
-                          const originalPayout = order.vendorPayout || 0;
-                          // Find vendor credit note (payout reversal)
-                          const vendorCreditNote = order.invoices?.find(
-                            inv => inv.type === 'vendor' && inv.invoiceNumber?.startsWith('CN-')
-                          );
-                          const payoutReversal = vendorCreditNote?.payoutAmount || 0;
-                          const netPayout = originalPayout + payoutReversal; // payoutReversal is negative
-                          
-                          return (
-                            <>
-                              <div className="font-medium text-gray-900">
-                                {formatCurrency(netPayout)}
-                              </div>
-                              {order.commissionAmount && order.commissionAmount > 0 && (
-                                <div className="text-xs text-gray-500">
-                                  Commission: {formatCurrency(order.commissionAmount)}
-                                </div>
-                              )}
-                              {payoutReversal !== 0 && (
-                                <div className="text-xs text-red-600">
-                                  Reversal: {formatCurrency(Math.abs(payoutReversal))}
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
+                        <div className="font-medium text-gray-900">
+                          {formatCurrency(order.total || 0)}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {formatDate(order.createdAt)}

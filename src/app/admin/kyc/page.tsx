@@ -526,7 +526,7 @@ export default function VendorKYCPage() {
           {/* Bank Details Form */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Bank Account Details</h2>
-            <p className="text-sm text-gray-600 mb-6">For receiving payments and payouts</p>
+            <p className="text-sm text-gray-600 mb-6">Used for settlements from your payment gateway</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
