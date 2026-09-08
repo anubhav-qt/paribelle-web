@@ -571,30 +571,31 @@ export default function ProductDetailPage() {
         <p>{product.shortDescription}</p>
       ),
     },
-    ...(vendorReturnPolicy?.enabled || vendorCancellationPolicy?.enabled
-      ? [
-          {
-            id: 'shipping-returns',
-            title: 'Shipping & Returns',
-            content: (
-              <div className="space-y-3">
-                {vendorReturnPolicy?.enabled && (
-                  <div>
-                    <p className="font-medium text-[hsl(var(--pb-ink))]">Return Policy</p>
-                    <p>{vendorReturnPolicy.text}</p>
-                  </div>
-                )}
-                {vendorCancellationPolicy?.enabled && (
-                  <div>
-                    <p className="font-medium text-[hsl(var(--pb-ink))]">Cancellation Policy</p>
-                    <p>{vendorCancellationPolicy.text}</p>
-                  </div>
-                )}
-              </div>
-            ),
-          },
-        ]
-      : []),
+    {
+      id: 'returns-exchanges',
+      title: 'Returns & Exchanges',
+      content: (
+        <div className="space-y-3">
+          <p>
+            We do not accept returns for a refund. Exchanges are available within 7 days of delivery,
+            for an unworn item with its tags attached.
+          </p>
+          {vendorReturnPolicy?.enabled && <p>{vendorReturnPolicy.text}</p>}
+          {vendorCancellationPolicy?.enabled && (
+            <div>
+              <p className="font-medium text-[hsl(var(--pb-ink))]">Cancellation</p>
+              <p>{vendorCancellationPolicy.text}</p>
+            </div>
+          )}
+          <Link
+            href="/returns-and-exchanges"
+            className="inline-block text-[hsl(var(--pb-rose-deep))] underline underline-offset-2 hover:text-[hsl(var(--pb-rose-ink))]"
+          >
+            Read the full policy
+          </Link>
+        </div>
+      ),
+    },
   ];
 
   return (

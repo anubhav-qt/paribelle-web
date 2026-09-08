@@ -29,7 +29,7 @@ const DEFAULT_CONTACT = {
 };
 
 const SERVICE_LINKS = [
-  { label: 'Shipping & Returns', href: '/shipping-returns' },
+  { label: 'Returns and Exchanges', href: '/returns-and-exchanges' },
   { label: 'Track your order', href: '/orders' },
   { label: 'Contact', href: '/contact' },
   { label: 'FAQ', href: '/faq' },
