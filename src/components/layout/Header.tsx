@@ -104,7 +104,10 @@ export function Header() {
 
   React.useEffect(() => () => clearCloseTimer(), []);
 
-  const activeCategory = categories.find((c) => c.id === activeMenu && c.children?.length);
+  // The panel now opens for every top-level category, stocked or not — an
+  // empty one (Jewellery, for now) gets a "coming soon" state from MegaMenu
+  // rather than no panel at all.
+  const activeCategory = categories.find((c) => c.id === activeMenu);
 
   // Current-page highlighting, kept separate from `activeMenu` (which tracks
   // the hovered/open mega menu, not location) so the two states can layer:
@@ -167,18 +170,18 @@ export function Header() {
               ))}
 
               {categories.map((cat) => {
-                const hasChildren = !!cat.children?.length;
                 const isActive = activeNavKey === cat.id;
                 return (
-                  // A link, not a button: hovering opens the mega menu, but the
-                  // category name itself has to be clickable and keyboard-reachable.
+                  // A link, not a button: hovering (or focusing) opens the mega
+                  // menu, but the category name itself stays a real link — a
+                  // click goes straight to the category page. MegaMenu renders a
+                  // "coming soon" state for a category with no children, so it is
+                  // safe to open the panel for every anchor category.
                   <Link
                     key={cat.id}
                     href={`/category/${cat.slug}`}
-                    // A category with no children has nothing for the panel to
-                    // show — opening it anyway is the empty-white-panel bug.
-                    onMouseEnter={hasChildren ? () => openMegaMenu(cat.id) : undefined}
-                    onFocus={hasChildren ? () => openMegaMenu(cat.id) : undefined}
+                    onMouseEnter={() => openMegaMenu(cat.id)}
+                    onFocus={() => openMegaMenu(cat.id)}
                     className={navLinkClass(isActive)}
                   >
                     {cat.name}

@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { getImageUrl } from '@/lib/image-url';
-import type { Category } from '@/types/product';
+import type { Category, Product } from '@/types/product';
 
 export interface MegaMenuProps {
   category: Category;
@@ -10,63 +11,186 @@ export interface MegaMenuProps {
 }
 
 /**
- * The panel used to be a fixed 60rem / 4-column grid no matter how many
- * children a category had. Production's categories carry two or three
- * children each, so the panel rendered mostly empty ivory with a placeholder
- * image at the edge — reported as "a useless wide white screen". Sizing the
- * column count (and therefore the panel width, via its parent's `w-fit`) to
- * the actual number of children fixes that without touching the design once
- * a category does have enough children to fill it.
+ * The hover panel for a top-level category. It renders whatever tree the API
+ * returns:
+ *
+ *  - Grandchildren present (Kurtis › By Style › Top Only …) → each child is a
+ *    labelled group, its own children are the rows.
+ *  - Only one level of children → a single unlabelled column of rows.
+ *  - No children at all (Jewellery, for now) → a short "coming soon" state,
+ *    because the header opens this panel for every anchor category, not just
+ *    the stocked ones.
+ *
+ * The right-hand tile is the Editor's Pick: the same tall wine-gradient block
+ * the seasonal promo used to occupy, now showing the category's featured
+ * product (or, with nothing to show, a plain "explore" prompt).
  */
-export function MegaMenu({ category, onNavigate }: MegaMenuProps) {
-  const children = category.children || [];
 
-  // One column per 6 links, capped at 3 — a category with 2 children gets a
-  // single compact column instead of 3 columns with one link each.
-  const columnCount = Math.max(1, Math.min(3, Math.ceil(children.length / 6)));
-  const columns: Category[][] = Array.from({ length: columnCount }, () => []);
-  children.forEach((child, i) => columns[i % columnCount].push(child));
+// Tonal fills for a sub-category that has no image of its own. Hashed off the
+// slug so a given category always gets the same one.
+const PLACEHOLDER_TINTS = [
+  'from-[hsl(var(--pb-rose)/0.55)] to-[hsl(var(--pb-rose-deep)/0.75)]',
+  'from-[hsl(var(--pb-gold-soft))] to-[hsl(var(--pb-gold))]',
+  'from-[hsl(var(--pb-blush))] to-[hsl(var(--pb-rose))]',
+  'from-[hsl(var(--pb-wine)/0.85)] to-[hsl(var(--pb-wine-deep))]',
+];
 
-  const showImage = !!category.image;
+function tintFor(key: string): string {
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return PLACEHOLDER_TINTS[hash % PLACEHOLDER_TINTS.length];
+}
+
+function useFeaturedProduct(categoryId: string | undefined) {
+  return useQuery({
+    queryKey: ['megamenu-featured', categoryId],
+    enabled: !!categoryId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    queryFn: async (): Promise<Product | null> => {
+      const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${base}/api/v1/products?categoryId=${categoryId}&limit=1`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const list: Product[] = Array.isArray(data) ? data : data.products || [];
+      return list[0] ?? null;
+    },
+  });
+}
+
+function SubCategoryRow({ child, onNavigate }: { child: Category; onNavigate: () => void }) {
+  const count = typeof child.productCount === 'number' ? child.productCount : undefined;
+  return (
+    <Link
+      href={`/category/${child.slug}`}
+      onClick={onNavigate}
+      className="group flex items-center gap-3 rounded-2xl p-2 transition-colors duration-150 hover:bg-[hsl(var(--pb-shell))]"
+    >
+      <span className="relative h-14 w-11 flex-none overflow-hidden rounded-xl shadow-[inset_0_0_0_1px_hsl(var(--pb-ink)/0.06)]">
+        {child.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={getImageUrl(child.image)}
+            alt=""
+            className="h-full w-full object-cover transition-transform duration-300 ease-pb group-hover:scale-105"
+          />
+        ) : (
+          <span className={`block h-full w-full bg-gradient-to-br ${tintFor(child.slug || child.name)}`} />
+        )}
+      </span>
+      <span className="flex flex-col">
+        <span className="font-display text-[17px] font-medium leading-tight text-[hsl(var(--pb-ink))]">
+          {child.name}
+        </span>
+        {count !== undefined && count > 0 && (
+          <span className="text-[11px] text-[hsl(var(--pb-ink-faint))]">
+            {count} {count === 1 ? 'piece' : 'pieces'}
+          </span>
+        )}
+      </span>
+    </Link>
+  );
+}
+
+function EditorsPick({ category, onNavigate }: { category: Category; onNavigate: () => void }) {
+  const { data: featured } = useFeaturedProduct(category.id);
+  const image = featured?.featuredImage || featured?.images?.[0] || category.image;
+  const href = featured ? `/products/${featured.slug}` : `/category/${category.slug}`;
+  const price =
+    featured && featured.price != null ? Number(featured.price) : undefined;
 
   return (
-    // A rounded panel rather than a full-width band: it hangs off the floating
-    // nav pill, so it has to read as part of the same object. `w-fit` lets it
-    // shrink to its content instead of always claiming the full 60rem.
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className="relative flex w-52 flex-none select-none flex-col justify-end self-stretch overflow-hidden rounded-2xl bg-gradient-to-b from-[hsl(var(--pb-wine))] to-[hsl(var(--pb-wine-deep))] p-4"
+      style={{ minHeight: '15rem' }}
+    >
+      {image ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={getImageUrl(image)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <span className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--pb-wine-deep)/0.9)] via-[hsl(var(--pb-wine-deep)/0.35)] to-transparent" />
+        </>
+      ) : (
+        <span
+          className="absolute inset-0"
+          style={{ background: 'radial-gradient(80% 60% at 20% 15%, hsl(var(--pb-gold) / 0.4), transparent 70%)' }}
+        />
+      )}
+
+      <span className="relative flex flex-col gap-1">
+        <span className="text-eyebrow text-[hsl(var(--pb-gold-soft))]">
+          {featured ? "Editor's Pick" : 'Featured'}
+        </span>
+        <span className="font-display text-xl font-medium leading-tight text-white">
+          {featured ? featured.name : category.name}
+        </span>
+        {price !== undefined && Number.isFinite(price) && (
+          <span className="text-[13px] text-white/80">₹{price.toLocaleString('en-IN')}</span>
+        )}
+        <span className="mt-3 inline-flex w-fit rounded-full bg-[hsl(var(--pb-rose))] px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--pb-wine-deep))]">
+          {featured ? 'View piece' : `Explore ${category.name}`}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+export function MegaMenu({ category, onNavigate }: MegaMenuProps) {
+  const children = category.children ?? [];
+  const groups = children.filter((child) => (child.children?.length ?? 0) > 0);
+  const isGrouped = groups.length > 0;
+  const isEmpty = children.length === 0;
+
+  return (
+    // Rounded panel that hangs off the nav — reads as part of the same object.
+    // `w-fit` lets it shrink to its content instead of claiming a fixed width.
     <div className="w-fit overflow-hidden rounded-3xl border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory)/0.97)] shadow-pb-lg backdrop-blur-xl">
-      <div className="flex gap-8 px-8 py-8">
-        {columns.map((col, i) => (
-          <div key={i} className="w-48 space-y-3">
-            {col.map((child) => (
-              <Link
-                key={child.id}
-                href={`/category/${child.slug}`}
-                onClick={onNavigate}
-                className="block text-sm text-[hsl(var(--pb-ink-muted))] hover:text-[hsl(var(--pb-rose-deep))] transition-colors duration-150"
-              >
-                {child.name}
-              </Link>
-            ))}
-          </div>
-        ))}
-        {/* No placeholder tile when the category has no image — an empty
-            frame or broken-image icon is worse than not showing one at all. */}
-        {showImage && (
+      {isEmpty ? (
+        <div className="flex w-72 flex-col gap-2 px-8 py-8">
+          <span className="text-eyebrow text-[hsl(var(--pb-ink-faint))]">{category.name}</span>
+          <p className="text-sm leading-relaxed text-[hsl(var(--pb-ink-muted))]">
+            New pieces are on their way. Take a look at what is in the studio so far.
+          </p>
           <Link
             href={`/category/${category.slug}`}
             onClick={onNavigate}
-            className="group relative block w-48 aspect-[4/5] overflow-hidden rounded-2xl"
+            className="mt-2 text-sm text-[hsl(var(--pb-rose-deep))] transition-colors duration-150 hover:text-[hsl(var(--pb-rose-ink))]"
           >
-            <img
-              src={getImageUrl(category.image)}
-              alt={category.name}
-              className="h-full w-full object-cover transition-transform duration-700 ease-pb group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--pb-wine-deep)/0.6)] to-transparent" />
-            <span className="absolute bottom-4 left-4 font-display text-lg text-white">{category.name}</span>
+            Browse {category.name} &rarr;
           </Link>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="flex gap-7 px-7 py-6">
+          {isGrouped ? (
+            groups.map((group, i) => (
+              <div key={group.id} className="flex gap-7">
+                {i > 0 && <span className="w-px flex-none self-stretch bg-[hsl(var(--pb-linen))]" />}
+                <div className="flex w-52 flex-col gap-3">
+                  <span className="text-eyebrow text-[hsl(var(--pb-ink-faint))]">{group.name}</span>
+                  <div className="flex flex-col gap-1">
+                    {group.children!.map((child) => (
+                      <SubCategoryRow key={child.id} child={child} onNavigate={onNavigate} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="flex w-56 flex-col gap-3">
+              <span className="text-eyebrow text-[hsl(var(--pb-ink-faint))]">Shop {category.name}</span>
+              <div className="flex flex-col gap-1">
+                {children.map((child) => (
+                  <SubCategoryRow key={child.id} child={child} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <EditorsPick category={category} onNavigate={onNavigate} />
+        </div>
+      )}
     </div>
   );
 }
