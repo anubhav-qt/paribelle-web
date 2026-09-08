@@ -11,6 +11,7 @@ import { showAlert, showConfirm } from '@/lib/dialog';
 
 export default function ManageCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -25,6 +26,7 @@ export default function ManageCategoriesPage() {
 
   useEffect(() => {
     fetchCategories();
+    fetchProducts();
   }, []);
 
   const fetchCategories = async () => {
@@ -35,6 +37,16 @@ export default function ManageCategoriesPage() {
       console.error('Error fetching categories:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await api.get<any>('/products?limit=500');
+      const list = Array.isArray(res) ? res : res.products || [];
+      setProducts(list.map((p: any) => ({ id: p.id, name: p.name })));
+    } catch (error) {
+      console.error('Error fetching products:', error);
     }
   };
 
@@ -112,7 +124,7 @@ export default function ManageCategoriesPage() {
             )}
             <div className="flex-1">
               {isEditing ? (
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
                   <input
                     type="text"
                     defaultValue={category.name}
@@ -123,6 +135,25 @@ export default function ManageCategoriesPage() {
                       }
                     }}
                   />
+                  <label className="text-xs text-gray-600">
+                    Editor&apos;s Pick (mega menu)
+                    <select
+                      defaultValue={category.featuredProductId ?? ''}
+                      className="mt-1 block w-72 px-3 py-1 border rounded text-sm"
+                      onChange={(e) =>
+                        handleUpdateCategory(category.id, {
+                          featuredProductId: e.target.value || null,
+                        } as Partial<Category>)
+                      }
+                    >
+                      <option value="">Auto (first product in category)</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               ) : (
                 <div>

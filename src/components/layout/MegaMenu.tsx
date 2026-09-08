@@ -41,15 +41,21 @@ function tintFor(key: string): string {
   return PLACEHOLDER_TINTS[hash % PLACEHOLDER_TINTS.length];
 }
 
-function useFeaturedProduct(categoryId: string | undefined) {
+function useFeaturedProduct(category: Category) {
+  const { id, featuredProductId } = category;
   return useQuery({
-    queryKey: ['megamenu-featured', categoryId],
-    enabled: !!categoryId,
+    queryKey: ['megamenu-featured', id, featuredProductId ?? null],
+    enabled: !!id,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     queryFn: async (): Promise<Product | null> => {
       const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const res = await fetch(`${base}/api/v1/products?categoryId=${categoryId}&limit=1`);
+      // An admin-pinned pick wins; otherwise show the category's first product.
+      if (featuredProductId) {
+        const res = await fetch(`${base}/api/v1/products/${featuredProductId}`);
+        return res.ok ? ((await res.json()) as Product) : null;
+      }
+      const res = await fetch(`${base}/api/v1/products?categoryId=${id}&limit=1`);
       if (!res.ok) return null;
       const data = await res.json();
       const list: Product[] = Array.isArray(data) ? data : data.products || [];
@@ -93,7 +99,7 @@ function SubCategoryRow({ child, onNavigate }: { child: Category; onNavigate: ()
 }
 
 function EditorsPick({ category, onNavigate }: { category: Category; onNavigate: () => void }) {
-  const { data: featured } = useFeaturedProduct(category.id);
+  const { data: featured } = useFeaturedProduct(category);
   const image = featured?.featuredImage || featured?.images?.[0] || category.image;
   const href = featured ? `/products/${featured.slug}` : `/category/${category.slug}`;
   const price =

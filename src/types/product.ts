@@ -12,6 +12,8 @@ export interface Category {
   sortOrder?: number;
   level?: number;
   vendorId?: string | null;
+  /** Product an admin pinned as this category's mega-menu Editor's Pick. */
+  featuredProductId?: string | null;
   children?: Category[];
   parent?: Category;
   _count?: {
