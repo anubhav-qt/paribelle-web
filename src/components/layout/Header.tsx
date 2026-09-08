@@ -25,6 +25,25 @@ const PILL_ITEM =
 const NAV_LINK = `${PILL_ITEM} whitespace-nowrap px-3 py-2 text-xs font-medium uppercase tracking-wide`;
 const ICON_BUTTON = `${PILL_ITEM} relative p-2 hover:bg-[hsl(var(--pb-blush-wash))]`;
 
+/**
+ * How far every panel hangs below the header's content box, and the reason it
+ * is a number rather than a `mt-2`.
+ *
+ * The panels anchor to triggers of different heights: the nav links are 32px
+ * and the icon buttons 36px, both centred in the same 36px content box, so a
+ * nav link's bottom edge sits 2px above an icon's. The mega menu clears its
+ * own trigger with a `pt-4` bridge and lands 14px below the content box; the
+ * icon dropdowns used `mt-2` off a taller trigger and landed at 8px — six
+ * pixels high, and visibly out of line with the mega menu when you moved
+ * between them.
+ *
+ * Stated here so the two stay locked together. It doubles as the hover bridge
+ * on the account menu: as padding on a wrapper rather than a margin on the
+ * panel, the gap is part of the panel's hit area, so a pointer crossing it
+ * doesn't leave the menu and dismiss it.
+ */
+const PANEL_DROP = 'pt-[14px]';
+
 function CountBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
@@ -60,11 +79,20 @@ export function Header() {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [accountOpen, setAccountOpen] = React.useState(false);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accountCloseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accountRef = React.useRef<HTMLDivElement | null>(null);
 
   const clearCloseTimer = () => {
     if (closeTimer.current) {
       clearTimeout(closeTimer.current);
       closeTimer.current = null;
+    }
+  };
+
+  const clearAccountCloseTimer = () => {
+    if (accountCloseTimer.current) {
+      clearTimeout(accountCloseTimer.current);
+      accountCloseTimer.current = null;
     }
   };
 
@@ -98,6 +126,30 @@ export function Header() {
     setActiveMenu(null);
   };
 
+  /**
+   * The account menu opens on hover as well as on click.
+   *
+   * Hover alone would strand anyone without a pointer, so the button stays a
+   * real toggle: tapping it still opens and closes the menu, and the same
+   * click also serves keyboard users arriving via Enter. The close is delayed
+   * for the same reason the mega menu's is — a pointer travelling from the
+   * icon towards the menu momentarily leaves both.
+   *
+   * Notifications are deliberately NOT given this treatment. Opening that
+   * panel marks nothing read on its own, but it is the surface people act
+   * from, and having it appear because a pointer passed over the bell on its
+   * way to the cart would be a panel nobody asked for, covering the page.
+   */
+  const openAccountMenu = () => {
+    clearAccountCloseTimer();
+    setAccountOpen(true);
+  };
+
+  const scheduleCloseAccountMenu = () => {
+    clearAccountCloseTimer();
+    accountCloseTimer.current = setTimeout(() => setAccountOpen(false), 120);
+  };
+
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
@@ -118,7 +170,33 @@ export function Header() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  React.useEffect(() => () => clearCloseTimer(), []);
+  React.useEffect(() => {
+    return () => {
+      clearCloseTimer();
+      clearAccountCloseTimer();
+    };
+  }, []);
+
+  /**
+   * Dismiss the account menu on a click anywhere outside it.
+   *
+   * This replaces a `fixed inset-0` click-catcher that sat at z-10 over the
+   * whole viewport whenever the menu was open. It caught outside clicks, but
+   * it also swallowed every pointer event underneath — with the menu open the
+   * cart and wishlist icons beside it were unclickable. Harmless enough while
+   * the menu only opened on a deliberate click; not once a passing pointer
+   * can open it.
+   */
+  React.useEffect(() => {
+    if (!accountOpen) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [accountOpen]);
 
   // The panel now opens for every top-level category, stocked or not — an
   // empty one (Jewellery, for now) gets a "coming soon" state from MegaMenu
@@ -270,7 +348,12 @@ export function Header() {
                 it opens the account menu — which is the only place on the
                 storefront a customer can sign out from. */}
             {isLoggedIn ? (
-              <div className="relative hidden md:block">
+              <div
+                ref={accountRef}
+                onMouseEnter={openAccountMenu}
+                onMouseLeave={scheduleCloseAccountMenu}
+                className="relative hidden md:block"
+              >
                 <button
                   onClick={() => setAccountOpen((open) => !open)}
                   aria-label="Account"
@@ -281,11 +364,15 @@ export function Header() {
                   <User className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
                 </button>
                 {accountOpen && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setAccountOpen(false)} />
+                  // Same two-part shape as the mega menu: an outer wrapper
+                  // whose top padding is the transparent bridge across the
+                  // gap, and the panel itself inside it. The menu is a DOM
+                  // child of the hover region, so pointer travel from the icon
+                  // through the bridge and into the menu never leaves it.
+                  <div className={cn('absolute right-0 top-full z-20', PANEL_DROP)}>
                     <div
                       role="menu"
-                      className="absolute right-0 top-full z-20 mt-2 min-w-[220px] rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory))] p-2 shadow-pb-md"
+                      className="min-w-[220px] rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory))] p-2 shadow-pb-md"
                     >
                       <p className="truncate px-3 py-2 text-xs text-[hsl(var(--pb-ink-faint))]">
                         {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email}
@@ -315,7 +402,7 @@ export function Header() {
                         <LogOut className="h-4 w-4" /> Sign Out
                       </button>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             ) : (

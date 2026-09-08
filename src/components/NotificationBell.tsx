@@ -64,10 +64,15 @@ export function NotificationBell({ buttonClassName, iconClassName, variant = 'st
           <div
             role="menu"
             className={cn(
-              'absolute right-0 top-full z-20 mt-2 w-80 max-h-[28rem] overflow-y-auto',
+              'absolute right-0 top-full z-20 w-80 max-h-[28rem] overflow-y-auto',
               isAdmin
-                ? 'rounded-lg border border-gray-200 bg-white shadow-lg'
-                : 'rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory))] shadow-pb-md'
+                ? 'mt-2 rounded-lg border border-gray-200 bg-white shadow-lg'
+                : // On the storefront this has to line up with the mega menu,
+                  // which hangs 14px below the header's content box rather
+                  // than the 8px an icon-anchored `mt-2` gives (see
+                  // PANEL_DROP in layout/Header). The admin layout has no
+                  // mega menu to agree with, so it keeps its own spacing.
+                  'mt-[14px] rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory))] shadow-pb-md'
             )}
           >
             <div
