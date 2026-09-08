@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { getImageUrl } from '@/lib/image-url';
+import { Monogram } from '@/components/brand/Monogram';
 import type { Category, Product } from '@/types/product';
 
 export interface MegaMenuProps {
@@ -15,31 +16,16 @@ export interface MegaMenuProps {
  * returns:
  *
  *  - Grandchildren present (Kurtis › By Style › Top Only …) → each child is a
- *    labelled group, its own children are the rows.
+ *    labelled group, its own children are the plain text rows.
  *  - Only one level of children → a single unlabelled column of rows.
- *  - No children at all (Jewellery, for now) → a short "coming soon" state,
- *    because the header opens this panel for every anchor category, not just
- *    the stocked ones.
+ *  - No children → EmptyCategoryPanel: a "coming soon" note when the category
+ *    has no products at all (Jewellery, for now), otherwise a "shop all"
+ *    prompt. The header opens a panel for every anchor category.
  *
- * The right-hand tile is the Editor's Pick: the same tall wine-gradient block
- * the seasonal promo used to occupy, now showing the category's featured
- * product (or, with nothing to show, a plain "explore" prompt).
+ * The right-hand column is the Editor's Monthly Pick: an "Editor's Monthly
+ * Pick" eyebrow over a tall wine-gradient tile showing the admin-pinned
+ * product (category.featuredProductId) or the category's first product.
  */
-
-// Tonal fills for a sub-category that has no image of its own. Hashed off the
-// slug so a given category always gets the same one.
-const PLACEHOLDER_TINTS = [
-  'from-[hsl(var(--pb-rose)/0.55)] to-[hsl(var(--pb-rose-deep)/0.75)]',
-  'from-[hsl(var(--pb-gold-soft))] to-[hsl(var(--pb-gold))]',
-  'from-[hsl(var(--pb-blush))] to-[hsl(var(--pb-rose))]',
-  'from-[hsl(var(--pb-wine)/0.85)] to-[hsl(var(--pb-wine-deep))]',
-];
-
-function tintFor(key: string): string {
-  let hash = 0;
-  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-  return PLACEHOLDER_TINTS[hash % PLACEHOLDER_TINTS.length];
-}
 
 function useFeaturedProduct(category: Category) {
   const { id, featuredProductId } = category;
@@ -70,30 +56,12 @@ function SubCategoryRow({ child, onNavigate }: { child: Category; onNavigate: ()
     <Link
       href={`/category/${child.slug}`}
       onClick={onNavigate}
-      className="group flex items-center gap-3 rounded-none p-2 transition-colors duration-150 hover:bg-[hsl(var(--pb-shell))]"
+      className="flex items-baseline gap-2 rounded-none px-2 py-2 font-display text-[17px] font-medium leading-tight text-[hsl(var(--pb-ink))] transition-colors duration-150 hover:bg-[hsl(var(--pb-shell))] hover:text-[hsl(var(--pb-rose-deep))]"
     >
-      <span className="relative h-14 w-11 flex-none overflow-hidden rounded-none shadow-[inset_0_0_0_1px_hsl(var(--pb-ink)/0.06)]">
-        {child.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={getImageUrl(child.image)}
-            alt=""
-            className="h-full w-full object-cover transition-transform duration-300 ease-pb group-hover:scale-105"
-          />
-        ) : (
-          <span className={`block h-full w-full bg-gradient-to-br ${tintFor(child.slug || child.name)}`} />
-        )}
-      </span>
-      <span className="flex flex-col">
-        <span className="font-display text-[17px] font-medium leading-tight text-[hsl(var(--pb-ink))]">
-          {child.name}
-        </span>
-        {count !== undefined && count > 0 && (
-          <span className="text-[11px] text-[hsl(var(--pb-ink-faint))]">
-            {count} {count === 1 ? 'piece' : 'pieces'}
-          </span>
-        )}
-      </span>
+      {child.name}
+      {count !== undefined && count > 0 && (
+        <span className="font-sans text-[11px] font-normal text-[hsl(var(--pb-ink-faint))]">{count}</span>
+      )}
     </Link>
   );
 }
@@ -106,40 +74,85 @@ function EditorsPick({ category, onNavigate }: { category: Category; onNavigate:
     featured && featured.price != null ? Number(featured.price) : undefined;
 
   return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      className="relative flex w-52 flex-none select-none flex-col justify-end self-stretch overflow-hidden rounded-none bg-gradient-to-b from-[hsl(var(--pb-wine))] to-[hsl(var(--pb-wine-deep))] p-4"
-      style={{ minHeight: '15rem' }}
-    >
-      {image ? (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={getImageUrl(image)} alt="" className="absolute inset-0 h-full w-full object-cover" />
-          <span className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--pb-wine-deep)/0.9)] via-[hsl(var(--pb-wine-deep)/0.35)] to-transparent" />
-        </>
-      ) : (
-        <span
-          className="absolute inset-0"
-          style={{ background: 'radial-gradient(80% 60% at 20% 15%, hsl(var(--pb-gold) / 0.4), transparent 70%)' }}
-        />
-      )}
-
-      <span className="relative flex flex-col gap-1">
-        <span className="text-eyebrow text-[hsl(var(--pb-gold-soft))]">
-          {featured ? "Editor's Pick" : 'Featured'}
-        </span>
-        <span className="font-display text-xl font-medium leading-tight text-white">
-          {featured ? featured.name : category.name}
-        </span>
-        {price !== undefined && Number.isFinite(price) && (
-          <span className="text-[13px] text-white/80">₹{price.toLocaleString('en-IN')}</span>
+    <div className="flex w-52 flex-none flex-col gap-3 self-stretch">
+      <span className="text-eyebrow text-[hsl(var(--pb-ink-faint))]">Editor&apos;s Monthly Pick</span>
+      <Link
+        href={href}
+        onClick={onNavigate}
+        className="relative flex flex-1 select-none flex-col justify-end overflow-hidden rounded-none bg-gradient-to-b from-[hsl(var(--pb-wine))] to-[hsl(var(--pb-wine-deep))] p-4"
+        style={{ minHeight: '13rem' }}
+      >
+        {image ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={getImageUrl(image)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <span className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--pb-wine-deep)/0.9)] via-[hsl(var(--pb-wine-deep)/0.35)] to-transparent" />
+          </>
+        ) : (
+          <span
+            className="absolute inset-0"
+            style={{ background: 'radial-gradient(80% 60% at 20% 15%, hsl(var(--pb-gold) / 0.4), transparent 70%)' }}
+          />
         )}
-        <span className="mt-3 inline-flex w-fit rounded-full bg-[hsl(var(--pb-rose))] px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--pb-wine-deep))]">
-          {featured ? 'View piece' : `Explore ${category.name}`}
+
+        <span className="relative flex flex-col gap-1">
+          <span className="font-display text-xl font-medium leading-tight text-white">
+            {featured ? featured.name : category.name}
+          </span>
+          {price !== undefined && Number.isFinite(price) && (
+            <span className="text-[13px] text-white/80">₹{price.toLocaleString('en-IN')}</span>
+          )}
+          <span className="mt-3 inline-flex w-fit rounded-full bg-[hsl(var(--pb-rose))] px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--pb-wine-deep))]">
+            {featured ? 'View piece' : `Explore ${category.name}`}
+          </span>
         </span>
-      </span>
-    </Link>
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * The panel a top-level category with no sub-categories opens. If the category
+ * has no products at all (Jewellery, for now) it shows a calm "coming soon"
+ * note; otherwise a "shop all" prompt beside the Editor's Pick.
+ */
+function EmptyCategoryPanel({ category, onNavigate }: { category: Category; onNavigate: () => void }) {
+  const { data: featured, isLoading } = useFeaturedProduct(category);
+
+  if (isLoading) {
+    return <div className="w-80 px-10 py-12" aria-hidden />;
+  }
+
+  if (!featured) {
+    return (
+      <div className="flex w-80 flex-col items-center gap-3 px-10 py-12 text-center">
+        <Monogram className="h-7 w-7 text-[hsl(var(--pb-gold))]" />
+        <span className="text-eyebrow text-[hsl(var(--pb-ink-faint))]">{category.name}</span>
+        <span className="font-display text-2xl italic text-[hsl(var(--pb-ink))]">Coming soon</span>
+        <p className="max-w-[16rem] text-sm leading-relaxed text-[hsl(var(--pb-ink-muted))]">
+          We&apos;re adding {category.name} to the collection. Do check back shortly.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-7 px-7 py-6">
+      <div className="flex w-48 flex-col justify-center gap-2">
+        <span className="text-eyebrow text-[hsl(var(--pb-ink-faint))]">{category.name}</span>
+        <p className="text-sm leading-relaxed text-[hsl(var(--pb-ink-muted))]">
+          Browse the full {category.name} collection.
+        </p>
+        <Link
+          href={`/category/${category.slug}`}
+          onClick={onNavigate}
+          className="mt-1 text-sm text-[hsl(var(--pb-rose-deep))] transition-colors duration-150 hover:text-[hsl(var(--pb-rose-ink))]"
+        >
+          Shop all {category.name} &rarr;
+        </Link>
+      </div>
+      <EditorsPick category={category} onNavigate={onNavigate} />
+    </div>
   );
 }
 
@@ -154,26 +167,7 @@ export function MegaMenu({ category, onNavigate }: MegaMenuProps) {
     // (near-zero radius) chrome. `w-fit` shrinks it to its content.
     <div className="w-fit overflow-hidden rounded-none border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory)/0.97)] shadow-pb-lg backdrop-blur-xl">
       {isEmpty ? (
-        // No sub-categories yet — still open a panel (the header opens one for
-        // every anchor category), just with a single "shop all" prompt beside
-        // the Editor's Pick. EditorsPick falls back to an "explore" tile when
-        // the category has no products at all.
-        <div className="flex gap-7 px-7 py-6">
-          <div className="flex w-48 flex-col justify-center gap-2">
-            <span className="text-eyebrow text-[hsl(var(--pb-ink-faint))]">{category.name}</span>
-            <p className="text-sm leading-relaxed text-[hsl(var(--pb-ink-muted))]">
-              Browse the full {category.name} collection.
-            </p>
-            <Link
-              href={`/category/${category.slug}`}
-              onClick={onNavigate}
-              className="mt-1 text-sm text-[hsl(var(--pb-rose-deep))] transition-colors duration-150 hover:text-[hsl(var(--pb-rose-ink))]"
-            >
-              Shop all {category.name} &rarr;
-            </Link>
-          </div>
-          <EditorsPick category={category} onNavigate={onNavigate} />
-        </div>
+        <EmptyCategoryPanel category={category} onNavigate={onNavigate} />
       ) : (
         <div className="flex gap-7 px-7 py-6">
           {isGrouped ? (
