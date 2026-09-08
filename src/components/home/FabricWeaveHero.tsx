@@ -13,10 +13,10 @@ import {
 import { getImageUrl } from '@/lib/image-url';
 import {
   DEFAULT_HERO_IMAGES,
-  HERO_SECTION_IMAGES_KEY,
   HeroSectionImages,
   resolveHeroImageUrl,
 } from '@/lib/heroSectionImages';
+import { useHeroSectionImages } from '@/hooks/useStorefrontData';
 
 /**
  * The hero — the headline on the left, the campaign photo on the right in a
@@ -41,34 +41,16 @@ export function FabricWeaveHero() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  // Deliberately starts as `null`, not the bundled defaults: rendering the
-  // bundled photos immediately and then swapping in the admin-configured
-  // ones a moment later (once `hero_section_images` resolves) is exactly the
-  // visible "flash" this used to have. Nothing is rendered below until the
-  // fetch settles — the bundled images are only ever used as a per-slot
-  // fallback *within* that resolved value (a slot the admin never touched),
-  // never as a placeholder shown before it.
-  const [images, setImages] = React.useState<HeroSectionImages | null>(null);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/${HERO_SECTION_IMAGES_KEY}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { value?: Partial<HeroSectionImages> } | null) => {
-        if (cancelled) return;
-        setImages({
-          main: data?.value?.main?.url ? data.value.main : DEFAULT_HERO_IMAGES.main,
-          pink: data?.value?.pink?.url ? data.value.pink : DEFAULT_HERO_IMAGES.pink,
-          black: data?.value?.black?.url ? data.value.black : DEFAULT_HERO_IMAGES.black,
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setImages(DEFAULT_HERO_IMAGES);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Still resolves to `null` before the images are known, rather than to the
+  // bundled defaults: rendering those immediately and swapping in the
+  // admin-configured ones a moment later is exactly the visible "flash" this
+  // avoids. What has changed is how often that null is actually reached — the
+  // value is cached to disk, so on any repeat visit or reload it is already
+  // resolved on the first frame instead of leaving the hero empty until a
+  // request comes back. A network failure still falls back to the bundled set
+  // rather than leaving the hero blank forever.
+  const { data: fetchedImages, error } = useHeroSectionImages();
+  const images: HeroSectionImages | null = fetchedImages ?? (error ? DEFAULT_HERO_IMAGES : null);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;

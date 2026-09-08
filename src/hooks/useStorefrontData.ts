@@ -2,6 +2,11 @@
 
 import * as React from 'react';
 import { useCachedData, TTL } from '@/lib/store/dataCache';
+import {
+  DEFAULT_HERO_IMAGES,
+  HERO_SECTION_IMAGES_KEY,
+  type HeroSectionImages,
+} from '@/lib/heroSectionImages';
 import type { Category, Product } from '@/types/product';
 import type { VendorPolicy } from '@/types/common';
 
@@ -70,6 +75,37 @@ export function useFooterSettings() {
       // renders its own defaults. Returning null caches that answer instead of
       // re-asking on every mount.
       return response.ok ? ((await response.json()) as FooterSettings) : null;
+    },
+    { ttl: TTL.CONFIG, persistToDisk: true }
+  );
+}
+
+/**
+ * The three hero photographs, with the bundled defaults filled in per slot.
+ *
+ * Persisted, and for a more visible reason than most: the hero deliberately
+ * renders nothing at all until this resolves, rather than showing the bundled
+ * images and swapping them for the admin's a moment later. That avoided a
+ * flash at the cost of an empty hero on every single load. Reading the last
+ * known value off disk means the hero is there in the first frame, and a
+ * genuine change still swaps in once its refetch lands.
+ */
+export function useHeroSectionImages() {
+  return useCachedData<HeroSectionImages>(
+    'hero-section-images',
+    async () => {
+      const response = await fetch(`${API()}/api/v1/settings/${HERO_SECTION_IMAGES_KEY}`);
+      // An unset setting is a normal state — every slot falls back on its own,
+      // so an admin who has replaced only one image keeps the defaults for the
+      // other two.
+      const data = response.ok
+        ? ((await response.json()) as { value?: Partial<HeroSectionImages> } | null)
+        : null;
+      return {
+        main: data?.value?.main?.url ? data.value.main : DEFAULT_HERO_IMAGES.main,
+        pink: data?.value?.pink?.url ? data.value.pink : DEFAULT_HERO_IMAGES.pink,
+        black: data?.value?.black?.url ? data.value.black : DEFAULT_HERO_IMAGES.black,
+      };
     },
     { ttl: TTL.CONFIG, persistToDisk: true }
   );
