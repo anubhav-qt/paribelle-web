@@ -20,18 +20,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             // The storefront's public reads live in the Zustand cache (see
-            // lib/store/dataCache) rather than here; what is left on React
-            // Query is the admin and vendor surfaces, where a write is
-            // followed by an explicit `invalidateQueries`. Those explicit
-            // invalidations are what keeps those screens correct, so the
-            // ambient refetch triggers are pure cost — every remount and
-            // every reconnect re-issued a request whose answer had not
-            // changed.
-            staleTime: 5 * 60 * 1000,
+            // lib/store/dataCache), not here. What is left on React Query is
+            // the admin and vendor surfaces, and these defaults are
+            // deliberately *not* loosened for them.
+            //
+            // Widening staleTime or turning off refetch-on-mount would be
+            // free on a storefront, but every one of those hooks already sets
+            // its own staleTime for a reason — orders sit at 30 seconds
+            // because an admin watching for new ones needs them to arrive. A
+            // global `refetchOnMount: false` would mean returning to the
+            // orders screen showed whatever was last fetched and never went
+            // back for more, which is a much worse failure than a redundant
+            // request.
+            //
+            // gcTime is the one safe widening: it only governs how long an
+            // unused result is kept before eviction, so it makes returning to
+            // an admin screen render from cache while the refetch runs, and
+            // cannot serve anything staler than staleTime already allows.
+            staleTime: 60 * 1000,
             gcTime: 30 * 60 * 1000,
             refetchOnWindowFocus: false,
-            refetchOnReconnect: false,
-            refetchOnMount: false,
           },
         },
       })
