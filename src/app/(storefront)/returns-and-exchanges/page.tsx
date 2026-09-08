@@ -3,7 +3,7 @@ import { Monogram } from '@/components/brand/Monogram';
 import { Divider } from '@/components/ui/Divider';
 
 export const metadata: Metadata = {
-  title: 'Returns and Exchanges',
+  title: 'Returns & Exchange Policy',
   description:
     'PariBelle does not accept returns for a refund. We offer exchanges within 7 days of delivery, subject to the conditions on this page.',
 };
@@ -80,7 +80,7 @@ export default function ReturnsAndExchangesPage() {
         <div className="relative">
           <Monogram className="mx-auto h-9 w-9 text-[hsl(var(--pb-gold))]" />
           <p className="text-eyebrow mt-5 text-[hsl(var(--pb-gold-soft))]">Customer Care</p>
-          <h1 className="mt-3 text-display-xl italic text-white">Returns and Exchanges</h1>
+          <h1 className="mt-3 text-display-xl italic text-white">Returns &amp; Exchange Policy</h1>
         </div>
       </section>
 
