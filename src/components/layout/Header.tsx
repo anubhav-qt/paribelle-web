@@ -209,7 +209,10 @@ export function Header() {
                 <div
                   onMouseEnter={clearCloseTimer}
                   onMouseLeave={scheduleCloseMegaMenu}
-                  className="absolute left-0 top-full max-w-[calc(100vw-2rem)] pt-3"
+                  // The `pt-4` is a transparent bridge: it keeps a visible gap
+                  // between the bar and the panel and gives the pointer a strip
+                  // to cross without triggering `mouseleave`.
+                  className="absolute left-0 top-full max-w-[calc(100vw-2rem)] pt-4"
                 >
                   <MegaMenu category={activeCategory} onNavigate={() => setActiveMenu(null)} />
                 </div>
