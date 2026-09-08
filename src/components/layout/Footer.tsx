@@ -29,10 +29,8 @@ const DEFAULT_CONTACT = {
 };
 
 const SERVICE_LINKS = [
-  { label: 'Returns and Exchanges', href: '/returns-and-exchanges' },
+  { label: 'Shipping & Returns', href: '/shipping-returns' },
   { label: 'Track your order', href: '/orders' },
-  { label: 'Contact', href: '/contact' },
-  { label: 'FAQ', href: '/faq' },
 ];
 
 export function Footer() {
