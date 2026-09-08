@@ -5,11 +5,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 export async function GET() {
   try {
     const response = await fetch(`${BACKEND_URL}/api/v1/settings/default-theme`, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
+      next: { revalidate: 300 },
     });
 
     if (!response.ok) {

@@ -26,7 +26,9 @@ export const metadata: Metadata = {
 async function getCommunityImages(): Promise<string[]> {
   try {
     const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const res = await fetch(`${apiUrl}/api/v1/homepage/data`, { cache: 'no-store' });
+    // Shares the homepage's cache entry — same URL, same revalidation window —
+    // so this page costs nothing extra once the homepage has been rendered.
+    const res = await fetch(`${apiUrl}/api/v1/homepage/data`, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
     const all = [

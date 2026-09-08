@@ -4,14 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Facebook, Instagram, Twitter, Youtube, Linkedin } from 'lucide-react';
 import { Monogram } from '@/components/brand/Monogram';
-
-interface FooterSettings {
-  aboutText: string;
-  socialLinks: Array<{ platform: string; url: string }>;
-  customSections: Array<{ title: string; links: Array<{ label: string; url: string }>; enabled: boolean }>;
-  contactInfo: { phone: string; email: string; address: string };
-  copyrightText: string;
-}
+import { useFooterSettings } from '@/hooks/useStorefrontData';
 
 const SOCIAL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   facebook: Facebook,
@@ -34,14 +27,7 @@ const SERVICE_LINKS = [
 ];
 
 export function Footer() {
-  const [settings, setSettings] = React.useState<FooterSettings | null>(null);
-
-  React.useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/footer-settings`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setSettings)
-      .catch(() => setSettings(null));
-  }, []);
+  const { data: settings } = useFooterSettings();
 
   const contact = {
     email: settings?.contactInfo?.email || DEFAULT_CONTACT.email,

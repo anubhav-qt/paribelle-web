@@ -24,7 +24,15 @@ import { ProductRail } from '@/components/home/ProductRail';
 import { getCurrencySymbol } from '@/lib/currency';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
-import { usePolicies } from '@/contexts/PoliciesContext';
+import {
+  useCurrency,
+  useThumbnailLayout,
+  useProductBySlug,
+  useCategoryProducts,
+  useProductReviews,
+  useVendorReviewStats,
+  useVendorPoliciesFor,
+} from '@/hooks/useStorefrontData';
 import { showAlert } from '@/lib/dialog';
 import { useExchangePicker, addExchangePick, formatVariantLabel } from '@/lib/exchangePicker';
 import { cn } from '@/lib/utils';
@@ -58,6 +66,9 @@ function availableStock(
 /** Cap on the quantity stepper while stock is still unknown. */
 const UNKNOWN_STOCK_LIMIT = 99;
 
+/** Stable identity for "no reviews loaded", so it can't retrigger memos. */
+const EMPTY_REVIEWS: any[] = [];
+
 export default function ProductDetailPage() {
   const params = useParams();
   const productSlug = params.slug as string;
@@ -65,21 +76,11 @@ export default function ProductDetailPage() {
   const { addToCart, closeCart } = useCart();
   const exchangePicker = useExchangePicker();
   const { isInWishlist, toggleWishlist } = useWishlist();
-  const { fetchVendorPolicies } = usePolicies();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
   const [addToCartLoading, setAddToCartLoading] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [currency, setCurrency] = useState('INR');
-  const [thumbnailLayout, setThumbnailLayout] = useState<'vertical' | 'horizontal'>('vertical');
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [vendorReturnPolicy, setVendorReturnPolicy] = useState<any>(null);
-  const [vendorCancellationPolicy, setVendorCancellationPolicy] = useState<any>(null);
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [vendorStats, setVendorStats] = useState<any>(null);
   const [showReviews, setShowReviews] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -88,7 +89,72 @@ export default function ProductDetailPage() {
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
-  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+
+  // The public reads all come from the shared cache. Between them these were
+  // seven separate requests re-issued on every mount — including the two
+  // settings lookups, which are marketplace-wide and had already been fetched
+  // by whichever page the shopper arrived from.
+  const currency = useCurrency();
+  const thumbnailLayout = useThumbnailLayout();
+  const { data: fetchedProduct, refresh: refreshProduct } = useProductBySlug(productSlug);
+
+  // `undefined` is "not loaded yet"; `null` is a genuine 404.
+  const loading = fetchedProduct === undefined;
+
+  const vendorId = fetchedProduct?.vendorId ?? null;
+  const { returnPolicy: vendorReturnPolicy, cancellationPolicy: vendorCancellationPolicy } =
+    useVendorPoliciesFor(vendorId);
+  const { data: vendorStats } = useVendorReviewStats(vendorId);
+
+  // Reviews stay lazy — they're below the fold and behind a toggle, so there's
+  // no reason to pay for them on a page view that never opens them.
+  const reviewProductId = showReviews && fetchedProduct?.id ? fetchedProduct.id : null;
+  const {
+    data: reviewsData,
+    isLoading: reviewsLoading,
+    refresh: refreshReviews,
+  } = useProductReviews(reviewProductId);
+  const reviews = reviewsData?.reviews ?? EMPTY_REVIEWS;
+
+  /**
+   * The product, with its review totals reconciled against what the reviews
+   * endpoint actually returned. The two drift because the counts are
+   * denormalised onto the product row, so the page shows the authoritative
+   * figure and asks the backend to recalculate the stored one (below).
+   */
+  const product: Product | null = useMemo(() => {
+    if (!fetchedProduct) return null;
+    if (!reviewsData) return fetchedProduct as Product;
+    return {
+      ...fetchedProduct,
+      reviewCount: reviewsData.total,
+      averageRating: reviewsData.averageRating || 0,
+    } as Product;
+  }, [fetchedProduct, reviewsData]);
+
+  const { data: categoryProducts } = useCategoryProducts(fetchedProduct?.categories?.[0]?.id ?? null);
+
+  /** "Complete the look": others from this product's first category. */
+  const relatedProducts = useMemo(
+    () => (categoryProducts ?? []).filter((p) => p.id !== fetchedProduct?.id).slice(0, 8),
+    [categoryProducts, fetchedProduct?.id]
+  );
+
+  // Nudge the backend to re-derive the stored totals when they disagree with
+  // the live ones. Fire-and-forget: the page is already showing the correct
+  // figures, this only fixes the row for the next reader.
+  useEffect(() => {
+    if (!fetchedProduct || !reviewsData) return;
+    if (
+      reviewsData.total === fetchedProduct.reviewCount &&
+      reviewsData.averageRating === fetchedProduct.averageRating
+    ) {
+      return;
+    }
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/products/${fetchedProduct.id}/recalculate`, {
+      method: 'POST',
+    }).catch((err) => console.error('Failed to recalculate ratings:', err));
+  }, [fetchedProduct, reviewsData]);
 
   // Clamp quantity to available stock whenever stock or variant changes
   useEffect(() => {
@@ -101,100 +167,60 @@ export default function ProductDetailPage() {
     }
   }, [product, selectedVariation, selectedVariant, quantity]);
 
+  // Reset the shopper's in-page choices when they move to another product.
+  // The product data itself no longer needs clearing — it is keyed by slug in
+  // the cache, so the previous product's record can't leak into this one.
   useEffect(() => {
-    // Reset product state when slug changes to prevent showing stale data
-    setProduct(null);
-    setLoading(true);
     setQuantity(1);
-
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/currency`)
-      .then(res => res.json())
-      .then(data => setCurrency(data.value || 'INR'))
-      .catch(err => console.error('Error fetching currency setting:', err));
-
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/thumbnailLayout`)
-      .then(res => res.json())
-      .then(data => setThumbnailLayout(data.value || 'vertical'))
-      .catch(err => console.error('Error fetching thumbnail layout setting:', err));
-
-    fetchProduct();
-
-    const token = localStorage.getItem('token');
-    setIsLoggedIn(!!token);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setIsLoggedIn(!!localStorage.getItem('token'));
   }, [productSlug]);
-
-  const fetchReviews = async (productId: string) => {
-    try {
-      setReviewsLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/products/${productId}?page=1&limit=10`);
-      if (response.ok) {
-        const data = await response.json();
-        setReviews(data.reviews || []);
-
-        if (product && (data.total !== product.reviewCount || data.averageRating !== product.averageRating)) {
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/products/${productId}/recalculate`, {
-            method: 'POST'
-          }).catch(err => console.error('Failed to recalculate ratings:', err));
-
-          setProduct({
-            ...product,
-            reviewCount: data.total,
-            averageRating: data.averageRating || 0
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching reviews:', error);
-    } finally {
-      setReviewsLoading(false);
-    }
-  };
-
-  const fetchVendorStats = async (vendorId: string) => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/vendors/${vendorId}/stats`);
-      if (response.ok) {
-        const data = await response.json();
-        setVendorStats(data);
-      }
-    } catch (error) {
-      console.error('Error fetching vendor stats:', error);
-    }
-  };
 
   const handleShowReviews = () => {
     setShowReviews(!showReviews);
-    if (!showReviews && reviews.length === 0 && product?.id) {
-      fetchReviews(product.id);
-    }
   };
 
-  const checkUserPurchase = async (productId: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+  /**
+   * Whether this shopper has actually bought this product, which is what
+   * unlocks a verified review.
+   *
+   * Deliberately not in the shared cache: it is specific to the signed-in
+   * user, and that cache is written through to localStorage.
+   */
+  useEffect(() => {
+    const productId = fetchedProduct?.id;
+    const token = typeof window === 'undefined' ? null : localStorage.getItem('token');
+    if (!productId || !token) return;
 
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders?status=delivered`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+    let cancelled = false;
 
-      if (response.ok) {
+    (async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders?status=delivered`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!response.ok) return;
+
         const orders = await response.json();
         for (const order of orders) {
           const orderItem = order.items?.find((item: any) => item.productId === productId);
           if (orderItem) {
-            setHasPurchased(true);
-            setUserOrderItemId(orderItem.id);
+            if (!cancelled) {
+              setHasPurchased(true);
+              setUserOrderItemId(orderItem.id);
+            }
             break;
           }
         }
+      } catch (error) {
+        console.error('Error checking purchase status:', error);
       }
-    } catch (error) {
-      console.error('Error checking purchase status:', error);
-    }
-  };
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchedProduct?.id]);
 
   const handleWriteReview = () => {
     if (!isLoggedIn) {
@@ -226,50 +252,16 @@ export default function ProductDetailPage() {
 
       if (response.ok) {
         setShowReviewForm(false);
-        if (product?.id) {
-          await fetchReviews(product.id);
-          await fetchProduct();
-        }
+        // The shopper's own write is exactly the case the TTL can't cover, so
+        // both reads are refreshed explicitly rather than waiting it out.
+        refreshReviews();
+        refreshProduct();
       } else {
         const error = await response.json();
         showAlert(error.message || 'Failed to submit review', 'error');
       }
     } catch (error) {
       showAlert('Failed to submit review. Please try again.', 'error');
-    }
-  };
-
-  const fetchProduct = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/slug/${productSlug}`);
-      if (response.ok) {
-        const productData = await response.json();
-        setProduct(productData);
-
-        if (productData.id) checkUserPurchase(productData.id);
-
-        if (productData.vendorId) {
-          const policies = await fetchVendorPolicies(productData.vendorId);
-          setVendorReturnPolicy(policies.returnPolicy);
-          setVendorCancellationPolicy(policies.cancellationPolicy);
-          fetchVendorStats(productData.vendorId);
-        }
-
-        // Complete the look: other products from the same first category
-        if (productData.categories?.[0]?.slug) {
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?categoryId=${productData.categories[0].id}`)
-            .then((r) => (r.ok ? r.json() : []))
-            .then((related) => setRelatedProducts((related || []).filter((p: any) => p.id !== productData.id).slice(0, 8)))
-            .catch(() => {});
-        }
-      } else {
-        setProduct(null);
-      }
-    } catch (error) {
-      setProduct(null);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -868,7 +860,7 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {vendorStats?.totalReviews > 0 && (
+            {vendorStats && vendorStats.totalReviews > 0 && (
               <div className="mt-6 flex items-center gap-4 text-xs text-[hsl(var(--pb-ink-muted))]">
                 <Rating value={vendorStats.averageRating} size="sm" showValue={false} />
                 <span>({vendorStats.totalReviews} store reviews)</span>

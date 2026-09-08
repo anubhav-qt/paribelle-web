@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useCachedData, TTL } from '@/lib/store/dataCache';
 import { Category } from '@/types/product';
 
 interface UseCategoriesOptions {
@@ -25,10 +25,20 @@ const filterCategoriesWithProducts = (categories: Category[]): Category[] => {
     });
 };
 
+/**
+ * The category tree the navigation is built from.
+ *
+ * Cached through the shared store rather than fetched per mount: this is the
+ * data the header needs before it can render anything at all, so paying for it
+ * again on every route change is the most visible instance of the problem the
+ * cache exists to solve. It is small, public and slow-moving, so it is also
+ * written through to localStorage — which is what lets the nav render filled
+ * in on the very first frame after a reload instead of popping in.
+ */
 export function useCategories({
   vendorId,
   locale = 'en',
-  // Off by default: this storefront's nav (Header, Footer) is built from
+  // Off by default: this storefront's nav (Header, MobileNav) is built from
   // exactly two top-level categories, Kurtis and Jewellery, and both should
   // stay visible as permanent anchors even while a category is temporarily
   // out of active stock. "Active product count" was never the right signal
@@ -37,47 +47,26 @@ export function useCategories({
   // category tree).
   hideEmptyCategories = false,
 }: UseCategoriesOptions = {}) {
-  return useQuery({
-    queryKey: ['categories', vendorId, locale, hideEmptyCategories],
-    queryFn: async () => {
-      let url: string;
-      
-      if (vendorId) {
-        // For vendor pages, get vendor-specific categories
-        url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/categories/vendor/${vendorId}`;
-        
-        // Add withProductCounts query parameter if hiding empty categories
-        if (hideEmptyCategories) {
-          url += '?withProductCounts=true';
-        }
-      } else {
-        // For main pages, get global categories
-        url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/categories/tree`;
-        
-        // Add withProductCounts query parameter if hiding empty categories
-        if (hideEmptyCategories) {
-          url += '?withProductCounts=true';
-        }
-      }
-      
-      // Add language parameter
+  return useCachedData<Category[]>(
+    `categories:${vendorId ?? 'global'}:${locale}:${hideEmptyCategories}`,
+    async () => {
+      const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+      let url = vendorId
+        ? `${base}/api/v1/categories/vendor/${vendorId}`
+        : `${base}/api/v1/categories/tree`;
+
+      if (hideEmptyCategories) url += '?withProductCounts=true';
       url += (url.includes('?') ? '&' : '?') + `lang=${locale}`;
-      
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to fetch categories: ${response.status}`);
       }
-      
-      let data = await response.json() as Category[];
-      
-      // If hideEmptyCategories is true, filter out categories without products
-      if (hideEmptyCategories) {
-        data = filterCategoriesWithProducts(data);
-      }
-      
-      return data;
+
+      const data = (await response.json()) as Category[];
+      return hideEmptyCategories ? filterCategoriesWithProducts(data) : data;
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes (renamed from cacheTime in v5)
-  });
+    { ttl: TTL.CONFIG, persistToDisk: true }
+  );
 }

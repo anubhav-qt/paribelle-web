@@ -1,135 +1,44 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
+import { useMarketplacePolicies } from '@/hooks/useStorefrontData';
 import { VendorPolicy } from '@/types/common';
 
 interface PoliciesContextType {
   returnPolicy: VendorPolicy | null;
   cancellationPolicy: VendorPolicy | null;
   loading: boolean;
-  fetchVendorPolicies: (vendorId: string) => Promise<{ returnPolicy: VendorPolicy | null; cancellationPolicy: VendorPolicy | null }>;
 }
 
 const PoliciesContext = createContext<PoliciesContextType>({
   returnPolicy: null,
   cancellationPolicy: null,
   loading: true,
-  fetchVendorPolicies: async () => ({ returnPolicy: null, cancellationPolicy: null }),
 });
 
-// Cache utility functions
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-
-function getCachedPolicies(vendorId?: string) {
-  const key = vendorId ? `vendor_${vendorId}_policies` : 'marketplace_policies';
-  const timestampKey = vendorId ? `vendor_${vendorId}_policies_timestamp` : 'marketplace_policies_timestamp';
-  
-  const cached = localStorage.getItem(key);
-  const timestamp = localStorage.getItem(timestampKey);
-  
-  if (cached && timestamp) {
-    const age = Date.now() - parseInt(timestamp);
-    if (age < CACHE_DURATION) {
-      return JSON.parse(cached);
-    }
-  }
-  return null;
-}
-
-function setCachedPolicies(policies: { return: VendorPolicy | null; cancellation: VendorPolicy | null }, vendorId?: string) {
-  const key = vendorId ? `vendor_${vendorId}_policies` : 'marketplace_policies';
-  const timestampKey = vendorId ? `vendor_${vendorId}_policies_timestamp` : 'marketplace_policies_timestamp';
-  
-  localStorage.setItem(key, JSON.stringify(policies));
-  localStorage.setItem(timestampKey, Date.now().toString());
-}
-
+/**
+ * The marketplace-wide return and cancellation policies.
+ *
+ * This used to run its own fetch on mount behind a hand-rolled 24-hour
+ * localStorage cache, and hand out a `fetchVendorPolicies` callback that
+ * repeated the trick per vendor with its own key scheme. Both now go through
+ * the shared data cache (see `useMarketplacePolicies` and
+ * `useVendorPoliciesFor`), which gives the same "don't re-ask on every mount"
+ * behaviour without a second, differently-expiring copy of the caching rules —
+ * and without the stale entries the old one left behind, since it had no way
+ * to invalidate what an admin had just changed.
+ */
 export function PoliciesProvider({ children }: { children: ReactNode }) {
-  const [returnPolicy, setReturnPolicy] = useState<VendorPolicy | null>(null);
-  const [cancellationPolicy, setCancellationPolicy] = useState<VendorPolicy | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch marketplace-wide policies
-  useEffect(() => {
-    const fetchMarketplacePolicies = async () => {
-      // Check cache first
-      const cached = getCachedPolicies();
-      if (cached) {
-        setReturnPolicy(cached.return);
-        setCancellationPolicy(cached.cancellation);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch fresh policies
-      try {
-        const [returnRes, cancellationRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/return_policy`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/cancellation_policy`),
-        ]);
-
-        const returnData = await returnRes.json();
-        const cancellationData = await cancellationRes.json();
-
-        const returnPolicyData = returnData.value ? JSON.parse(returnData.value) : null;
-        const cancellationPolicyData = cancellationData.value ? JSON.parse(cancellationData.value) : null;
-
-        setReturnPolicy(returnPolicyData);
-        setCancellationPolicy(cancellationPolicyData);
-
-        // Cache the policies
-        setCachedPolicies({
-          return: returnPolicyData,
-          cancellation: cancellationPolicyData,
-        });
-      } catch (error) {
-        console.error('Error fetching marketplace policies:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMarketplacePolicies();
-  }, []);
-
-  // Function to fetch vendor-specific policies (with caching)
-  const fetchVendorPolicies = useCallback(async (vendorId: string) => {
-    // Check cache first
-    const cached = getCachedPolicies(vendorId);
-    if (cached) {
-      return { returnPolicy: cached.return, cancellationPolicy: cached.cancellation };
-    }
-
-    // Fetch vendor details which include policies
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`);
-      if (!response.ok) throw new Error('Failed to fetch vendor');
-      
-      const vendor = await response.json();
-      
-      // Use vendor-specific policies if set, otherwise fall back to marketplace defaults
-      const vendorReturnPolicy = vendor.returnPolicy || returnPolicy;
-      const vendorCancellationPolicy = vendor.cancellationPolicy || cancellationPolicy;
-
-      // Cache vendor-specific policies
-      setCachedPolicies({
-        return: vendorReturnPolicy,
-        cancellation: vendorCancellationPolicy,
-      }, vendorId);
-
-      return { 
-        returnPolicy: vendorReturnPolicy, 
-        cancellationPolicy: vendorCancellationPolicy 
-      };
-    } catch (error) {
-      console.error('Error fetching vendor policies:', error);
-      // Fallback to marketplace policies
-      return { returnPolicy, cancellationPolicy };
-    }
-  }, [returnPolicy, cancellationPolicy]);
+  const { data, isLoading } = useMarketplacePolicies();
 
   return (
-    <PoliciesContext.Provider value={{ returnPolicy, cancellationPolicy, loading, fetchVendorPolicies }}>
+    <PoliciesContext.Provider
+      value={{
+        returnPolicy: data?.returnPolicy ?? null,
+        cancellationPolicy: data?.cancellationPolicy ?? null,
+        loading: isLoading,
+      }}
+    >
       {children}
     </PoliciesContext.Provider>
   );

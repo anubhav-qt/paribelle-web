@@ -49,8 +49,12 @@ export const metadata: Metadata = {
 async function getDefaultTheme() {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    // The palette an admin picked, which changes a few times a year at most.
+    // `no-store` here meant every single page render — of every route, since
+    // this is the root layout — waited on a round trip to Render before it
+    // could emit any HTML.
     const response = await fetch(`${apiUrl}/api/v1/settings/default-theme`, {
-      cache: 'no-store',
+      next: { revalidate: 300 },
     });
     
     if (response.ok) {

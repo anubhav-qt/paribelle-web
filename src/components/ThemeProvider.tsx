@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCachedData, TTL } from '@/lib/store/dataCache';
 import { ThemeConfig } from '@/types/common';
 
 /**
@@ -26,35 +26,24 @@ export default function ThemeProvider({
   children: React.ReactNode;
   initialTheme?: ThemeConfig | null;
 }) {
-  const [theme, setTheme] = useState<ThemeConfig>(initialTheme || defaultFallbackTheme);
+  // Only fetched when the server didn't already resolve the theme. Cached to
+  // disk, so a reload paints the configured palette on the first frame rather
+  // than starting on the fallback and swapping once the request lands.
+  const { data: fetchedTheme } = useCachedData<ThemeConfig | null>(
+    initialTheme ? null : 'default-theme',
+    async () => {
+      const response = await fetch('/api/theme');
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (!data?.value) return null;
+      // The setting is stored as JSON; older rows hold it already parsed.
+      return (typeof data.value === 'string' ? JSON.parse(data.value) : data.value) as ThemeConfig;
+    },
+    { ttl: TTL.CONFIG, persistToDisk: true }
+  );
 
-  // Fetch theme if not provided
-  useEffect(() => {
-    if (initialTheme) return;
-
-    const fetchTheme = async () => {
-      try {
-        const response = await fetch('/api/theme', {
-          cache: 'no-store',
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.value) {
-            // Handle both string and object formats
-            const savedTheme = typeof data.value === 'string' 
-              ? JSON.parse(data.value) 
-              : data.value;
-            setTheme({ ...defaultFallbackTheme, ...savedTheme });
-          }
-        }
-      } catch (error) {
-        console.error('[ThemeProvider] Error fetching theme:', error);
-      }
-    };
-
-    fetchTheme();
-  }, [initialTheme]);
+  const theme: ThemeConfig =
+    initialTheme || (fetchedTheme ? { ...defaultFallbackTheme, ...fetchedTheme } : defaultFallbackTheme);
 
   // Helper functions
   const hexToHSL = (hex: string) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { SlidersHorizontal, Package, Star, X } from 'lucide-react';
@@ -16,6 +16,13 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { DualRangeSlider } from '@/components/ui/DualRangeSlider';
 import { SectionHeading } from '@/components/brand/SectionHeading';
 import { getCurrencySymbol } from '@/lib/currency';
+import {
+  useCurrency,
+  useCategoryTree,
+  useCategoryProducts,
+  useAllProducts,
+  useEffectiveFilters,
+} from '@/hooks/useStorefrontData';
 import { Product, Category } from '@/types/product';
 
 type SortOption = 'popularity' | 'price-low' | 'price-high' | 'newest';
@@ -80,6 +87,39 @@ function rangeValueFor(filter: CategoryFilterDef, value: unknown): number {
 /** A range filter set to its maximum imposes no constraint. */
 function rangeIsUnset(filter: CategoryFilterDef, value: unknown): boolean {
   return rangeValueFor(filter, value) >= (filter.max ?? 100);
+}
+
+/**
+ * Every value this product offers for an attribute, across its variants.
+ *
+ * Variants are the only place attributes live — a product's Fabric sits on
+ * each of its variants, and its Sizes are one per variant — so a product
+ * matches a filter when any of its variants does. Keys are compared
+ * case-insensitively because they are typed by hand in the admin and in the
+ * import sheet, and the same catalogue holds both `Colour` and `colour`.
+ *
+ * `variationAttributes` covers the older parent/child variation model, whose
+ * children are products in their own right.
+ *
+ * At module scope rather than inside the component so the filtering memo below
+ * can depend on it without being invalidated on every render.
+ */
+function getAttrValues(product: Product, key: string): string[] {
+  const keyLower = key.toLowerCase();
+
+  const readFrom = (attrs?: Record<string, any>): string[] => {
+    if (!attrs) return [];
+    const matchingKey = Object.keys(attrs).find((k) => k.toLowerCase() === keyLower);
+    return matchingKey && attrs[matchingKey] != null ? [String(attrs[matchingKey])] : [];
+  };
+
+  const variants = (product as any).productVariants as
+    | Array<{ variantAttributes?: Record<string, string> }>
+    | undefined;
+  const fromVariants = (variants || []).flatMap((v) => readFrom(v.variantAttributes));
+  if (fromVariants.length > 0) return fromVariants;
+
+  return readFrom((product as any).variationAttributes);
 }
 
 interface FilterPanelProps {
@@ -252,52 +292,85 @@ function FilterPanel({
   );
 }
 
+/** Stable empty arrays, so a cache miss doesn't produce a fresh identity each render. */
+const NO_FILTERS: CategoryFilterDef[] = [];
+const NO_PRODUCTS: Product[] = [];
+const NO_SUBCATEGORIES: Category[] = [];
+
 export default function CategoryPage() {
   const params = useParams();
   const categorySlug = params.slug as string;
 
-  const [category, setCategory] = useState<Category | null>(null);
-  const [subcategories, setSubcategories] = useState<Category[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const collection = VIRTUAL_COLLECTIONS[categorySlug];
+  const isVirtual = !!collection;
+
   const [showFilters, setShowFilters] = useState(false);
 
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
-  const [maxProductPrice, setMaxProductPrice] = useState<number>(100000);
   const [minRating, setMinRating] = useState<number>(0);
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
   const [showDiscountOnly, setShowDiscountOnly] = useState(false);
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, any>>({});
+
+  // Every read below goes through the shared data cache rather than a fetch of
+  // its own, so stepping into a product and pressing Back re-renders this page
+  // straight from memory — the category, its products and its filters are all
+  // still there. Previously each of those was re-requested on every mount, and
+  // the grid went back to skeletons while they landed.
+  const currency = useCurrency();
+  const { data: fetchedCategory } = useCategoryTree(isVirtual ? null : categorySlug);
+  const { data: allProducts } = useAllProducts(isVirtual);
+  const { data: categoryProducts } = useCategoryProducts(fetchedCategory?.id ?? null);
+
+  const category: Category | null = useMemo(() => {
+    // Virtual collections have no category row — they are a view over the
+    // whole catalogue, synthesised here to give the page something to render.
+    if (isVirtual) {
+      return {
+        id: `collection-${categorySlug}`,
+        name: collection.name,
+        slug: categorySlug,
+        description: collection.description,
+      } as Category;
+    }
+    return fetchedCategory ?? null;
+  }, [isVirtual, collection, categorySlug, fetchedCategory]);
+
+  const products = useMemo(() => {
+    if (isVirtual) return allProducts ? collection.select(allProducts) : NO_PRODUCTS;
+    return categoryProducts ?? NO_PRODUCTS;
+  }, [isVirtual, collection, allProducts, categoryProducts]);
+
+  const subcategories = fetchedCategory?.children ?? NO_SUBCATEGORIES;
+
+  // `undefined` is "still loading", `null` is "no such category" — the two
+  // have to stay distinct or a slow response renders as a 404 for a frame.
+  // The products leg is included so the grid doesn't flash empty between the
+  // category resolving and its products arriving.
+  const loading = isVirtual
+    ? allProducts === undefined
+    : fetchedCategory === undefined || (fetchedCategory !== null && categoryProducts === undefined);
+
   // The filters this category's live catalogue actually offers — derived on
   // the server from `variant_attributes`, not a snapshot copied at import
   // time. See CategoriesService.getEffectiveFilters.
-  const [effectiveFilters, setEffectiveFilters] = useState<CategoryFilterDef[]>([]);
+  const { data: fetchedFilters } = useEffectiveFilters(
+    category && !category.id.startsWith('collection-') ? category.id : null
+  );
+  const effectiveFilters = fetchedFilters ?? NO_FILTERS;
 
-  const [currency, setCurrency] = useState('INR');
+  const maxProductPrice = useMemo(() => {
+    if (products.length === 0) return 100000;
+    const maxPrice = Math.max(...products.map((p) => Number(p.price) || 0));
+    return Math.ceil(maxPrice / 500) * 500 || 100000;
+  }, [products]);
 
+  // Seed the slider to the full range whenever the catalogue under it changes
+  // — a bound carried over from the previous category would silently hide
+  // products in this one.
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/currency`)
-      .then((res) => res.json())
-      .then((data) => setCurrency(data.value || 'INR'))
-      .catch(() => {});
-
-    fetchCategoryAndProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categorySlug]);
-
-  useEffect(() => {
-    // Virtual collections (New In, Sale) have no category row to derive
-    // attribute filters from.
-    if (!category || category.id.startsWith('collection-')) {
-      setEffectiveFilters([]);
-      return;
-    }
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/${category.id}/filters/effective`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setEffectiveFilters(data?.filters || []))
-      .catch(() => setEffectiveFilters([]));
-  }, [category?.id]);
+    setPriceRange([0, maxProductPrice]);
+  }, [maxProductPrice]);
 
   useEffect(() => {
     if (effectiveFilters.length > 0) {
@@ -313,110 +386,18 @@ export default function CategoryPage() {
     }
   }, [effectiveFilters]);
 
-  useEffect(() => {
-    applyFilters();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, priceRange, minRating, sortBy, showDiscountOnly, dynamicFilters]);
+  const dynamicFilterDefs = useMemo(
+    () =>
+      effectiveFilters.filter(
+        (f) => f.id !== 'price' && f.id !== 'priceRange' && !HIDDEN_FILTER_IDS.includes(f.id)
+      ),
+    [effectiveFilters]
+  );
 
-  const fetchProducts = async (categoryId: string) => {
-    try {
-      const searchParams = new URLSearchParams({ categoryId });
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?${searchParams.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProducts(data);
-        if (data.length > 0) {
-          const maxPrice = Math.max(...data.map((p: Product) => Number(p.price) || 0));
-          const roundedMax = Math.ceil(maxPrice / 500) * 500 || 100000;
-          setMaxProductPrice(roundedMax);
-          setPriceRange([0, roundedMax]);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    }
-  };
-
-  const fetchCollection = async (collectionSlug: string) => {
-    const collection = VIRTUAL_COLLECTIONS[collectionSlug];
-    const searchParams = new URLSearchParams({ status: 'active', limit: '100' });
-
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?${searchParams.toString()}`);
-    const payload = res.ok ? await res.json() : null;
-    const all: Product[] = Array.isArray(payload) ? payload : payload?.products || [];
-    const selected = collection.select(all);
-
-    setCategory({
-      id: `collection-${collectionSlug}`,
-      name: collection.name,
-      slug: collectionSlug,
-      description: collection.description,
-    } as Category);
-    setSubcategories([]);
-    setProducts(selected);
-
-    if (selected.length > 0) {
-      const roundedMax = Math.ceil(Math.max(...selected.map((p) => Number(p.price) || 0)) / 500) * 500 || 100000;
-      setMaxProductPrice(roundedMax);
-      setPriceRange([0, roundedMax]);
-    }
-  };
-
-  const fetchCategoryAndProducts = async () => {
-    try {
-      setLoading(true);
-
-      if (VIRTUAL_COLLECTIONS[categorySlug]) {
-        await fetchCollection(categorySlug);
-        return;
-      }
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/slug/${categorySlug}/tree`);
-      if (res.ok) {
-        const categoryData = await res.json();
-        setCategory(categoryData);
-        setSubcategories(categoryData.children || []);
-        if (categoryData) await fetchProducts(categoryData.id);
-      }
-    } catch (error) {
-      console.error('Error fetching category and products:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Every value this product offers for an attribute, across its variants.
-   *
-   * Variants are the only place attributes live — a product's Fabric sits on
-   * each of its variants, and its Sizes are one per variant — so a product
-   * matches a filter when any of its variants does. Keys are compared
-   * case-insensitively because they are typed by hand in the admin and in the
-   * import sheet, and the same catalogue holds both `Colour` and `colour`.
-   *
-   * `variationAttributes` covers the older parent/child variation model, whose
-   * children are products in their own right.
-   */
-  const getAttrValues = (product: Product, key: string): string[] => {
-    const keyLower = key.toLowerCase();
-
-    const readFrom = (attrs?: Record<string, any>): string[] => {
-      if (!attrs) return [];
-      const matchingKey = Object.keys(attrs).find((k) => k.toLowerCase() === keyLower);
-      return matchingKey && attrs[matchingKey] != null ? [String(attrs[matchingKey])] : [];
-    };
-
-    const variants = (product as any).productVariants as
-      | Array<{ variantAttributes?: Record<string, string> }>
-      | undefined;
-    const fromVariants = (variants || []).flatMap((v) => readFrom(v.variantAttributes));
-    if (fromVariants.length > 0) return fromVariants;
-
-    return readFrom((product as any).variationAttributes);
-  };
-
-  const applyFilters = () => {
+  // Derived rather than mirrored into state behind an effect. The old shape
+  // rendered once with the previous category's results before the effect
+  // caught up, which is what made a filter click look like it hadn't taken.
+  const filteredProducts = useMemo(() => {
     let filtered = [...products];
 
     filtered = filtered.filter((product) => {
@@ -482,8 +463,8 @@ export default function CategoryPage() {
       }
     });
 
-    setFilteredProducts(filtered);
-  };
+    return filtered;
+  }, [products, priceRange, minRating, sortBy, showDiscountOnly, dynamicFilters, dynamicFilterDefs]);
 
   const resetFilters = () => {
     setPriceRange([0, maxProductPrice]);
@@ -515,10 +496,6 @@ export default function CategoryPage() {
       return { ...prev, [key]: value };
     });
   };
-
-  const dynamicFilterDefs = effectiveFilters.filter(
-    (f) => f.id !== 'price' && f.id !== 'priceRange' && !HIDDEN_FILTER_IDS.includes(f.id)
-  );
 
   /** Clear one filter without disturbing the others. */
   const clearDynamicFilter = (filterId: string, optionValue?: string) => {
