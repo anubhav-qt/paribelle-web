@@ -82,6 +82,22 @@ export function Header() {
     closeTimer.current = setTimeout(() => setActiveMenu(null), 120);
   };
 
+  /**
+   * Close immediately, for the header's own non-category targets.
+   *
+   * Moving between two elements inside the header never fires the header's
+   * `onMouseLeave`, and only the category links had an `onMouseEnter` — so
+   * hovering Kurtis and then sliding across to Home, About or the wordmark
+   * left `activeMenu` set and the panel hanging open over the page. The delay
+   * used when leaving the bar entirely is deliberately skipped here: the
+   * pointer has arrived somewhere definite that isn't the menu, so there is no
+   * diagonal-travel gap to protect against and waiting only looks sticky.
+   */
+  const closeMegaMenuNow = () => {
+    clearCloseTimer();
+    setActiveMenu(null);
+  };
+
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
@@ -164,7 +180,13 @@ export function Header() {
 
             <nav className="relative hidden items-center md:flex">
               {STATIC_LINKS.map((link) => (
-                <Link key={link.href} href={link.href} className={navLinkClass(activeNavKey === 'home')}>
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onMouseEnter={closeMegaMenuNow}
+                  onFocus={closeMegaMenuNow}
+                  className={navLinkClass(activeNavKey === 'home')}
+                >
                   {link.label}
                 </Link>
               ))}
@@ -190,11 +212,21 @@ export function Header() {
               })}
 
               {LOOKBOOK_ENABLED && (
-                <Link href="/lookbook" className={navLinkClass(activeNavKey === 'lookbook')}>
+                <Link
+                  href="/lookbook"
+                  onMouseEnter={closeMegaMenuNow}
+                  onFocus={closeMegaMenuNow}
+                  className={navLinkClass(activeNavKey === 'lookbook')}
+                >
                   Lookbook
                 </Link>
               )}
-              <Link href="/about" className={navLinkClass(activeNavKey === 'about')}>
+              <Link
+                href="/about"
+                onMouseEnter={closeMegaMenuNow}
+                onFocus={closeMegaMenuNow}
+                className={navLinkClass(activeNavKey === 'about')}
+              >
                 About
               </Link>
 
@@ -226,13 +258,14 @@ export function Header() {
               to shrink. */}
           <Link
             href="/"
+            onMouseEnter={closeMegaMenuNow}
             className={`${PILL_ITEM} absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap px-3 py-1 font-logo text-2xl tracking-wide text-[hsl(var(--pb-ink))] hover:text-[hsl(var(--pb-rose-deep))] md:text-3xl`}
           >
             PariBelle
           </Link>
 
           {/* Right zone: account, wishlist, cart. */}
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div onMouseEnter={closeMegaMenuNow} className="flex shrink-0 items-center gap-0.5">
             {/* Signed out, the icon is a shortcut to the login page. Signed in,
                 it opens the account menu — which is the only place on the
                 storefront a customer can sign out from. */}
