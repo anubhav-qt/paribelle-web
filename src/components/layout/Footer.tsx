@@ -3,7 +3,6 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Facebook, Instagram, Twitter, Youtube, Linkedin } from 'lucide-react';
-import { useCategories } from '@/hooks/useCategories';
 import { Monogram } from '@/components/brand/Monogram';
 
 interface FooterSettings {
@@ -31,6 +30,7 @@ const DEFAULT_CONTACT = {
 const SERVICE_LINKS = [
   { label: 'Shipping & Returns', href: '/shipping-returns' },
   { label: 'Track your order', href: '/orders' },
+  { label: 'About', href: '/about' },
 ];
 
 export function Footer() {
@@ -43,11 +43,6 @@ export function Footer() {
       .then(setSettings)
       .catch(() => setSettings(null));
   }, []);
-
-  // Shoppers browse the leaves (Kurtis, Jewellery), not the grouping parent.
-  const shopCategories = categories
-    .flatMap((cat) => (cat.children?.length ? cat.children : [cat]))
-    .slice(0, 6);
 
   const contact = {
     email: settings?.contactInfo?.email || DEFAULT_CONTACT.email,
@@ -99,15 +94,6 @@ export function Footer() {
 
         <div className="flex flex-col items-start justify-between gap-6 pt-7 md:flex-row md:items-center">
           <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
-            {shopCategories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/category/${cat.slug}`}
-                className="text-[13px] tracking-wide text-white/74 hover:text-white transition-colors duration-150"
-              >
-                {cat.name}
-              </Link>
-            ))}
             {SERVICE_LINKS.map((link) => (
               <Link key={link.href} href={link.href} className="text-[13px] tracking-wide text-white/74 hover:text-white transition-colors duration-150">
                 {link.label}
