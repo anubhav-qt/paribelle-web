@@ -34,7 +34,6 @@ const SERVICE_LINKS = [
 ];
 
 export function Footer() {
-  const { data: categories = [] } = useCategories();
   const [settings, setSettings] = React.useState<FooterSettings | null>(null);
 
   React.useEffect(() => {
