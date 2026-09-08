@@ -87,6 +87,7 @@ function CheckoutContent() {
   const [confirmedSubtotal, setConfirmedSubtotal] = useState(0);
   const [confirmedTax, setConfirmedTax] = useState(0);
   const [confirmedShipping, setConfirmedShipping] = useState(0);
+  const [confirmedCod, setConfirmedCod] = useState(0);
   
 
   useEffect(() => {
@@ -245,7 +246,11 @@ function CheckoutContent() {
   const orderSubtotal = subtotalWithTax;
   const shippingCost = subtotalWithTax > 500 ? 0 : 50;
   const tax = extractedTax;
-  const totalBeforeWallet = orderSubtotal + shippingCost; // Total before wallet discount
+  // Flat handling fee on Cash on Delivery orders. Prices are GST-inclusive and
+  // this fee is not taxed on top. The backend charges the same amount.
+  const COD_CHARGE = 150;
+  const codCharge = paymentMethod === 'cod' ? COD_CHARGE : 0;
+  const totalBeforeWallet = orderSubtotal + shippingCost + codCharge; // Total before wallet discount
   const walletDiscount = useWalletBalance ? Math.min(walletBalance, totalBeforeWallet) : 0;
   const finalTotal = totalBeforeWallet - walletDiscount; // Final total after wallet discount
 
@@ -350,6 +355,7 @@ function CheckoutContent() {
         subtotal: subtotalBeforeTax,
         shippingCost,
         tax,
+        codCharge,
         totalAmount: totalBeforeWallet,
         useWalletBalance,
       };
@@ -399,6 +405,7 @@ function CheckoutContent() {
       setConfirmedSubtotal(subtotalBeforeTax); // Base price without tax
       setConfirmedTax(tax);
       setConfirmedShipping(shippingCost);
+      setConfirmedCod(codCharge);
 
       // Wallet balance can cover the order in full — the backend already
       // settles that order as PAID via the wallet ledger and never expects a
@@ -726,9 +733,15 @@ function CheckoutContent() {
                     <span>Shipping</span>
                     <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}</span>
                   </div>
+                  {codCharge > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>COD Charges</span>
+                      <span>{formatPrice(codCharge, 'INR')}</span>
+                    </div>
+                  )}
                 </>
               )}
-              
+
               {/* Wallet Balance Section */}
               {walletBalance > 0 && useWalletBalance && walletDiscount > 0 && (
                 <div className="flex justify-between text-green-600">
@@ -753,7 +766,7 @@ function CheckoutContent() {
         </div>
       </div>
     </div>
-  ), [shippingAddress, billingAddress, billingSameAsShipping, selectedShippingAddressId, selectedBillingAddressId, subtotalWithTax, subtotalBeforeTax, shippingCost, tax, finalTotal, walletBalance, useWalletBalance, walletDiscount, handleContinueToPayment]);
+  ), [shippingAddress, billingAddress, billingSameAsShipping, selectedShippingAddressId, selectedBillingAddressId, subtotalWithTax, subtotalBeforeTax, shippingCost, tax, codCharge, finalTotal, walletBalance, useWalletBalance, walletDiscount, handleContinueToPayment]);
 
 
   const CartStep = () => (
@@ -855,6 +868,12 @@ function CheckoutContent() {
                       {shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}
                     </span>
                   </div>
+                  {codCharge > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>COD Charges</span>
+                      <span>{formatPrice(codCharge, 'INR')}</span>
+                    </div>
+                  )}
                 </>
               )}
               
@@ -1096,6 +1115,12 @@ function CheckoutContent() {
                     <span>Shipping</span>
                     <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost, 'INR')}</span>
                   </div>
+                  {codCharge > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>COD Charges</span>
+                      <span>{formatPrice(codCharge, 'INR')}</span>
+                    </div>
+                  )}
                 </>
               )}
               <div className="border-t border-border pt-3 flex justify-between font-bold text-lg text-foreground">
@@ -1103,7 +1128,7 @@ function CheckoutContent() {
                 <span>{formatPrice(finalTotal, 'INR')}</span>
               </div>
             </div>
-            
+
             <button
               onClick={handlePlaceOrder}
               disabled={loading}
@@ -1181,6 +1206,12 @@ function CheckoutContent() {
               <span className="text-muted-foreground">Tax</span>
               <span className="font-semibold text-foreground">{formatPrice(confirmedTax, 'INR')}</span>
             </div>
+            {confirmedCod > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">COD Charges</span>
+                <span className="font-semibold text-foreground">{formatPrice(confirmedCod, 'INR')}</span>
+              </div>
+            )}
             <div className="flex justify-between border-t border-border pt-2 mt-2">
               <span className="text-muted-foreground font-semibold">Total Amount</span>
               <span className="font-bold text-foreground">{formatPrice(confirmedOrderTotal, 'INR')}</span>

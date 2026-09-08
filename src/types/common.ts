@@ -93,6 +93,7 @@ export interface Order {
   subtotal?: number;
   tax?: number;
   shippingCost?: number;
+  codCharge?: number;
   vendorPayout?: number;
   commissionAmount?: number;
   commissionRate?: number;
