@@ -148,18 +148,25 @@ export function MegaMenu({ category, onNavigate }: MegaMenuProps) {
     // `w-fit` lets it shrink to its content instead of claiming a fixed width.
     <div className="w-fit overflow-hidden rounded-3xl border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory)/0.97)] shadow-pb-lg backdrop-blur-xl">
       {isEmpty ? (
-        <div className="flex w-72 flex-col gap-2 px-8 py-8">
-          <span className="text-eyebrow text-[hsl(var(--pb-ink-faint))]">{category.name}</span>
-          <p className="text-sm leading-relaxed text-[hsl(var(--pb-ink-muted))]">
-            New pieces are on their way. Take a look at what is in the studio so far.
-          </p>
-          <Link
-            href={`/category/${category.slug}`}
-            onClick={onNavigate}
-            className="mt-2 text-sm text-[hsl(var(--pb-rose-deep))] transition-colors duration-150 hover:text-[hsl(var(--pb-rose-ink))]"
-          >
-            Browse {category.name} &rarr;
-          </Link>
+        // No sub-categories yet — still open a panel (the header opens one for
+        // every anchor category), just with a single "shop all" prompt beside
+        // the Editor's Pick. EditorsPick falls back to an "explore" tile when
+        // the category has no products at all.
+        <div className="flex gap-7 px-7 py-6">
+          <div className="flex w-48 flex-col justify-center gap-2">
+            <span className="text-eyebrow text-[hsl(var(--pb-ink-faint))]">{category.name}</span>
+            <p className="text-sm leading-relaxed text-[hsl(var(--pb-ink-muted))]">
+              Browse the full {category.name} collection.
+            </p>
+            <Link
+              href={`/category/${category.slug}`}
+              onClick={onNavigate}
+              className="mt-1 text-sm text-[hsl(var(--pb-rose-deep))] transition-colors duration-150 hover:text-[hsl(var(--pb-rose-ink))]"
+            >
+              Shop all {category.name} &rarr;
+            </Link>
+          </div>
+          <EditorsPick category={category} onNavigate={onNavigate} />
         </div>
       ) : (
         <div className="flex gap-7 px-7 py-6">
