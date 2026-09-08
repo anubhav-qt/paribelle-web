@@ -64,9 +64,9 @@ function SubCategoryRow({ child, onNavigate }: { child: Category; onNavigate: ()
     <Link
       href={`/category/${child.slug}`}
       onClick={onNavigate}
-      className="group flex items-center gap-3 rounded-md p-2 transition-colors duration-150 hover:bg-[hsl(var(--pb-shell))]"
+      className="group flex items-center gap-3 rounded-none p-2 transition-colors duration-150 hover:bg-[hsl(var(--pb-shell))]"
     >
-      <span className="relative h-14 w-11 flex-none overflow-hidden rounded-md shadow-[inset_0_0_0_1px_hsl(var(--pb-ink)/0.06)]">
+      <span className="relative h-14 w-11 flex-none overflow-hidden rounded-none shadow-[inset_0_0_0_1px_hsl(var(--pb-ink)/0.06)]">
         {child.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -103,7 +103,7 @@ function EditorsPick({ category, onNavigate }: { category: Category; onNavigate:
     <Link
       href={href}
       onClick={onNavigate}
-      className="relative flex w-52 flex-none select-none flex-col justify-end self-stretch overflow-hidden rounded-lg bg-gradient-to-b from-[hsl(var(--pb-wine))] to-[hsl(var(--pb-wine-deep))] p-4"
+      className="relative flex w-52 flex-none select-none flex-col justify-end self-stretch overflow-hidden rounded-none bg-gradient-to-b from-[hsl(var(--pb-wine))] to-[hsl(var(--pb-wine-deep))] p-4"
       style={{ minHeight: '15rem' }}
     >
       {image ? (
@@ -144,9 +144,9 @@ export function MegaMenu({ category, onNavigate }: MegaMenuProps) {
   const isEmpty = children.length === 0;
 
   return (
-    // Rounded panel that hangs off the nav — reads as part of the same object.
-    // `w-fit` lets it shrink to its content instead of claiming a fixed width.
-    <div className="w-fit overflow-hidden rounded-lg border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory)/0.97)] shadow-pb-lg backdrop-blur-xl">
+    // Square panel that hangs off the nav — matches the storefront's crisp
+    // (near-zero radius) chrome. `w-fit` shrinks it to its content.
+    <div className="w-fit overflow-hidden rounded-none border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory)/0.97)] shadow-pb-lg backdrop-blur-xl">
       {isEmpty ? (
         // No sub-categories yet — still open a panel (the header opens one for
         // every anchor category), just with a single "shop all" prompt beside
