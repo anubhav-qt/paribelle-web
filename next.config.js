@@ -53,12 +53,28 @@ const nextConfig = {
     return 'build-' + Date.now();
   },
   async rewrites() {
-    return [
+    const rules = [
       {
         source: '/api/:path*',
         destination: `${process.env.NEXT_PUBLIC_API_URL}/api/v1/:path*`,
       },
     ];
+
+    /**
+     * The OMS is a separate Next app served at paribelle.in/pom through a
+     * Vercel multi-zone. It genuinely serves under that prefix (its own
+     * next.config sets basePath: "/pom"), so these are straight pass-throughs,
+     * not path strips. Guarded on OMS_ORIGIN so a local dev server with no OMS
+     * to proxy to just 404s /pom rather than rewriting to "undefined/pom".
+     */
+    if (process.env.OMS_ORIGIN) {
+      rules.push(
+        { source: '/pom', destination: `${process.env.OMS_ORIGIN}/pom` },
+        { source: '/pom/:path*', destination: `${process.env.OMS_ORIGIN}/pom/:path*` },
+      );
+    }
+
+    return rules;
   },
 };
 
