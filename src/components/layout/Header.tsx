@@ -74,6 +74,10 @@ export function Header() {
   const { totalItems: wishlistCount } = useWishlist();
   const { user, isLoggedIn, logout } = useCurrentUser();
 
+  // Same test the admin pages themselves use (lib/auth.ts, useAdminAuth). Only
+  // gates which nav links render; the /admin route guards itself server-side.
+  const isAdmin = isLoggedIn && user?.role === 'super_admin';
+
   const [scrolled, setScrolled] = React.useState(false);
   const [activeMenu, setActiveMenu] = React.useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
@@ -219,6 +223,7 @@ export function Header() {
     if (activeCat) return activeCat.id;
     if (LOOKBOOK_ENABLED && pathname === '/lookbook') return 'lookbook';
     if (pathname === '/about') return 'about';
+    if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'admin';
     return null;
   }, [pathname, activeMenu, categories]);
 
@@ -307,6 +312,31 @@ export function Header() {
               >
                 About
               </Link>
+
+              {isAdmin && (
+                <>
+                  <Link
+                    href="/admin"
+                    onMouseEnter={closeMegaMenuNow}
+                    onFocus={closeMegaMenuNow}
+                    className={navLinkClass(activeNavKey === 'admin')}
+                  >
+                    Admin
+                  </Link>
+                  {/* A plain anchor, not next/link: /pom is the OMS, a separate
+                      Next app behind a rewrite, so it needs a full navigation
+                      rather than a client route transition to a path this app
+                      does not have. */}
+                  <a
+                    href="/pom"
+                    onMouseEnter={closeMegaMenuNow}
+                    onFocus={closeMegaMenuNow}
+                    className={navLinkClass(false)}
+                  >
+                    OMS
+                  </a>
+                </>
+              )}
 
               {/* Mega menu hangs off the nav rather than spanning the viewport, so
                   it stays visually attached to the links it belongs to. The

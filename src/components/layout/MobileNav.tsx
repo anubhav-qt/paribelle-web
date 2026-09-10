@@ -24,6 +24,8 @@ export function MobileNav({ open, onClose, categories }: MobileNavProps) {
   const { user, isLoggedIn, logout } = useCurrentUser();
   const pathname = usePathname();
 
+  const isAdmin = isLoggedIn && user?.role === 'super_admin';
+
   return (
     <Drawer open={open} onClose={onClose} side="right" title={<Monogram className="h-6 w-6 text-[hsl(var(--pb-rose))]" />}>
       <nav className="flex flex-col px-6 py-4">
@@ -96,6 +98,32 @@ export function MobileNav({ open, onClose, categories }: MobileNavProps) {
         >
           About
         </Link>
+
+        {isAdmin && (
+          <>
+            <Link
+              href="/admin"
+              onClick={onClose}
+              className={cn(
+                TOP_LINK,
+                pathname === '/admin' || pathname.startsWith('/admin/')
+                  ? 'text-[hsl(var(--pb-rose-deep))]'
+                  : 'text-[hsl(var(--pb-ink))]'
+              )}
+            >
+              Admin
+            </Link>
+            {/* Plain anchor: the OMS is a separate Next app behind a rewrite,
+                so it needs a full navigation, not a client transition. */}
+            <a
+              href="/pom"
+              onClick={onClose}
+              className={cn(TOP_LINK, 'text-[hsl(var(--pb-ink))]')}
+            >
+              OMS
+            </a>
+          </>
+        )}
 
         <div className="mt-6 flex flex-col gap-1">
           {isLoggedIn && (
