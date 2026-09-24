@@ -25,6 +25,9 @@ function apiImagePattern() {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Emits .next/standalone (server.js + only the traced node_modules) for the
+  // Docker image. Vercel ignores it.
+  output: 'standalone',
   reactStrictMode: true,
   images: {
     domains: ['res.cloudinary.com', 's3.amazonaws.com', 'images.unsplash.com'],

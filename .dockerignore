@@ -1,0 +1,12 @@
+# Allowlist: ignore everything, then let back in only what the build needs.
+# Keeps .env files, .next and node_modules out of the build context.
+*
+
+!src
+!public
+!package.json
+!package-lock.json
+!next.config.js
+!tsconfig.json
+!postcss.config.js
+!tailwind.config.js
