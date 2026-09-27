@@ -1,0 +1,45 @@
+# Every push to main publishes the storefront's image for the ThinkPad,
+# ghcr.io/<owner>/paribelle-web, which picks it up within 5 minutes (pom's
+# infra/update.sh). Vercel builds the same push, as before, for the fallback.
+#
+# NEXT_PUBLIC_* values are built in. They're production's, except the API's address:
+# pages from the ThinkPad call api.paribelle.in (the edge Worker: the ThinkPad's API
+# first, Render's when it can't answer); Vercel's keep calling Render directly.
+name: image
+
+on:
+  push: { branches: [main] }
+  workflow_dispatch:
+
+concurrency:
+  group: image
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v5
+      - id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/paribelle-web" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          platforms: linux/amd64
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.paribelle.in
+            NEXT_PUBLIC_APP_URL=https://www.paribelle.in
+            NEXT_PUBLIC_STORE_VENDOR_ID=00000000-0000-0000-0000-000000000001
+            NEXT_PUBLIC_LOOKBOOK_ENABLED=false
+          tags: |
+            ${{ steps.name.outputs.image }}:latest
+            ${{ steps.name.outputs.image }}:${{ github.sha }}
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
