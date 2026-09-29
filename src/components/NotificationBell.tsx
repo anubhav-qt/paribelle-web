@@ -50,7 +50,7 @@ export function NotificationBell({ buttonClassName, iconClassName, variant = 'st
           <span
             className={cn(
               'absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-medium text-white',
-              isAdmin ? 'bg-red-600' : 'bg-[hsl(var(--pb-rose-deep))]'
+              isAdmin ? 'bg-[var(--pom-danger)]' : 'bg-[hsl(var(--pb-rose-deep))]'
             )}
           >
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -66,7 +66,7 @@ export function NotificationBell({ buttonClassName, iconClassName, variant = 'st
             className={cn(
               'absolute right-0 top-full z-20 w-80 max-h-[28rem] overflow-y-auto',
               isAdmin
-                ? 'mt-2 rounded-lg border border-gray-200 bg-white shadow-lg'
+                ? 'pom-menu mt-2 w-[min(20rem,calc(100vw-2rem))]'
                 : // On the storefront this has to line up with the mega menu,
                   // which hangs 14px below the header's content box rather
                   // than the 8px an icon-anchored `mt-2` gives (see
@@ -78,10 +78,10 @@ export function NotificationBell({ buttonClassName, iconClassName, variant = 'st
             <div
               className={cn(
                 'flex items-center justify-between border-b px-4 py-3',
-                isAdmin ? 'border-gray-200' : 'border-[hsl(var(--pb-linen))]'
+                isAdmin ? 'border-[var(--pom-border)]' : 'border-[hsl(var(--pb-linen))]'
               )}
             >
-              <span className={cn('font-medium', isAdmin ? 'text-gray-900' : 'text-[hsl(var(--pb-ink))]')}>
+              <span className={cn('font-medium', isAdmin ? 'text-[var(--pom-text)]' : 'text-[hsl(var(--pb-ink))]')}>
                 Notifications
               </span>
               {unreadCount > 0 && (
@@ -89,7 +89,7 @@ export function NotificationBell({ buttonClassName, iconClassName, variant = 'st
                   onClick={() => markAllRead()}
                   className={cn(
                     'text-xs hover:underline',
-                    isAdmin ? 'text-blue-600' : 'text-[hsl(var(--pb-rose-deep))]'
+                    isAdmin ? 'text-[var(--pom-accent-ink)]' : 'text-[hsl(var(--pb-rose-deep))]'
                   )}
                 >
                   Mark all read
@@ -97,7 +97,7 @@ export function NotificationBell({ buttonClassName, iconClassName, variant = 'st
               )}
             </div>
             {notifications.length === 0 ? (
-              <p className={cn('px-4 py-6 text-center text-sm', isAdmin ? 'text-gray-500' : 'text-[hsl(var(--pb-ink-faint))]')}>
+              <p className={cn('px-4 py-6 text-center text-sm', isAdmin ? 'text-[var(--pom-muted)]' : 'text-[hsl(var(--pb-ink-faint))]')}>
                 No notifications yet.
               </p>
             ) : (
@@ -111,19 +111,19 @@ export function NotificationBell({ buttonClassName, iconClassName, variant = 'st
                     className={cn(
                       'cursor-pointer border-b px-4 py-3',
                       isAdmin
-                        ? `border-gray-200 hover:bg-gray-50 ${!n.readAt ? 'bg-blue-50/50' : ''}`
+                        ? `border-[var(--pom-border)] hover:bg-[var(--pom-accent-soft)] ${!n.readAt ? 'bg-[var(--pom-accent-soft)]' : ''}`
                         : `border-[hsl(var(--pb-linen))] hover:bg-[hsl(var(--pb-shell))] ${!n.readAt ? 'bg-[hsl(var(--pb-blush-wash))]' : ''}`
                     )}
                   >
-                    <p className={cn('text-sm font-medium', isAdmin ? 'text-gray-900' : 'text-[hsl(var(--pb-ink))]')}>
+                    <p className={cn('text-sm font-medium', isAdmin ? 'text-[var(--pom-text)]' : 'text-[hsl(var(--pb-ink))]')}>
                       {n.title}
                     </p>
                     {n.body && (
-                      <p className={cn('mt-0.5 text-xs', isAdmin ? 'text-gray-600' : 'text-[hsl(var(--pb-ink-muted))]')}>
+                      <p className={cn('mt-0.5 text-xs', isAdmin ? 'text-[var(--pom-muted)]' : 'text-[hsl(var(--pb-ink-muted))]')}>
                         {n.body}
                       </p>
                     )}
-                    <p className={cn('mt-1 text-xs', isAdmin ? 'text-gray-400' : 'text-[hsl(var(--pb-ink-faint))]')}>
+                    <p className={cn('mt-1 text-xs', isAdmin ? 'text-[var(--pom-muted-2)]' : 'text-[hsl(var(--pb-ink-faint))]')}>
                       {timeAgo(n.createdAt)}
                     </p>
                   </div>

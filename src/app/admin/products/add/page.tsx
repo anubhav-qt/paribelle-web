@@ -1,1717 +1,584 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import JSZip from 'jszip';
-import ImageUpload from '@/components/ImageUpload';
-import MultiImageUpload from '@/components/MultiImageUpload';
-import ProductVariationBuilder from '@/components/ProductVariationBuilder';
-import HsnCodeAutocomplete from '@/components/HsnCodeAutocomplete';
-import ProductVariantManager, { VariantOption, VariantCombination } from '@/components/ProductVariantManager';
-import { getVendorId, getUserId, getProductVendorId } from '@/lib/auth';
-import { showAlert } from '@/lib/dialog';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import 'react-quill/dist/quill.snow.css';
+
+import { CategoryPicker, useCategories } from '@/components/admin/products/CategoryPicker';
+import { toast } from '@/components/admin/pom/dialogs';
+import { money } from '@/components/admin/pom/format';
+import { PhotoManager } from '@/components/admin/pom/photos';
+import { Segmented } from '@/components/admin/pom/segmented';
+import { colorSwatch, sortSizes } from '@/components/admin/pom/swatch';
+import { ColorDot, FormField, Notice, PageHeader, Section, Toggle } from '@/components/admin/pom/ui';
+import { api, errorMessage } from '@/lib/api';
+import { getProductVendorId } from '@/lib/auth';
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
-export default function VendorAddProductPage() {
+const KURTI_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'];
+const OTHER_SIZES = ['Free size'];
+const COMMON_COLOURS = [
+  'Black', 'White', 'Off White', 'Cream', 'Beige', 'Red', 'Maroon', 'Wine', 'Pink', 'Rani Pink', 'Peach', 'Orange',
+  'Mustard', 'Yellow', 'Green', 'Bottle Green', 'Olive', 'Mint', 'Teal', 'Blue', 'Navy Blue', 'Sky Blue', 'Purple',
+  'Lavender', 'Grey', 'Brown', 'Gold', 'Silver', 'Rose Gold', 'Oxidised', 'Multicolour',
+];
+
+interface CategoryFilter {
+  id: string;
+  label: string;
+  type: string;
+  options?: { value: string; label: string }[];
+}
+const SKIP_FILTERS = new Set(['priceRange', 'price', 'stock', 'stockQuantity', 'isActive', 'active', 'status', 'rating', 'variant attributes', 'size', 'color', 'colour']);
+
+interface Colour {
+  name: string;
+  photos: string[];
+}
+interface Cell {
+  price?: string;
+  mrp?: string;
+  stock?: string;
+  off?: boolean;
+}
+
+function slugify(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+function num(v: string | undefined) {
+  if (v == null || v.trim() === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+function code(s: string) {
+  return s.replace(/[^a-z0-9]/gi, '').toUpperCase();
+}
+const key = (c: string | null, s: string | null) => `${c ?? ''}|${s ?? ''}`;
+
+/**
+ * Add a product the way a kurti is actually stocked: pick its colours and
+ * sizes, give each colour its photos, and fill in price and stock once for
+ * all of them before adjusting the odd one out.
+ */
+export default function AddProductPage() {
   const router = useRouter();
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; level: number; parentId: string | null }>>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  
-  // Vendor verification status
-  const [vendorStatus, setVendorStatus] = useState<{
-    kycStatus: string;
-    storeName: string | null;
-    contactEmail: string | null;
-    contactPhone: string | null;
-    canAddProducts: boolean;
-    blockReason: string | null;
-  } | null>(null);
-  
-  // Category filters and product attributes
-  const [categoryFilters, setCategoryFilters] = useState<any[]>([]);
-  const [productAttributes, setProductAttributes] = useState<Record<string, any>>({});
-  
-  // Product variants
-  const [hasCustomVariants, setHasCustomVariants] = useState(false);
-  const [variantOptions, setVariantOptions] = useState<VariantOption[]>([]);
-  const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>([]);
-  
-  // Help section 
-  const [showHelp, setShowHelp] = useState(false);
-  
-  // Import/Export functionality
-  const [importing, setImporting] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string; errors?: string[] } | null>(null);
-  
-  // Prevent hydration errors
-  const [mounted, setMounted] = useState(false);
-  
-  // Custom pages for easy linking
-  const [customPages, setCustomPages] = useState<Array<{ id: string; title: string; slug: string }>>([]);
-  const [linkableProducts, setLinkableProducts] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const qc = useQueryClient();
+  const categories = useCategories();
 
-  // All category filters are available since we only use custom variants now
-  const availableAttributeFilters = useMemo(() => {
-    return categoryFilters;
-  }, [categoryFilters]);
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    slug: '',
-    description: '',
-    categoryIds: [] as string[],
-    price: '' as any,
-    compareAtPrice: '' as any,
-    stockQuantity: '' as any,
-    sku: '',
-    status: 'active',
-    featuredImage: '',
-    images: [] as string[],
-    // GST fields
-    hsnCode: '',
-    gstRate: 18,
-    priceType: 'selling_price_without_gst' as 'mrp_with_gst' | 'selling_price_without_gst',
-    // Variants
-    hasVariants: false,
-  });
+  const [name, setName] = useState('');
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [description, setDescription] = useState('');
+  const [mode, setMode] = useState<'single' | 'variants'>('variants');
+  const [sku, setSku] = useState(() => `PB-${Date.now().toString(36).toUpperCase().slice(-6)}`);
+  const [price, setPrice] = useState('');
+  const [mrp, setMrp] = useState('');
+  const [stock, setStock] = useState('');
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [customSize, setCustomSize] = useState('');
+  const [colours, setColours] = useState<Colour[]>([]);
+  const [colourDraft, setColourDraft] = useState('');
+  const [cells, setCells] = useState<Record<string, Cell>>({});
+  const [inclGst, setInclGst] = useState(true);
+  const [hsn, setHsn] = useState('');
+  const [filters, setFilters] = useState<CategoryFilter[]>([]);
+  const [attrs, setAttrs] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<'active' | 'draft' | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
+  const root = categories?.find((c) => categoryIds.includes(c.id) && c.level === 0) ?? null;
+  const isJewellery = /jewel/i.test(root?.slug ?? root?.name ?? '');
+
+  // The filters of the most specific category chosen, e.g. Fabric and Neck for kurtis.
+  const leafId = categoryIds[categoryIds.length - 1];
   useEffect(() => {
-    fetchVendorStatus();
-    fetchCategories();
-    generateSKU();
-    fetchCustomPages();
-    fetchLinkableProducts();
-    setMounted(true);
-  }, []);
-
-  const fetchCustomPages = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const endpoint = '/api/v1/marketplace/pages';
-      
-      if (!endpoint) return;
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const publishedPages = data.filter((p: any) => p.status === 'published');
-        setCustomPages(publishedPages);
-      }
-    } catch (error) {
-      console.error('Error fetching custom pages:', error);
+    if (!leafId) {
+      setFilters([]);
+      return;
     }
-  };
+    let live = true;
+    api
+      .get<{ filters?: CategoryFilter[] }>(`/categories/${leafId}/filters`)
+      .then((d) => {
+        if (!live) return;
+        setFilters((d?.filters ?? []).filter((f) => !SKIP_FILTERS.has(f.id.toLowerCase()) && f.type !== 'range'));
+      })
+      .catch(() => live && setFilters([]));
+    return () => {
+      live = false;
+    };
+  }, [leafId]);
 
-  const fetchLinkableProducts = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?limit=100&status=active`;
+  const combos = useMemo(() => {
+    const cs = colours.length ? colours.map((c) => c.name) : [null];
+    const ss = sizes.length ? sortSizes(sizes) : [null];
+    return cs.flatMap((c) => ss.map((s) => ({ colour: c, size: s, k: key(c, s) })));
+  }, [colours, sizes]);
 
-      if (!url) return;
+  const hasOptions = colours.length > 0 || sizes.length > 0;
 
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const products = data.products || data;
-        const mappedProducts = products.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-        }));
-        setLinkableProducts(mappedProducts);
-      }
-    } catch (error) {
-      console.error('Error fetching linkable products:', error);
+  function cell(k: string) {
+    const c = cells[k] ?? {};
+    return { price: c.price ?? price, mrp: c.mrp ?? mrp, stock: c.stock ?? stock, off: !!c.off };
+  }
+  function setCell(k: string, patch: Cell) {
+    setCells((cs) => ({ ...cs, [k]: { ...cs[k], ...patch } }));
+  }
+
+  function addColour(raw: string) {
+    const n = raw.trim().replace(/\s+/g, ' ');
+    if (!n) return;
+    const nice = n.replace(/\b\w/g, (ch) => ch.toUpperCase());
+    if (colours.some((c) => c.name.toLowerCase() === nice.toLowerCase())) return;
+    setColours((cs) => [...cs, { name: nice, photos: [] }]);
+    setColourDraft('');
+  }
+
+  function toggleSize(s: string) {
+    setSizes((ss) => (ss.includes(s) ? ss.filter((x) => x !== s) : [...ss, s]));
+  }
+
+  const enabled = combos.filter((c) => !cell(c.k).off);
+  const totalStock =
+    mode === 'variants' && hasOptions ? enabled.reduce((n, c) => n + (num(cell(c.k).stock) ?? 0), 0) : num(stock) ?? 0;
+
+  async function submit(status: 'active' | 'draft') {
+    setError(null);
+    const problems: string[] = [];
+    if (!name.trim()) problems.push('a name');
+    if (categoryIds.length === 0) problems.push('a category');
+    if (status === 'active' && photos.length === 0) problems.push('at least one photo');
+    if (mode === 'single') {
+      if (!num(price)) problems.push('a price');
+    } else if (!hasOptions) {
+      problems.push('at least one colour or size (or switch to One option)');
+    } else if (enabled.length === 0) {
+      problems.push('at least one colour and size that you sell');
+    } else if (enabled.some((c) => !num(cell(c.k).price))) {
+      problems.push('a price for every colour and size');
     }
-  };
-
-  const fetchVendorStatus = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-      
-      const vendorId = getVendorId();
-      if (!vendorId) {
-        router.push('/admin');
-        return;
-      }
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendors/${vendorId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (response.ok) {
-        const vendor = await response.json();
-        
-        // Check if vendor can add products
-        const hasBasicSetup = vendor.storeName && vendor.contactEmail && vendor.contactPhone;
-        const kycApproved = vendor.kycStatus === 'approved';
-        
-        let blockReason = null;
-        if (!hasBasicSetup) {
-          blockReason = 'Please complete your store setup in Store Profile before adding products.';
-        } else if (!kycApproved) {
-          blockReason = `KYC verification required. Your status is: ${vendor.kycStatus}. Complete KYC verification to add products.`;
-        }
-        
-        setVendorStatus({
-          kycStatus: vendor.kycStatus,
-          storeName: vendor.storeName,
-          contactEmail: vendor.contactEmail,
-          contactPhone: vendor.contactPhone,
-          canAddProducts: hasBasicSetup && kycApproved,
-          blockReason,
-        });
-        
-        // Redirect if cannot add products
-        if (!hasBasicSetup || !kycApproved) {
-          setTimeout(() => {
-            router.push('/admin/products');
-          }, 3000);
-        }
-        
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error('Error fetching vendor status:', error);
-      setLoading(false);
+    if (problems.length) {
+      setError(`Add ${problems.join(', ')}.`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
-  };
 
-  // Fetch category filters when categories are selected
-  useEffect(() => {
-    if (formData.categoryIds.length > 0) {
-      fetchCategoryFilters(formData.categoryIds[0]); // Use first selected category
+    const body: Record<string, unknown> = {
+      name: name.trim(),
+      slug: `${slugify(name)}-${Date.now().toString(36)}`,
+      description,
+      categoryIds,
+      status,
+      images: photos,
+      featuredImage: photos[0] ?? null,
+      sku: sku.trim(),
+      hsnCode: hsn.trim() || null,
+      priceType: inclGst ? 'mrp_with_gst' : 'selling_price_without_gst',
+      vendorId: getProductVendorId(),
+    };
+
+    if (mode === 'single' || !hasOptions) {
+      body.price = num(price);
+      body.compareAtPrice = num(mrp);
+      body.stockQuantity = Math.max(0, Math.round(num(stock) ?? 0));
     } else {
-      setCategoryFilters([]);
-      setProductAttributes({});
-    }
-  }, [formData.categoryIds]);
-
-  const generateSKU = () => {
-    const prefix = getVendorId().substring(0, 8).toUpperCase();
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-    setFormData(prev => ({ ...prev, sku: `${prefix}-${timestamp}-${random}` }));
-  };
-
-  // Calculate GST breakdown
-  const calculateGST = () => {
-    const price = parseFloat(formData.price) || 0;
-    const gstRate = formData.gstRate || 0;
-    
-    if (price === 0) return { basePrice: 0, gstAmount: 0, finalPrice: 0 };
-
-    if (formData.priceType === 'mrp_with_gst') {
-      // Price includes GST - extract base price
-      const basePrice = price / (1 + gstRate / 100);
-      const gstAmount = price - basePrice;
-      return {
-        basePrice: basePrice.toFixed(2),
-        gstAmount: gstAmount.toFixed(2),
-        finalPrice: price.toFixed(2),
-      };
-    } else {
-      // Price doesn't include GST - calculate GST amount
-      const gstAmount = price * gstRate / 100;
-      const finalPrice = price + gstAmount;
-      return {
-        basePrice: price.toFixed(2),
-        gstAmount: gstAmount.toFixed(2),
-        finalPrice: finalPrice.toFixed(2),
-      };
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/tree/all`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const variants = enabled.map(({ colour, size, k }) => {
+        const c = cell(k);
+        return {
+          attributes: { ...(colour ? { Colour: colour } : {}), ...(size ? { Size: size } : {}) },
+          sku: [sku.trim(), colour ? code(colour).slice(0, 5) : null, size ? code(size) : null].filter(Boolean).join('-'),
+          price: num(c.price),
+          compareAtPrice: num(c.mrp),
+          stock: Math.max(0, Math.round(num(c.stock) ?? 0)),
+          images: colour ? colours.find((x) => x.name === colour)?.photos ?? [] : [],
+        };
       });
+      const prices = variants.map((v) => v.price ?? 0).filter((p) => p > 0);
+      const mrps = variants.map((v) => v.compareAtPrice ?? 0).filter((p) => p > 0);
+      body.price = Math.min(...prices);
+      body.compareAtPrice = mrps.length ? Math.max(...mrps) : null;
+      body.stockQuantity = 0;
+      body.variantOptions = [
+        ...(colours.length ? [{ id: 'colour', name: 'Colour', values: colours.map((c) => c.name) }] : []),
+        ...(sizes.length ? [{ id: 'size', name: 'Size', values: sortSizes(sizes) }] : []),
+      ];
+      body.variants = variants;
+    }
 
-      if (response.ok) {
-        const data = await response.json();
-        const flattenedCategories = flattenCategories(data);
-        setCategories(flattenedCategories);
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
+    const chosen = Object.fromEntries(Object.entries(attrs).filter(([, v]) => v !== ''));
+    if (Object.keys(chosen).length) body.attributes = chosen;
+
+    setSaving(status);
+    try {
+      await api.post('/products', body);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['admin-products'] }),
+        qc.invalidateQueries({ queryKey: ['admin-products-stats'] }),
+      ]);
+      toast.success(status === 'active' ? `${name.trim()} is on sale.` : `${name.trim()} saved as a draft.`);
+      router.push('/admin/products');
+    } catch (e) {
+      setError(errorMessage(e, 'Could not save the product.'));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
-      setLoading(false);
+      setSaving(null);
     }
-  };
+  }
 
-  const fetchCategoryFilters = async (categoryId: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories/${categoryId}/filters`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Category filters:', data);
-        console.log('Filter IDs:', data.filters?.map((f: any) => ({ id: f.id, label: f.label })));
-        
-        // Filter out price range before setting state
-        const filteredFilters = (data.filters || []).filter((f: any) => f.id !== 'priceRange');
-        console.log('Filtered filters (without price):', filteredFilters.map((f: any) => ({ id: f.id, label: f.label })));
-        
-        setCategoryFilters(filteredFilters);
-        
-        // Initialize attributes with empty values
-        const initialAttrs: Record<string, any> = {};
-        filteredFilters.forEach((filter: any) => {
-          if (filter.type === 'checkbox' || filter.type === 'multiselect') {
-            initialAttrs[filter.id] = '';
-          } else if (filter.type === 'select') {
-            initialAttrs[filter.id] = '';
-          } else if (filter.type === 'range') {
-            initialAttrs[filter.id] = filter.min || 0;
-          }
-        });
-        setProductAttributes(initialAttrs);
-      }
-    } catch (error) {
-      console.error('Error fetching category filters:', error);
-      setCategoryFilters([]);
-    }
-  };
-
-  const flattenCategories = (categories: any[], level = 0, parentId: string | null = null): Array<{ id: string; name: string; level: number; parentId: string | null }> => {
-    let result: Array<{ id: string; name: string; level: number; parentId: string | null }> = [];
-    
-    categories.forEach((category) => {
-      result.push({
-        id: category.id,
-        name: category.name,
-        level,
-        parentId,
-      });
-      
-      if (category.children && category.children.length > 0) {
-        result = result.concat(flattenCategories(category.children, level + 1, category.id));
-      }
-    });
-    
-    return result;
-  };
-
-  // Get all parent category IDs for a given category
-  const getAllParents = (categoryId: string): string[] => {
-    const parents: string[] = [];
-    let currentCategory = categories.find(c => c.id === categoryId);
-    
-    while (currentCategory?.parentId) {
-      parents.push(currentCategory.parentId);
-      currentCategory = categories.find(c => c.id === currentCategory!.parentId);
-    }
-    
-    return parents;
-  };
-
-  // Get all children category IDs for a given category
-  const getAllChildren = (categoryId: string): string[] => {
-    const children: string[] = [];
-    const directChildren = categories.filter(c => c.parentId === categoryId);
-    
-    directChildren.forEach(child => {
-      children.push(child.id);
-      children.push(...getAllChildren(child.id));
-    });
-    
-    return children;
-  };
-
-  // Handle category selection with parent auto-select and single path constraint
-  const handleCategoryChange = (categoryId: string, isChecked: boolean) => {
-    if (isChecked) {
-      // Get all parents of this category
-      const parents = getAllParents(categoryId);
-      
-      // Clear all previously selected categories (to enforce single path)
-      // Then select the category and all its parents
-      const newCategoryIds = [...parents, categoryId];
-      
-      setFormData({
-        ...formData,
-        categoryIds: newCategoryIds,
-      });
-    } else {
-      // When unchecking, remove the category and all its children
-      const children = getAllChildren(categoryId);
-      const toRemove = [categoryId, ...children];
-      
-      setFormData({
-        ...formData,
-        categoryIds: formData.categoryIds.filter((id) => !toRemove.includes(id)),
-      });
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-
-    try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        showAlert('Please login first', 'warning');
-        return;
-      }
-
-      const vendorId = getProductVendorId();
-      if (!vendorId) {
-        showAlert('Store vendor ID not found', 'error');
-        return;
-      }
-
-      // Auto-generate slug from name if not provided
-      // Add timestamp to ensure uniqueness
-      const baseSlug = formData.slug || 
-        formData.name.toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '');
-      
-      const slug = `${baseSlug}-${Date.now()}`;
-
-      const productData: any = {
-        ...formData,
-        slug,
-        price: parseFloat(formData.price) || 0,
-        compareAtPrice: parseFloat(formData.compareAtPrice) || 0,
-        hsnCode: formData.hsnCode || null,
-        gstRate: formData.gstRate || 18,
-        priceType: formData.priceType,
-        basePrice: parseFloat(String(calculateGST().basePrice)),
-        gstAmount: parseFloat(String(calculateGST().gstAmount)),
-        stockQuantity: parseInt(formData.stockQuantity) || 0,
-        vendorId,
-      };
-
-      // Add custom variants if present
-      if (hasCustomVariants && variantOptions.length > 0) {
-        productData.hasVariants = true;
-        productData.variantOptions = variantOptions;
-        productData.variants = variantCombinations.filter(v => v.enabled).map(combo => ({
-          attributes: combo.attributes,
-          sku: combo.sku,
-          price: combo.price,
-          stock: combo.stock,
-        }));
-        // For products with custom variants, don't require parent stock
-        productData.stockQuantity = 0;
-      }
-
-      // Add attributes for physical products
-      if (Object.keys(productAttributes).length > 0) {
-        // Process attributes and handle custom values
-        const processedAttributes: Record<string, any> = {};
-        const newFilterOptions: Record<string, { value: string; label: string }> = {};
-        
-        Object.entries(productAttributes).forEach(([key, value]) => {
-          // Skip custom input fields and empty values
-          if (key.endsWith('_custom') || value === '' || value === null || value === '__custom__') {
-            return;
-          }
-          
-          // Check if this is a custom value
-          const customKey = `${key}_custom`;
-          if (productAttributes[customKey]) {
-            const customValue = productAttributes[customKey] as string;
-            if (customValue.trim()) {
-              // Generate slug for custom value
-              const valueSlug = customValue.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-              processedAttributes[key] = valueSlug;
-              
-              // Store new filter option to be added
-              newFilterOptions[key] = {
-                value: valueSlug,
-                label: customValue.trim()
-              };
-            }
-          } else {
-            processedAttributes[key] = value;
-          }
-        });
-        
-        if (Object.keys(processedAttributes).length > 0) {
-          productData.attributes = processedAttributes;
-        }
-        
-        // If there are new custom filter options, include them
-        if (Object.keys(newFilterOptions).length > 0) {
-          productData.newFilterOptions = newFilterOptions;
-          productData.categoryId = formData.categoryIds[0]; // To know which category to update
-        }
-      }
-
-      console.log('Submitting product with attributes:', productData.attributes);
-      if (productData.newFilterOptions) {
-        console.log('New filter options to add:', productData.newFilterOptions);
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/products`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(productData),
-      });
-
-      if (response.ok) {
-        showAlert('Product created successfully!', 'success');
-        router.push('/admin/products');
-      } else {
-        const error = await response.json();
-        showAlert(`Failed to create product: ${error.message || 'Unknown error'}`, 'error');
-      }
-    } catch (error) {
-      console.error('Error creating product:', error);
-      showAlert('Failed to create product', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      setExporting(true);
-      const token = localStorage.getItem('token');
-      
-      const vendorId = getVendorId();
-      if (!vendorId) {
-        showAlert('Vendor ID not found', 'error');
-        return;
-      }
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/export-zip/${vendorId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `products-${vendorId}-${Date.now()}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        showAlert('Failed to export products', 'error');
-      }
-    } catch (error) {
-      console.error('Export error:', error);
-      showAlert('Failed to export products', 'error');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setImporting(true);
-      setImportMessage(null);
-      
-      const token = localStorage.getItem('token');
-      
-      const vendorId = getVendorId();
-      if (!vendorId) {
-        setImportMessage({ type: 'error', text: 'Vendor ID not found' });
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products/import-zip/${vendorId}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setImportMessage({
-          type: result.success && result.errors?.length === 0 ? 'success' : 'error',
-          text: result.message || (result.success ? 'Import complete' : 'Import failed'),
-          errors: result.errors || [],
-        });
-        if (result.success && !result.errors?.length) {
-          // Redirect only when fully successful (no row errors)
-          setTimeout(() => {
-            router.push('/admin/products');
-          }, 2000);
-        }
-      } else {
-        const errors: string[] = result.errors?.length
-          ? result.errors
-          : result.message?.split('; ').filter(Boolean) || [];
-        setImportMessage({
-          type: 'error',
-          text: result.message || 'Failed to import products',
-          errors,
-        });
-      }
-    } catch (error) {
-      console.error('Import error:', error);
-      setImportMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to import products' });
-    } finally {
-      setImporting(false);
-      // Reset file input
-      event.target.value = '';
-    }
-  };
-
-
+  const sizeChoices = isJewellery ? [...OTHER_SIZES, ...KURTI_SIZES] : [...KURTI_SIZES, ...OTHER_SIZES];
+  const extraSizes = sizes.filter((s) => !sizeChoices.includes(s));
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* null */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-6">
-          {/* null */}
-          <div className="flex-1 max-w-4xl">
-            <Link
-              href="/admin/products"
-              className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
-            >
-              ← Back to Products
-            </Link>
-            
-        {/* KYC Blocking Banner */}
-        {vendorStatus && !vendorStatus.canAddProducts && (
-          <div className="mb-6 p-6 bg-red-50 border-2 border-red-300 rounded-lg">
-            <div className="flex items-start gap-4">
-              <span className="text-4xl">🚫</span>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-red-900 mb-2">Cannot Add Products</h2>
-                <p className="text-red-800 mb-4 text-lg">{vendorStatus.blockReason}</p>
-                <div className="flex gap-3">
-                  <Link
-                    href="/admin/store-settings"
-                    className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold"
-                  >
-                    Go to Settings
-                  </Link>
-                  <Link
-                    href="/admin/products"
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                  >
-                    Back to Products
-                  </Link>
-                </div>
-                <p className="text-sm text-red-700 mt-4">
-                  ⏱️ You will be redirected to the products page in 3 seconds...
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-            
-        <div className="mb-8">
-          <div className="flex justify-between items-start">
+    <div className="mx-auto max-w-4xl pb-24">
+      <Link href="/admin/products" className="btn btn-primary -ml-2 mb-2 px-2 py-1 text-xs">
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Products
+      </Link>
+      <PageHeader title="Add product" hint="Saved products appear in the shop straight away unless kept as a draft." />
+
+      {error ? <Notice tone="danger" className="mb-4">{error}</Notice> : null}
+
+      <div className="space-y-5">
+        <Section title="The basics">
+          <div className="space-y-5">
+            <FormField label="Name" htmlFor="ap-name" hint="What customers see, e.g. Rani Pink Chikankari Anarkali Kurti">
+              <input id="ap-name" className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            </FormField>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
-              <p className="text-gray-600 mt-2">
-                Create and publish new products to the PariBelle store
-              </p>
-            </div>
-            <div className="flex gap-3 flex-wrap">
-              <button
-                onClick={handleExport}
-                disabled={exporting}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                {exporting ? 'Exporting...' : '📥 Export to ZIP'}
-              </button>
-              <label className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 cursor-pointer text-sm disabled:opacity-50">
-                {importing ? 'Importing...' : '📤 Import from ZIP'}
-                <input
-                  type="file"
-                  accept=".zip"
-                  onChange={handleImport}
-                  disabled={importing}
-                  className="hidden"
-                />
-              </label>
-              
+              <div className="label">Category</div>
+              <CategoryPicker value={categoryIds} onChange={setCategoryIds} />
             </div>
           </div>
-          {importMessage && (
-            <div className={`mt-4 p-4 rounded-lg ${
-              importMessage.type === 'success' 
-                ? 'bg-green-50 text-green-800 border border-green-200' 
-                : 'bg-red-50 text-red-800 border border-red-200'
-            }`}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <p className="font-medium">{importMessage.text}</p>
-                  {importMessage.errors && importMessage.errors.length > 0 && (
-                    <ul className="mt-2 space-y-1 text-sm list-disc list-inside">
-                      {importMessage.errors.map((err, i) => (
-                        <li key={i}>{err}</li>
-                      ))}
-                    </ul>
-                  )}
+        </Section>
+
+        <Section title="Photos" hint="The first photo is the cover. Photos of each colour go with that colour below.">
+          <PhotoManager value={photos} onChange={setPhotos} max={12} />
+        </Section>
+
+        <Section
+          title="Price and stock"
+          actions={
+            <Segmented<'single' | 'variants'>
+              label="Options"
+              value={mode}
+              onChange={setMode}
+              items={[
+                { key: 'variants', label: 'Colours and sizes' },
+                { key: 'single', label: 'One option' },
+              ]}
+            />
+          }
+        >
+          {mode === 'variants' ? (
+            <div className="space-y-6">
+              <div>
+                <div className="label">Sizes</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[...sizeChoices, ...extraSizes].map((s) => {
+                    const on = sizes.includes(s);
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => toggleSize(s)}
+                        aria-pressed={on}
+                        className="min-w-[2.75rem] rounded-full border px-3 py-1.5 text-[13px] font-medium"
+                        style={
+                          on
+                            ? { borderColor: 'var(--pom-accent)', background: 'var(--pom-accent)', color: '#fff' }
+                            : { borderColor: 'var(--pom-border-strong)' }
+                        }
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
+                  <form
+                    className="flex items-center gap-1"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const s = customSize.trim().toUpperCase();
+                      if (s && !sizes.includes(s)) setSizes((ss) => [...ss, s]);
+                      setCustomSize('');
+                    }}
+                  >
+                    <input
+                      className="input w-24 rounded-full px-3 py-1.5 text-[13px]"
+                      placeholder="Other"
+                      value={customSize}
+                      onChange={(e) => setCustomSize(e.target.value)}
+                      aria-label="Add another size"
+                    />
+                  </form>
                 </div>
-                <button
-                  onClick={() => setImportMessage(null)}
-                  className="shrink-0 text-sm underline"
-                >
-                  Dismiss
-                </button>
               </div>
+
+              <div>
+                <div className="label">Colours</div>
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    addColour(colourDraft);
+                  }}
+                >
+                  <input
+                    className="input"
+                    list="ap-colours"
+                    placeholder="Type a colour and press Enter, e.g. Rani Pink"
+                    value={colourDraft}
+                    onChange={(e) => setColourDraft(e.target.value)}
+                  />
+                  <datalist id="ap-colours">
+                    {COMMON_COLOURS.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                  <button type="submit" className="btn btn-white shrink-0">
+                    <Plus className="h-4 w-4" />
+                    Add
+                  </button>
+                </form>
+                {colours.length > 0 ? (
+                  <div className="mt-3 space-y-3">
+                    {colours.map((c, i) => {
+                      const sw = colorSwatch(c.name);
+                      return (
+                        <div key={c.name} className="surface-2 p-3">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-2 text-sm font-semibold">
+                              {sw ? <ColorDot css={sw.css} multi={sw.multi} className="h-3.5 w-3.5" /> : null}
+                              {c.name}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-danger px-2 py-1 text-xs"
+                              onClick={() => setColours((cs) => cs.filter((_, j) => j !== i))}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              Remove
+                            </button>
+                          </div>
+                          <PhotoManager
+                            value={c.photos}
+                            size="sm"
+                            max={8}
+                            coverLabel={null}
+                            onChange={(urls) => setColours((cs) => cs.map((x, j) => (j === i ? { ...x, photos: urls } : x)))}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="muted mt-1.5 text-xs">Skip colours if the piece comes in one colour only.</p>
+                )}
+              </div>
+
+              <div>
+                <div className="label">Price, MRP and stock for every option</div>
+                <div className="grid grid-cols-3 gap-3 sm:max-w-md">
+                  <FormField label="Price" htmlFor="ap-dprice">
+                    <input id="ap-dprice" className="input" inputMode="decimal" placeholder="₹" value={price} onChange={(e) => setPrice(e.target.value)} />
+                  </FormField>
+                  <FormField label="MRP" htmlFor="ap-dmrp">
+                    <input id="ap-dmrp" className="input" inputMode="decimal" placeholder="Optional" value={mrp} onChange={(e) => setMrp(e.target.value)} />
+                  </FormField>
+                  <FormField label="Stock each" htmlFor="ap-dstock">
+                    <input
+                      id="ap-dstock"
+                      className="input"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={stock}
+                      onChange={(e) => setStock(e.target.value.replace(/[^\d]/g, ''))}
+                    />
+                  </FormField>
+                </div>
+                <p className="muted mt-1.5 text-xs">Change any single option in the table below. MRP is the crossed-out price.</p>
+              </div>
+
+              {hasOptions ? (
+                <div className="surface-2 overflow-hidden" style={{ background: 'var(--pom-panel)' }}>
+                  <div
+                    className="hidden grid-cols-[2rem_minmax(0,1.4fr)_1fr_1fr_5.5rem] gap-3 border-b px-3 py-2 text-[11px] font-semibold uppercase tracking-wide sm:grid"
+                    style={{ color: 'var(--pom-muted-2)', background: 'var(--pom-panel-2)' }}
+                  >
+                    <span />
+                    <span>Option</span>
+                    <span>Price</span>
+                    <span>MRP</span>
+                    <span>Stock</span>
+                  </div>
+                  <div className="divide-y">
+                    {combos.map(({ colour, size, k }) => {
+                      const c = cell(k);
+                      const sw = colorSwatch(colour);
+                      return (
+                        <div
+                          key={k}
+                          className="grid grid-cols-[2rem_1fr] items-center gap-x-3 gap-y-2 px-3 py-2 sm:grid-cols-[2rem_minmax(0,1.4fr)_1fr_1fr_5.5rem]"
+                          style={c.off ? { opacity: 0.45 } : undefined}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!c.off}
+                            onChange={(e) => setCell(k, { off: !e.target.checked })}
+                            aria-label={`Sell ${[colour, size].filter(Boolean).join(' ')}`}
+                          />
+                          <span className="flex items-center gap-2 text-sm">
+                            {sw ? <ColorDot css={sw.css} multi={sw.multi} /> : null}
+                            {colour ? <span>{colour}</span> : null}
+                            {size ? <span className="font-semibold">{size}</span> : null}
+                          </span>
+                          <div className="col-span-2 grid grid-cols-3 gap-2 sm:contents">
+                            <input
+                              className="input px-2.5 py-1.5 tabular-nums"
+                              inputMode="decimal"
+                              aria-label="Price"
+                              placeholder="Price"
+                              disabled={c.off}
+                              value={c.price}
+                              onChange={(e) => setCell(k, { price: e.target.value })}
+                            />
+                            <input
+                              className="input px-2.5 py-1.5 tabular-nums"
+                              inputMode="decimal"
+                              aria-label="MRP"
+                              placeholder="MRP"
+                              disabled={c.off}
+                              value={c.mrp}
+                              onChange={(e) => setCell(k, { mrp: e.target.value })}
+                            />
+                            <input
+                              className="input px-2.5 py-1.5 tabular-nums"
+                              inputMode="numeric"
+                              aria-label="Stock"
+                              placeholder="Stock"
+                              disabled={c.off}
+                              value={c.stock}
+                              onChange={(e) => setCell(k, { stock: e.target.value.replace(/[^\d]/g, '') })}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between border-t px-3 py-2 text-xs" style={{ background: 'var(--pom-panel-2)' }}>
+                    <span className="muted">
+                      {enabled.length} of {combos.length} options on sale
+                    </span>
+                    <span className="font-semibold tabular-nums">{totalStock} pieces</span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <FormField label="Price" htmlFor="ap-price">
+                <input id="ap-price" className="input" inputMode="decimal" placeholder="₹" value={price} onChange={(e) => setPrice(e.target.value)} />
+              </FormField>
+              <FormField label="MRP" htmlFor="ap-mrp" hint="Optional, shown crossed out">
+                <input id="ap-mrp" className="input" inputMode="decimal" value={mrp} onChange={(e) => setMrp(e.target.value)} />
+              </FormField>
+              <FormField label="Stock" htmlFor="ap-stock">
+                <input
+                  id="ap-stock"
+                  className="input"
+                  inputMode="numeric"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value.replace(/[^\d]/g, ''))}
+                />
+              </FormField>
             </div>
           )}
-        </div>
-        <div className="mb-8">
-          
-          {/* Help Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setShowHelp(!showHelp)}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition"
-          >
-            <span className="text-xl">💡</span>
-            <span className="font-medium">{showHelp ? 'Hide' : 'Show'} Beginner's Guide</span>
-          </button>
-        </div>
 
-        {/* Comprehensive Help Section */}
-        {showHelp && (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg p-8 border-2 border-blue-200">
-            <div className="flex items-start gap-3 mb-6">
-              <span className="text-4xl">📚</span>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Complete Product Creation Guide</h2>
-                <p className="text-gray-600">Follow this step-by-step guide to add your first product</p>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Tour Products Guide */}
-              <div className="bg-white rounded-lg p-6 shadow border-2 border-purple-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <span className="text-2xl">🗺️</span>
-                  Creating Tour & Travel Packages
-                </h3>
-                <div className="space-y-3 text-sm text-gray-700">
-                  <div className="bg-purple-50 border border-purple-200 rounded p-3 mb-3">
-                    <strong>What are tours?</strong> Special booking products for travel packages with dates, itineraries, and multiple departures.
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-purple-600 font-bold">1.</span>
-                    <div>
-                      <strong>Quick Method - Import Tours:</strong> Click "Export Template" button to download a ZIP package with sample CSV and images.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-purple-600 font-bold">2.</span>
-                    <div>
-                      <strong>Edit the Template:</strong> Open the CSV in Excel, edit tour details (name, price, dates, itinerary).
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-purple-600 font-bold">3.</span>
-                    <div>
-                      <strong>Add Your Images:</strong> Replace sample images in the 'images' folder with your tour photos (1200x800px recommended).
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-purple-600 font-bold">4.</span>
-                    <div>
-                      <strong>Import Tours:</strong> Click "Import Tours" button, select CSV file + all images together (Ctrl/Cmd + Click).
-                    </div>
-                  </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded p-3 mt-3">
-                    <strong>💡 Pro Tip:</strong> The ZIP template includes 10 sample placeholder images you can use for testing or replace with actual tour photos.
-                  </div>
-                </div>
-              </div>
-
-              {/* Manual Tour Creation */}
-              <div className="bg-white rounded-lg p-6 shadow border-2 border-blue-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <span className="text-2xl">✍️</span>
-                  Manual Tour Creation
-                </h3>
-                <div className="space-y-3 text-sm text-gray-700">
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">1.</span>
-                    <div>
-                      <strong>Product Type:</strong> Select "Booking/Service" and enable "Tour Mode".
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">2.</span>
-                    <div>
-                      <strong>Basic Details:</strong> Enter tour name, description, and base price.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">3.</span>
-                    <div>
-                      <strong>Departures:</strong> Add specific departure dates with seats available and price per person.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">4.</span>
-                    <div>
-                      <strong>Day-by-Day Itinerary:</strong> Add each day with title, activities, meals, and accommodation details.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">5.</span>
-                    <div>
-                      <strong>Tour Details:</strong> Set destinations, tour type, difficulty, group size limits.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">6.</span>
-                    <div>
-                      <strong>Inclusions/Exclusions:</strong> List what's included (accommodation, meals) and what's not (flights, insurance).
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">7.</span>
-                    <div>
-                      <strong>Pickup/Drop Points:</strong> Add locations and times for passenger pickup and drop-off.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Basic Product Guide */}
-              <div className="bg-white rounded-lg p-6 shadow">
-                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <span className="text-2xl">📦</span>
-                  Creating a Basic Product
-                </h3>
-                <div className="space-y-3 text-sm text-gray-700">
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">1.</span>
-                    <div>
-                      <strong>Product Name:</strong> Give your product a clear, descriptive name (e.g., "Men's Cotton T-Shirt" not just "T-Shirt")
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">2.</span>
-                    <div>
-                      <strong>Description:</strong> Write detailed information about your product. Include material, features, care instructions, etc.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">3.</span>
-                    <div>
-                      <strong>Categories:</strong> Select the most specific category. Parent categories are auto-selected.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">4.</span>
-                    <div>
-                      <strong>Price:</strong> Set your selling price. Add "Compare At Price" to show discounts.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">5.</span>
-                    <div>
-                      <strong>SKU:</strong> Auto-generated unique code for your product. You can customize it.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">6.</span>
-                    <div>
-                      <strong>Stock:</strong> Enter how many items you have available.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">7.</span>
-                    <div>
-                      <strong>Images:</strong> Upload clear, high-quality product photos. First image is your main image.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Product Variations Guide */}
-              <div className="bg-white rounded-lg p-6 shadow">
-                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <span className="text-2xl">🎨</span>
-                  Creating Products with Variations
-                </h3>
-                <div className="space-y-3 text-sm text-gray-700">
-                  <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
-                    <strong>What are variations?</strong> Use when your product comes in different colors, sizes, or styles - each with separate stock and possibly different prices.
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">1.</span>
-                    <div>
-                      <strong>Select Category:</strong> Choose a category that has attributes like "Color" or "Size" configured.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">2.</span>
-                    <div>
-                      <strong>Enable Variations:</strong> Check the "This product has multiple options" checkbox.
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">3.</span>
-                    <div>
-                      <strong>Select Variation Types:</strong> Choose which attributes to use (e.g., Color + Size).
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">4.</span>
-                    <div>
-                      <strong>Pick Options:</strong> Select specific values (e.g., Red, Blue, Black for color; S, M, L for size).
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">5.</span>
-                    <div>
-                      <strong>Auto-Generation:</strong> System creates all combinations automatically (e.g., Red-S, Red-M, Blue-S, etc.).
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-blue-600 font-bold">6.</span>
-                    <div>
-                      <strong>Set Stock & Prices:</strong> For each variation, enter stock quantity. Adjust prices if needed (e.g., XL size costs more).
-                    </div>
-                  </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded p-3 mt-3">
-                    <strong>💡 Example:</strong> T-shirt in 3 colors × 4 sizes = 12 variations total
-                  </div>
-                </div>
-              </div>
-
-              {/* Product Attributes Guide */}
-              <div className="bg-white rounded-lg p-6 shadow">
-                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <span className="text-2xl">🏷️</span>
-                  Product Attributes (Filters)
-                </h3>
-                <div className="space-y-3 text-sm text-gray-700">
-                  <p>
-                    <strong>What are attributes?</strong> These help customers filter and find products easily.
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-2">
-                      <span className="text-green-600">✓</span>
-                      <div><strong>Single-Value Attributes:</strong> Brand, Material, Style - used for filtering only</div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-green-600">✓</span>
-                      <div><strong>Variation Attributes:</strong> Color, Size - used to create different product options</div>
-                    </div>
-                  </div>
-                  <div className="bg-green-50 border border-green-200 rounded p-3 mt-3">
-                    <strong>💡 Tip:</strong> Fill in attributes even for basic products - it makes them easier to find!
-                  </div>
-                </div>
-              </div>
-
-              {/* Common Mistakes */}
-              <div className="bg-white rounded-lg p-6 shadow">
-                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <span className="text-2xl">⚠️</span>
-                  Common Mistakes to Avoid
-                </h3>
-                <div className="space-y-2 text-sm text-gray-700">
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600">✗</span>
-                    <div><strong>Creating separate products for each size/color</strong> - Use "Custom Variants" instead to keep them under one product!</div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
-                    <div className="text-green-800"><strong>Correct:</strong> One product "T-Shirt" with XL, L, M variants</div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600">✗</span>
-                    <div>Using generic names like "Product 1" or "Item"</div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600">✗</span>
-                    <div>Forgetting to add product images</div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600">✗</span>
-                    <div>Not setting stock quantity (shows as out of stock)</div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600">✗</span>
-                    <div>Skipping product description (customers need details!)</div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600">✗</span>
-                    <div>Not selecting the right category (affects visibility)</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Tips */}
-            <div className="mt-6 bg-white rounded-lg p-6 shadow">
-              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <span className="text-2xl">⚡</span>
-                Quick Tips for Success
-              </h3>
-              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                <div className="flex items-start gap-2">
-                  <span className="text-purple-600 text-xl">🗺️</span>
-                  <div>
-                    <strong>For Tours:</strong> Use the Export/Import feature - it's the fastest way to add multiple tours with images!
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 text-xl">✓</span>
-                  <div>
-                    <strong>Use high-quality images:</strong> Clear, well-lit photos sell better
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 text-xl">✓</span>
-                  <div>
-                    <strong>Write detailed descriptions:</strong> Answer questions before customers ask
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 text-xl">✓</span>
-                  <div>
-                    <strong>Competitive pricing:</strong> Research similar products' prices
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 text-xl">✓</span>
-                  <div>
-                    <strong>Accurate stock:</strong> Keep inventory numbers up to date
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 text-xl">✓</span>
-                  <div>
-                    <strong>Use variations wisely:</strong> Great for similar items with different options
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 text-xl">✓</span>
-                  <div>
-                    <strong>Regular updates:</strong> Add new photos, update descriptions as needed
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-purple-600 text-xl">📦</span>
-                  <div>
-                    <strong>Tour images:</strong> 1200x800px recommended, include destination highlights and activities
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-purple-600 text-xl">📅</span>
-                  <div>
-                    <strong>Tour dates:</strong> Keep departure dates updated and mark sold-out tours as unavailable
-                  </div>
-                </div>
-              </div>
+          <div className="mt-6 grid gap-4 border-t pt-5 sm:grid-cols-2">
+            <Toggle
+              checked={inclGst}
+              onChange={setInclGst}
+              label="Prices include GST"
+              hint={
+                inclGst
+                  ? 'The customer pays the price shown. GST is worked out of it on the invoice.'
+                  : 'GST is added on top of the price at checkout.'
+              }
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="SKU" htmlFor="ap-sku" hint="Option codes are added to it">
+                <input id="ap-sku" className="input font-mono" value={sku} onChange={(e) => setSku(e.target.value)} />
+              </FormField>
+              <FormField label="HSN code" htmlFor="ap-hsn" hint="For the invoice">
+                <input
+                  id="ap-hsn"
+                  className="input font-mono"
+                  inputMode="numeric"
+                  placeholder={isJewellery ? '7117' : '6204'}
+                  value={hsn}
+                  onChange={(e) => setHsn(e.target.value.replace(/[^\d]/g, ''))}
+                />
+              </FormField>
             </div>
           </div>
-        )}
+          <p className="muted mt-3 text-xs">
+            GST rate is set from the category and price: clothing 5% up to ₹1,000 a piece and 12% above, jewellery 3%.
+            {mode === 'variants' && enabled.length > 0 && num(price) ? ` From ${money(Math.min(...enabled.map((c) => num(cell(c.k).price) ?? Infinity)))}.` : ''}
+          </p>
+        </Section>
 
-        <div className="bg-white rounded-lg shadow p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Name *
-                <span className="ml-2 text-xs font-normal text-gray-500">💡 Be descriptive and specific</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter product name"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Slug (auto-generated if empty)
-              </label>
-              <input
-                type="text"
-                value={formData.slug}
-                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="product-slug"
-              />
-            </div>
-
-            {/* Quick Links Section - Moved outside of description */}
-            {(customPages.length > 0 || linkableProducts.length > 0) && (
-              <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <p className="text-sm font-semibold text-gray-800 mb-2">🔗 Quick Links - Click to Copy</p>
-                
-                <div className="space-y-2">
-                  {customPages.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-600 mb-1">Custom Pages:</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {customPages.map((page) => (
-                          <button
-                            key={page.id}
-                            type="button"
-                            onClick={() => {
-                              const link = `/${page.slug}`;
-                              navigator.clipboard.writeText(link);
-                              showAlert(`✓ Link copied: ${link}\n\nPaste it in your description using the link button in the editor.`, 'success');
-                            }}
-                            className="text-xs px-2.5 py-1 bg-white border border-blue-300 rounded hover:bg-blue-100 hover:border-blue-400 transition shadow-sm"
-                            title={`Click to copy: /${page.slug}`}
-                          >
-                            📄 {page.title}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description *
-                <span className="ml-2 text-xs font-normal text-gray-500">💡 Include features, materials, care instructions</span>
-              </label>
-              {mounted ? (
-                <ReactQuill
-                  theme="snow"
-                  value={formData.description}
-                  onChange={(value) => {
-                    if (value !== formData.description) {
-                      setFormData({ ...formData, description: value });
-                    }
-                  }}
-                  className="bg-white min-h-[350px]"
-                  placeholder="Example: This premium cotton t-shirt is made from 100% organic cotton. Features include a comfortable crew neck, reinforced stitching, and pre-shrunk fabric. Machine washable."
-                />
-              ) : (
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={4}
-                  placeholder="Example: This premium cotton t-shirt is made from 100% organic cotton. Features include a comfortable crew neck, reinforced stitching, and pre-shrunk fabric. Machine washable."
-                  required
-                />
-              )}
-              <p className="text-xs text-gray-500 mt-1">💡 Tip: Good descriptions answer: What is it? What's it made of? How to use/care for it?</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categories
-                <span className="ml-2 text-xs font-normal text-gray-500">💡 Choose the most specific category</span>
-              </label>
-              <div className="w-full px-4 py-3 border border-gray-300 rounded-lg max-h-48 overflow-y-auto bg-white">
-                {loading ? (
-                  <p className="text-sm text-gray-500">Loading categories...</p>
-                ) : categories.length === 0 ? (
-                  <p className="text-sm text-gray-500">No categories available</p>
-                ) : (
-                  categories.map((category) => {
-                    const isSelected = formData.categoryIds.includes(category.id);
-                    const isParentOfSelected = formData.categoryIds.some(selectedId => {
-                      const parents = getAllParents(selectedId);
-                      return parents.includes(category.id);
-                    });
-                    
-                    return (
-                      <label
-                        key={category.id}
-                        className={`flex items-center py-1.5 hover:bg-gray-50 cursor-pointer rounded px-1 ${
-                          isParentOfSelected ? 'bg-blue-50' : ''
-                        }`}
-                        style={{ marginLeft: `${category.level * 20}px` }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={(e) => handleCategoryChange(category.id, e.target.checked)}
-                          className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        />
-                        <span className={`text-sm ${category.level === 0 ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
-                          {category.name}
-                          {isParentOfSelected && !getAllChildren(category.id).some(childId => formData.categoryIds.includes(childId)) && (
-                            <span className="ml-2 text-xs text-blue-600">(auto-selected)</span>
-                          )}
-                        </span>
-                      </label>
-                    );
-                  })
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {formData.categoryIds.length} categor{formData.categoryIds.length === 1 ? 'y' : 'ies'} selected. Select a specific category - parent categories will be auto-selected.
-              </p>
-              <p className="text-xs text-blue-600 mt-1">ℹ️ Categories with attributes (like Color, Size) enable product variations feature</p>
-            </div>
-
-            {/* NEW: Dynamic Product Attributes Based on Category */}
-            {availableAttributeFilters.length > 0 && !hasCustomVariants && (
-              <div className="border-t pt-6 space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                    📋 Product Attributes
-                  </h3>
-                  <p className="text-sm text-blue-700">
-                    Fill in attributes like{' '}
-                    <strong>
-                      {availableAttributeFilters
-                        .map(f => f.label)
-                        .slice(0, 3)
-                        .join(', ')}
-                    </strong>
-                    {availableAttributeFilters.length > 3 && ', etc.'} to help customers filter and find your product easily.
-                  </p>
-                </div>
-
-                {availableAttributeFilters.map((filter) => {
-                  const isCustomValue = productAttributes[filter.id] === '__custom__';
-                  
-                  return (
-                    <div key={filter.id}>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {filter.label}
-                        {filter.type !== 'range' && (
-                          <span className="text-gray-400 font-normal ml-1">(optional)</span>
-                        )}
-                      </label>
-
-                      {/* Select/Checkbox Filter */}
-                      {(filter.type === 'select' || filter.type === 'checkbox' || filter.type === 'multiselect') && (
-                        <div className="space-y-2">
-                          <select
-                            value={isCustomValue ? '__custom__' : (productAttributes[filter.id] || '')}
-                            onChange={(e) => {
-                              if (e.target.value === '__custom__') {
-                                setProductAttributes({
-                                  ...productAttributes,
-                                  [filter.id]: '__custom__',
-                                  [`${filter.id}_custom`]: ''
-                                });
-                              } else {
-                                const newAttrs = { ...productAttributes };
-                                delete newAttrs[`${filter.id}_custom`];
-                                setProductAttributes({
-                                  ...newAttrs,
-                                  [filter.id]: e.target.value
-                                });
-                              }
-                            }}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Select {filter.label}</option>
-                            {filter.options?.map((option: any) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                            <option value="__custom__">➕ Add custom value...</option>
-                          </select>
-
-                          {/* Custom Value Input */}
-                          {isCustomValue && (
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={productAttributes[`${filter.id}_custom`] || ''}
-                                onChange={(e) => setProductAttributes({
-                                  ...productAttributes,
-                                  [`${filter.id}_custom`]: e.target.value
-                                })}
-                                placeholder={`Enter custom ${filter.label.toLowerCase()}`}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newAttrs = { ...productAttributes };
-                                  delete newAttrs[filter.id];
-                                  delete newAttrs[`${filter.id}_custom`];
-                                  setProductAttributes(newAttrs);
-                                }}
-                                className="px-3 py-2 text-red-600 hover:text-red-800 border border-red-300 rounded-lg"
-                                title="Cancel"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Range Filter */}
-                      {filter.type === 'range' && (
-                        <div className="space-y-2">
-                          <input
-                            type="number"
-                            value={productAttributes[filter.id] || filter.min || 0}
-                            onChange={(e) => setProductAttributes({
-                              ...productAttributes,
-                              [filter.id]: parseInt(e.target.value) || 0
-                            })}
-                            min={filter.min || 0}
-                            max={filter.max || 1000}
-                            step={filter.step || 1}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                          <p className="text-xs text-gray-500">
-                            Range: {filter.min} - {filter.max}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                  <p className="text-xs text-yellow-800">
-                    💡 <strong>Tip:</strong> Filling in these attributes makes your product easier to find when customers use filters!
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Variations Not Available Message */}
-            {categoryFilters.length === 0 && formData.categoryIds.length > 0 && (
-              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">ℹ️</span>
-                  <div className="text-sm text-amber-900">
-                    <strong className="block mb-1">Product Variations Not Available</strong>
-                    <p>The selected category doesn't have attributes configured yet (like Color, Size, etc.).</p>
-                    <p className="mt-2">
-                      <strong>To use variations:</strong> Select a category that has filter attributes, or contact admin to add attributes to this category.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Product Variants Section */}
-            {(
-              <div className="border-t pt-6">
-                <div className="mb-4">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={hasCustomVariants}
-                      onChange={(e) => {
-                        setHasCustomVariants(e.target.checked);
-                        if (!e.target.checked) {
-                          setVariantOptions([]);
-                          setVariantCombinations([]);
-                        }
-                      }}
-                      className="h-5 w-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
-                    />
-                    <div>
-                      <span className="text-lg font-semibold text-gray-900">
-                        ✨ Add Product Variants
-                      </span>
-                      <p className="text-sm text-gray-600 mt-1">
-                        ✅ Perfect for sizes, colors, flavors, and any product variations
-                      </p>
-                    </div>
-                  </label>
-                </div>
-
-                {hasCustomVariants && (
-                  <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded mb-4">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">🎨</span>
-                      <div className="text-sm text-purple-900">
-                        <strong className="block mb-2">✅ How Product Variants Work:</strong>
-                        <ol className="list-decimal list-inside space-y-1">
-                          <li><strong>Use category suggestions</strong> or add custom variant types (e.g., Size, Color)</li>
-                          <li><strong>Add values</strong> for each type (e.g., S, M, L, XL for Size)</li>
-                          <li><strong>All combinations</strong> are auto-generated as variants under one product</li>
-                          <li><strong>Set prices & stock</strong> for each variant individually</li>
-                        </ol>
-                        <p className="mt-2 text-purple-800">
-                          <strong>💡 Example:</strong> T-Shirt with Color (Red, Blue) + Size (S, M, L) = 6 variants under one product!
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {hasCustomVariants && (
-                  <>
-                    <div className="text-sm text-purple-900 mb-4">
-                      <strong className="block mb-2">Product Variants Features:</strong>
-                      <ul className="list-disc list-inside space-y-1">
-                        <li><strong>Category suggestions:</strong> Click suggested variant types from your category (if available)</li>
-                        <li><strong>Custom types:</strong> Add any variant type - Size, Color, Material, Packet Size, Weight, Flavor, etc.</li>
-                        <li><strong>Multiple values:</strong> Each variant type can have unlimited options</li>
-                        <li><strong>Auto-generate combinations:</strong> All possible combinations are created automatically</li>
-                        <li><strong>Individual pricing:</strong> Set unique SKU, price, and stock for each combination</li>
-                        <li><strong>Bulk updates:</strong> Apply price or stock to all variants at once</li>
-                      </ul>
-                      <p className="mt-2 text-purple-800">
-                        <strong>💡 Example:</strong> Coffee → Color (suggested from category) + Roast (custom) + Size (custom) = Coffee-Black-Dark-500g, Coffee-Brown-Light-250g, etc.
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                {hasCustomVariants && (
-                  <ProductVariantManager
-                    onVariantsChange={(options, combinations) => {
-                      setVariantOptions(options);
-                      setVariantCombinations(combinations);
-                      setFormData(prev => ({ ...prev, hasVariants: options.length > 0 }));
-                    }}
-                    initialOptions={variantOptions}
-                    initialCombinations={variantCombinations}
-                    categoryFilters={categoryFilters}
-                    baseSKU={formData.sku}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* GST & Pricing Section */}
-            <div className="border-t pt-6 mt-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <span>💰</span> Pricing & GST Configuration
-              </h3>
-
-              {/* Price Type Selection */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price Type *
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition ${
-                    formData.priceType === 'mrp_with_gst' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-300'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="priceType"
-                      value="mrp_with_gst"
-                      checked={formData.priceType === 'mrp_with_gst'}
-                      onChange={(e) => setFormData({ ...formData, priceType: e.target.value as any })}
-                      className="mt-1"
-                    />
-                    <div>
-                      <p className="font-medium text-gray-900">MRP (with GST)</p>
-                      <p className="text-xs text-gray-600 mt-1">Price already includes GST. System will extract base price and tax amount.</p>
-                      <p className="text-xs text-blue-600 mt-1">💡 Example: ₹1,180 → ₹1,000 + ₹180 GST @18%</p>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition ${
-                    formData.priceType === 'selling_price_without_gst' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-300'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="priceType"
-                      value="selling_price_without_gst"
-                      checked={formData.priceType === 'selling_price_without_gst'}
-                      onChange={(e) => setFormData({ ...formData, priceType: e.target.value as any })}
-                      className="mt-1"
-                    />
-                    <div>
-                      <p className="font-medium text-gray-900">Selling Price (without GST)</p>
-                      <p className="text-xs text-gray-600 mt-1">Price excludes GST. System will add GST to calculate final price.</p>
-                      <p className="text-xs text-blue-600 mt-1">💡 Example: ₹1,000 + ₹180 GST @18% → ₹1,180</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {formData.priceType === 'mrp_with_gst' ? 'MRP (with GST)' : 'Selling Price (without GST)'} *
-                    <span className="ml-2 text-xs font-normal text-gray-500">💡 Your price</span>
-                  </label>
-                  {hasCustomVariants ? (
-                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
-                      <p className="text-sm">Price set per variant</p>
-                      <p className="text-xs mt-1">Configure prices in the variants table above</p>
-                    </div>
-                  ) : (
-                    <>
-                      <input
-                        type="number"
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, price: '' })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        required
-                      />
-                      <p className="text-xs text-gray-500 mt-1">💰 Set competitive pricing based on market research</p>
-                    </>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Compare At Price
-                    <span className="ml-2 text-xs font-normal text-gray-500">💡 Original price (for showing discounts)</span>
-                  </label>
-                  {hasCustomVariants ? (
-                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
-                      <p className="text-sm">Compare price set per variant</p>
-                      <p className="text-xs mt-1">Configure in the variants table above</p>
-                    </div>
-                  ) : (
-                    <>
-                      <input
-                        type="number"
-                        value={formData.compareAtPrice}
-                        onChange={(e) => setFormData({ ...formData, compareAtPrice: e.target.value })}
-                        onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, compareAtPrice: '' })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">🏷️ Optional: Shows "X% OFF" badge if higher than price</p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* GST Configuration */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    HSN Code (Optional)
-                    <span className="ml-2 text-xs font-normal text-gray-500">💡 For tax classification</span>
-                  </label>
-                  <HsnCodeAutocomplete
-                    value={formData.hsnCode}
-                    onSelect={(hsnCode, recommendedGstRate) => {
-                      setFormData({
-                        ...formData,
-                        hsnCode,
-                        gstRate: recommendedGstRate,
-                      });
-                    }}
-                    placeholder="Search HSN code..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    GST Rate (%) *
-                    <span className="ml-2 text-xs font-normal text-gray-500">💡 Tax percentage</span>
-                  </label>
+        {filters.length > 0 ? (
+          <Section title="Shop filters" hint="Help customers find it when they filter the category.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {filters.map((f) => (
+                <FormField key={f.id} label={f.label} htmlFor={`ap-f-${f.id}`}>
                   <select
-                    value={formData.gstRate}
-                    onChange={(e) => setFormData({ ...formData, gstRate: parseFloat(e.target.value) })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    id={`ap-f-${f.id}`}
+                    className="input"
+                    value={attrs[f.id] ?? ''}
+                    onChange={(e) => setAttrs((a) => ({ ...a, [f.id]: e.target.value }))}
                   >
-                    <option value="0">0% - Essential Items (Books, Milk, Grains)</option>
-                    <option value="5">5% - Basic Goods (Edible oil, Sugar, Apparel ≤₹1000)</option>
-                    <option value="12">12% - Standard Items (Processed food, Computers)</option>
-                    <option value="18">18% - Most Products (Default)</option>
-                    <option value="28">28% - Luxury Items (Cars, Tobacco, AC)</option>
+                    <option value="">Not set</option>
+                    {(f.options ?? []).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">📋 Auto-filled from HSN code. You can change if needed.</p>
-                </div>
-              </div>
-
-              {/* GST Calculation Preview */}
-              {formData.price && parseFloat(formData.price) > 0 && (
-                <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                    <span>📊</span> GST Breakdown Preview
-                  </h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white rounded p-3 text-center">
-                      <p className="text-xs text-gray-600 mb-1">Base Price</p>
-                      <p className="text-lg font-bold text-gray-900">₹{calculateGST().basePrice}</p>
-                    </div>
-                    <div className="bg-white rounded p-3 text-center">
-                      <p className="text-xs text-gray-600 mb-1">GST @ {formData.gstRate}%</p>
-                      <p className="text-lg font-bold text-orange-600">₹{calculateGST().gstAmount}</p>
-                    </div>
-                    <div className="bg-white rounded p-3 text-center">
-                      <p className="text-xs text-gray-600 mb-1">Final Price</p>
-                      <p className="text-lg font-bold text-green-600">₹{calculateGST().finalPrice}</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-3 text-center">
-                    💡 {formData.priceType === 'mrp_with_gst' 
-                      ? 'Customer pays ₹' + calculateGST().finalPrice + ' (includes ₹' + calculateGST().gstAmount + ' GST)'
-                      : 'Customer pays ₹' + calculateGST().finalPrice + ' (₹' + calculateGST().basePrice + ' + ₹' + calculateGST().gstAmount + ' GST)'}
-                  </p>
-                </div>
-              )}
+                </FormField>
+              ))}
             </div>
+          </Section>
+        ) : null}
 
-            {/* Physical Product Specific Fields */}
-            {(
-              <div className="grid grid-cols-2 gap-4">
-                {/* Hide stock quantity when variants are enabled */}
-                {!hasCustomVariants && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Stock Quantity *
-                      <span className="ml-2 text-xs font-normal text-gray-500">💡 How many do you have?</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.stockQuantity}
-                      onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
-                      onFocus={(e) => e.target.value === '0' && setFormData({ ...formData, stockQuantity: '' })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      min="0"
-                      placeholder="0"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">📦 Available inventory. Shows "Out of Stock" if 0</p>
-                  </div>
-                )}
-
-                <div className={hasCustomVariants ? 'col-span-2' : ''}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    SKU {hasCustomVariants ? '(Base)' : '*'}
-                    <span className="ml-2 text-xs font-normal text-gray-500">💡 Unique product code</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Auto-generated"
-                      required={!hasCustomVariants}
-                    />
-                    <button
-                      type="button"
-                      onClick={generateSKU}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                      title="Generate new SKU"
-                    >
-                      🔄
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {hasCustomVariants 
-                      ? '📦 Base SKU for variant generation (e.g., SHIRT-BASE → SHIRT-RED-S, SHIRT-BLUE-M)' 
-                      : 'Auto-generated from the store prefix'}
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">ℹ️ What's a SKU? It's like a barcode - a unique ID to track this product</p>
-                </div>
-              </div>
-            )}
-
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-
-            <MultiImageUpload
-              label="Product Images"
-              value={formData.images}
-              onChange={(urls) => {
-                setFormData({ ...formData, images: urls });
-                // Auto-set featured image to first image if not set
-                if (!formData.featuredImage && urls.length > 0) {
-                  setFormData(prev => ({ ...prev, featuredImage: urls[0] }));
-                }
-              }}
-              maxImages={10}
-            />
-
-            <ImageUpload
-              label="Featured Image (Optional - uses first product image if not set)"
-              value={formData.featuredImage}
-              onChange={(url) => setFormData({ ...formData, featuredImage: url })}
-            />
-
-            <div className="flex gap-4 pt-4">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {submitting ? 'Creating...' : 'Create Product'}
-              </button>
-              <Link
-                href="/admin/products"
-                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 transition text-center"
-              >
-                Cancel
-              </Link>
-            </div>
-          </form>
-        </div>
+        <Section title="Description" hint="Fabric, fit, work, wash care. Shown on the product page.">
+          <div className="pom-quill">
+            <ReactQuill theme="snow" value={description} onChange={(v) => v !== description && setDescription(v)} />
           </div>
+        </Section>
+      </div>
+
+      {/* Actions, pinned above the phone's bottom bar and at the foot of the screen on a computer. */}
+      <div
+        className="fixed inset-x-0 bottom-[calc(59px+env(safe-area-inset-bottom))] z-30 border-t px-4 py-3 sm:bottom-0"
+        style={{ background: 'var(--pom-panel)', boxShadow: '0 -8px 24px -16px rgba(13,60,82,0.25)' }}
+      >
+        <div className="mx-auto flex max-w-4xl items-center gap-2">
+          <span className="muted hidden text-sm sm:block">
+            {name.trim() || 'New product'}
+            {totalStock ? ` · ${totalStock} pieces` : ''}
+          </span>
+          <div className="flex-1" />
+          <button type="button" className="btn btn-white" disabled={!!saving} onClick={() => submit('draft')}>
+            {saving === 'draft' ? 'Saving...' : 'Save draft'}
+          </button>
+          <button type="button" className="btn btn-blue min-w-[8rem]" disabled={!!saving} onClick={() => submit('active')}>
+            {saving === 'active' ? 'Publishing...' : 'Put on sale'}
+          </button>
         </div>
       </div>
     </div>

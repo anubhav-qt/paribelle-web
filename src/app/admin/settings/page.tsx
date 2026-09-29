@@ -1,1129 +1,307 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { Settings, MapPin, Save, DollarSign, Upload, Trash2, AlertCircle } from 'lucide-react';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
-import { Loader } from '@/components/ui/Loader';
+import { ImagePlus, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+
+import { confirmDialog, toast } from '@/components/admin/pom/dialogs';
+import { mediaUrl } from '@/components/admin/pom/format';
+import { Segmented } from '@/components/admin/pom/segmented';
+import { CenteredSpinner, FormField, Notice, PageHeader, SaveBar, Section, Spinner } from '@/components/admin/pom/ui';
 import { api, errorMessage } from '@/lib/api';
-import { showConfirm } from '@/lib/dialog';
 
 interface Setting {
-  id: string;
   key: string;
-  value: any;
-  description: string;
+  value: unknown;
 }
 
-export default function AdminSettingsPage() {
-  const { isAuthenticated, loading: authLoading } = useAdminAuth();
-  const [settings, setSettings] = useState<Setting[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+interface Values {
+  marketplace_name: string;
+  marketplace_logo: string;
+  exchange_window_days: string;
+  exchange_courier_charge: string;
+  thumbnailLayout: 'vertical' | 'horizontal';
+}
 
-  // Form state
-  const [locationFilterEnabled, setLocationFilterEnabled] = useState(true);
-  const [currency, setCurrency] = useState('INR');
-  const [categoryDisplayMode, setCategoryDisplayMode] = useState<'top' | 'sidebar'>('sidebar');
-  const [thumbnailLayout, setThumbnailLayout] = useState<'vertical' | 'horizontal'>('vertical');
-  const [heroHeight, setHeroHeight] = useState<'compact' | 'standard' | 'tall'>('compact');
-  const [marketplaceLogo, setMarketplaceLogo] = useState('');
-  const [marketplaceName, setMarketplaceName] = useState('PariBelle');
-  const [heroBanners, setHeroBanners] = useState<Array<{
-    id: string;
-    imageUrl: string;
-    title: string;
-    subtitle: string;
-    ctaText: string;
-    ctaLink: string;
-    order: number;
-  }>>([]);
-  const [returnPolicy, setReturnPolicy] = useState<{ enabled: boolean; days?: number; text: string }>({ enabled: false, text: '' });
-  const [cancellationPolicy, setCancellationPolicy] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: '' });
-  // No UI control edits this anymore — commission is fixed at 0 (see plan
-  // Task 1). The state and save call are kept only so re-saving the rest of
-  // this form doesn't clobber whatever value the `platform_commission_rate`
-  // setting already holds.
-  const [commissionRate, setCommissionRate] = useState<number>(0);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(0);
-  // Flat fee charged for couriering an exchange replacement out. 0 = no
-  // charge, which is what every exchange did before this existed.
-  const [exchangeCourierCharge, setExchangeCourierCharge] = useState<number>(0);
-  
-  // Orphan cleanup state
-  const [orphanImages, setOrphanImages] = useState<string[]>([]);
-  const [cleanupLoading, setCleanupLoading] = useState(false);
-  const [cleanupResults, setCleanupResults] = useState<{ total: number; orphans: string[]; deleted: number; errors: string[] } | null>(null);
+const DESCRIPTIONS: Record<keyof Values, string> = {
+  marketplace_name: 'Store name shown in the header, at checkout and on invoices',
+  marketplace_logo: 'Store logo URL',
+  exchange_window_days: 'Days after delivery a customer can ask for an exchange',
+  exchange_courier_charge: 'Flat courier charge for sending an exchange replacement out. 0 disables the charge.',
+  thumbnailLayout: 'Product photo thumbnails: "vertical" (beside the photo) or "horizontal" (under it)',
+};
+
+const DEFAULTS: Values = {
+  marketplace_name: 'PariBelle',
+  marketplace_logo: '',
+  exchange_window_days: '7',
+  exchange_courier_charge: '0',
+  thumbnailLayout: 'vertical',
+};
+
+function read(list: Setting[]): Values {
+  const get = (k: string) => list.find((s) => s.key === k)?.value;
+  const str = (v: unknown, d: string) => (v === undefined || v === null || v === '' ? d : String(v));
+  return {
+    marketplace_name: str(get('marketplace_name'), DEFAULTS.marketplace_name),
+    marketplace_logo: str(get('marketplace_logo'), ''),
+    exchange_window_days: str(get('exchange_window_days'), DEFAULTS.exchange_window_days),
+    exchange_courier_charge: str(get('exchange_courier_charge'), DEFAULTS.exchange_courier_charge),
+    thumbnailLayout: get('thumbnailLayout') === 'horizontal' ? 'horizontal' : 'vertical',
+  };
+}
+
+/**
+ * The handful of switches the shop actually has. Each saves only the settings
+ * that changed, so nothing set elsewhere (the homepage photos, legacy keys)
+ * is ever overwritten from here.
+ */
+export default function StoreSettingsPage() {
+  const [saved, setSaved] = useState<Values | null>(null);
+  const [values, setValues] = useState<Values>(DEFAULTS);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const logoInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchSettings();
-    }
-  }, [isAuthenticated]);
+    api
+      .get<Setting[]>('/settings/admin/all')
+      .then((list) => {
+        const v = read(list ?? []);
+        setSaved(v);
+        setValues(v);
+      })
+      .catch((e) => setLoadError(errorMessage(e, 'Could not load settings.')));
+  }, []);
 
-  const fetchSettings = async () => {
+  const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((cur) => ({ ...cur, [k]: v }));
+  const changed = saved ? (Object.keys(values) as (keyof Values)[]).filter((k) => values[k] !== saved[k]) : [];
+
+  async function save() {
+    const days = Number(values.exchange_window_days);
+    const charge = Number(values.exchange_courier_charge);
+    if (!values.marketplace_name.trim()) return toast.error('The store needs a name.');
+    if (!Number.isInteger(days) || days < 1 || days > 60) return toast.error('Exchange window must be 1 to 60 days.');
+    if (!Number.isFinite(charge) || charge < 0) return toast.error('Courier charge must be 0 or more.');
+
+    setSaving(true);
     try {
-      setLoading(true);
-      const data = await api.get<Setting[]>('/settings/admin/all');
-      if (data) {
-            setSettings(data);
-        
-            // Set form values from loaded settings
-            const locationSetting = data.find((s: Setting) => s.key === 'location_filter_enabled');
-            if (locationSetting) {
-          setLocationFilterEnabled(locationSetting.value === true || locationSetting.value === 'true');
-            }
-        
-            const currencySetting = data.find((s: Setting) => s.key === 'currency');
-            if (currencySetting) {
-          setCurrency(currencySetting.value || 'INR');
-            }
-        
-            const categoryModeSetting = data.find((s: Setting) => s.key === 'category_display_mode');
-            if (categoryModeSetting) {
-          setCategoryDisplayMode(categoryModeSetting.value === 'top' ? 'top' : 'sidebar');
-            }
-        
-            const thumbnailLayoutSetting = data.find((s: Setting) => s.key === 'thumbnailLayout');
-            if (thumbnailLayoutSetting) {
-          setThumbnailLayout(thumbnailLayoutSetting.value === 'horizontal' ? 'horizontal' : 'vertical');
-            }
-
-            const heroHeightSetting = data.find((s: Setting) => s.key === 'hero_height');
-            if (heroHeightSetting) {
-              const value = String(heroHeightSetting.value || '').toLowerCase();
-              if (value === 'compact' || value === 'standard' || value === 'tall') {
-                setHeroHeight(value);
-              }
-            }
-        
-            const heroBannersSetting = data.find((s: Setting) => s.key === 'hero_banners');
-            if (heroBannersSetting && Array.isArray(heroBannersSetting.value)) {
-          setHeroBanners(heroBannersSetting.value);
-            } else {
-          setHeroBanners([]);
-            }
-        
-            const logoSetting = data.find((s: Setting) => s.key === 'marketplace_logo');
-            if (logoSetting) {
-          setMarketplaceLogo(logoSetting.value || '');
-            }
-        
-            const nameSetting = data.find((s: Setting) => s.key === 'marketplace_name');
-            if (nameSetting) {
-          setMarketplaceName(nameSetting.value || 'PariBelle');
-            }
-
-            const returnPolicySetting = data.find((s: Setting) => s.key === 'return_policy');
-            if (returnPolicySetting?.value) {
-          const parsed = typeof returnPolicySetting.value === 'string' ? JSON.parse(returnPolicySetting.value) : returnPolicySetting.value;
-          setReturnPolicy(parsed);
-            }
-
-            const cancellationPolicySetting = data.find((s: Setting) => s.key === 'cancellation_policy');
-            if (cancellationPolicySetting?.value) {
-          const parsed = typeof cancellationPolicySetting.value === 'string' ? JSON.parse(cancellationPolicySetting.value) : cancellationPolicySetting.value;
-          setCancellationPolicy(parsed);
-            }
-
-            const commissionRateSetting = data.find((s: Setting) => s.key === 'platform_commission_rate');
-            if (commissionRateSetting) {
-          setCommissionRate(parseFloat(commissionRateSetting.value) || 0);
-            }
-
-            const freeShippingThresholdSetting = data.find((s: Setting) => s.key === 'default_free_shipping_threshold');
-            if (freeShippingThresholdSetting) {
-          setFreeShippingThreshold(parseFloat(freeShippingThresholdSetting.value) || 0);
-            }
-
-            const courierChargeSetting = data.find((s: Setting) => s.key === 'exchange_courier_charge');
-            if (courierChargeSetting) {
-          setExchangeCourierCharge(parseFloat(courierChargeSetting.value) || 0);
-            }
+      for (const k of changed) {
+        const value =
+          k === 'exchange_window_days' ? days : k === 'exchange_courier_charge' ? charge : k === 'marketplace_name' ? values[k].trim() : values[k];
+        await api.put(`/settings/${k}`, { value, description: DESCRIPTIONS[k] });
       }
-    } catch (error) {
-      console.error('Error fetching settings:', error);
-      showMessage('error', 'Failed to load settings');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      showMessage('error', 'Please upload an image file');
-      return;
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      showMessage('error', 'Image size should be less than 2MB');
-      return;
-    }
-
-    try {
-      setUploadingLogo(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const data = await api.upload<{ url: string }>('/upload/image', formData);
-      // Store the relative URL (will be prefixed with API URL when fetched)
-      setMarketplaceLogo(data.url);
-      showMessage('success', 'Logo uploaded successfully. Remember to save settings.');
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      showMessage('error', errorMessage(error, 'Failed to upload logo'));
-    } finally {
-      setUploadingLogo(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const updateSetting = async (key: string, value: any, description?: string) => {
-    try {
-      await api.put(`/settings/${key}`, { value, description });
-      return true;
-    } catch (error) {
-      console.error(`Error updating setting "${key}":`, error);
-      showMessage('error', errorMessage(error, `Failed to update "${key}"`));
-      return false;
-    }
-  };
-
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      
-      const locationSuccess = await updateSetting(
-            'location_filter_enabled',
-            locationFilterEnabled,
-            'Enable/disable location-based product filtering across the marketplace'
-      );
-      
-      const currencySuccess = await updateSetting(
-            'currency',
-            currency,
-            'Default currency for the marketplace'
-      );
-      
-      const categoryModeSuccess = await updateSetting(
-            'category_display_mode',
-            categoryDisplayMode,
-            'Display categories at the top toolbar or in the left sidebar tree. Values: "top" or "sidebar"'
-      );
-      
-      const thumbnailLayoutSuccess = await updateSetting(
-            'thumbnailLayout',
-            thumbnailLayout,
-            'Product image thumbnail layout orientation. Values: "vertical" (Amazon-style left sidebar) or "horizontal" (bottom strip)'
-      );
-
-      const heroHeightSuccess = await updateSetting(
-        'hero_height',
-        heroHeight,
-        'Hero carousel height preset. Values: "compact", "standard", "tall".'
-      );
-      
-      const heroBannersSuccess = await updateSetting(
-            'hero_banners',
-            heroBanners,
-            'Hero carousel banners for homepage'
-      );
-      
-      const logoSuccess = await updateSetting(
-            'marketplace_logo',
-            marketplaceLogo,
-            'Marketplace logo URL'
-      );
-      
-      const nameSuccess = await updateSetting(
-            'marketplace_name',
-            marketplaceName,
-            'Marketplace name displayed in header'
-      );
-
-      const returnPolicySuccess = await updateSetting(
-            'return_policy',
-            JSON.stringify(returnPolicy),
-            'Marketplace default return policy'
-      );
-
-      const cancellationPolicySuccess = await updateSetting(
-            'cancellation_policy',
-            JSON.stringify(cancellationPolicy),
-            'Marketplace default cancellation policy'
-      );
-
-      const commissionRateSuccess = await updateSetting(
-            'platform_commission_rate',
-            commissionRate.toString(),
-            'Default marketplace commission rate percentage for all vendors'
-      );
-
-      const freeShippingThresholdSuccess = await updateSetting(
-            'default_free_shipping_threshold',
-            freeShippingThreshold.toString(),
-            'Default free shipping threshold amount. Orders above this amount get free shipping.'
-      );
-
-      const courierChargeSuccess = await updateSetting(
-            'exchange_courier_charge',
-            exchangeCourierCharge,
-            'Flat courier charge added to an exchange for shipping the replacement out. 0 disables the charge.'
-      );
-
-      if (locationSuccess && currencySuccess && categoryModeSuccess && thumbnailLayoutSuccess && heroHeightSuccess && heroBannersSuccess && logoSuccess && nameSuccess && returnPolicySuccess && cancellationPolicySuccess && commissionRateSuccess && freeShippingThresholdSuccess && courierChargeSuccess) {
-            showMessage('success', 'Settings saved successfully!');
-            await fetchSettings(); // Refresh settings
-      } else {
-            showMessage('error', 'Failed to save settings');
-      }
-    } catch (error) {
-      showMessage('error', 'An error occurred while saving');
+      setSaved(values);
+      toast.success('Settings saved.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not save settings.'));
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
-  };
-
-  const scanOrphanImages = async () => {
+  async function uploadLogo(file: File) {
+    if (!file.type.startsWith('image/')) return toast.error('Choose an image file.');
+    if (file.size > 2 * 1024 * 1024) return toast.error('The logo must be under 2 MB.');
+    setUploading(true);
     try {
-      setCleanupLoading(true);
-      setCleanupResults(null);
-      setOrphanImages([]);
-      
-      const data = await api.post<any>('/products/admin/cleanup-orphan-images');
-      setCleanupResults(data);
-      setOrphanImages(data.orphans || []);
-      
-      if (data.orphans.length === 0) {
-        showMessage('success', 'No orphan images found!');
-      } else {
-        showMessage('success', `Found ${data.orphans.length} orphan images`);
-      }
-    } catch (error) {
-      console.error('Error scanning orphan images:', error);
-      showMessage('error', errorMessage(error, 'Failed to scan orphan images'));
+      const form = new FormData();
+      form.append('file', file);
+      const res = await api.upload<{ url: string }>('/upload/image', form);
+      set('marketplace_logo', res.url);
+    } catch (e) {
+      toast.error(errorMessage(e, 'Upload failed.'));
     } finally {
-      setCleanupLoading(false);
+      setUploading(false);
     }
-  };
+  }
 
-  const deleteOrphanImages = async () => {
-    const ok = await showConfirm({
-      message: `Are you sure you want to delete ${orphanImages.length} orphan images? This action cannot be undone.`,
-      confirmText: 'Delete',
-      variant: 'danger',
-    });
-    if (!ok) {
-      return;
-    }
+  if (loadError) return <Notice tone="danger">{loadError}</Notice>;
+  if (!saved) return <CenteredSpinner />;
 
+  return (
+    <div className="mx-auto max-w-3xl pb-20">
+      <PageHeader title="Store settings" hint="How the shop presents itself and handles exchanges." />
+
+      <div className="space-y-5">
+        <Section title="Brand">
+          <div className="grid gap-5 sm:grid-cols-[1fr_auto]">
+            <FormField label="Store name" htmlFor="st-name" hint="In the header, at checkout and on every invoice.">
+              <input id="st-name" className="input" value={values.marketplace_name} onChange={(e) => set('marketplace_name', e.target.value)} />
+            </FormField>
+            <div>
+              <div className="label">Logo</div>
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-16 w-28 items-center justify-center border"
+                  style={{ borderColor: 'var(--pom-border)', background: 'var(--pom-panel-2)' }}
+                >
+                  {uploading ? (
+                    <Spinner size="1.4rem" />
+                  ) : values.marketplace_logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mediaUrl(values.marketplace_logo)} alt="Logo" className="max-h-14 max-w-[6.5rem] object-contain" />
+                  ) : (
+                    <span className="muted text-xs">No logo</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button type="button" className="btn btn-white px-3 py-1.5 text-[13px]" onClick={() => logoInput.current?.click()} disabled={uploading}>
+                    <ImagePlus className="h-4 w-4" />
+                    {values.marketplace_logo ? 'Replace' : 'Upload'}
+                  </button>
+                  {values.marketplace_logo ? (
+                    <button type="button" className="btn btn-danger px-3 py-1 text-xs" onClick={() => set('marketplace_logo', '')}>
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
+                <input
+                  ref={logoInput}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    if (f) uploadLogo(f);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Exchanges" hint="The shop offers exchanges only, no refunds.">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <FormField label="Exchange window" htmlFor="st-days" hint="Days after delivery a customer can ask to exchange.">
+              <div className="flex items-center gap-2">
+                <input
+                  id="st-days"
+                  className="input w-24"
+                  inputMode="numeric"
+                  value={values.exchange_window_days}
+                  onChange={(e) => set('exchange_window_days', e.target.value.replace(/[^\d]/g, ''))}
+                />
+                <span className="muted text-sm">days</span>
+              </div>
+            </FormField>
+            <FormField
+              label="Courier charge for the replacement"
+              htmlFor="st-charge"
+              hint="Charged to the customer for sending the new piece out. 0 means free."
+            >
+              <div className="flex items-center gap-2">
+                <span className="muted text-sm">₹</span>
+                <input
+                  id="st-charge"
+                  className="input w-28"
+                  inputMode="decimal"
+                  value={values.exchange_courier_charge}
+                  onChange={(e) => set('exchange_courier_charge', e.target.value.replace(/[^\d.]/g, ''))}
+                />
+              </div>
+            </FormField>
+          </div>
+        </Section>
+
+        <Section title="Product page">
+          <div>
+            <div className="label">Photo thumbnails</div>
+            <Segmented<'vertical' | 'horizontal'>
+              label="Thumbnail layout"
+              size="md"
+              value={values.thumbnailLayout}
+              onChange={(v) => set('thumbnailLayout', v)}
+              items={[
+                { key: 'vertical', label: 'Beside the photo' },
+                { key: 'horizontal', label: 'Under the photo' },
+              ]}
+            />
+          </div>
+        </Section>
+
+        <PhotoCleanup />
+      </div>
+
+      <SaveBar count={changed.length} saving={saving} onSave={save} onDiscard={() => setValues(saved)} />
+    </div>
+  );
+}
+
+/** Photos uploaded but no longer used by any product, found and removed on demand. */
+function PhotoCleanup() {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ total: number; orphans: string[]; deleted?: number } | null>(null);
+
+  async function scan() {
+    setBusy(true);
     try {
-      setCleanupLoading(true);
-      
-      const data = await api.post<any>('/products/admin/cleanup-orphan-images', undefined, {
+      setResult(await api.post('/products/admin/cleanup-orphan-images'));
+    } catch (e) {
+      toast.error(errorMessage(e, 'Scan failed.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!result?.orphans.length) return;
+    const ok = await confirmDialog({
+      title: `Delete ${result.orphans.length} unused photos?`,
+      message: 'They are not on any product. This cannot be undone.',
+      confirmText: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ total: number; orphans: string[]; deleted: number }>('/products/admin/cleanup-orphan-images', undefined, {
         params: { delete: true },
       });
-      setCleanupResults(data);
-      
-      if (data.deleted > 0) {
-        showMessage('success', `Successfully deleted ${data.deleted} orphan images`);
-        setOrphanImages([]);
-      } else {
-        showMessage('error', 'No images were deleted');
-      }
-    } catch (error) {
-      console.error('Error deleting orphan images:', error);
-      showMessage('error', errorMessage(error, 'Failed to delete orphan images'));
+      toast.success(`Deleted ${r.deleted} unused photos.`);
+      setResult({ ...r, orphans: [] });
+    } catch (e) {
+      toast.error(errorMessage(e, 'Delete failed.'));
     } finally {
-      setCleanupLoading(false);
+      setBusy(false);
     }
-  };
-
-  if (authLoading || !isAuthenticated || loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <Loader size="md" />
-      </div>
-    );
   }
 
   return (
-    <>
-      <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b">
-          <div className="container mx-auto px-4 py-6">
-            <Link
-              href="/admin"
-              className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
-            >
-              ← Back to Dashboard
-            </Link>
-            <div className="flex items-center gap-3">
-              <Settings className="w-6 h-6 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Site Settings</h1>
-            </div>
-          </div>
-            </div>
-
-            {/* Content */}
-            <div className="container mx-auto px-4 py-8">
-          <div className="flex-1 max-w-4xl">
-            {/* Success/Error Message */}
-            {message && (
-              <div
-                className={`mb-6 p-4 rounded-lg ${
-                  message.type === 'success'
-                    ? 'bg-green-50 text-green-800 border border-green-200'
-                    : 'bg-red-50 text-red-800 border border-red-200'
-                }`}
-              >
-                {message.text}
-              </div>
-            )}
-
-            {/* Marketplace Branding */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Settings className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Marketplace Branding</h2>
-              </div>
-
-              <div className="space-y-4">
-            <div>
-              <label htmlFor="marketplaceName" className="block font-medium text-gray-900 mb-2">
-                Marketplace Name
-              </label>
-              <input
-                type="text"
-                id="marketplaceName"
-                value={marketplaceName}
-                onChange={(e) => setMarketplaceName(e.target.value)}
-                placeholder="Marketplace"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="text-sm text-gray-600 mt-2">
-                This name will be displayed in the header and throughout the site.
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="marketplaceLogo" className="block font-medium text-gray-900 mb-2">
-                Logo
-              </label>
-              <div className="space-y-3">
-                {/* Upload Button */}
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                    id="logoFileInput"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingLogo}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                  </button>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Upload an image (max 2MB). Recommended size: 200x60px
-                  </p>
-                </div>
-
-                {/* URL Input (Optional) */}
-                <div>
-                  <label htmlFor="marketplaceLogoUrl" className="block text-sm font-medium text-gray-700 mb-1">
-                    Or enter Logo URL
-                  </label>
-                  <input
-                    type="url"
-                    id="marketplaceLogoUrl"
-                    value={marketplaceLogo}
-                    onChange={(e) => setMarketplaceLogo(e.target.value)}
-                    placeholder="https://example.com/logo.png or /logo.png"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              {marketplaceLogo && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Preview:</p>
-                  <img 
-                    src={marketplaceLogo.startsWith('http') ? marketplaceLogo : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${marketplaceLogo}`} 
-                    alt="Logo preview" 
-                    className="h-12 object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> Changes to the logo and name will appear on all pages after saving.
-              </p>
-            </div>
-          </div>
-            </div>
-
-            {/* Location Filter Settings */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <MapPin className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Location Filter</h2>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-start gap-4">
-              <input
-                type="checkbox"
-                id="locationFilter"
-                checked={locationFilterEnabled}
-                onChange={(e) => setLocationFilterEnabled(e.target.checked)}
-                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <div className="flex-1">
-                <label htmlFor="locationFilter" className="block font-medium text-gray-900 cursor-pointer">
-                  Enable Location-Based Filtering
-                </label>
-                <p className="text-sm text-gray-600 mt-1">
-                  When enabled, users can filter products by city and area/locality on the homepage and category pages.
-                  Products will be grouped into "Available in Selected Location" and "Other Locations" sections.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> This setting controls the visibility of location filter dropdowns across the marketplace.
-                When disabled, the location filter UI will be hidden from all pages.
-              </p>
-            </div>
-          </div>
-            </div>
-
-            {/* Currency Settings */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <DollarSign className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Currency</h2>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="currency" className="block font-medium text-gray-900 mb-2">
-                Default Currency
-              </label>
-              <select
-                id="currency"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="INR">₹ INR - Indian Rupee</option>
-                <option value="USD">$ USD - US Dollar</option>
-                <option value="EUR">€ EUR - Euro</option>
-                <option value="GBP">£ GBP - British Pound</option>
-                <option value="AUD">$ AUD - Australian Dollar</option>
-                <option value="CAD">$ CAD - Canadian Dollar</option>
-              </select>
-              <p className="text-sm text-gray-600 mt-2">
-                This currency will be used throughout the marketplace for all product prices and transactions.
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="freeShippingThreshold" className="block font-medium text-gray-900 mb-2">
-                Default Free Shipping Threshold ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency})
-              </label>
-              <input
-                type="number"
-                id="freeShippingThreshold"
-                value={freeShippingThreshold}
-                onChange={(e) => setFreeShippingThreshold(parseFloat(e.target.value) || 0)}
-                min="0"
-                step="0.01"
-                placeholder="500.00"
-                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="text-sm text-gray-600 mt-2">
-                Orders above this amount automatically get free shipping. Set to 0 to disable platform-wide free shipping.
-              </p>
-              <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-sm text-yellow-800">
-                <p className="font-medium mb-1">⚙️ Vendor Override:</p>
-                <p>Individual vendors can set their own free shipping threshold in their settings, which will override this default value.</p>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="exchangeCourierCharge" className="block font-medium text-gray-900 mb-2">
-                Exchange Courier Charge ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency})
-              </label>
-              <input
-                type="number"
-                id="exchangeCourierCharge"
-                value={exchangeCourierCharge}
-                onChange={(e) => setExchangeCourierCharge(parseFloat(e.target.value) || 0)}
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="text-sm text-gray-600 mt-2">
-                Charged per replacement shipped out on an exchange. The customer is quoted this when they make
-                the request and chooses how to pay it — store credit, or cash on delivery. Set to 0 to ship
-                exchanges free of charge.
-              </p>
-              <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200 text-sm text-blue-800">
-                <p>
-                  The figure is frozen onto each exchange when it is requested, so changing it here only affects
-                  new requests — exchanges already in flight keep the price they were quoted. Exchanges settled
-                  as store credit only ship nothing and are never charged.
-                </p>
-              </div>
-            </div>
-
-          </div>
-            </div>
-
-            {/* Category Display Mode Settings */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Settings className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Category Display</h2>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="categoryMode" className="block font-medium text-gray-900 mb-2">
-                Category Navigation Layout
-              </label>
-              <select
-                id="categoryMode"
-                value={categoryDisplayMode}
-                onChange={(e) => setCategoryDisplayMode(e.target.value as 'top' | 'sidebar')}
-                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="sidebar">Left Sidebar Tree</option>
-                <option value="top">Top Toolbar</option>
-              </select>
-              <p className="text-sm text-gray-600 mt-2">
-                Choose how categories are displayed on the homepage.
-              </p>
-            </div>
-
-            <div className="space-y-2 text-sm text-gray-600">
-              <p><strong>Left Sidebar Tree:</strong> Categories are displayed in a scrollable tree panel on the left side with expandable subcategories.</p>
-              <p><strong>Top Toolbar:</strong> Categories are displayed horizontally in the header toolbar with dropdown menus for subcategories.</p>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> This setting affects the category navigation on the homepage. Users can click categories to scroll to product sections.
-              </p>
-            </div>
-          </div>
-            </div>
-
-            {/* Product Image Gallery Settings */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Settings className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Product Image Gallery</h2>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="thumbnailLayout" className="block font-medium text-gray-900 mb-2">
-                Thumbnail Layout
-              </label>
-              <select
-                id="thumbnailLayout"
-                value={thumbnailLayout}
-                onChange={(e) => setThumbnailLayout(e.target.value as 'vertical' | 'horizontal')}
-                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="vertical">Vertical (Left Sidebar)</option>
-                <option value="horizontal">Horizontal (Bottom Strip)</option>
-              </select>
-              <p className="text-sm text-gray-600 mt-2">
-                Choose how product image thumbnails are displayed on product detail pages.
-              </p>
-            </div>
-
-            <div className="space-y-2 text-sm text-gray-600">
-              <p><strong>Vertical (Amazon-style):</strong> Thumbnails appear in a vertical strip on the left side of the main image. Hovering changes the main image instantly.</p>
-              <p><strong>Horizontal:</strong> Thumbnails appear in a horizontal strip below the main image, similar to traditional e-commerce layouts.</p>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> This setting applies to all product detail pages across the marketplace.
-              </p>
-            </div>
-          </div>
-            </div>
-
-            {/* Hero Banners Management */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Settings className="w-5 h-5 text-blue-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Hero Carousel Banners</h2>
-            </div>
-            <button
-              onClick={() => {
-                const newBanner = {
-                  id: `banner-${Date.now()}`,
-                  imageUrl: '',
-                  title: 'New Banner',
-                  subtitle: 'Add your subtitle here',
-                  ctaText: '',
-                  ctaLink: '',
-                  order: heroBanners.length
-                };
-                setHeroBanners([...heroBanners, newBanner]);
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              + Add Banner
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="heroHeight" className="block font-medium text-gray-900 mb-2">
-                Hero Height
-              </label>
-              <select
-                id="heroHeight"
-                value={heroHeight}
-                onChange={(e) => setHeroHeight(e.target.value as 'compact' | 'standard' | 'tall')}
-                className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="compact">Compact (smallest)</option>
-                <option value="standard">Standard</option>
-                <option value="tall">Tall (largest)</option>
-              </select>
-              <p className="text-sm text-gray-600 mt-2">
-                Controls the hero/banner height on homepage and vendor storefront pages.
-              </p>
-            </div>
-
-            {heroBanners.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p>No banners configured. Click "Add Banner" to create your first hero banner.</p>
-                <p className="text-sm mt-2">Default gradient banner will be shown when no banners are configured.</p>
-              </div>
-            ) : (
-              heroBanners.map((banner, index) => (
-                <div key={banner.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-medium text-gray-900">Banner #{index + 1}</h3>
-                    <button
-                      onClick={() => {
-                        setHeroBanners(heroBanners.filter(b => b.id !== banner.id));
-                      }}
-                      className="text-red-600 hover:text-red-800 text-sm"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  
-                  <div className="grid gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Image URL
-                      </label>
-                      <input
-                        type="url"
-                        value={banner.imageUrl}
-                        onChange={(e) => {
-                          const updated = [...heroBanners];
-                          updated[index].imageUrl = e.target.value;
-                          setHeroBanners(updated);
-                        }}
-                        placeholder="https://example.com/banner.jpg"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Leave empty to use gradient background. Recommended size: 1920x600px
-                      </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Title
-                        </label>
-                        <input
-                          type="text"
-                          value={banner.title}
-                          onChange={(e) => {
-                            const updated = [...heroBanners];
-                            updated[index].title = e.target.value;
-                            setHeroBanners(updated);
-                          }}
-                          placeholder="Discover Amazing Products"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Subtitle
-                        </label>
-                        <input
-                          type="text"
-                          value={banner.subtitle}
-                          onChange={(e) => {
-                            const updated = [...heroBanners];
-                            updated[index].subtitle = e.target.value;
-                            setHeroBanners(updated);
-                          }}
-                          placeholder="Shop from thousands of products"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          CTA Button Text (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={banner.ctaText}
-                          onChange={(e) => {
-                            const updated = [...heroBanners];
-                            updated[index].ctaText = e.target.value;
-                            setHeroBanners(updated);
-                          }}
-                          placeholder="Shop Now"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          CTA Link (Optional)
-                        </label>
-                        <input
-                          type="url"
-                          value={banner.ctaLink}
-                          onChange={(e) => {
-                            const updated = [...heroBanners];
-                            updated[index].ctaLink = e.target.value;
-                            setHeroBanners(updated);
-                          }}
-                          placeholder="/products"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium text-gray-700">Display Order:</label>
-                      <input
-                        type="number"
-                        value={banner.order}
-                        onChange={(e) => {
-                          const updated = [...heroBanners];
-                          updated[index].order = parseInt(e.target.value) || 0;
-                          setHeroBanners(updated);
-                        }}
-                        className="w-20 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800 font-semibold mb-3">
-                <strong>📸 How to Add Images from Unsplash:</strong>
-              </p>
-              <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                <li>Go to <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">unsplash.com</a> and search for your desired image (e.g., "fashion", "marketplace", "products")</li>
-                <li>Click on the image you like to open it in full view</li>
-                <li>Right-click on the image and select "Copy Image Address" or "Copy Image Link"</li>
-                <li>Paste the URL in the "Image URL" field above</li>
-                <li><strong>Optimize for hero banner:</strong> Add <code className="bg-blue-100 px-1 py-0.5 rounded">?w=1920&h=600&fit=crop</code> at the end of the URL for perfect sizing</li>
-                <li className="font-medium">Example: <code className="bg-blue-100 px-1 py-0.5 rounded text-xs break-all">https://images.unsplash.com/photo-xxxxx?w=1920&h=600&fit=crop</code></li>
-              </ol>
-              <p className="text-sm text-blue-800 mt-3">
-                <strong>💡 Additional Tips:</strong>
-              </p>
-              <ul className="text-sm text-blue-800 mt-2 space-y-1 list-disc list-inside ml-4">
-                <li>Banners auto-rotate every 5 seconds</li>
-                <li>Users can manually navigate using arrows or dots</li>
-                <li>Recommended dimensions: 1920x600px or 16:9 aspect ratio</li>
-                <li>Leave image URL empty to use gradient background</li>
-                <li>Display order determines the sequence (lower numbers appear first)</li>
-                <li>Use high-quality, relevant images that match your brand</li>
-                <li>Ensure images are properly licensed (Unsplash images are free to use)</li>
-              </ul>
-            </div>
-          </div>
-            </div>
-
-            {/* Cloudinary Image Cleanup */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Trash2 className="w-5 h-5 text-red-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Cloudinary Image Cleanup</h2>
-              </div>
-              <p className="text-sm text-gray-600 mb-4">
-                Scan and remove orphan images from Cloudinary that are no longer referenced by any products.
-              </p>
-
-              <div className="space-y-4">
-                {/* Scan Button */}
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={scanOrphanImages}
-                    disabled={cleanupLoading}
-                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <AlertCircle className="w-4 h-4" />
-                    {cleanupLoading ? 'Scanning...' : 'Scan for Orphan Images'}
-                  </button>
-
-                  {cleanupResults && (
-                    <div className="text-sm text-gray-600">
-                      Found <span className="font-semibold text-gray-900">{cleanupResults.orphans.length}</span> orphan images out of <span className="font-semibold text-gray-900">{cleanupResults.total}</span> total images
-                    </div>
-                  )}
-                </div>
-
-                {/* Orphan Images List */}
-                {orphanImages.length > 0 && (
-                  <div className="border border-orange-200 rounded-lg p-4 bg-orange-50">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-medium text-gray-900 mb-1">Orphan Images ({orphanImages.length})</h3>
-                        <p className="text-sm text-gray-600">These images are not referenced by any products and can be safely deleted.</p>
-                      </div>
-                      <button
-                        onClick={deleteOrphanImages}
-                        disabled={cleanupLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete All Orphans
-                      </button>
-                    </div>
-
-                    {/* Image List */}
-                    <div className="max-h-64 overflow-y-auto space-y-2">
-                      {orphanImages.slice(0, 20).map((url, idx) => (
-                        <div key={idx} className="text-xs text-gray-700 bg-white p-2 rounded border border-gray-200 break-all">
-                          {url}
-                        </div>
-                      ))}
-                      {orphanImages.length > 20 && (
-                        <div className="text-sm text-gray-600 italic">
-                          ... and {orphanImages.length - 20} more images
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Cleanup Results */}
-                {cleanupResults && cleanupResults.deleted > 0 && (
-                  <div className="border border-green-200 rounded-lg p-4 bg-green-50">
-                    <h3 className="font-medium text-green-900 mb-2">Cleanup Complete</h3>
-                    <div className="space-y-1 text-sm text-green-800">
-                      <p>✓ Deleted {cleanupResults.deleted} orphan images</p>
-                      {cleanupResults.errors && cleanupResults.errors.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-red-800 font-medium">Errors:</p>
-                          {cleanupResults.errors.map((err, idx) => (
-                            <p key={idx} className="text-xs text-red-700">{err}</p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Info Box */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-blue-900 mb-2">How it works:</h3>
-                  <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                    <li>Scans all images in the Cloudinary marketplace folder</li>
-                    <li>Compares them against all product and variant images in the database</li>
-                    <li>Identifies images that are not referenced anywhere</li>
-                    <li>Allows you to permanently delete orphan images to free up storage</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Marketplace Policies */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Settings className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Marketplace Default Policies</h2>
-          </div>
-          <p className="text-sm text-gray-600 mb-4">
-            These are the default policies that vendors can use. Vendors can override these with their own custom policies.
+    <Section
+      title="Unused photos"
+      hint="Photos left behind by deleted products or replaced uploads take up storage."
+      actions={
+        <button type="button" className="btn btn-white px-3 py-1.5 text-[13px]" onClick={scan} disabled={busy}>
+          {busy && !result ? 'Scanning...' : 'Scan'}
+        </button>
+      }
+    >
+      {!result ? (
+        <p className="muted text-sm">Scan to see how many there are. Nothing is deleted until you confirm.</p>
+      ) : result.orphans.length === 0 ? (
+        <p className="text-sm">
+          {result.deleted ? `${result.deleted} deleted. ` : ''}No unused photos{result.total ? ` among ${result.total} files` : ''}.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm">
+            <span className="font-semibold">{result.orphans.length}</span> unused of {result.total} photos.
           </p>
-
-          <div className="space-y-6">
-            {/* Return Policy */}
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium text-gray-900">Return Policy</h3>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={returnPolicy.enabled}
-                    onChange={(e) => setReturnPolicy({ ...returnPolicy, enabled: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">Enable return policy</span>
-                </label>
-              </div>
-
-              {returnPolicy.enabled && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Return Window (days)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={returnPolicy.days || 0}
-                      onChange={(e) => setReturnPolicy({ ...returnPolicy, days: parseInt(e.target.value) || 0 })}
-                      className="w-full md:w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Number of days customers have to return items</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Policy Details
-                    </label>
-                    <textarea
-                      value={returnPolicy.text}
-                      onChange={(e) => setReturnPolicy({ ...returnPolicy, text: e.target.value })}
-                      rows={4}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Describe your return policy in detail..."
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Cancellation Policy */}
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium text-gray-900">Cancellation Policy</h3>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={cancellationPolicy.enabled}
-                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, enabled: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">Enable cancellation policy</span>
-                </label>
-              </div>
-
-              {cancellationPolicy.enabled && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Policy Details
-                  </label>
-                  <textarea
-                    value={cancellationPolicy.text}
-                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, text: e.target.value })}
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Describe your cancellation policy in detail..."
-                  />
-                </div>
-              )}
-            </div>
+          <div className="flex flex-wrap gap-1.5">
+            {result.orphans.slice(0, 24).map((u) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={u} src={mediaUrl(u)} alt="" className="h-14 w-14 border object-cover" loading="lazy" />
+            ))}
+            {result.orphans.length > 24 ? <span className="muted self-center text-xs">+{result.orphans.length - 24} more</span> : null}
           </div>
-            </div>
-
-            {/* Save Button */}
-            <div className="flex justify-end gap-4">
-          <button
-            onClick={fetchSettings}
-            disabled={saving}
-            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Reset
+          <button type="button" className="btn btn-white btn-danger" onClick={remove} disabled={busy}>
+            <Trash2 className="h-4 w-4" />
+            Delete {result.orphans.length} unused photos
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save Settings'}
-          </button>
-            </div>
-          </div>
-            </div>
-      </div>
-
-      {/* Sticky Save Button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-end gap-4 max-w-4xl ml-auto">
-            <button
-              onClick={fetchSettings}
-              disabled={saving}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Reset
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'Saving...' : 'Save Settings'}
-            </button>
-          </div>
         </div>
-      </div>
-    </>
+      )}
+    </Section>
   );
 }

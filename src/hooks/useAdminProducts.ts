@@ -9,6 +9,7 @@ interface UseAdminProductsOptions {
   limit?: number;
   status?: string;
   search?: string;
+  stock?: 'low' | 'out' | '';
 }
 
 interface ProductsResponse {
@@ -17,15 +18,16 @@ interface ProductsResponse {
 }
 
 export function useAdminProducts(options: UseAdminProductsOptions = {}) {
-  const { page = 1, limit = 20, status, search } = options;
-  
+  const { page = 1, limit = 20, status, search, stock } = options;
+
   return useQuery({
-    queryKey: ['admin-products', page, limit, status, search],
+    queryKey: ['admin-products', page, limit, status, search, stock],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (status && status !== 'all') params.append('status', status);
       if (search) params.append('search', search);
-      
+      if (stock) params.append('stock', stock);
+
       params.append('page', page.toString());
       params.append('limit', limit.toString());
 

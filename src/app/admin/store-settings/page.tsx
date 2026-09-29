@@ -1,525 +1,178 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import StoreLocationSelector from '@/components/StoreLocationSelector';
-import ImageUpload from '@/components/ImageUpload';
-import { useVendorSettings, useUpdateVendorSettings } from '@/hooks/useVendorSettings';
-import { Loader } from '@/components/ui/Loader';
-import { showAlert } from '@/lib/dialog';
 
-export default function VendorSettingsPage() {
-  const { data: vendor, isLoading: loading } = useVendorSettings();
-  const updateSettingsMutation = useUpdateVendorSettings();
-  const [showHelp, setShowHelp] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    storeName: '',
-    businessName: '',
-    contactEmail: '',
-    contactPhone: '',
-    description: '',
-    address: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    cityId: '',
-    subLocationId: '',
-    pincode: '',
-    shippingCost: '',
-    freeShippingThreshold: '',
-    logo: '',
-    categoryDisplayMode: 'sidebar' as 'sidebar' | 'top',
-    invoiceFrequency: 'per_order',
-  });
+import { toast } from '@/components/admin/pom/dialogs';
+import { CenteredSpinner, FormField, Notice, PageHeader, SaveBar, Section } from '@/components/admin/pom/ui';
+import { api, errorMessage } from '@/lib/api';
+import { getVendorId } from '@/lib/auth';
 
-  // Update form data when vendor data loads
+const STATES = [
+  'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh', 'Chhattisgarh',
+  'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir',
+  'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+  'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
+  'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+];
+
+const FIELDS = [
+  'storeName',
+  'businessName',
+  'gstNumber',
+  'panNumber',
+  'contactEmail',
+  'contactPhone',
+  'address',
+  'city',
+  'state',
+  'postalCode',
+] as const;
+type Field = (typeof FIELDS)[number];
+type Values = Record<Field, string>;
+
+const EMPTY = Object.fromEntries(FIELDS.map((f) => [f, ''])) as Values;
+
+const GSTIN = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+const PAN = /^[A-Z]{5}\d{4}[A-Z]$/;
+
+/**
+ * The seller details printed on every invoice: legal name, GSTIN and the
+ * address goods ship from. Kept apart from the shop's look (Store settings)
+ * because it changes rarely and has to be exactly right.
+ */
+export default function BusinessDetailsPage() {
+  const vendorId = getVendorId();
+  const [saved, setSaved] = useState<Values | null>(null);
+  const [values, setValues] = useState<Values>(EMPTY);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
-    console.log('📋 Form population useEffect triggered, vendor:', vendor);
-    if (vendor) {
-      console.log('📋 Populating form with vendor data:', {
-        storeName: vendor.storeName,
-        businessName: vendor.businessName,
-        contactEmail: vendor.contactEmail,
-        categoryDisplayMode: (vendor as any).categoryDisplayMode
-      });
-      setFormData({
-        storeName: vendor.storeName || '',
-        businessName: vendor.businessName || '',
-        contactEmail: vendor.contactEmail || '',
-        contactPhone: vendor.contactPhone || '',
-        description: vendor.description || '',
-        address: vendor.address || '',
-        city: vendor.city || '',
-        state: vendor.state || '',
-        postalCode: vendor.postalCode || '',
-        cityId: vendor.cityId || '',
-        subLocationId: vendor.subLocationId || '',
-        pincode: vendor.pincode || '',
-        shippingCost: vendor.shippingCost || '50',
-        freeShippingThreshold: vendor.freeShippingThreshold || '',
-        logo: vendor.logo || '',
-        categoryDisplayMode: (vendor as any).categoryDisplayMode || 'sidebar',
-        invoiceFrequency: (vendor as any).invoiceFrequency || 'per_order',
-      });
-      console.log('📋 Form populated successfully');
-    } else {
-      console.log('📋 No vendor data to populate form');
-    }
-  }, [vendor]);
+    api
+      .get<Record<string, unknown> & { data?: Record<string, unknown> }>(`/vendors/${vendorId}`)
+      .then((res) => {
+        const v = (res?.data ?? res ?? {}) as Record<string, unknown>;
+        const next = Object.fromEntries(FIELDS.map((f) => [f, v[f] == null ? '' : String(v[f])])) as Values;
+        setSaved(next);
+        setValues(next);
+      })
+      .catch((e) => setLoadError(errorMessage(e, 'Could not load the business details.')));
+  }, [vendorId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const set = (f: Field, v: string) => setValues((cur) => ({ ...cur, [f]: v }));
+  const changed = saved ? FIELDS.filter((f) => values[f] !== saved[f]) : [];
 
-    console.log('📤 Saving vendor settings with formData:', formData);
-    
+  const gstError = values.gstNumber && !GSTIN.test(values.gstNumber) ? 'That does not look like a 15-character GSTIN.' : null;
+  const panError = values.panNumber && !PAN.test(values.panNumber) ? 'A PAN is 5 letters, 4 digits, 1 letter.' : null;
+  const pinError = values.postalCode && !/^\d{6}$/.test(values.postalCode) ? 'A pincode is 6 digits.' : null;
+  const panFromGst = GSTIN.test(values.gstNumber) ? values.gstNumber.slice(2, 12) : null;
+
+  async function save() {
+    if (!values.storeName.trim()) return toast.error('The store needs a name.');
+    if (gstError || panError || pinError) return toast.error('Fix the highlighted fields first.');
+    setSaving(true);
     try {
-      const result = await updateSettingsMutation.mutateAsync(formData);
-      console.log('✅ Save completed, result:', result);
-      showAlert('Settings updated successfully!', 'success');
-      // No need to reload - React Query will update the cache automatically
-    } catch (error: any) {
-      console.error('❌ Error updating settings:', error);
-      showAlert(`Failed to update settings: ${error.message || 'Unknown error'}`, 'error');
+      const body = Object.fromEntries(changed.map((f) => [f, values[f].trim()]));
+      await api.patch(`/vendors/${vendorId}`, body);
+      setSaved(values);
+      toast.success('Business details saved.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not save.'));
+    } finally {
+      setSaving(false);
     }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader size="md" />
-      </div>
-    );
   }
 
-  console.log('🎨🎨🎨 FULL RENDER - formData state:', {
-    storeName: formData.storeName,
-    businessName: formData.businessName,
-    contactEmail: formData.contactEmail,
-    categoryDisplayMode: formData.categoryDisplayMode
-  });
+  if (loadError) return <Notice tone="danger">{loadError}</Notice>;
+  if (!saved) return <CenteredSpinner />;
+
+  const input = (f: Field, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
+    <input id={`bd-${f}`} className="input" value={values[f]} onChange={(e) => set(f, e.target.value)} {...props} />
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-6">
-          {/* null */}
-          <div className="flex-1 max-w-4xl">
-        <div className="mb-8">
-          <Link
-            href="/admin"
-            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
-          >
-            ← Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Store Settings</h1>
-          <p className="text-gray-600 mt-2">Update your store information</p>
-        </div>
+    <div className="mx-auto max-w-3xl pb-20">
+      <PageHeader title="Business details" hint="Printed on every invoice. Check them against your GST registration." />
 
-        {/* Help Section */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
-          <button
-            onClick={() => setShowHelp(!showHelp)}
-            type="button"
-            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-blue-100 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">💡</span>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Beginner's Guide</h3>
-                <p className="text-sm text-gray-600">Learn how to configure your store settings properly</p>
-              </div>
-            </div>
-            <svg
-              className={`w-6 h-6 text-gray-600 transition-transform ${showHelp ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          
-          {showHelp && (
-            <div className="px-6 pb-6 space-y-6">
-              {/* Store Identity */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">🏪</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Store Identity & Branding</h4>
-                    <div className="space-y-3">
-                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                        <p className="font-medium text-blue-700 mb-2">🏷️ Store Name (Required)</p>
-                        <p className="text-sm text-blue-600">This is how customers see your store. Choose a memorable, descriptive name (e.g., "TechHub Electronics", "Bella's Boutique").</p>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
-                        <p className="font-medium text-gray-700 mb-2">🏢 Business Name</p>
-                        <p className="text-sm text-gray-600">Your registered company name for invoices and legal documents (can be different from Store Name).</p>
-                      </div>
-                      <div className="p-3 bg-purple-50 rounded border border-purple-200">
-                        <p className="font-medium text-purple-700 mb-2">🖼️ Store Logo</p>
-                        <p className="text-sm text-purple-600">Upload a 200x200px square image. Shows on your store page and builds brand recognition. Use a clear, simple design.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">📞</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Contact Information</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <span className="text-blue-600">📧</span>
-                        <div>
-                          <p className="font-medium text-gray-700">Contact Email (Required)</p>
-                          <p className="text-sm text-gray-600">Customers use this to reach you. Check it regularly! Use a professional email.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-blue-600">☎️</span>
-                        <div>
-                          <p className="font-medium text-gray-700">Contact Phone</p>
-                          <p className="text-sm text-gray-600">Optional but recommended. Provides another way for customers to contact you.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-blue-600">📝</span>
-                        <div>
-                          <p className="font-medium text-gray-700">Description</p>
-                          <p className="text-sm text-gray-600">Tell customers about your store, what makes you unique, your story (e.g., "Family-owned since 1995, specializing in handcrafted leather goods").</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Location & Shipping */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">📍</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Location & Shipping Settings</h4>
-                    <div className="space-y-3">
-                      <div className="p-3 bg-gray-50 rounded border border-gray-200">
-                        <p className="font-medium text-gray-700 mb-2">🏠 Address & Location</p>
-                        <p className="text-sm text-gray-600 mb-2">Enter your business address, city, state, and pincode. Select City and Sub-Location to help customers find you.</p>
-                        <p className="text-xs text-gray-500 italic">Note: Location helps with local delivery and customer trust.</p>
-                      </div>
-                      <div className="p-3 bg-green-50 rounded border border-green-200">
-                        <p className="font-medium text-green-700 mb-2">🚚 Shipping Cost</p>
-                        <p className="text-sm text-green-600">Set your default shipping fee (e.g., ₹50). This applies to all orders unless you set free shipping threshold.</p>
-                      </div>
-                      <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                        <p className="font-medium text-blue-700 mb-2">🎁 Free Shipping Threshold</p>
-                        <p className="text-sm text-blue-600">Orders above this amount get free shipping (e.g., ₹500). Leave empty if you don't offer free shipping. This encourages larger orders!</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Best Practices */}
-              <div className="bg-white rounded-lg p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">⭐</span>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Setting Up Your Store - Best Practices</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
-                        <p className="text-gray-700"><strong>Fill everything:</strong> Complete all fields. More information = more customer trust.</p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
-                        <p className="text-gray-700"><strong>Professional branding:</strong> Use a quality logo and clear description. First impressions matter!</p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
-                        <p className="text-gray-700"><strong>Competitive shipping:</strong> Research competitors' shipping costs. Too high scares buyers away.</p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
-                        <p className="text-gray-700"><strong>Update regularly:</strong> Keep contact info current. Nothing worse than customers unable to reach you!</p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
-                        <p className="text-gray-700"><strong>Test everything:</strong> After saving, view your store as a customer to see how it looks.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Common Mistakes */}
-              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-5 border border-red-200">
-                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <span>⚠️</span> Common Mistakes to Avoid
-                </h4>
-                <div className="space-y-2 text-sm text-gray-700">
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600 font-bold">✗</span>
-                    <span><strong>Generic names:</strong> "MyStore" or "Shop123" aren't memorable. Be unique!</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600 font-bold">✗</span>
-                    <span><strong>Personal email:</strong> Use business email, not "cooldude2000@email.com"</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600 font-bold">✗</span>
-                    <span><strong>Blurry logo:</strong> Low-quality images look unprofessional</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600 font-bold">✗</span>
-                    <span><strong>No description:</strong> Customers want to know who you are!</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-600 font-bold">✗</span>
-                    <span><strong>Unrealistic shipping:</strong> ₹10 shipping nationwide isn't sustainable</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Tips */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
-                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <span>💡</span> Quick Tips
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span>Save often while editing settings</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span>Use keywords in description for SEO</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span>Set free shipping threshold to boost sales</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span>Respond quickly to customer emails</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span>Update logo during rebranding</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span>Review settings quarterly for accuracy</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Store Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.storeName}
-                  onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Business Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.businessName}
-                  onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Store Logo
-              </label>
-              <ImageUpload
-                value={formData.logo}
-                onChange={(url) => setFormData({ ...formData, logo: url })}
-                label="Upload Store Logo"
-              />
-              <p className="text-sm text-gray-500 mt-2">
-                Recommended size: 200x200px (square). Your logo will be displayed on your store page.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Email *
-                </label>
-                <input
-                  type="email"
-                  value={formData.contactEmail}
-                  onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Phone
-                </label>
-                <input
-                  type="tel"
-                  value={formData.contactPhone}
-                  onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Tell customers about your store..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address
-              </label>
+      <div className="space-y-5">
+        <Section title="Business">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Store name" htmlFor="bd-storeName" hint="Used on invoices when there is no legal name.">
+              {input('storeName')}
+            </FormField>
+            <FormField label="Legal business name" htmlFor="bd-businessName" hint="As on your GST certificate.">
+              {input('businessName')}
+            </FormField>
+            <FormField label="GSTIN" htmlFor="bd-gstNumber" error={gstError}>
               <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                id="bd-gstNumber"
+                className="input font-mono uppercase"
+                maxLength={15}
+                value={values.gstNumber}
+                onChange={(e) => set('gstNumber', e.target.value.toUpperCase().replace(/\s/g, ''))}
+                placeholder="22AAAAA0000A1Z5"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Location
-              </label>
-              <StoreLocationSelector
-                initialCityId={formData.cityId}
-                initialSubLocationId={formData.subLocationId}
-                initialPincode={formData.pincode}
-                onLocationChange={(data) => {
-                  setFormData({
-                    ...formData,
-                    cityId: data.cityId || '',
-                    subLocationId: data.subLocationId || '',
-                    pincode: data.pincode || '',
-                    city: data.cityName || formData.city,
-                    state: data.state || formData.state,
-                  });
-                }}
+            </FormField>
+            <FormField
+              label="PAN"
+              htmlFor="bd-panNumber"
+              error={panError}
+              hint={panFromGst && !values.panNumber ? `Your GSTIN says ${panFromGst}.` : undefined}
+            >
+              <input
+                id="bd-panNumber"
+                className="input font-mono uppercase"
+                maxLength={10}
+                value={values.panNumber}
+                onChange={(e) => set('panNumber', e.target.value.toUpperCase().replace(/\s/g, ''))}
               />
-            </div>
-
-            {/* Shipping Settings */}
-            <div className="border-t pt-6 mt-6">
-              <h3 className="text-lg font-semibold mb-4">Shipping</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Shipping Cost (₹)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.shippingCost}
-                    onChange={(e) => setFormData({ ...formData, shippingCost: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="50.00"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Default shipping charge for orders
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Free Shipping Threshold (₹)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.freeShippingThreshold}
-                    onChange={(e) => setFormData({ ...formData, freeShippingThreshold: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="500.00"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Orders above this amount get free shipping (leave empty for no free shipping)
-                  </p>
-                </div>
-
-              </div>
-
-              {/* Category Display Mode */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category Navigation Style
-                </label>
-                <select
-                  value={formData.categoryDisplayMode}
-                  onChange={(e) => setFormData({ ...formData, categoryDisplayMode: e.target.value as 'sidebar' | 'top' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="sidebar">Sidebar (Vertical)</option>
-                  <option value="top">Top Navigation (Horizontal)</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Choose how categories are displayed on your store pages
-                </p>
-              </div>
-
-            </div>
-
-            <div className="flex gap-4 pt-4">
-              <button
-                type="submit"
-                disabled={updateSettingsMutation.isPending}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {updateSettingsMutation.isPending ? 'Saving...' : 'Save Changes'}
-              </button>
-              <Link
-                href="/admin"
-                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 transition text-center"
-              >
-                Cancel
-              </Link>
-            </div>
-          </form>
+            </FormField>
           </div>
-        </div>
+        </Section>
+
+        <Section title="Contact" hint="Where customers and couriers reach you.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Email" htmlFor="bd-contactEmail">
+              {input('contactEmail', { type: 'email', inputMode: 'email', autoComplete: 'email' })}
+            </FormField>
+            <FormField label="Phone" htmlFor="bd-contactPhone">
+              {input('contactPhone', { type: 'tel', inputMode: 'tel', autoComplete: 'tel' })}
+            </FormField>
+          </div>
+        </Section>
+
+        <Section title="Address" hint="The address your parcels ship from, as registered for GST.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Address" htmlFor="bd-address" className="sm:col-span-2">
+              <textarea
+                id="bd-address"
+                className="input min-h-[72px]"
+                value={values.address}
+                onChange={(e) => set('address', e.target.value)}
+              />
+            </FormField>
+            <FormField label="City" htmlFor="bd-city">
+              {input('city')}
+            </FormField>
+            <FormField label="Pincode" htmlFor="bd-postalCode" error={pinError}>
+              {input('postalCode', { inputMode: 'numeric', maxLength: 6 })}
+            </FormField>
+            <FormField label="State" htmlFor="bd-state" className="sm:col-span-2">
+              <select id="bd-state" className="input" value={values.state} onChange={(e) => set('state', e.target.value)}>
+                <option value="">Choose a state</option>
+                {values.state && !STATES.includes(values.state) ? <option value={values.state}>{values.state}</option> : null}
+                {STATES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+        </Section>
       </div>
-    </div>
+
+      <SaveBar count={changed.length} saving={saving} onSave={save} onDiscard={() => setValues(saved)} />
     </div>
   );
 }

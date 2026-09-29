@@ -1,101 +1,313 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
-import { ADMIN_NAV } from '@/components/admin/adminNav';
-import { Loader } from '@/components/ui/Loader';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
 
-export default function AdminDashboard() {
-  const { isAuthenticated, loading } = useAdminAuth();
+import { OptionChips } from '@/components/admin/orders/ItemBits';
+import { DailyColumns, StatusBars, TopBars, type Bucket, type TopItem } from '@/components/admin/pom/charts';
+import { dayLabel, money, timeOfDay } from '@/components/admin/pom/format';
+import { Thumb } from '@/components/admin/pom/image-lightbox';
+import { Segmented } from '@/components/admin/pom/segmented';
+import { Badge, CenteredSpinner, Notice, PageHeader, Section, Stat, TONES } from '@/components/admin/pom/ui';
+import { useAdminOrders } from '@/hooks/useAdminOrders';
+import { useAdminProductStats } from '@/hooks/useAdminProducts';
+import {
+  ORDER_STATUS,
+  awaitingOnlinePayment,
+  exchangeNeedsAdmin,
+  isCod,
+  itemCount,
+  itemOptions,
+  itemPhoto,
+  openExchanges,
+  shipTo,
+  statusMeta,
+  type AdminOrder,
+  type OrderStatus,
+} from '@/lib/admin/orders';
 
-  if (loading || !isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader size="md" />
-      </div>
+type Range = 'today' | '7d' | '30d' | 'all';
+
+const RANGES: { key: Range; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: '7d', label: '7 days' },
+  { key: '30d', label: '30 days' },
+  { key: 'all', label: 'All time' },
+];
+
+function startOfToday() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function rangeStart(range: Range): Date | null {
+  const t = startOfToday();
+  if (range === 'today') return t;
+  if (range === '7d') return new Date(t.getTime() - 6 * 86_400_000);
+  if (range === '30d') return new Date(t.getTime() - 29 * 86_400_000);
+  return null;
+}
+
+/** An order that is real money: not cancelled, and not an online order that was never paid. */
+function isSale(o: AdminOrder) {
+  return o.status !== 'cancelled' && o.status !== 'refunded' && !awaitingOnlinePayment(o);
+}
+
+function dayKey(d: Date) {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+}
+
+export default function AdminHome() {
+  const router = useRouter();
+  const { data, isLoading, error } = useAdminOrders();
+  const { data: stock } = useAdminProductStats();
+  const [range, setRange] = useState<Range>('7d');
+  const orders = useMemo(() => data ?? [], [data]);
+
+  const todo = useMemo(() => {
+    const live = orders.filter((o) => !awaitingOnlinePayment(o));
+    const codDue = orders.filter(
+      (o) => isCod(o) && o.paymentStatus === 'pending' && (o.status === 'shipped' || o.status === 'delivered'),
     );
-  }
-
-  return <AdminDashboardContent />;
-}
-
-interface Stats {
-  products: number | null;
-  categories: number | null;
-  orders: number | null;
-}
-
-function AdminDashboardContent() {
-  const [stats, setStats] = useState<Stats>({ products: null, categories: null, orders: null });
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      const api = process.env.NEXT_PUBLIC_API_URL;
-      const token = localStorage.getItem('token');
-      const auth = { headers: { Authorization: `Bearer ${token}` } };
-
-      try {
-        // `GET /orders` returns only the calling admin's own orders — it is
-        // scoped that way for regular customers too. Filtering that response
-        // by date made this tile read close to 0 regardless of real order
-        // volume. `/orders/admin/stats` counts every order placed today.
-        const [products, categories, orderStats] = await Promise.all([
-          fetch(`${api}/api/v1/products/admin/stats`, auth).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${api}/api/v1/categories`, auth).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${api}/api/v1/orders/admin/stats`, auth).then((r) => (r.ok ? r.json() : null)),
-        ]);
-
-        setStats({
-          products: products?.total ?? 0,
-          categories: Array.isArray(categories) ? categories.length : 0,
-          orders: orderStats?.ordersToday ?? 0,
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-      }
+    return {
+      confirm: live.filter((o) => o.status === 'pending').length,
+      pack: live.filter((o) => o.status === 'confirmed').length,
+      ship: live.filter((o) => o.status === 'processing').length,
+      exchanges: orders.filter((o) => openExchanges(o).some(exchangeNeedsAdmin)).length,
+      codCount: codDue.length,
+      codValue: codDue.reduce((n, o) => n + Number(o.total ?? 0), 0),
+      unpaid: orders.filter((o) => awaitingOnlinePayment(o) && o.status === 'pending').length,
     };
-    fetchStats();
-  }, []);
+  }, [orders]);
+
+  const inRange = useMemo(() => {
+    const from = rangeStart(range);
+    return from ? orders.filter((o) => new Date(o.createdAt) >= from) : orders;
+  }, [orders, range]);
+
+  const sales = useMemo(() => {
+    const s = inRange.filter(isSale);
+    const value = s.reduce((n, o) => n + Number(o.total ?? 0), 0);
+    const pieces = s.reduce((n, o) => n + itemCount(o), 0);
+    return { count: s.length, value, pieces, aov: s.length ? value / s.length : 0, list: s };
+  }, [inRange]);
+
+  const days = useMemo(() => {
+    if (range === 'today') return null;
+    const n = range === '7d' ? 7 : range === '30d' ? 30 : 0;
+    if (n > 0) {
+      const t = startOfToday();
+      const buckets = Array.from({ length: n }, (_, i) => {
+        const d = new Date(t.getTime() - (n - 1 - i) * 86_400_000);
+        return {
+          key: dayKey(d),
+          label: n === 7 ? d.toLocaleDateString('en-IN', { weekday: 'short' }) : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+          value: 0,
+          count: 0,
+        };
+      });
+      const byKey = new Map(buckets.map((b) => [b.key, b]));
+      for (const o of sales.list) {
+        const b = byKey.get(dayKey(new Date(o.createdAt)));
+        if (b) {
+          b.value += Number(o.total ?? 0);
+          b.count++;
+        }
+      }
+      return buckets;
+    }
+    // All time: by month, the last twelve.
+    const now = new Date();
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+      return { key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString('en-IN', { month: 'short' }), value: 0, count: 0 };
+    });
+    const byKey = new Map(months.map((m) => [m.key, m]));
+    for (const o of sales.list) {
+      const d = new Date(o.createdAt);
+      const m = byKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+      if (m) {
+        m.value += Number(o.total ?? 0);
+        m.count++;
+      }
+    }
+    return months;
+  }, [range, sales.list]);
+
+  const top = useMemo<TopItem[]>(() => {
+    const map = new Map<string, TopItem>();
+    for (const o of sales.list) {
+      for (const item of o.items) {
+        const color = itemOptions(item).color;
+        const key = `${item.productId}|${(color ?? '').toLowerCase()}`;
+        const row = map.get(key) ?? { key, title: item.productName, sub: color ?? undefined, image: itemPhoto(item), quantity: 0, revenue: 0 };
+        const qty = Number(item.quantity) || 0;
+        row.quantity += qty;
+        row.revenue += (Number(item.price) || 0) * qty;
+        map.set(key, row);
+      }
+    }
+    return Array.from(map.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 6);
+  }, [sales.list]);
+
+  const buckets = useMemo<Bucket[]>(() => {
+    const order: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const tabFor: Partial<Record<OrderStatus, string>> = {
+      pending: 'tab=toShip&stage=pending',
+      confirmed: 'tab=toShip&stage=confirmed',
+      processing: 'tab=toShip&stage=processing',
+      shipped: 'tab=shipped',
+      delivered: 'tab=delivered',
+      cancelled: 'tab=cancelled',
+    };
+    return order.map((s) => ({
+      key: s,
+      label: ORDER_STATUS[s].label,
+      count: inRange.filter((o) => o.status === s).length,
+      color: TONES[ORDER_STATUS[s].tone].dot,
+      onClick: () => router.push(`/admin/orders?${tabFor[s]}`),
+    }));
+  }, [inRange, router]);
+
+  const recent = orders.slice(0, 6);
+  const nothingToDo =
+    todo.confirm + todo.pack + todo.ship + todo.exchanges + todo.codCount === 0 && !(stock?.outOfStock || stock?.lowStock);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-      <p className="mt-1 text-gray-600">Manage the PariBelle store</p>
-
-      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatTile label="Total Products" value={stats.products} />
-        <StatTile label="Categories" value={stats.categories} />
-        <StatTile label="Orders Today" value={stats.orders} />
-      </div>
-
-      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-        {ADMIN_NAV.map((card) => {
-          const Icon = card.icon;
-          return (
-            <Link
-              key={card.href}
-              href={card.href}
-              className="group rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-900 transition-transform group-hover:scale-110">
-                <Icon className="h-5 w-5 text-white" />
-              </div>
-              <h3 className="mb-1 text-sm font-semibold text-gray-900">{card.title}</h3>
-              <p className="line-clamp-2 text-xs text-gray-600">{card.description}</p>
+    <div className="space-y-6">
+      <PageHeader
+        title={greeting()}
+        hint={new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+        className="mb-0"
+        actions={
+          <>
+            <Link href="/admin/products/add" className="btn btn-white">
+              <Plus className="h-4 w-4" />
+              Add product
             </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+            <Link href="/admin/orders" className="btn btn-blue">
+              Orders
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </>
+        }
+      />
 
-function StatTile({ label, value }: { label: string; value: number | null }) {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 text-center shadow-sm">
-      <div className="text-3xl font-bold text-gray-900">{value ?? '…'}</div>
-      <div className="mt-1 text-sm text-gray-600">{label}</div>
+      {error ? <Notice tone="danger">Could not load orders. Refresh the page to try again.</Notice> : null}
+
+      <section>
+        <h2 className="label">Needs you</h2>
+        {isLoading ? (
+          <CenteredSpinner className="py-8" />
+        ) : nothingToDo ? (
+          <div className="panel px-5 py-4 text-sm">
+            <span className="font-medium">All caught up.</span>
+            <span className="muted"> Nothing to confirm, pack or ship, and no exchanges waiting.</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+            <Stat label="To confirm" value={todo.confirm} tone={todo.confirm ? 'warn' : undefined} href="/admin/orders?tab=toShip&stage=pending" hint="New orders" />
+            <Stat label="To pack" value={todo.pack} tone={todo.pack ? 'warn' : undefined} href="/admin/orders?tab=toShip&stage=confirmed" hint="Confirmed" />
+            <Stat label="To ship" value={todo.ship} tone={todo.ship ? 'warn' : undefined} href="/admin/orders?tab=toShip&stage=processing" hint="Packed, needs tracking" />
+            <Stat label="Exchanges" value={todo.exchanges} tone={todo.exchanges ? 'danger' : undefined} href="/admin/orders?tab=exchanges" hint="Waiting on your decision" />
+            <Stat label="COD to collect" value={money(todo.codValue)} href="/admin/orders?tab=shipped" hint={`${todo.codCount} ${todo.codCount === 1 ? 'parcel' : 'parcels'} out`} />
+            <Stat label="Low stock" value={stock?.lowStock ?? '-'} tone={stock?.lowStock ? 'warn' : undefined} href="/admin/products?stock=low" hint="Products running out" />
+            <Stat label="Out of stock" value={stock?.outOfStock ?? '-'} tone={stock?.outOfStock ? 'danger' : undefined} href="/admin/products?stock=out" hint="Not buyable now" />
+          </div>
+        )}
+        {todo.unpaid > 0 ? (
+          <p className="muted mt-2 text-xs">
+            {todo.unpaid} online {todo.unpaid === 1 ? 'order is' : 'orders are'} waiting for payment and not counted above.
+          </p>
+        ) : null}
+      </section>
+
+      <section>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="label mb-0">Sales</h2>
+          <Segmented<Range> label="Period" value={range} onChange={setRange} items={RANGES} />
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat label="Sales" value={money(sales.value)} hint="Incl. GST and shipping" />
+          <Stat label="Orders" value={sales.count} hint="Excludes cancelled and unpaid" />
+          <Stat label="Average order" value={money(sales.aov)} />
+          <Stat label="Pieces sold" value={sales.pieces} />
+        </div>
+        {days ? (
+          <div className="panel mt-3 px-4 pb-3 pt-4 sm:px-5">
+            <DailyColumns days={days} format={(n) => money(n)} />
+          </div>
+        ) : null}
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Section title="Best sellers" hint="By sales value in this period, per colour">
+          <TopBars items={top} format={(n) => money(n)} />
+        </Section>
+        <Section title="Orders by status" hint="Placed in this period. Tap one to open that queue.">
+          <StatusBars buckets={buckets} />
+        </Section>
+      </div>
+
+      <Section
+        title="Latest orders"
+        actions={
+          <Link href="/admin/orders?tab=all" className="btn btn-primary px-2 py-1 text-xs">
+            All orders
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        }
+        bodyClassName="p-0 sm:p-0"
+      >
+        {recent.length === 0 ? (
+          <p className="muted px-5 py-6 text-sm">No orders yet. They appear here the moment one is placed.</p>
+        ) : (
+          <div className="divide-y">
+            {recent.map((o) => {
+              const s = statusMeta(o.status);
+              const first = o.items[0];
+              const to = shipTo(o);
+              return (
+                <Link
+                  key={o.id}
+                  href={`/admin/orders?orderId=${o.id}`}
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--pom-accent-soft)] sm:px-5"
+                >
+                  <Thumb src={first ? itemPhoto(first) : null} alt={first?.productName ?? ''} className="h-14 w-12" zoom={false} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-[13px] font-medium">
+                        {first?.productName}
+                        {o.items.length > 1 ? <span className="muted font-normal"> + {o.items.length - 1} more</span> : null}
+                      </span>
+                      <span className="shrink-0 text-[13px] font-semibold tabular-nums">{money(o.total)}</span>
+                    </div>
+                    {first ? <OptionChips item={first} className="mt-1" /> : null}
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span className="muted truncate text-xs">
+                        <span className="font-mono">{o.orderNumber}</span> · {to.name || 'Customer'} · {dayLabel(o.createdAt)},{' '}
+                        {timeOfDay(o.createdAt)}
+                      </span>
+                      <Badge tone={s.tone} className="shrink-0 py-0.5">
+                        {s.label}
+                      </Badge>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </Section>
     </div>
   );
 }
