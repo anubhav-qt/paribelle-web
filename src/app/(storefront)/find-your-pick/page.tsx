@@ -3,7 +3,7 @@ import { PickStudio } from '@/components/pick/PickStudio';
 
 export const metadata: Metadata = {
   title: 'Find Your Pick',
-  description: 'Answer a few quick questions, or start from a photo, and Seelie, our AI stylist, picks the PariBelle pieces that suit you.',
+  description: 'A styling session with Seelie, our AI stylist: tell it where you are headed and what you love, and it puts together your edit from the PariBelle collection.',
 };
 
 export default function FindYourPickPage() {

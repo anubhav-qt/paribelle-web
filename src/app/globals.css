@@ -478,8 +478,8 @@
 
   /*
    * Find Your Pick. Each step settles in (`pb-step-in`, staggered by `--d`),
-   * Seelie's lines can arrive a word at a time (`pb-word-in`), three soft dots
-   * breathe while it thinks, and light passes over a photo it is reading.
+   * Seelie's lines can arrive a word at a time (`pb-word-in`), and three soft
+   * dots breathe while it thinks.
    * Unlike `pb-enter`, none of this waits on the opening curtain: the studio
    * is reached by a tap, long after it has lifted.
    */
@@ -516,26 +516,12 @@
     0%, 100% { opacity: 0.25; transform: translateY(0); }
     40% { opacity: 1; transform: translateY(-3px); }
   }
-  .pb-scan::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, transparent 0%, hsl(var(--pb-ivory) / 0.55) 48%, transparent 56%);
-    background-size: 100% 220%;
-    animation: pb-scan 2.4s var(--ease-pb) infinite;
-    pointer-events: none;
-  }
-  @keyframes pb-scan {
-    from { background-position: 0 120%; }
-    to { background-position: 0 -120%; }
-  }
   @media (prefers-reduced-motion: reduce) {
     .pb-step-in,
     .pb-word-in {
       animation: pb-fade-in 300ms ease both;
     }
-    .pb-thinking span,
-    .pb-scan::after {
+    .pb-thinking span {
       animation: none;
     }
   }

@@ -66,20 +66,19 @@ export function WordByWord({ text, startMs = 0, stepMs = 38 }: { text: string; s
 
 const THINKING = ['Looking through the collection', 'Matching cuts and colours', 'Choosing what to show you'];
 
-/** While Seelie works out the next step: its mark, a moving line, and the shape of what's coming. */
-export function Thinking({ label, cards = 4, layout = 'grid' }: { label?: string; cards?: number; layout?: 'grid' | 'rail' | 'none' }) {
+/** While Seelie works out the next step: its mark, a moving line, and the shape of the options to come. */
+export function Thinking({ cards = 3 }: { cards?: number }) {
   const [i, setI] = React.useState(0);
   React.useEffect(() => {
-    if (label) return;
     const t = window.setInterval(() => setI((n) => (n + 1) % THINKING.length), 2200);
     return () => window.clearInterval(t);
-  }, [label]);
+  }, []);
   return (
     <div className="pb-step-in" role="status">
       <div className="flex items-center gap-3">
         <SeelieMark />
-        <p key={label ?? i} className="pb-step-in text-[0.95rem] text-[hsl(var(--pb-ink-muted))]">
-          {label ?? THINKING[i]}
+        <p key={i} className="pb-step-in text-[0.95rem] text-[hsl(var(--pb-ink-muted))]">
+          {THINKING[i]}
           <span className="pb-thinking ml-1 inline-flex gap-[3px] align-middle" aria-hidden="true">
             <span />
             <span />
@@ -87,38 +86,17 @@ export function Thinking({ label, cards = 4, layout = 'grid' }: { label?: string
           </span>
         </p>
       </div>
-      {layout !== 'none' && (
-        <div
-          className={cn(
-            'mt-8',
-            layout === 'grid'
-              ? 'grid grid-cols-2 gap-3 md:grid-cols-4'
-              : 'scrollbar-hide -mx-5 flex gap-3 overflow-hidden px-5'
-          )}
-          aria-hidden="true"
-        >
-          {Array.from({ length: cards }, (_, n) => (
-            <div
-              key={n}
-              className={cn(
-                'aspect-[4/5] animate-pulse rounded-[13px] bg-[hsl(var(--pb-linen)/0.7)]',
-                layout === 'rail' && 'w-[62vw] shrink-0 md:w-[240px]'
-              )}
-              style={{ animationDelay: `${n * 120}ms` }}
-            />
-          ))}
-        </div>
-      )}
+      <div className="-mx-5 mt-8 flex gap-3 overflow-hidden px-5 md:mx-0 md:grid md:grid-cols-3 md:px-0" aria-hidden="true">
+        {Array.from({ length: cards }, (_, n) => (
+          <div
+            key={n}
+            className="aspect-[4/5] w-[64vw] shrink-0 animate-pulse rounded-[13px] bg-[hsl(var(--pb-linen)/0.7)] md:w-auto"
+            style={{ animationDelay: `${n * 120}ms` }}
+          />
+        ))}
+      </div>
     </div>
   );
-}
-
-/** Back to the top of the page whenever the journey moves on, so each step starts at its beginning. */
-export function useTopOnStep(key: unknown, enabled: boolean) {
-  React.useEffect(() => {
-    if (enabled) window.scrollTo({ top: 0, behavior: 'smooth' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -308,23 +286,6 @@ export function BackButton({ onClick, label = 'Back' }: { onClick: () => void; l
       <ChevronLeft className="h-4 w-4" />
       {label}
     </button>
-  );
-}
-
-/** Hairline progress, like the hero's indicators: one segment a question. */
-export function Progress({ done, total }: { done: number; total: number }) {
-  return (
-    <div className="flex items-center gap-1.5" aria-label={`Question ${Math.min(done + 1, total)} of ${total}`}>
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          key={i}
-          className={cn(
-            'block h-[2px] transition-[width,background-color] duration-500 ease-sheet',
-            i < done ? 'w-6 bg-[hsl(var(--pb-ink)/0.8)]' : i === done ? 'w-10 bg-[hsl(var(--pb-rose-deep))]' : 'w-6 bg-[hsl(var(--pb-ink)/0.15)]'
-          )}
-        />
-      ))}
-    </div>
   );
 }
 

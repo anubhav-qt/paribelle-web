@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { fetchPickStep, PickMode, PickPhoto, PickQuestion, PickRequestError, PickStep, PickTurn } from './api';
+import { fetchPickStep, PickQuestion, PickRequestError, PickStep, PickTurn } from './api';
 
 /** One answered question: the step as Seelie asked it, and what the shopper said. */
 export interface AnsweredTurn {
@@ -15,11 +15,9 @@ interface JourneyState {
   step: PickStep | null;
   loading: boolean;
   error: string | null;
-  photo: PickPhoto | null;
-  photoNotes: string | null;
 }
 
-const EMPTY: JourneyState = { answered: [], step: null, loading: false, error: null, photo: null, photoNotes: null };
+const EMPTY: JourneyState = { answered: [], step: null, loading: false, error: null };
 
 const toTurn = (t: AnsweredTurn): PickTurn => ({
   question: t.step.question,
@@ -29,62 +27,44 @@ const toTurn = (t: AnsweredTurn): PickTurn => ({
 });
 
 /**
- * A Find Your Pick journey: the answered questions, the step on screen, and the
+ * A Find Your Pick session: the answered questions, the step on screen, and the
  * request for the next one. The server keeps nothing, so every request sends the
- * whole journey; Back is free (the earlier step comes back from memory, not the model).
+ * whole session; Back is free (the earlier step comes back from memory, not the model).
  */
-export function usePickJourney(mode: PickMode) {
+export function usePickJourney() {
   const [state, setState] = React.useState<JourneyState>(EMPTY);
   const inFlight = React.useRef<AbortController | null>(null);
   const stateRef = React.useRef(state);
   stateRef.current = state;
 
-  const request = React.useCallback(
-    async (answered: AnsweredTurn[], photo: PickPhoto | null, photoNotes: string | null) => {
-      inFlight.current?.abort();
-      const controller = new AbortController();
-      inFlight.current = controller;
-      setState((s) => ({ ...s, answered, photo, photoNotes, loading: true, error: null }));
-      try {
-        const res = await fetchPickStep(
-          {
-            mode,
-            turns: answered.map(toTurn),
-            // The photo itself goes once; after that, what Seelie saw in it.
-            photo: answered.length === 0 && photo ? { mimeType: photo.mimeType, data: photo.data } : null,
-            photoNotes,
-          },
-          controller.signal
-        );
-        if (controller.signal.aborted) return;
-        setState((s) => ({ ...s, step: res.step, loading: false, photoNotes: res.photoNotes ?? s.photoNotes }));
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        setState((s) => ({
-          ...s,
-          loading: false,
-          error: err instanceof PickRequestError ? err.message : 'Something went wrong finding your pick. Try again in a moment.',
-        }));
-      }
-    },
-    [mode]
-  );
+  const request = React.useCallback(async (answered: AnsweredTurn[]) => {
+    inFlight.current?.abort();
+    const controller = new AbortController();
+    inFlight.current = controller;
+    setState((s) => ({ ...s, answered, loading: true, error: null }));
+    try {
+      const step = await fetchPickStep(answered.map(toTurn), controller.signal);
+      if (controller.signal.aborted) return;
+      setState((s) => ({ ...s, step, loading: false }));
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      setState((s) => ({
+        ...s,
+        loading: false,
+        error: err instanceof PickRequestError ? err.message : 'Something went wrong finding your pick. Try again in a moment.',
+      }));
+    }
+  }, []);
 
   React.useEffect(() => () => inFlight.current?.abort(), []);
 
-  // A new experience is a new journey.
-  React.useEffect(() => {
-    inFlight.current?.abort();
-    setState(EMPTY);
-  }, [mode]);
-
-  const start = React.useCallback((photo: PickPhoto | null = null) => request([], photo, null), [request]);
+  const start = React.useCallback(() => request([]), [request]);
 
   const answer = React.useCallback(
     (picked: string[], text?: string) => {
-      const { step, answered, photo, photoNotes } = stateRef.current;
+      const { step, answered } = stateRef.current;
       if (!step || step.kind !== 'question') return;
-      request([...answered, { step, picked, text: text?.trim() || undefined }], photo, photoNotes);
+      request([...answered, { step, picked, text: text?.trim() || undefined }]);
     },
     [request]
   );
@@ -98,10 +78,7 @@ export function usePickJourney(mode: PickMode) {
     });
   }, []);
 
-  const retry = React.useCallback(() => {
-    const { answered, photo, photoNotes } = stateRef.current;
-    request(answered, photo, photoNotes);
-  }, [request]);
+  const retry = React.useCallback(() => request(stateRef.current.answered), [request]);
 
   const restart = React.useCallback(() => {
     inFlight.current?.abort();

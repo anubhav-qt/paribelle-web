@@ -74,7 +74,7 @@ export function StylistExperience({ journey }: { journey: PickJourney }) {
             {error ? (
               <PickErrorNote message={error} onRetry={journey.retry} onBack={answered.length ? journey.back : undefined} />
             ) : loading ? (
-              <Thinking layout="rail" cards={3} />
+              <Thinking />
             ) : step?.kind === 'question' ? (
               <CurrentTurn key={`${answered.length}-${step.question}`} question={step} onAnswer={journey.answer} onBack={answered.length ? journey.back : undefined} />
             ) : null}
