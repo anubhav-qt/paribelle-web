@@ -1,8 +1,13 @@
+import { getToken } from '@/lib/api';
+
 /**
  * Find Your Pick's one endpoint, which lives in the OMS beside Seelie (its model
  * accounts are there) and is reached same-origin through /pom: Caddy routes it on
  * the ThinkPad, the OMS_ORIGIN rewrite on a dev machine. The types mirror the OMS's
  * src/lib/pick/engine.ts; a change to one needs the same change to the other.
+ *
+ * A signed-in shopper's request carries their sign-in, so Seelie can build on what
+ * they've bought, and every request carries their wishlist's product ids.
  */
 
 export interface PickProduct {
@@ -19,6 +24,8 @@ export interface PickOption {
   label: string;
   detail: string | null;
   product: PickProduct | null;
+  /** Choosing it asks the shopper to say what they mean, sent as the turn's text. */
+  specify?: boolean;
 }
 
 export interface PickQuestion {
@@ -36,7 +43,7 @@ export interface PickResults {
   kind: 'picks';
   say: string;
   title: string | null;
-  picks: { product: PickProduct; why: string; styling: string | null }[];
+  picks: { product: PickProduct; why: string }[];
 }
 
 export type PickStep = PickQuestion | PickResults;
@@ -58,16 +65,14 @@ export class PickRequestError extends Error {
   }
 }
 
-export async function fetchPickStep(
-  turns: PickTurn[],
-  signal: AbortSignal
-): Promise<PickStep> {
+export async function fetchPickStep(turns: PickTurn[], wishlist: string[], signal: AbortSignal): Promise<PickStep> {
+  const token = getToken();
   let res: Response;
   try {
     res = await fetch('/pom/api/pick', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ turns }),
+      headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ turns, wishlist }),
       signal,
     });
   } catch (err) {

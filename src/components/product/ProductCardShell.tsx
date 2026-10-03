@@ -42,10 +42,8 @@ export interface ProductCardShellProps {
  * pivot corner — to the opposite side, so a row reads as genuinely
  * alternating rather than one corner repeated with a wobble. This
  * component only ever renders the top-right case; globals.css mirrors it
- * to top-left for even cards. Hovering or focusing straightens the
- * print and lifts it toward the viewer while the photo itself keeps
- * drifting into a slow, independent zoom underneath — two layers of motion
- * reading as "picked up" rather than one flat scale.
+ * to top-left for even cards. Hovering or focusing moves nothing: the
+ * shadow deepens and, when there is one, the second photo fades in.
  */
 export function ProductCardShell({
   href,
@@ -62,10 +60,8 @@ export function ProductCardShell({
     <Link
       href={href}
       className={cn(
-        // pb-polaroid-tilt (globals.css) owns the resting tilt and the
-        // hover/focus straighten-and-lift transform entirely — see the
-        // comment there for why that can't be split across Tailwind's
-        // transform utilities too. Below md it owns the tap press instead.
+        // pb-polaroid-tilt (globals.css) owns the resting tilt; below md it
+        // owns the tap press instead.
         // Top, left and right margins match (p-4) so the pin sits in a
         // frame whose photo perspective genuinely reads as bordered evenly
         // on three sides, the way a real Polaroid's mat is — only the
@@ -118,9 +114,7 @@ export function ProductCardShell({
           src={getImageUrl(image)}
           alt={name}
           className={cn(
-            'absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-[1100ms] ease-pb',
-            'group-hover:scale-[1.07] group-focus-visible:scale-[1.07]',
-            'motion-reduce:transition-none motion-reduce:group-hover:scale-100',
+            'absolute inset-0 h-full w-full object-cover transition-opacity duration-[700ms] ease-pb motion-reduce:transition-none',
             secondImage && 'group-hover:opacity-0 group-focus-visible:opacity-0'
           )}
         />
@@ -129,7 +123,7 @@ export function ProductCardShell({
             src={getImageUrl(secondImage)}
             alt=""
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full scale-[1.07] object-cover opacity-0 transition-opacity duration-[1100ms] ease-pb group-hover:opacity-100 group-focus-visible:opacity-100"
+            className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-[700ms] ease-pb group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
           />
         )}
       </div>
@@ -153,7 +147,7 @@ export function ProductCardShell({
                 onClick={onToggleWishlist}
                 aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                 aria-pressed={wishlisted}
-                className="-mr-0.5 -mt-0.5 shrink-0 p-1 transition-transform duration-200 ease-pb hover:scale-[1.15] active:scale-95"
+                className="-mr-0.5 -mt-0.5 shrink-0 p-1"
               >
                 <Heart
                   className={cn(

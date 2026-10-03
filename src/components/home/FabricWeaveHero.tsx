@@ -27,9 +27,8 @@ import { MobileHero, HeroCta } from './MobileHero';
 const DEFAULT_CTA: HeroCta = { label: 'Find Your Pick', href: '/find-your-pick' };
 
 /**
- * One print's mat: a link to the photo's product when it has one, which also
- * eases the photo up a touch on hover so the print reads as something to
- * click. Unlinked, it is the plain frame it always was.
+ * One print's mat: a link to the photo's product when it has one (the photo
+ * stays still on hover). Unlinked, it is the plain frame it always was.
  */
 function Print({
   slot,
@@ -50,9 +49,6 @@ function Print({
     </Link>
   );
 }
-
-/** The hover lift on a linked print's photo (see Print). */
-const PRINT_HOVER = 'transition-transform duration-700 ease-pb group-hover:scale-[1.03]';
 
 /** A linked photo is named for its product; the bundled ones keep their descriptions. */
 const altOf = (slot: HeroImageSlot, fallback: string) => slot.product?.name ?? fallback;
@@ -343,7 +339,7 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
                     // little below face height so the block-print bodice — the
                     // point of this card — reads clearly instead of the crop
                     // landing on empty fabric below the waist.
-                    className={cn('object-cover object-[50%_28%]', PRINT_HOVER)}
+                    className="object-cover object-[50%_28%]"
                   />
                 ) : (
                   <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
@@ -371,7 +367,7 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
                     // Held a touch higher in frame than the left card so the
                     // scalloped hem embroidery — this garment's distinguishing
                     // detail — stays inside the crop alongside the face.
-                    className={cn('object-cover object-[50%_32%]', PRINT_HOVER)}
+                    className="object-cover object-[50%_32%]"
                   />
                 ) : (
                   <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
@@ -405,7 +401,7 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
                     // at its own size there, so this instance is never what's
                     // on screen.
                     sizes="(min-width: 1024px) 640px, 1px"
-                    className={cn('object-cover object-top', PRINT_HOVER)}
+                    className="object-cover object-top"
                   />
                 ) : (
                   <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />

@@ -203,7 +203,7 @@ function GallerySection({ settings }: { settings: any }) {
               <img
                 src={image.url}
                 alt={image.alt || `Gallery image ${index + 1}`}
-                className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                className="w-full h-full object-cover"
               />
             </div>
           ))}

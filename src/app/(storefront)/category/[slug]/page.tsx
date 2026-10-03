@@ -621,9 +621,28 @@ export default function CategoryPage() {
     );
   }
 
+  const sortSelect = (compact: boolean) => (
+    <div className="flex items-center gap-2">
+      <span className="hidden shrink-0 whitespace-nowrap text-sm text-[hsl(var(--pb-ink-faint))] sm:inline">Sort by</span>
+      <Select
+        value={sortBy}
+        onChange={(e) => setSortBy(e.target.value as SortOption)}
+        className={compact ? 'w-auto py-1.5' : 'w-auto'}
+        aria-label="Sort by"
+      >
+        <option value="popularity">Popularity</option>
+        <option value="price-low">Price: Low to High</option>
+        <option value="price-high">Price: High to Low</option>
+        <option value="newest">Newest First</option>
+      </Select>
+    </div>
+  );
+
   return (
     <div className="bg-[hsl(var(--pb-ivory))]">
-      <div className="mx-auto max-w-[1600px] px-4 pt-6 md:px-8">
+      {/* On a desktop the sort sits on the breadcrumb's row, so the grid starts
+          a whole bar higher; a phone keeps it beside the Filters button. */}
+      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 pt-6 md:px-8">
         <Breadcrumb
           items={[
             { label: 'Home', href: '/' },
@@ -631,6 +650,7 @@ export default function CategoryPage() {
             { label: category.name },
           ]}
         />
+        <div className="hidden lg:block">{sortSelect(true)}</div>
       </div>
 
       <div className="mx-auto max-w-[1600px] px-4 pb-8 pt-4 md:px-8">
@@ -647,43 +667,23 @@ export default function CategoryPage() {
         <div className="flex gap-10">
           <aside className="hidden w-56 shrink-0 lg:block">
             <div className="sticky top-24">
-              {/* The row's own height must be fixed (h-12), not just floored
-                  with min-height — the Select on the other column is ~46px
-                  tall on its own (py-3 + text-sm + border), well past this
-                  h2's natural line height, so a min-height only "wins" on
-                  the shorter side and the two rows still end up different
-                  heights. Border and padding live on the OUTER wrapper so
-                  they can't compete with the inner row for that fixed
-                  height budget either. */}
-              <div className="mb-8 border-b border-[hsl(var(--pb-linen))] pb-4">
-                <div className="flex h-12 items-center justify-between">
-                  <h2 className="font-display text-lg text-[hsl(var(--pb-ink))]">Filters</h2>
-                  <button onClick={resetFilters} className="text-xs text-[hsl(var(--pb-rose-deep))] hover:underline">
-                    Clear all
-                  </button>
-                </div>
+              <div className="mb-5 flex items-baseline justify-between border-b border-[hsl(var(--pb-linen))] pb-3">
+                <h2 className="font-display text-lg leading-none text-[hsl(var(--pb-ink))]">Filters</h2>
+                <button onClick={resetFilters} className="text-xs text-[hsl(var(--pb-rose-deep))] hover:underline">
+                  Clear all
+                </button>
               </div>
               <FilterPanel idPrefix="desktop" {...filterPanelProps} />
             </div>
           </aside>
 
           <div className="flex-1">
-            <div className="mb-8 border-b border-[hsl(var(--pb-linen))] pb-4">
+            <div className="mb-8 border-b border-[hsl(var(--pb-linen))] pb-4 lg:hidden">
               <div className="flex h-12 items-center justify-between gap-4">
-                <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setShowFilters(true)}>
+                <Button variant="ghost" size="sm" onClick={() => setShowFilters(true)}>
                   <SlidersHorizontal className="h-4 w-4" /> Filters
                 </Button>
-                <div className="ml-auto flex items-center gap-2">
-                  <span className="hidden shrink-0 whitespace-nowrap text-sm text-[hsl(var(--pb-ink-faint))] sm:inline">
-                    Sort by
-                  </span>
-                  <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="w-auto">
-                    <option value="popularity">Popularity</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
-                    <option value="newest">Newest First</option>
-                  </Select>
-                </div>
+                {sortSelect(false)}
               </div>
             </div>
 

@@ -20,7 +20,7 @@ export function CategoryPortals({ categories }: { categories: Category[] }) {
                 aspect="3 / 4"
                 mask="arch"
                 sizes="(max-width: 768px) 45vw, 20vw"
-                className="transition-transform duration-500 ease-pb group-hover:-translate-y-1"
+               
               />
               <p className="mt-3 text-center font-display text-lg text-[hsl(var(--pb-ink))]">{cat.name}</p>
             </Link>
