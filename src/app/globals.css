@@ -477,6 +477,70 @@
   }
 
   /*
+   * Find Your Pick. Each step settles in (`pb-step-in`, staggered by `--d`),
+   * Seelie's lines can arrive a word at a time (`pb-word-in`), three soft dots
+   * breathe while it thinks, and light passes over a photo it is reading.
+   * Unlike `pb-enter`, none of this waits on the opening curtain: the studio
+   * is reached by a tap, long after it has lifted.
+   */
+  .pb-step-in {
+    animation: pb-step-in 800ms var(--ease-pb) both;
+    animation-delay: var(--d, 0ms);
+  }
+  /* The `translate` property, not `transform`: the two compose, so a tilted
+     print keeps its tilt and a card still presses while it settles in. */
+  @keyframes pb-step-in {
+    from { opacity: 0; translate: 0 14px; filter: blur(6px); }
+    to { opacity: 1; translate: 0 0; filter: blur(0); }
+  }
+  .pb-word-in {
+    display: inline-block;
+    animation: pb-word-in 520ms var(--ease-pb) both;
+    animation-delay: var(--d, 0ms);
+  }
+  @keyframes pb-word-in {
+    from { opacity: 0; transform: translate3d(0, 0.3em, 0); filter: blur(3px); }
+    to { opacity: 1; transform: none; filter: blur(0); }
+  }
+  .pb-thinking span {
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: hsl(var(--pb-rose-deep));
+    animation: pb-thinking 1.2s var(--ease-pb) infinite;
+  }
+  .pb-thinking span:nth-child(2) { animation-delay: 160ms; }
+  .pb-thinking span:nth-child(3) { animation-delay: 320ms; }
+  @keyframes pb-thinking {
+    0%, 100% { opacity: 0.25; transform: translateY(0); }
+    40% { opacity: 1; transform: translateY(-3px); }
+  }
+  .pb-scan::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 0%, hsl(var(--pb-ivory) / 0.55) 48%, transparent 56%);
+    background-size: 100% 220%;
+    animation: pb-scan 2.4s var(--ease-pb) infinite;
+    pointer-events: none;
+  }
+  @keyframes pb-scan {
+    from { background-position: 0 120%; }
+    to { background-position: 0 -120%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pb-step-in,
+    .pb-word-in {
+      animation: pb-fade-in 300ms ease both;
+    }
+    .pb-thinking span,
+    .pb-scan::after {
+      animation: none;
+    }
+  }
+
+  /*
    * Gallery hero: the centred slide is full size, its neighbours recede.
    * Scroll-linked natively where supported (no JS, no scroll listener);
    * elsewhere every slide simply stays full size.

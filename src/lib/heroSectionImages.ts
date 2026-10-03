@@ -4,7 +4,14 @@
  * that component and the admin editor (`/admin/hero-section`) read and
  * write, stored under this one settings key via the generic settings API
  * (`GET/PUT /api/v1/settings/hero_section_images`) rather than a dedicated
- * backend module — it's three URLs, not a new domain.
+ * backend module — it's three photos, not a new domain. The OMS's Seelie
+ * reads and writes the same key (its `store_hero` tool), so a change to the
+ * shape here needs the same change there.
+ *
+ * A photo can be linked to a product, which tapping it then opens. The link
+ * keeps the product's slug (the URL) and name (the photo's alt text and the
+ * editor's label) alongside its id, so the storefront never has to look the
+ * product up just to draw the hero.
  *
  * Each slot remembers only the single image it replaced, not a full history:
  * uploading a new photo overwrites `previous` with whatever `url` was right
@@ -17,9 +24,17 @@ export const HERO_SECTION_IMAGES_KEY = 'hero_section_images';
 export const HERO_SLOTS = ['main', 'pink', 'black'] as const;
 export type HeroSlotId = (typeof HERO_SLOTS)[number];
 
+export interface HeroProductLink {
+  id: string;
+  slug: string;
+  name: string;
+}
+
 export interface HeroImageSlot {
   url: string;
-  previous: { url: string; changedAt: string } | null;
+  /** The product this photo opens; absent or null leaves it a picture. */
+  product?: HeroProductLink | null;
+  previous: { url: string; changedAt: string; product?: HeroProductLink | null } | null;
 }
 
 export type HeroSectionImages = Record<HeroSlotId, HeroImageSlot>;
@@ -50,6 +65,11 @@ export const HERO_SLOT_LABELS: Record<HeroSlotId, string> = {
  */
 export function resolveHeroImageUrl(url: string, getImageUrl: (path: string) => string): string {
   return url.startsWith('/hero/') ? url : getImageUrl(url);
+}
+
+/** Where tapping a hero photo goes, if it's linked to a product. */
+export function heroProductHref(slot: HeroImageSlot | null | undefined): string | null {
+  return slot?.product?.slug ? `/products/${slot.product.slug}` : null;
 }
 
 const RESET_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   BLOB_OUTER,
   BLOB_INNER,
@@ -13,13 +14,48 @@ import {
 import { getImageUrl } from '@/lib/image-url';
 import {
   DEFAULT_HERO_IMAGES,
+  HeroImageSlot,
   HeroSectionImages,
+  heroProductHref,
   resolveHeroImageUrl,
 } from '@/lib/heroSectionImages';
+import { cn } from '@/lib/utils';
 import { useHeroSectionImages } from '@/hooks/useStorefrontData';
 import { MobileHero, HeroCta } from './MobileHero';
 
-const DEFAULT_CTA: HeroCta = { label: 'Find Your Pick', href: '/search' };
+/** The small-screen hero's one button: Seelie's Find Your Pick studio. */
+const DEFAULT_CTA: HeroCta = { label: 'Find Your Pick', href: '/find-your-pick' };
+
+/**
+ * One print's mat: a link to the photo's product when it has one, which also
+ * eases the photo up a touch on hover so the print reads as something to
+ * click. Unlinked, it is the plain frame it always was.
+ */
+function Print({
+  slot,
+  className,
+  style,
+  children,
+}: {
+  slot: HeroImageSlot | undefined;
+  className: string;
+  style: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  const href = heroProductHref(slot);
+  if (!href) return <div className={className} style={style}>{children}</div>;
+  return (
+    <Link href={href} className={cn('group block', className)} style={style}>
+      {children}
+    </Link>
+  );
+}
+
+/** The hover lift on a linked print's photo (see Print). */
+const PRINT_HOVER = 'transition-transform duration-700 ease-pb group-hover:scale-[1.03]';
+
+/** A linked photo is named for its product; the bundled ones keep their descriptions. */
+const altOf = (slot: HeroImageSlot, fallback: string) => slot.product?.name ?? fallback;
 
 /**
  * The hero — the headline on the left, the campaign photo on the right in a
@@ -276,7 +312,8 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
             {/* Left print: pink_3, riding low and a layer behind the centre
                 frame. A thinner mat and softer shadow than the centre card
                 sell the depth ordering at a glance. */}
-            <div
+            <Print
+              slot={images?.pink}
               className="absolute bottom-[6%] left-0 z-0 w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm xl:w-[33%]"
               style={{ aspectRatio: '4 / 5', borderRadius: BLOB_LEFT_OUTER }}
             >
@@ -288,7 +325,7 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
                 {images ? (
                   <Image
                     src={resolveHeroImageUrl(images.pink.url, getImageUrl)}
-                    alt="A coral-pink block-print anarkali kurta set with a matching dupatta"
+                    alt={altOf(images.pink, 'A coral-pink block-print anarkali kurta set with a matching dupatta')}
                     fill
                     quality={85}
                     // Deliberately ~1.7x the card's actual rendered width
@@ -306,18 +343,19 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
                     // little below face height so the block-print bodice — the
                     // point of this card — reads clearly instead of the crop
                     // landing on empty fabric below the waist.
-                    className="object-cover object-[50%_28%]"
+                    className={cn('object-cover object-[50%_28%]', PRINT_HOVER)}
                   />
                 ) : (
                   <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
                 )}
               </div>
-            </div>
+            </Print>
 
             {/* Right print: black_3, riding high and likewise behind the
                 centre frame. The opposing vertical offsets are what stop the
                 trio from reading as a flat row of three. */}
-            <div
+            <Print
+              slot={images?.black}
               className="absolute right-0 top-[4%] z-0 w-[36%] bg-[hsl(var(--pb-blush-wash))] p-1.5 shadow-pb-sm xl:w-[33%]"
               style={{ aspectRatio: '4 / 5', borderRadius: BLOB_RIGHT_OUTER }}
             >
@@ -325,7 +363,7 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
                 {images ? (
                   <Image
                     src={resolveHeroImageUrl(images.black.url, getImageUrl)}
-                    alt="A black kurta with floral scalloped embroidery on the hem and cuffs"
+                    alt={altOf(images.black, 'A black kurta with floral scalloped embroidery on the hem and cuffs')}
                     fill
                     quality={85}
                     // Same headroom rationale as the pink_3 card above.
@@ -333,19 +371,20 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
                     // Held a touch higher in frame than the left card so the
                     // scalloped hem embroidery — this garment's distinguishing
                     // detail — stays inside the crop alongside the face.
-                    className="object-cover object-[50%_32%]"
+                    className={cn('object-cover object-[50%_32%]', PRINT_HOVER)}
                   />
                 ) : (
                   <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
                 )}
               </div>
-            </div>
+            </Print>
 
             {/* Centre print: the hero shot, unchanged in content and still
                 the anchor. Its left offset is set so the two side prints
                 tuck under it by roughly a quarter of their own width on
                 each side. */}
-            <div
+            <Print
+              slot={images?.main}
               className="absolute left-[22%] top-1/2 z-10 aspect-[4/5] w-[56%] -translate-y-1/2 bg-[hsl(var(--pb-blush-wash))] p-4 shadow-pb-lg xl:left-[24%] xl:w-[51%]"
               style={{ borderRadius: BLOB_OUTER }}
             >
@@ -353,7 +392,7 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
                 {images ? (
                   <Image
                     src={resolveHeroImageUrl(images.main.url, getImageUrl)}
-                    alt="A PariBelle kurti, styled with silver jhumka earrings"
+                    alt={altOf(images.main, 'A PariBelle kurti, styled with silver jhumka earrings')}
                     fill
                     priority
                     quality={85}
@@ -366,13 +405,13 @@ export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
                     // at its own size there, so this instance is never what's
                     // on screen.
                     sizes="(min-width: 1024px) 640px, 1px"
-                    className="object-cover object-top"
+                    className={cn('object-cover object-top', PRINT_HOVER)}
                   />
                 ) : (
                   <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
                 )}
               </div>
-            </div>
+            </Print>
           </div>
         </div>
       </div>

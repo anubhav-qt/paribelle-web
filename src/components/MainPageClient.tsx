@@ -34,17 +34,6 @@ export default function MainPageClient({
   );
 
   /**
-   * The small-screen hero's one button. It will open the Seelie
-   * recommendation experience once that exists; until then it goes to the
-   * first top-level category that actually has stock (Kurtis, today —
-   * Jewellery is still empty), so it never lands on a "coming soon" page.
-   */
-  const heroCta = useMemo(() => {
-    const stocked = shopCategories.find((c) => (productsByCategory[c.slug] || []).length > 0);
-    return stocked ? { label: 'Find Your Pick', href: `/category/${stocked.slug}` } : undefined;
-  }, [shopCategories, productsByCategory]);
-
-  /**
    * Shop-the-edit sections and the portal grid are keyed on the categories a
    * shopper actually browses. The root store's tree is one parent (Fashion)
    * over the real destinations (Kurtis, Jewellery), so flatten to the leaves
@@ -96,7 +85,7 @@ export default function MainPageClient({
         <GoogleAuthHandler />
       </Suspense>
 
-      <FabricWeaveHero cta={heroCta} />
+      <FabricWeaveHero />
       <ProductRail eyebrow="Most Loved" title="Top Sellers" products={topSellingProducts} tinted />
       <ShopByCategorySection categories={browseCategories} productsByCategory={productsByCategory} />
       {LOOKBOOK_ENABLED && <LookbookTeaser />}

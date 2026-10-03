@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { getImageUrl } from '@/lib/image-url';
-import { HeroSectionImages, resolveHeroImageUrl } from '@/lib/heroSectionImages';
+import { HeroSectionImages, heroProductHref, resolveHeroImageUrl } from '@/lib/heroSectionImages';
 import { buttonClasses } from '@/components/ui/Button';
 
 export interface HeroCta {
@@ -51,6 +51,24 @@ function Photo({
   );
 }
 
+const FRAME =
+  'pb-gallery-focus relative aspect-[4/5] overflow-hidden rounded-[26px] bg-[hsl(var(--pb-blush-wash))] shadow-[0_24px_48px_-24px_hsl(336_16%_18%/0.35)]';
+
+/**
+ * A slide's photo frame: a link to its product when it has one. The press
+ * sits on the link, around the frame, because the frame's own transform
+ * belongs to the scroll-driven focus animation.
+ */
+function SlideFrame({ href, children }: { href: string | null; children: React.ReactNode }) {
+  const frame = <div className={FRAME}>{children}</div>;
+  if (!href) return frame;
+  return (
+    <Link href={href} className="pb-press block">
+      {frame}
+    </Link>
+  );
+}
+
 function resolve(images: HeroSectionImages | null) {
   return {
     main: images ? resolveHeroImageUrl(images.main.url, getImageUrl) : null,
@@ -66,11 +84,18 @@ function resolve(images: HeroSectionImages | null) {
  */
 export function MobileHero({ images, cta }: MobileHeroProps) {
   const src = resolve(images);
-  const slides = [
-    { key: 'main', src: src.main, alt: ALT.main, position: 'object-top' },
-    { key: 'pink', src: src.pink, alt: ALT.pink, position: 'object-[50%_24%]' },
-    { key: 'black', src: src.black, alt: ALT.black, position: 'object-[50%_28%]' },
-  ];
+  const slides = (
+    [
+      { key: 'main', src: src.main, position: 'object-top' },
+      { key: 'pink', src: src.pink, position: 'object-[50%_24%]' },
+      { key: 'black', src: src.black, position: 'object-[50%_28%]' },
+    ] as const
+  ).map((slide) => ({
+    ...slide,
+    // A linked photo opens its product, and is named for it.
+    href: heroProductHref(images?.[slide.key]),
+    alt: images?.[slide.key].product?.name ?? ALT[slide.key],
+  }));
 
   const trackRef = React.useRef<HTMLDivElement>(null);
   const [index, setIndex] = React.useState(0);
@@ -168,7 +193,7 @@ export function MobileHero({ images, cta }: MobileHeroProps) {
               aria-roledescription="slide"
               aria-label={`${i + 1} of ${slides.length}`}
             >
-              <div className="pb-gallery-focus relative aspect-[4/5] overflow-hidden rounded-[26px] bg-[hsl(var(--pb-blush-wash))] shadow-[0_24px_48px_-24px_hsl(336_16%_18%/0.35)]">
+              <SlideFrame href={slide.href}>
                 <Photo
                   src={slide.src}
                   alt={slide.alt}
@@ -176,7 +201,7 @@ export function MobileHero({ images, cta }: MobileHeroProps) {
                   sizes="(max-width: 767px) 80vw, (max-width: 1023px) 45vw, 1px"
                   className={slide.position}
                 />
-              </div>
+              </SlideFrame>
             </div>
           ))}
         </div>
