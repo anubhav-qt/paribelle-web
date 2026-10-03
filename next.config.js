@@ -29,6 +29,26 @@ const nextConfig = {
   // Docker image. Vercel ignores it.
   output: 'standalone',
   reactStrictMode: true,
+  /**
+   * No "x-powered-by: Next.js" on every answer, and the usual safe defaults:
+   * HTTPS only, never inside another site's frame (clickjacking), no guessing
+   * file types, and only the origin in links out.
+   */
+  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+    ];
+  },
   images: {
     domains: ['res.cloudinary.com', 's3.amazonaws.com', 'images.unsplash.com'],
     remotePatterns: [
