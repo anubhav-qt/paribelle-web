@@ -17,6 +17,9 @@ import {
   resolveHeroImageUrl,
 } from '@/lib/heroSectionImages';
 import { useHeroSectionImages } from '@/hooks/useStorefrontData';
+import { MobileHero, HeroCta } from './MobileHero';
+
+const DEFAULT_CTA: HeroCta = { label: 'Find Your Pick', href: '/search' };
 
 /**
  * The hero — the headline on the left, the campaign photo on the right in a
@@ -37,7 +40,7 @@ import { useHeroSectionImages } from '@/hooks/useStorefrontData';
  * Only the influence (how strongly the lens is "on") still fades in from a
  * hover-start ripple, or the effect would pop on with a hard edge.
  */
-export function FabricWeaveHero() {
+export function FabricWeaveHero({ cta = DEFAULT_CTA }: { cta?: HeroCta }) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -63,8 +66,8 @@ export function FabricWeaveHero() {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const supportsHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
     // The weave is a desktop/big-laptop flourish only — on anything narrower
-    // it sits behind the mobile collage or the tablet single print, where it
-    // reads as visual noise rather than texture. `xl` (1280px) is the same
+    // it would sit behind the small-screen hero (MobileHero), where it reads
+    // as visual noise rather than texture. `xl` (1280px) is the same
     // "big" tier this component already uses for the trio's widened stage,
     // so it's the natural cutoff here too. A live MediaQueryList (read on
     // every check, not cached) rather than a resize listener, so resizing
@@ -223,9 +226,15 @@ export function FabricWeaveHero() {
   }, []);
 
   return (
+    <>
+    {/* Below lg: the phone/tablet hero. */}
+    <div className="lg:hidden">
+      <MobileHero images={images} cta={cta} />
+    </div>
+
     <section
       ref={containerRef}
-      className="relative overflow-hidden bg-[hsl(var(--pb-ivory))] pt-16 md:pt-20"
+      className="relative hidden overflow-hidden bg-[hsl(var(--pb-ivory))] pt-16 md:pt-20 lg:block"
     >
       {/* Desktop/big-laptop only (see the `weaveMql` check in the effect
           above, which also skips the draw work below `xl`) — declaratively
@@ -248,51 +257,6 @@ export function FabricWeaveHero() {
         </div>
 
         <div className="flex items-center justify-center py-6 pb-10 md:justify-end md:py-8">
-          {/* Below `lg` the column is too narrow for three prints to read as
-              anything but a smudge, so it gets its own static two-photo
-              collage instead of a shrunk-down trio — the Centre and Right
-              images, tilted like prints tossed on a table, no motion beyond
-              a hover lift on pointer devices. */}
-          <div className="relative h-[280px] w-full max-w-sm shrink-0 sm:h-[320px] lg:hidden">
-            <div
-              className="absolute right-[4%] top-[22%] z-0 w-[54%] rotate-[3deg] bg-[hsl(var(--pb-ivory))] p-1.5 pb-5 shadow-pb-sm transition-transform duration-500 ease-pb hover:translate-y-[-4px] hover:rotate-0"
-            >
-              <div className="relative aspect-[4/5] w-full overflow-hidden bg-[hsl(var(--pb-blush-wash))]">
-                {images ? (
-                  <Image
-                    src={resolveHeroImageUrl(images.black.url, getImageUrl)}
-                    alt="A black kurta with floral scalloped embroidery on the hem and cuffs"
-                    fill
-                    quality={85}
-                    sizes="(max-width: 1023px) 260px, 1px"
-                    className="object-cover object-[50%_32%]"
-                  />
-                ) : (
-                  <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
-                )}
-              </div>
-            </div>
-            <div
-              className="absolute left-[2%] top-[6%] z-10 w-[62%] rotate-[-4deg] bg-[hsl(var(--pb-ivory))] p-1.5 pb-5 shadow-pb-md transition-transform duration-500 ease-pb hover:translate-y-[-4px] hover:rotate-0"
-            >
-              <div className="relative aspect-[4/5] w-full overflow-hidden bg-[hsl(var(--pb-blush-wash))]">
-                {images ? (
-                  <Image
-                    src={resolveHeroImageUrl(images.main.url, getImageUrl)}
-                    alt="A PariBelle kurti, styled with silver jhumka earrings"
-                    fill
-                    priority
-                    quality={85}
-                    sizes="(max-width: 1023px) 300px, 1px"
-                    className="object-cover object-top"
-                  />
-                ) : (
-                  <div className="h-full w-full animate-pulse bg-[hsl(var(--pb-linen))]" />
-                )}
-              </div>
-            </div>
-          </div>
-
           {/* `lg` and up: the original three-print stage, pinned to
               exactly the footprint the single photo used to occupy: 480px
               tall, which is what `max-w-sm` at 4:5 came out to, so the
@@ -398,9 +362,9 @@ export function FabricWeaveHero() {
                     // asking for ~640px means the very first srcset pick is
                     // already sharp instead of depending on a later
                     // re-evaluation (e.g. a browser zoom change) to correct
-                    // it. 1px below `lg` — the mobile collage above renders
-                    // this same photo at its own size, so this instance is
-                    // never what's on screen there.
+                    // it. 1px below `lg` — MobileHero renders this same photo
+                    // at its own size there, so this instance is never what's
+                    // on screen.
                     sizes="(min-width: 1024px) 640px, 1px"
                     className="object-cover object-top"
                   />
@@ -413,5 +377,6 @@ export function FabricWeaveHero() {
         </div>
       </div>
     </section>
+    </>
   );
 }

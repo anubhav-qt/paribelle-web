@@ -65,7 +65,7 @@ export function ProductCardShell({
         // pb-polaroid-tilt (globals.css) owns the resting tilt and the
         // hover/focus straighten-and-lift transform entirely — see the
         // comment there for why that can't be split across Tailwind's
-        // transform utilities too.
+        // transform utilities too. Below md it owns the tap press instead.
         // Top, left and right margins match (p-4) so the pin sits in a
         // frame whose photo perspective genuinely reads as bordered evenly
         // on three sides, the way a real Polaroid's mat is — only the
@@ -73,13 +73,47 @@ export function ProductCardShell({
         // the caption area below adds its own spacing on top of it.
         'pb-polaroid-tilt group relative block p-4 pb-3.5 will-change-transform',
         sectionBg === 'tinted' ? 'bg-white' : 'bg-[hsl(var(--pb-blush-wash))]',
-        'shadow-pb-sm hover:shadow-pb-lg focus-visible:shadow-pb-lg focus-visible:outline-none'
+        'shadow-pb-sm hover:shadow-pb-lg focus-visible:shadow-pb-lg focus-visible:outline-none',
+        // Phones (below md): no mat at all — the photo is the card.
+        'max-md:bg-transparent max-md:p-0 max-md:shadow-none'
       )}
     >
       {/* The photo: full-bleed inside its own thin margin, and entirely
           bare — badges and the wishlist heart live in the caption below
-          instead of on top of it. */}
-      <div className="relative aspect-[4/5] overflow-hidden bg-[hsl(var(--pb-shell))]">
+          instead of on top of it. (Except on phones, where the caption
+          has no room to spare and both sit on the photo.) */}
+      <div
+        className={cn(
+          'relative aspect-[4/5] overflow-hidden bg-[hsl(var(--pb-shell))]',
+          'max-md:isolate max-md:rounded-[13px] max-md:after:pointer-events-none max-md:after:absolute max-md:after:inset-0 max-md:after:rounded-[inherit] max-md:after:ring-1 max-md:after:ring-inset max-md:after:ring-[hsl(var(--pb-ink)/0.06)]'
+        )}
+      >
+        {badges.length > 0 && (
+          <div className="absolute left-2 top-2 z-10 flex flex-wrap gap-1 md:hidden">
+            {badges.map((b) => (
+              <Badge key={b.label} variant={b.variant} className="px-2 py-[3px] text-[0.625rem]">
+                {b.label}
+              </Badge>
+            ))}
+          </div>
+        )}
+        {onToggleWishlist && (
+          <button
+            onClick={onToggleWishlist}
+            aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            aria-pressed={wishlisted}
+            className="pb-press absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-[0_1px_4px_hsl(336_16%_18%/0.12)] backdrop-blur-md md:hidden"
+          >
+            <Heart
+              className={cn(
+                'h-4 w-4 transition-colors duration-200',
+                wishlisted
+                  ? 'fill-[hsl(var(--pb-rose))] text-[hsl(var(--pb-rose))]'
+                  : 'text-[hsl(var(--pb-ink-muted))]'
+              )}
+            />
+          </button>
+        )}
         <img
           src={getImageUrl(image)}
           alt={name}
@@ -104,9 +138,9 @@ export function ProductCardShell({
           wishlist heart share a top line of their own; everything else the
           card knows about the product — category, name, rating, price —
           comes in as `children` and sits below it. */}
-      <div className="px-0.5 pt-3">
+      <div className="px-0.5 pt-3 max-md:pt-2.5">
         {(badges.length > 0 || onToggleWishlist) && (
-          <div className="mb-1.5 flex items-start justify-between gap-2">
+          <div className="mb-1.5 flex items-start justify-between gap-2 max-md:hidden">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               {badges.map((b) => (
                 <Badge key={b.label} variant={b.variant}>

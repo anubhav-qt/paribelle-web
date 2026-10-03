@@ -1,9 +1,9 @@
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { PageShell } from '@/components/layout/PageShell';
-import { CustomCursor } from '@/components/CustomCursor';
 import { ExchangePickerBar } from '@/components/ExchangePickerBar';
 import { SplashIntro } from '@/components/SplashIntro';
+import { PageTransitions } from '@/components/layout/PageTransitions';
 
 /**
  * PariBelle's shopfront chrome. Lives on the route group rather than the root
@@ -13,7 +13,7 @@ import { SplashIntro } from '@/components/SplashIntro';
 export default function StorefrontLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <CustomCursor />
+      <PageTransitions />
       <Header />
       <PageShell>{children}</PageShell>
       <Footer />

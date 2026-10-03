@@ -27,7 +27,7 @@ export interface MegaMenuProps {
  * product (category.featuredProductId) or the category's first product.
  */
 
-function useFeaturedProduct(category: Category) {
+export function useFeaturedProduct(category: Category) {
   const { id, featuredProductId } = category;
   return useCachedData<Product | null>(
     id ? `megamenu-featured:${id}:${featuredProductId ?? 'auto'}` : null,

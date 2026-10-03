@@ -28,7 +28,7 @@ const italiana = Italiana({
 
 export const metadata: Metadata = {
   title: {
-    default: 'PariBelle — Designer Kurtis & Artificial Jewellery',
+    default: 'PariBelle',
     template: '%s | PariBelle',
   },
   description: 'Discover PariBelle — our own designer kurtis and artificial jewellery, designed in Jaipur with new pieces added every season.',
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     apple: '/logo-mark.png',
   },
   openGraph: {
-    title: 'PariBelle — Designer Kurtis & Artificial Jewellery',
+    title: 'PariBelle',
     description: 'Discover PariBelle — our own designer kurtis and artificial jewellery, designed in Jaipur with new pieces added every season.',
     type: 'website',
   },

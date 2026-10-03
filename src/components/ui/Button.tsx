@@ -33,6 +33,28 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: 'h-14 px-9 text-sm',
 };
 
+/**
+ * The Button's classes on their own, for links that have to look exactly like
+ * one (a `<Link>` can't nest a `<button>`).
+ */
+export function buttonClasses({
+  variant = 'primary',
+  size = 'md',
+  fullWidth = false,
+  className,
+}: Pick<ButtonProps, 'variant' | 'size' | 'fullWidth' | 'className'> = {}) {
+  return cn(
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm font-sans font-medium tracking-wide',
+    'transition-colors duration-150 ease-pb',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--pb-rose))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--pb-ivory))]',
+    'disabled:opacity-50 disabled:cursor-not-allowed',
+    variantClasses[variant],
+    sizeClasses[size],
+    fullWidth && 'w-full',
+    className
+  );
+}
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
@@ -51,16 +73,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || loading}
-        className={cn(
-          'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm font-sans font-medium tracking-wide',
-          'transition-colors duration-150 ease-pb',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--pb-rose))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--pb-ivory))]',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
-          variantClasses[variant],
-          sizeClasses[size],
-          fullWidth && 'w-full',
-          className
-        )}
+        className={buttonClasses({ variant, size, fullWidth, className })}
         {...props}
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}

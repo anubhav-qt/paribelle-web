@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, ShoppingBag, User, Menu, Package, LogOut } from 'lucide-react';
+import { Heart, ShoppingBag, User, Package, LogOut } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
@@ -23,7 +23,8 @@ const PILL_ITEM =
   'focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--pb-rose-deep))]';
 
 const NAV_LINK = `${PILL_ITEM} whitespace-nowrap px-3 py-2 text-xs font-medium uppercase tracking-wide`;
-const ICON_BUTTON = `${PILL_ITEM} relative p-2 hover:bg-[hsl(var(--pb-blush-wash))]`;
+// 40px on phones (max-md:p-2.5), the minimum comfortable thumb target.
+const ICON_BUTTON = `${PILL_ITEM} relative p-2 max-md:p-2.5 hover:bg-[hsl(var(--pb-blush-wash))] active:opacity-50`;
 
 /**
  * How far every panel hangs below the header's content box, and the reason it
@@ -164,6 +165,7 @@ export function Header() {
   React.useEffect(() => {
     setActiveMenu(null);
     setAccountOpen(false);
+    setMobileNavOpen(false);
   }, [pathname]);
 
   React.useEffect(() => {
@@ -241,24 +243,41 @@ export function Header() {
       <header
         onMouseLeave={scheduleCloseMegaMenu}
         className={cn(
-          'fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-all duration-300 ease-pb',
+          // Its own view-transition group: holds still through page changes.
+          'fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-all duration-300 ease-pb [view-transition-name:pb-header]',
           scrolled
             ? 'border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-ivory)/0.94)] shadow-pb-lg'
-            : 'border-transparent bg-[hsl(var(--pb-blush-wash)/0.55)]'
+            : 'border-transparent bg-[hsl(var(--pb-blush-wash)/0.55)]',
+          // Phones: a lighter material than desktop's — translucent ivory
+          // and a hairline, no drop shadow under a bar this close to the
+          // content.
+          scrolled && 'max-md:bg-[hsl(var(--pb-ivory)/0.78)] max-md:shadow-none max-md:backdrop-saturate-150',
+          // Phones, full-screen menu open: the bar turns solid and becomes
+          // the menu's top edge, its hamburger the close button.
+          mobileNavOpen && 'max-md:border-[hsl(var(--pb-linen)/0.7)] max-md:bg-[hsl(var(--pb-ivory))] max-md:shadow-none'
         )}
       >
-        <div className="relative mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
+        <div className="relative mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 max-md:h-14 max-md:px-2 max-md:py-0 md:px-6">
           {/* Left zone: hamburger on mobile, nav links from md up. Natural
               width, never squeezed — the logo below is centred by absolute
               position instead of a grid track, so it can't force this
               column to shrink and wrap category names onto two lines. */}
           <div className="flex shrink-0 items-center gap-0.5">
             <button
-              onClick={() => setMobileNavOpen(true)}
-              className={`${PILL_ITEM} p-2 hover:bg-[hsl(var(--pb-blush-wash))] md:hidden`}
-              aria-label="Open menu"
+              onClick={() => setMobileNavOpen((open) => !open)}
+              className={`${PILL_ITEM} pb-hamburger p-1 text-[hsl(var(--pb-ink))] md:hidden`}
+              aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileNavOpen}
             >
-              <Menu className="h-5 w-5 text-[hsl(var(--pb-ink))]" />
+              {/* One stroke that re-dashes into an X (Uiverse, JulanDeAlb);
+                  the motion lives in globals.css under .pb-hamburger. */}
+              <svg viewBox="0 0 32 32" aria-hidden>
+                <path
+                  className="line line-top-bottom"
+                  d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22"
+                />
+                <path className="line" d="M7 16 27 16" />
+              </svg>
             </button>
 
             <nav className="relative hidden items-center md:flex">
@@ -459,7 +478,11 @@ export function Header() {
         </div>
       </header>
 
-      <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} categories={categories} />
+      <MobileNav
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        categories={categories}
+      />
     </>
   );
 }

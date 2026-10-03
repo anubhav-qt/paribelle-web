@@ -21,6 +21,8 @@
    */
   html {
     scrollbar-gutter: stable;
+    /* The grey tap flash on mobile WebKit; taps get their own press states. */
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground;
@@ -385,18 +387,30 @@
    * properties, which would fight this rule's own base `rotate(...)` for
    * the same property at equal selector specificity. One owner, no race.
    */
-  .pb-polaroid-tilt {
-    transform: rotate(-0.6deg);
-    transform-origin: 100% 0%;
-    transition:
-      transform var(--duration-panel) var(--ease-pb),
-      box-shadow var(--duration-panel) var(--ease-pb);
+  /*
+   * Scoped to md and up: on a phone a 2-up grid of cards each rotated a
+   * fraction of a degree reads as misaligned rather than as prints on a
+   * table, and a tap would leave the hover lift stuck on. Phones get a press
+   * instead (below).
+   */
+  @media (min-width: 768px) {
+    .pb-polaroid-tilt {
+      transform: rotate(-0.6deg);
+      transform-origin: 100% 0%;
+      transition:
+        transform var(--duration-panel) var(--ease-pb),
+        box-shadow var(--duration-panel) var(--ease-pb);
+    }
+    .pb-polaroid-tilt:focus-visible {
+      transform: translateY(-6px) rotate(0deg);
+    }
   }
-  .pb-polaroid-tilt:hover,
-  .pb-polaroid-tilt:focus-visible {
-    transform: translateY(-6px) rotate(0deg);
+  @media (min-width: 768px) and (hover: hover) {
+    .pb-polaroid-tilt:hover {
+      transform: translateY(-6px) rotate(0deg);
+    }
   }
-  @media (prefers-reduced-motion: reduce) {
+  @media (min-width: 768px) and (prefers-reduced-motion: reduce) {
     .pb-polaroid-tilt {
       transition: none;
     }
@@ -407,43 +421,161 @@
   }
 
   /*
-   * Storefront custom cursor: applied to <body> only once CustomCursor has
-   * confirmed hover:hover + pointer:fine support client-side, so a JS
-   * failure never leaves visitors without any cursor at all.
+   * Touch press: a quick sink on contact, a slower settle on release — the
+   * feedback a tap gets in place of hover.
    */
-  .pb-custom-cursor-active,
-  .pb-custom-cursor-active * {
-    cursor: none !important;
+  .pb-press {
+    transition: transform 420ms var(--ease-pb);
+  }
+  .pb-press:active {
+    transform: scale(0.965);
+    transition-duration: 140ms;
+  }
+  @media (max-width: 767px) {
+    .pb-polaroid-tilt {
+      transition: transform 420ms var(--ease-pb);
+    }
+    .pb-polaroid-tilt:active {
+      transform: scale(0.975);
+      transition-duration: 140ms;
+    }
   }
 
   /*
-   * The cursor: an ordinary arrow, ivory fill, rose outline, always.
-   * Position is written straight to the outer element's transform every
-   * animation frame (see CustomCursor.tsx) — this inner arrow carries only
-   * appearance, so this transition can animate the fill without ever
-   * fighting the imperative position updates on its parent. The offset
-   * (rather than a centering transform) puts the arrow's own tip, not its
-   * shape center, on the actual pointer position — see the comment next to
-   * its markup in CustomCursor.tsx. The only state change is the fill
-   * itself: rose instead of ivory whenever the pointer is over anything
-   * actually interactive (see the selector list in CustomCursor.tsx),
-   * ivory otherwise.
+   * Entrance motion for the phone hero. Held at its first frame until the
+   * opening curtain (SplashIntro) starts to lift and sets `data-pb-ready`,
+   * so it plays where it can be seen. `--d` staggers the pieces.
    */
-  .pb-cursor-arrow {
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 22px;
-    width: 22px;
-    transform: translate(-5px, -3px);
-    fill: hsl(var(--pb-ivory));
-    stroke: hsl(var(--pb-rose));
-    stroke-width: 1.5px;
-    stroke-linejoin: round;
-    transition: fill var(--duration-micro) var(--ease-pb);
+  .pb-enter {
+    animation-duration: 1100ms;
+    animation-timing-function: var(--ease-pb);
+    animation-fill-mode: both;
+    animation-delay: var(--d, 0ms);
+    animation-play-state: paused;
   }
-  .pb-cursor-arrow[data-cursor-active='true'] {
-    fill: hsl(var(--pb-rose));
+  :root[data-pb-ready] .pb-enter {
+    animation-play-state: running;
+  }
+  .pb-enter-up {
+    animation-name: pb-enter-up;
+  }
+  .pb-enter-rise {
+    animation-name: pb-enter-rise;
+    animation-duration: 1300ms;
+  }
+  .pb-enter-fade {
+    animation-name: pb-fade-in;
+    animation-duration: 900ms;
+  }
+  @keyframes pb-enter-up {
+    from { opacity: 0; transform: translate3d(0, 14px, 0); filter: blur(6px); }
+    to { opacity: 1; transform: none; filter: blur(0); }
+  }
+  @keyframes pb-enter-rise {
+    from { opacity: 0; transform: translate3d(0, 28px, 0) scale(0.94); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /*
+   * Gallery hero: the centred slide is full size, its neighbours recede.
+   * Scroll-linked natively where supported (no JS, no scroll listener);
+   * elsewhere every slide simply stays full size.
+   */
+  @supports (animation-timeline: scroll()) {
+    .pb-gallery-focus {
+      animation: pb-gallery-focus linear both;
+      animation-timeline: view(inline);
+    }
+    @keyframes pb-gallery-focus {
+      0% { transform: scale(0.88); opacity: 0.5; }
+      50% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(0.88); opacity: 0.5; }
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pb-gallery-focus {
+      animation: none !important;
+    }
+  }
+
+  /* Gallery dot: the active one fills over the autoplay interval. */
+  @keyframes pb-dot-fill {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
+  /* Phone hero ground: blush light from above over ivory. */
+  .pb-hero-paper {
+    background:
+      radial-gradient(120% 60% at 50% 0%, hsl(var(--pb-rose-mist) / 0.95), transparent 64%),
+      radial-gradient(90% 45% at 0% 100%, hsl(var(--pb-blush-wash) / 0.9), transparent 70%),
+      hsl(var(--pb-ivory));
+  }
+
+  /*
+   * Homepage swipe rails on phones: the cards arrive together (RevealGroup)
+   * as a plain fade, in place — no sideways or upward travel.
+   */
+  .pb-reveal.pb-reveal-group {
+    transform: none;
+    transition: opacity 1000ms var(--ease-pb);
+  }
+
+  /*
+   * Phone hamburger (Uiverse, JulanDeAlb), in ink rather than white: one
+   * stroke that re-dashes from three lines into an X while the icon turns.
+   * Driven by the button's aria-expanded instead of a hidden checkbox.
+   */
+  .pb-hamburger svg {
+    height: 2rem;
+    width: 2rem;
+    transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .pb-hamburger .line {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3;
+    transition:
+      stroke-dasharray 600ms cubic-bezier(0.4, 0, 0.2, 1),
+      stroke-dashoffset 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .pb-hamburger .line-top-bottom {
+    stroke-dasharray: 12 63;
+  }
+  .pb-hamburger[aria-expanded='true'] svg {
+    transform: rotate(-45deg);
+  }
+  .pb-hamburger[aria-expanded='true'] .line-top-bottom {
+    stroke-dasharray: 20 300;
+    stroke-dashoffset: -32.42;
+  }
+
+  /*
+   * Full-screen phone menu. The panel wipes down from under the header; its
+   * rows follow a beat later, each a little after the one above. Closing
+   * drops the stagger so everything leaves together.
+   */
+  .pb-sheet {
+    clip-path: inset(0 0 100% 0);
+    transition: clip-path 560ms var(--ease-sheet);
+  }
+  .pb-sheet[data-shown='true'] {
+    clip-path: inset(0 0 0 0);
+  }
+  .pb-sheet-item {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0);
+    transition:
+      opacity 220ms var(--ease-pb),
+      transform 220ms var(--ease-pb);
+  }
+  .pb-sheet[data-shown='true'] .pb-sheet-item {
+    opacity: 1;
+    transform: none;
+    transition-duration: 640ms, 760ms;
+    transition-delay: calc(110ms + var(--i, 0) * 35ms);
   }
 
   /*
@@ -1210,4 +1342,23 @@
 .pom-admin .pom-quill .ql-editor {
   min-height: 7rem;
   color: var(--pom-text);
+}
+
+/*
+ * Route-change transitions. PageTransitions.tsx runs them through the View
+ * Transitions API: a slow, soft crossfade from the old page to the new one.
+ * The header is its own group, so it holds still while the page beneath it
+ * changes. Ivory behind everything, so any moment between the two pages
+ * reads as paper.
+ */
+::view-transition {
+  background: hsl(var(--pb-ivory));
+}
+::view-transition-group(pb-header) {
+  animation-duration: 320ms;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 520ms;
+  animation-timing-function: var(--ease-pb);
 }

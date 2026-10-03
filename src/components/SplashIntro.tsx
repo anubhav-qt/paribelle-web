@@ -121,8 +121,16 @@ export function SplashIntro() {
       if (fillRef.current) fillRef.current.style.transform = `scaleX(${p})`;
     };
 
+    // Entrance animations on the page behind (`.pb-enter` in globals.css)
+    // wait on this, so they play as the curtain lifts instead of finishing
+    // unseen underneath it.
+    const markReady = () => {
+      root.dataset.pbReady = '1';
+    };
+
     const beginFade = () => {
       if (cancelled) return;
+      markReady();
       setFading(true);
       timers.push(
         setTimeout(() => {

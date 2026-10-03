@@ -1,5 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Hover styles only where a real hover exists. Without this, a tap on a
+  // phone leaves the element in its hover state until the next tap elsewhere
+  // (lifted cards, swapped photos, tinted links stuck on).
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   darkMode: ['class'],
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -91,6 +97,7 @@ module.exports = {
       },
       transitionTimingFunction: {
         pb: 'var(--ease-pb)',
+        sheet: 'var(--ease-sheet)',
       },
     },
   },
