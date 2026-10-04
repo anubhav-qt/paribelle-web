@@ -83,19 +83,7 @@ export default function ProductVariantSelector({
     onAttributesChange?.(selectedAttributes);
   }, [selectedAttributes, onAttributesChange]);
 
-  /**
-   * Whether any in-stock variant carries this value at all — ignoring what
-   * else is currently selected.
-   *
-   * This is deliberately not "available given the current selection". Judging
-   * availability against the other choices, and then disabling everything that
-   * failed, is what locked shoppers in: pick Size L and Colour Red on a
-   * catalogue holding only (L, Red) and (M, Blue) and every other size *and*
-   * every other colour greys out, because each is only stocked alongside the
-   * value the shopper would have to change first. Both were in stock; neither
-   * could be reached. Only genuinely unbuyable values are disabled here, and
-   * `select` below repairs a combination that does not exist.
-   */
+  /** Whether any in-stock variant carries this value at all. */
   const isSellable = useCallback(
     (optionName: string, value: string) =>
       productVariants.some(
@@ -105,38 +93,31 @@ export default function ProductVariantSelector({
   );
 
   /**
-   * Choosing a value always takes effect. If no in-stock variant matches the
-   * resulting combination, the other choices are dropped and re-derived: the
-   * shopper's newest click is the one they meant, so it is kept and the rest
-   * give way.
+   * Whether this value is buyable alongside what is chosen on the *other*
+   * axes. Values that fail are disabled rather than silently wiping the other
+   * choice when clicked. Clicking a selected value clears it, so a shopper is
+   * never locked in by their first pick.
    */
+  const isAvailable = useCallback(
+    (optionName: string, value: string) =>
+      productVariants.some(
+        (variant) =>
+          inStock(variant) &&
+          same(attributeOf(variant, optionName), value) &&
+          Object.entries(selectedAttributes).every(
+            ([key, val]) => !val || same(key, optionName) || same(attributeOf(variant, key), val),
+          ),
+      ),
+    [productVariants, selectedAttributes],
+  );
+
   const select = (optionName: string, value: string) => {
     setSelectedAttributes((previous) => {
-      const wanted = { ...previous, [optionName]: value };
-
-      const matches = (candidate: Record<string, string>) =>
-        productVariants.some(
-          (variant) =>
-            inStock(variant) &&
-            Object.entries(candidate).every(([key, val]) =>
-              same(attributeOf(variant, key), val),
-            ),
-        );
-
-      if (matches(wanted)) return wanted;
-
-      // Keep the clicked value, then add back as many of the previous choices
-      // as still lead somewhere buyable.
-      const repaired: Record<string, string> = { [optionName]: value };
-      for (const option of variantOptions) {
-        if (option.name === optionName) continue;
-        const previousValue = previous[option.name];
-        if (!previousValue) continue;
-        if (matches({ ...repaired, [option.name]: previousValue })) {
-          repaired[option.name] = previousValue;
-        }
+      if (same(previous[optionName], value)) {
+        const { [optionName]: _removed, ...rest } = previous;
+        return rest;
       }
-      return repaired;
+      return { ...previous, [optionName]: value };
     });
   };
 
@@ -167,18 +148,20 @@ export default function ProductVariantSelector({
               {option.values.map((value) => {
                 const sellable = isSellable(option.name, value);
                 const isSelected = same(selectedValue, value);
+                const available = isSelected || (sellable && isAvailable(option.name, value));
 
                 return (
                   <button
                     key={value}
                     type="button"
-                    onClick={() => sellable && select(option.name, value)}
-                    disabled={!sellable}
+                    onClick={() => available && select(option.name, value)}
+                    disabled={!available}
+                    title={sellable && !available ? 'Not available with your current selection' : undefined}
                     className={`
                       px-4 py-2 rounded-lg border-2 font-medium text-sm transition-all
                       ${isSelected
                         ? 'border-primary bg-primary text-primary-foreground'
-                        : sellable
+                        : available
                         ? 'border-border hover:border-primary bg-card text-foreground'
                         : 'border-border bg-muted text-muted-foreground cursor-not-allowed opacity-50'
                       }
