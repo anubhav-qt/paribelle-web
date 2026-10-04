@@ -153,6 +153,14 @@ export const useRazorpay = () => {
       return;
     }
 
+    // A failed attempt is not the end: Razorpay keeps the sheet open so the
+    // shopper can retry with another card or UPI app, and that retry can
+    // succeed. Reporting failure on `payment.failed` let the page cancel the
+    // order mid-sheet, so a successful retry charged the customer for an order
+    // that was already cancelled. Only closing the sheet is final; remember the
+    // last error so the dismissal can say whether a payment actually failed.
+    let lastError: any = null;
+
     const rzp = new window.Razorpay({
       ...options,
       key: razorpayKeyId,
@@ -165,13 +173,17 @@ export const useRazorpay = () => {
           if (options.modal?.ondismiss) {
             options.modal.ondismiss();
           }
-          onFailure(new Error('Payment cancelled by user'));
+          onFailure(
+            lastError
+              ? new Error(lastError.description || 'Payment failed')
+              : new Error('Payment cancelled by user'),
+          );
         },
       },
     });
 
     rzp.on('payment.failed', (response: any) => {
-      onFailure(response.error);
+      lastError = response.error;
     });
 
     rzp.open();
