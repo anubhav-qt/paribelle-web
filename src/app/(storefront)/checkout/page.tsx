@@ -542,7 +542,17 @@ function CheckoutContent() {
       );
     } catch (error) {
       console.error('Error initiating Razorpay payment:', error);
-      
+
+      // The order was created but no payment can start against it; release it
+      // so it doesn't sit in the admin as "Awaiting payment" holding stock.
+      try {
+        await api.patch(`/orders/${orderId}/payment-failed`, {
+          reason: `Payment could not be initiated: ${error instanceof Error ? error.message : 'unknown error'}`,
+        });
+      } catch (releaseError) {
+        console.error('Failed to release order after payment initiation failure:', releaseError);
+      }
+
       // Check if error is due to Razorpay not being configured
       if (error instanceof Error && error.message.includes('not configured')) {
         showAlert(

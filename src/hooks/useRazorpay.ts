@@ -69,7 +69,7 @@ export const useRazorpay = () => {
   // does not trust a client-supplied amount, since that would let a crafted
   // request pay whatever it likes for whatever it ordered. Nothing here
   // needs to send one.
-  const createOrder = async (orderId: string, referenceType: 'order' | 'booking' = 'order') => {
+  const createOrder = async (orderId: string) => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
@@ -83,13 +83,14 @@ export const useRazorpay = () => {
           body: JSON.stringify({
             orderId,
             currency: 'INR',
-            referenceType,
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error('Failed to create payment order');
+        const body = await response.json().catch(() => null);
+        const message = Array.isArray(body?.message) ? body.message.join(', ') : body?.message;
+        throw new Error(message || 'Failed to create payment order');
       }
 
       return await response.json();
