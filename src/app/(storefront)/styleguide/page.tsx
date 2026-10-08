@@ -118,7 +118,7 @@ export default function StyleguidePage() {
             <Textarea label="Gift note" />
             <div className="flex flex-col gap-3 justify-center">
               <Checkbox label="Remember me" defaultChecked />
-              <Radio label="Cash on delivery" name="pay" defaultChecked />
+              <Radio label="Pay by UPI" name="pay" defaultChecked />
               <Switch checked={switchOn} onCheckedChange={setSwitchOn} label="Email me about new arrivals" />
             </div>
           </div>

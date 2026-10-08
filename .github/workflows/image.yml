@@ -37,6 +37,7 @@ jobs:
             NEXT_PUBLIC_APP_URL=https://www.paribelle.in
             NEXT_PUBLIC_STORE_VENDOR_ID=00000000-0000-0000-0000-000000000001
             NEXT_PUBLIC_LOOKBOOK_ENABLED=false
+            NEXT_PUBLIC_COD_ENABLED=false
           tags: |
             ${{ steps.name.outputs.image }}:latest
             ${{ steps.name.outputs.image }}:${{ github.sha }}

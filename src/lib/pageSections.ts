@@ -161,7 +161,7 @@ To provide the best shopping experience with quality products, great prices, and
       subtitle: 'Find answers to common questions',
       faqs: [
         { question: 'How do I place an order?', answer: 'Simply browse our products, add items to your cart, and proceed to checkout. You\'ll need to create an account or login first.' },
-        { question: 'What payment methods do you accept?', answer: 'We accept all major credit cards, debit cards, UPI, net banking, and cash on delivery.' },
+        { question: 'What payment methods do you accept?', answer: 'We accept all major credit cards, debit cards, UPI and net banking. Orders are prepaid.' },
         { question: 'How long does delivery take?', answer: 'Delivery typically takes 3-5 business days for metro cities and 5-7 days for other locations.' },
         { question: 'What is your return policy?', answer: 'We offer a 7-day return policy on most products. Items must be unused and in original packaging.' },
       ],

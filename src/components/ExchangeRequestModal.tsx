@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, AlertCircle, ShoppingBag, Video, Trash2, Check } from 'lucide-react';
 import { OrderItem } from '@/types/common';
+import { COD_ENABLED } from '@/lib/features';
 import {
   getExchangePicker,
   startExchangePicker,
@@ -694,6 +695,8 @@ export default function ExchangeRequestModal({
                     </span>
                   </span>
                 </label>
+                {/* Paying on delivery is archived while the store is prepaid only (COD_ENABLED). */}
+                {COD_ENABLED && (
                 <label
                   className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2 ${
                     courierPaymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
@@ -712,6 +715,7 @@ export default function ExchangeRequestModal({
                     </span>
                   </span>
                 </label>
+                )}
                 {canPayCourierOnline ? (
                   <label
                     className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2 ${

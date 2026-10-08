@@ -13,6 +13,7 @@ import { Segmented } from '@/components/admin/pom/segmented';
 import { Badge, CenteredSpinner, Notice, PageHeader, Section, Stat, TONES } from '@/components/admin/pom/ui';
 import { useAdminOrders } from '@/hooks/useAdminOrders';
 import { useAdminProductStats } from '@/hooks/useAdminProducts';
+import { COD_ENABLED } from '@/lib/features';
 import {
   ORDER_STATUS,
   awaitingOnlinePayment,
@@ -219,7 +220,10 @@ export default function AdminHome() {
             <Stat label="To pack" value={todo.pack} tone={todo.pack ? 'warn' : undefined} href="/admin/orders?tab=toShip&stage=confirmed" hint="Confirmed" />
             <Stat label="To ship" value={todo.ship} tone={todo.ship ? 'warn' : undefined} href="/admin/orders?tab=toShip&stage=processing" hint="Packed, needs tracking" />
             <Stat label="Exchanges" value={todo.exchanges} tone={todo.exchanges ? 'danger' : undefined} href="/admin/orders?tab=exchanges" hint="Waiting on your decision" />
-            <Stat label="COD to collect" value={money(todo.codValue)} href="/admin/orders?tab=shipped" hint={`${todo.codCount} ${todo.codCount === 1 ? 'parcel' : 'parcels'} out`} />
+            {/* COD is archived (COD_ENABLED): the tile stays only while past COD parcels are still out. */}
+            {COD_ENABLED || todo.codCount > 0 ? (
+              <Stat label="COD to collect" value={money(todo.codValue)} href="/admin/orders?tab=shipped" hint={`${todo.codCount} ${todo.codCount === 1 ? 'parcel' : 'parcels'} out`} />
+            ) : null}
             <Stat label="Low stock" value={stock?.lowStock ?? '-'} tone={stock?.lowStock ? 'warn' : undefined} href="/admin/products?stock=low" hint="Products running out" />
             <Stat label="Out of stock" value={stock?.outOfStock ?? '-'} tone={stock?.outOfStock ? 'danger' : undefined} href="/admin/products?stock=out" hint="Not buyable now" />
           </div>

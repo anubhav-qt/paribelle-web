@@ -10,3 +10,12 @@
  * `NEXT_PUBLIC_LOOKBOOK_ENABLED=true` to bring it back.
  */
 export const LOOKBOOK_ENABLED = process.env.NEXT_PUBLIC_LOOKBOOK_ENABLED === 'true';
+
+/**
+ * Cash on Delivery at checkout and as a way to pay an exchange's courier fee.
+ * Off: the store takes prepaid orders only. Past COD orders keep their admin
+ * handling (cash to collect, refused at the door). Set
+ * `NEXT_PUBLIC_COD_ENABLED=true` (and `COD_ENABLED=true` on the API) to bring
+ * it back.
+ */
+export const COD_ENABLED = process.env.NEXT_PUBLIC_COD_ENABLED === 'true';

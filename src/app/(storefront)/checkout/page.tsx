@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { useThemeClasses } from '@/hooks/useThemeClasses';
 import { Loader } from '@/components/ui/Loader';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import { COD_ENABLED } from '@/lib/features';
 
 type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
 
@@ -556,11 +557,11 @@ function CheckoutContent() {
       // Check if error is due to Razorpay not being configured
       if (error instanceof Error && error.message.includes('not configured')) {
         showAlert(
-          'Razorpay is not configured.\n\nPlease configure Razorpay keys in the backend .env file or use Cash on Delivery option.',
+          `Razorpay is not configured.\n\nPlease configure Razorpay keys in the backend .env file${COD_ENABLED ? ' or use Cash on Delivery option' : ''}.`,
           'warning',
         );
       } else {
-        showAlert('Failed to initiate payment. Please try again or use Cash on Delivery.', 'error');
+        showAlert(`Failed to initiate payment. Please try again${COD_ENABLED ? ' or use Cash on Delivery' : ''}.`, 'error');
       }
       
       setLoading(false);
@@ -1030,7 +1031,7 @@ function CheckoutContent() {
             {process.env.NODE_ENV === 'development' && (
               <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
                 <p className="text-sm text-foreground">
-                  <strong>🔧 Development Mode:</strong> Use Cash on Delivery to test without configuring Razorpay. 
+                  <strong>🔧 Development Mode:</strong>{' '}{COD_ENABLED ? 'Use Cash on Delivery to test without configuring Razorpay.' : 'Razorpay test keys work for trying checkout.'} 
                   To enable online payments, add your Razorpay keys to backend .env file.
                 </p>
               </div>
@@ -1060,7 +1061,8 @@ function CheckoutContent() {
                 </div>
               </label>
               
-              {/* Cash on Delivery / Pay at Venue */}
+              {/* Cash on Delivery / Pay at Venue: archived while the store is prepaid only (COD_ENABLED) */}
+              {COD_ENABLED && (
               <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
                 style={{ borderColor: paymentMethod === 'cod' ? 'hsl(var(--primary))' : 'hsl(var(--border))' }}
               >
@@ -1083,6 +1085,7 @@ function CheckoutContent() {
                   </p>
                 </div>
               </label>
+              )}
             </div>
           </div>
         </div>
