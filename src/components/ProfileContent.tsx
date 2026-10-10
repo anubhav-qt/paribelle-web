@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import AddressManager from '@/components/AddressManager';
 import { showAlert } from '@/lib/dialog';
+import { api, errorMessage } from '@/lib/api';
 
 export default function ProfileContent() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function ProfileContent() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [resetState, setResetState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -96,6 +98,19 @@ export default function ProfileContent() {
     }
   };
 
+  /** Changing the password goes through the same emailed link as a reset. */
+  const handleChangePassword = async () => {
+    if (!user?.email || resetState === 'sending') return;
+    setResetState('sending');
+    try {
+      await api.post('/auth/forgot-password', { email: user.email }, { auth: false });
+      setResetState('sent');
+    } catch (error) {
+      setResetState('idle');
+      showAlert(errorMessage(error, 'Could not send the email. Please try again.'), 'error');
+    }
+  };
+
   const handleCancel = () => {
     setFormData({
       firstName: user.firstName || '',
@@ -149,18 +164,6 @@ export default function ProfileContent() {
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-border space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Account Type</span>
-                <span className="font-medium capitalize text-foreground">{user.role || 'Customer'}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Status</span>
-                <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                  Active
-                </span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -298,11 +301,19 @@ export default function ProfileContent() {
                   <Lock className="w-5 h-5 text-muted-foreground" />
                   <div>
                     <p className="font-medium text-foreground">Password</p>
-                    <p className="text-sm text-muted-foreground">Last changed 30 days ago</p>
+                    <p className="text-sm text-muted-foreground">
+                      {resetState === 'sent'
+                        ? `We've emailed a link to ${user.email} to set a new password.`
+                        : "We'll email you a link to set a new one."}
+                    </p>
                   </div>
                 </div>
-                <button className="px-4 py-2 text-[hsl(var(--pb-rose-deep))] hover:bg-[hsl(var(--pb-blush-wash))] rounded-sm transition-colors">
-                  Change Password
+                <button
+                  onClick={handleChangePassword}
+                  disabled={resetState !== 'idle'}
+                  className="px-4 py-2 text-[hsl(var(--pb-rose-deep))] hover:bg-[hsl(var(--pb-blush-wash))] rounded-sm transition-colors disabled:opacity-50"
+                >
+                  {resetState === 'sending' ? 'Sending…' : resetState === 'sent' ? 'Email sent' : 'Change Password'}
                 </button>
               </div>
             </div>

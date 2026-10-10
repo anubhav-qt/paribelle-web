@@ -4,9 +4,9 @@
 // ISR can still be configured when converted to Server Component in the future
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Star, Heart, Share2, Package, Facebook, Twitter, Linkedin, Link as LinkIcon, Check } from 'lucide-react';
+import { Star, Heart, Share2, Facebook, Twitter, Linkedin, Link as LinkIcon, Check } from 'lucide-react';
 import ProductImageGallery from '@/components/ProductImageGallery';
 import VariationSelector from '@/components/VariationSelector';
 import ProductVariantSelector from '@/components/ProductVariantSelector';
@@ -506,18 +506,7 @@ export default function ProductDetailPage() {
   }
 
   if (!product) {
-    return (
-      <EmptyState
-        icon={<Package className="h-10 w-10" />}
-        title="Product not found"
-        action={
-          <Link href="/">
-            <Button size="sm">Go to Home</Button>
-          </Link>
-        }
-        className="min-h-[50vh]"
-      />
-    );
+    notFound();
   }
 
   const discount = getBestDiscount();

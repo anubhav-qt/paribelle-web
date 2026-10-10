@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { MapPin, Edit2, Trash2, Plus, Phone, Home, ChevronDown, Loader2 } from 'lucide-react';
 import { initAuthFromCookie } from '@/lib/cross-domain-auth';
 import { api, ApiError, errorMessage } from '@/lib/api';
@@ -110,6 +110,9 @@ export default function AddressManager({
   showSelection = false,
   compact = false
 }: AddressManagerProps) {
+  // Two of these can be on one page (shipping and billing), so field ids
+  // carry a per-instance prefix.
+  const fieldId = useId();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
@@ -309,14 +312,6 @@ export default function AddressManager({
       return true;
     } catch (error) {
       console.error('Error fetching addresses:', error);
-      // Fallback to localStorage if API fails
-      const savedAddresses = localStorage.getItem('user_addresses');
-      if (savedAddresses) {
-        const parsed = JSON.parse(savedAddresses);
-        setAddresses(parsed);
-        selectInitialAddress(parsed);
-        return true;
-      }
       return false;
     }
   };
@@ -413,6 +408,7 @@ export default function AddressManager({
 
       const body = {
         fullName: addressForm.fullName,
+        email: addressForm.email,
         phone: addressForm.phone,
         addressLine1: addressForm.addressLine1,
         addressLine2: addressForm.addressLine2,
@@ -468,6 +464,7 @@ export default function AddressManager({
     if (e) e.stopPropagation();
     setAddressForm({
       fullName: address.fullName,
+      email: address.email || '',
       phone: address.phone,
       addressLine1: address.addressLine1,
       addressLine2: address.addressLine2 || '',
@@ -529,13 +526,17 @@ export default function AddressManager({
     }
   };
 
-  const handleSetDefaultAddress = (addressId: string) => {
-    const updatedAddresses = addresses.map(addr => ({
-      ...addr,
-      isDefault: addr.id === addressId,
-    }));
-    setAddresses(updatedAddresses);
-    localStorage.setItem('user_addresses', JSON.stringify(updatedAddresses));
+  const handleSetDefaultAddress = async (addressId: string) => {
+    try {
+      await api.put(`/user/addresses/${addressId}`, { isDefault: true });
+      setAddresses((prev) => prev.map((addr) => ({ ...addr, isDefault: addr.id === addressId })));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        handleAuthError();
+        return;
+      }
+      showAlert(errorMessage(error, 'Could not update your default address. Please try again.'), 'error');
+    }
   };
 
   const handleSelectAddress = (address: Address) => {
@@ -568,9 +569,10 @@ export default function AddressManager({
         <form className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Full Name *</label>
+              <label htmlFor={`${fieldId}-fullName`} className="block text-sm font-medium text-foreground mb-2">Full Name *</label>
               <input
                 type="text"
+                id={`${fieldId}-fullName`}
                 value={addressForm.fullName}
                 onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
                 className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
@@ -580,9 +582,10 @@ export default function AddressManager({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+              <label htmlFor={`${fieldId}-email`} className="block text-sm font-medium text-foreground mb-2">Email</label>
               <input
                 type="email"
+                id={`${fieldId}-email`}
                 value={addressForm.email || ''}
                 onChange={(e) => setAddressForm({ ...addressForm, email: e.target.value })}
                 className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
@@ -591,7 +594,7 @@ export default function AddressManager({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Phone Number *</label>
+              <label htmlFor={`${fieldId}-phone`} className="block text-sm font-medium text-foreground mb-2">Phone Number *</label>
               <div className="flex gap-2">
                 {/* Custom Phone Code Dropdown */}
                 <div className="relative w-32" ref={phoneDropdownRef}>
@@ -627,7 +630,8 @@ export default function AddressManager({
                 </div>
                 <input
                   type="tel"
-                  value={addressForm.phone}
+                  id={`${fieldId}-phone`}
+                value={addressForm.phone}
                   onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
                   placeholder="9876543210"
                   maxLength={15}
@@ -639,10 +643,11 @@ export default function AddressManager({
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Address Line 1 *</label>
+            <label htmlFor={`${fieldId}-line1`} className="block text-sm font-medium text-foreground mb-2">Address Line 1 *</label>
             <input
               type="text"
-              value={addressForm.addressLine1}
+              id={`${fieldId}-line1`}
+                value={addressForm.addressLine1}
               onChange={(e) => setAddressForm({ ...addressForm, addressLine1: e.target.value })}
               placeholder="House No., Building Name"
               className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
@@ -651,10 +656,11 @@ export default function AddressManager({
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Address Line 2</label>
+            <label htmlFor={`${fieldId}-line2`} className="block text-sm font-medium text-foreground mb-2">Address Line 2</label>
             <input
               type="text"
-              value={addressForm.addressLine2}
+              id={`${fieldId}-line2`}
+                value={addressForm.addressLine2}
               onChange={(e) => setAddressForm({ ...addressForm, addressLine2: e.target.value })}
               placeholder="Street, Area, Landmark"
               className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
@@ -663,9 +669,10 @@ export default function AddressManager({
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">City *</label>
+              <label htmlFor={`${fieldId}-city`} className="block text-sm font-medium text-foreground mb-2">City *</label>
               <input
                 type="text"
+                id={`${fieldId}-city`}
                 value={addressForm.city}
                 onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
                 onBlur={(e) => applyCityStateHint(e.target.value)}
@@ -676,9 +683,10 @@ export default function AddressManager({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">State *</label>
+              <label htmlFor={`${fieldId}-state`} className="block text-sm font-medium text-foreground mb-2">State *</label>
               <input
                 type="text"
+                id={`${fieldId}-state`}
                 value={addressForm.state}
                 onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
                 placeholder="Maharashtra"
@@ -688,9 +696,10 @@ export default function AddressManager({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Postal Code *</label>
+              <label htmlFor={`${fieldId}-postalCode`} className="block text-sm font-medium text-foreground mb-2">Postal Code *</label>
               <input
                 type="text"
+                id={`${fieldId}-postalCode`}
                 value={addressForm.postalCode}
                 onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
                 placeholder="400001 or SW1A 1AA"
@@ -756,12 +765,12 @@ export default function AddressManager({
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                id="defaultAddress"
+                id={`${fieldId}-default`}
                 checked={addressForm.isDefault}
                 onChange={(e) => setAddressForm({ ...addressForm, isDefault: e.target.checked })}
                 className="w-4 h-4 text-primary rounded"
               />
-              <label htmlFor="defaultAddress" className="text-sm text-foreground">
+              <label htmlFor={`${fieldId}-default`} className="text-sm text-foreground">
                 Set as default address
               </label>
             </div>
