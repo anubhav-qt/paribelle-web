@@ -15,12 +15,12 @@ export function getUserId(): string | null {
 }
 
 /**
- * The roles the API lets into its admin endpoints (`AdminOnly()` there). The
- * admin pages used to admit super_admin alone, so a vendor_admin was sent to
- * /admin by the login and straight back to /admin/login by the shell.
+ * The role that opens the admin, as the API's `AdminOnly()` checks it:
+ * super_admin only. vendor_admin is the old marketplace's vendor role, which
+ * anyone could sign up for.
  */
 export function isStoreAdminRole(role: unknown): boolean {
-  return role === 'super_admin' || role === 'vendor_admin';
+  return role === 'super_admin';
 }
 
 /**
