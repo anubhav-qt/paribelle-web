@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/lib/currency';
+import { cartItemTitle } from '@/lib/cartItemTitle';
 import { Button } from '@/components/ui/Button';
 import { QuantityStepper } from '@/components/ui/QuantityStepper';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -60,7 +61,7 @@ export default function CartPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <Link href={`/products/${item.slug}`} className="font-medium text-[hsl(var(--pb-ink))] hover:text-[hsl(var(--pb-rose-deep))]">
-                      {item.name}
+                      {cartItemTitle(item)}
                     </Link>
                     {item.variantAttributes && (
                       <p className="mt-0.5 text-xs text-[hsl(var(--pb-ink-faint))]">

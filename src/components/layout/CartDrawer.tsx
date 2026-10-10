@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/lib/currency';
+import { cartItemTitle } from '@/lib/cartItemTitle';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
 import { QuantityStepper } from '@/components/ui/QuantityStepper';
@@ -59,7 +60,7 @@ export default function CartDrawer() {
                       onClick={closeCart}
                       className="text-sm font-medium text-[hsl(var(--pb-ink))] line-clamp-2 hover:text-[hsl(var(--pb-rose-deep))]"
                     >
-                      {item.name}
+                      {cartItemTitle(item)}
                     </Link>
                     <button
                       onClick={() => removeFromCart(item.id)}
