@@ -30,17 +30,11 @@ type SortOption = 'popularity' | 'price-low' | 'price-high' | 'newest';
 const HIDDEN_FILTER_IDS = ['stock', 'stockQuantity', 'isActive', 'active', 'status', 'rating', 'variant attributes'];
 
 /**
- * Built-in filter sections not part of a category's `filterConfig` — Price,
- * Discount and (until now) Location and Customer Rating. This store sells one
- * brand's clothing rather than many local vendors, so Location is marketplace
- * furniture with nothing to filter by; Rating is dead because the catalogue
- * carries effectively no reviews, so every option but "All ratings" returns an
- * empty grid. Whether these come back is an open question for the team — see
- * the "Still open" section of the implementation plan — so this is a toggle,
- * not a deletion: removing 'rating' here restores the sidebar section with no
- * other change needed. Location's removal goes further (state and a network
- * fetch came out with it, see below) since restoring that filter is a bigger
- * job than flipping a flag regardless.
+ * Built-in filter sections not part of a category's `filterConfig`: Price,
+ * Discount and Customer Rating. Rating is hidden because the catalogue carries
+ * effectively no reviews, so every option but "All ratings" returns an empty
+ * grid. Whether it comes back is an open question for the team, so this is a
+ * toggle: removing 'rating' here restores the sidebar section.
  */
 const HIDDEN_STOREFRONT_FILTERS = ['rating'];
 

@@ -13,9 +13,7 @@ export async function GET(request: Request) {
   try {
     const backendOrigin = resolveBackendOrigin(process.env.NEXT_PUBLIC_API_URL);
     const pingUrl = `${backendOrigin}/api/v1/settings/name`;
-    
-    console.log(`[Cron] Pinging backend at ${pingUrl}`);
-    
+
     const response = await fetch(pingUrl, {
       method: 'GET',
       headers: {
@@ -41,7 +39,6 @@ export async function GET(request: Request) {
     const data = contentType.includes('application/json')
       ? await response.json()
       : await response.text();
-    console.log('[Cron] Backend is alive:', data);
     
     return new Response(
       JSON.stringify({ 

@@ -61,9 +61,7 @@ export default function AdminLoginPage() {
       document.cookie = `token=${data.access_token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
 
       // Check user role and redirect accordingly
-      if (data.user.role === 'super_admin') {
-        router.push('/admin');
-      } else if (data.user.role === 'vendor_admin') {
+      if (data.user.role === 'super_admin' || data.user.role === 'vendor_admin') {
         router.push('/admin');
       } else {
         setError('Access denied. Admin privileges required.');

@@ -100,7 +100,6 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
     
     // Only connect if authenticated and not on auth pages
     if (shouldSkipWebSocket || !hasToken) {
-      console.log('Skipping WebSocket connection on:', pathname);
       return;
     }
 
@@ -108,9 +107,7 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
     // Remove /api/v1 from the API URL for WebSocket connection
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     const wsUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
-    
-    console.log('Connecting WebSocket to:', wsUrl);
-    
+
     const socketInstance = io(wsUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -122,17 +119,14 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
     });
 
     socketInstance.on('connect', () => {
-      console.log('WebSocket connected:', socketInstance.id);
       setIsConnected(true);
     });
 
     socketInstance.on('disconnect', () => {
-      console.log('WebSocket disconnected');
       setIsConnected(false);
     });
 
     socketInstance.on('stockUpdated', (data: StockUpdate) => {
-      console.log('Stock updated:', data);
       setStockUpdates((prev) => {
         const newMap = new Map(prev);
         newMap.set(data.productId, data.stockQuantity);
@@ -141,7 +135,6 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
     });
 
     socketInstance.on('bulkStockUpdated', (data: BulkStockUpdate) => {
-      console.log('Bulk stock updated:', data);
       setStockUpdates((prev) => {
         const newMap = new Map(prev);
         data.updates.forEach(({ productId, stockQuantity }) => {
@@ -158,7 +151,6 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
     setSocket(socketInstance);
 
     return () => {
-      console.log('Cleaning up WebSocket connection');
       socketInstance.disconnect();
     };
   }, [pathname]);

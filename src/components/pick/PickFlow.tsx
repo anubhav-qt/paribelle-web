@@ -4,7 +4,6 @@ import * as React from 'react';
 import Link from 'next/link';
 import { ChevronLeft, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { STORE_VENDOR_ID } from '@/lib/auth';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { buttonClasses } from '@/components/ui/Button';
 import { PriceTag } from '@/components/ui/PriceTag';
@@ -235,7 +234,7 @@ function Results({ results, onBack, onRestart }: { results: PickResults; onBack:
                 onToggleWishlist={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  toggleWishlist({ productId: p.id, name: p.name, slug: p.slug, price: p.price, image, vendorId: STORE_VENDOR_ID, addedAt: Date.now() });
+                  toggleWishlist({ productId: p.id, name: p.name, slug: p.slug, price: p.price, image, addedAt: Date.now() });
                 }}
               >
                 <h3 className="line-clamp-2 font-display text-[1.05rem] leading-tight text-[hsl(var(--pb-ink))]">{p.name}</h3>

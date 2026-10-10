@@ -3,14 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const state = searchParams.get('state') || ''; // Get state parameter for vendor registration
-    const returnUrl = searchParams.get('returnUrl') || ''; // Get returnUrl for post-login redirect
-    
-    // Combine state and returnUrl into state parameter
-    const stateData = JSON.stringify({ 
-      type: state || 'login',
-      returnUrl: returnUrl 
-    });
+    // Where to land after signing in. The callback checks it is a path on this site.
+    const stateData = JSON.stringify({ returnUrl: searchParams.get('returnUrl') || '' });
     
     // Pinned to a configured origin rather than derived from the request's
     // Host header. Google rejects a redirect_uri that isn't byte-for-byte one

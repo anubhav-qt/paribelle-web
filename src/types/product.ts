@@ -1,7 +1,5 @@
 // Centralized Product types - use these across the entire application
 
-import { ThemeConfig } from './common';
-
 export interface Category {
   id: string;
   name: string;
@@ -11,7 +9,6 @@ export interface Category {
   isActive?: boolean;
   sortOrder?: number;
   level?: number;
-  vendorId?: string | null;
   /** Product an admin pinned as this category's mega-menu Editor's Pick. */
   featuredProductId?: string | null;
   /**
@@ -55,40 +52,6 @@ export interface ProductVariant {
   isActive: boolean;
 }
 
-export interface Vendor {
-  id: string;
-  storeName?: string;
-  businessName?: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  slug?: string;
-  contactEmail?: string;
-  subdomain?: string;
-  description?: string;
-  logo?: string;
-  banner?: string;
-  city?: string;
-  state?: string;
-  status?: string;
-  totalSales?: number;
-  totalProducts?: number;
-  totalOrders?: number;
-  rating?: number;
-  kycStatus?: 'pending' | 'submitted' | 'under_review' | 'approved' | 'rejected';
-  kycRejectedReason?: string;
-  kycSubmittedAt?: string;
-  kycBusinessRegistration?: string;
-  kycTaxDocument?: string;
-  kycIdentityProof?: string;
-  createdAt?: string;
-  cityId?: string | null;
-  subLocationId?: string | null;
-  locationCity?: { id: string; name: string } | null;
-  locationSubLocation?: { id: string; name: string } | null;
-  themeConfig?: ThemeConfig;
-}
-
 export interface Product {
   id: string;
   name: string;
@@ -103,8 +66,6 @@ export interface Product {
   featuredImage?: string;
   images?: string[];
   categories?: Category[];
-  vendor?: Vendor;
-  vendorId?: string;
   createdAt?: string;
   averageRating?: string | number;
   reviewCount?: number;
@@ -131,6 +92,6 @@ export interface Product {
    */
   attributes?: Record<string, string>;
 
-  /** Non-filterable extras (booking and tour blocks). */
+  /** Non-filterable extras. */
   metadata?: Record<string, any>;
 }

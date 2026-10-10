@@ -51,7 +51,7 @@ export const pageTemplates: Record<string, PageTemplate> = {
         visible: true,
         settings: {
           heading: 'Introduction',
-          content: `Welcome to our marketplace. We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website and use our services.`,
+          content: `Welcome to our store. We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website and use our services.`,
           padding: 'normal',
           backgroundColor: '#ffffff',
           textColor: '#1f2937'
@@ -136,9 +136,9 @@ When you visit our website, we automatically collect:
     description: 'Complete terms and conditions',
     icon: '📜',
     showInNavigation: true,
-    excerpt: 'Terms and conditions for using our marketplace platform',
+    excerpt: 'Terms and conditions for shopping with us',
     metaTitle: 'Terms of Service',
-    metaDescription: 'Read our terms and conditions for using our marketplace',
+    metaDescription: 'Read our terms and conditions',
     sections: [
       {
         id: generateId(),
@@ -166,7 +166,7 @@ When you visit our website, we automatically collect:
         visible: true,
         settings: {
           heading: 'Agreement to Terms',
-          content: `By accessing and using this marketplace website ("Service"), you accept and agree to be bound by the terms and provisions of this agreement. If you do not agree to these Terms of Service, please do not use our Service.`,
+          content: `By accessing and using this website ("Service"), you accept and agree to be bound by the terms and provisions of this agreement. If you do not agree to these Terms of Service, please do not use our Service.`,
           padding: 'normal',
           backgroundColor: '#ffffff',
           textColor: '#1f2937'
@@ -344,9 +344,7 @@ All non-essential cookies require your consent before being placed on your devic
         visible: true,
         settings: {
           heading: 'Our Story',
-          content: `Founded in 2024, our marketplace was created with a simple mission: to connect buyers and sellers in a trusted, secure, and efficient platform. We believe in empowering small businesses and individual vendors to reach a global audience while providing customers with access to unique, quality products.
-
-Our platform has grown to serve thousands of vendors and millions of customers worldwide, becoming a trusted destination for online shopping.`,
+          content: `Tell your story here: how the label started, who designs and makes the pieces, and what you want every customer to feel when they open the parcel.`,
           padding: 'normal',
           backgroundColor: '#ffffff',
           textColor: '#1f2937'
@@ -380,7 +378,7 @@ Our platform has grown to serve thousands of vendors and millions of customers w
             {
               icon: '🌍',
               title: 'Community',
-              description: 'Supporting vendors and customers in their success'
+              description: 'Looking after the people who make and wear our pieces'
             }
           ],
           columns: 2,
@@ -442,7 +440,7 @@ Our platform has grown to serve thousands of vendors and millions of customers w
         settings: {
           heading: 'Get In Touch',
           content: `## Email
-support@yourmarketplace.com
+support@yourstore.com
 
 ## Phone
 +1 (555) 123-4567
@@ -453,7 +451,7 @@ Saturday: 10:00 AM - 4:00 PM
 Sunday: Closed
 
 ## Address
-123 Marketplace Street  
+123 Main Street  
 City, State 12345  
 Country`,
           padding: 'normal',

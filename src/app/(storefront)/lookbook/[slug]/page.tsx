@@ -119,7 +119,6 @@ function ShopThisLookBar({ productIds }: { productIds: string[] }) {
         price: Number(product.price),
         quantity: 1,
         image: getProductImageUrl(product),
-        vendorId: product.vendorId || product.vendor?.id || '',
         stockQuantity: product.stockQuantity,
         maxQuantity: product.stockQuantity,
       });

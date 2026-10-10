@@ -33,7 +33,6 @@ function SearchContent() {
 
   // Navigate to homepage with category hash
   const handleCategoryNavigation = (categorySlug: string) => {
-    console.log('🟢 Navigating to homepage with category:', categorySlug);
     window.location.href = `/#category-${categorySlug}`;
   };
 

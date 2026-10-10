@@ -6,7 +6,6 @@ import { Product } from '@/types/product';
 interface UseProductsOptions {
   categoryId?: string;
   search?: string;
-  vendorId?: string;
   limit?: number;
   enabled?: boolean;
 }
@@ -20,16 +19,15 @@ interface ProductsResponse {
 }
 
 export function useInfiniteProducts(options: UseProductsOptions = {}) {
-  const { categoryId, search, vendorId, limit = 20, enabled = true } = options;
+  const { categoryId, search, limit = 20, enabled = true } = options;
   
   return useInfiniteQuery({
-    queryKey: ['products', 'infinite', categoryId, search, vendorId, limit],
+    queryKey: ['products', 'infinite', categoryId, search, limit],
     initialPageParam: 1,
     queryFn: async ({ pageParam = 1 }) => {
       const params = new URLSearchParams();
       if (categoryId) params.append('categoryId', categoryId);
       if (search) params.append('search', search);
-      if (vendorId) params.append('vendorId', vendorId);
       params.append('page', pageParam.toString());
       params.append('limit', limit.toString());
       

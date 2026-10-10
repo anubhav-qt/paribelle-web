@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { setAuthCookie } from '@/lib/cross-domain-auth';
+import { safeReturnPath } from '@/lib/returnUrl';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Input } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -13,7 +14,7 @@ import { Divider } from '@/components/ui/Divider';
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl');
+  const returnUrl = safeReturnPath(searchParams.get('returnUrl'));
   const urlError = searchParams.get('error');
   const urlMessage = searchParams.get('message');
   const [isLoading, setIsLoading] = useState(false);

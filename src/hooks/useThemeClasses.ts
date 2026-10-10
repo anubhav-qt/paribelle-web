@@ -1,9 +1,8 @@
 /**
  * Theme-aware CSS classes for the store's chrome.
  *
- * This used to switch between the marketplace palette and a per-vendor one.
- * PariBelle is the only store now, so there is a single set of classes — the
- * hook stays because a dozen pages compose their class names through it.
+ * One set of classes; the hook stays because a dozen pages compose their
+ * class names through it.
  */
 const THEME_CLASSES = {
   // Background colors

@@ -34,7 +34,6 @@ export default function ProductCard({ product, sectionBg }: ProductCardProps) {
       stockQuantity={product.stockQuantity}
       averageRating={averageRating || 0}
       reviewCount={product.reviewCount || 0}
-      vendorId={product.vendorId || product.vendor?.id}
       categoryLabel={product.categories?.[0]?.name}
       sectionBg={sectionBg}
       isNew={

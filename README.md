@@ -109,19 +109,17 @@ npm run dev
 ```
 - **Storefront**: `http://localhost:3000`
 - **Admin Panel**: `http://localhost:3000/admin`
-- **Seeded Admin Credentials**: `admin@paribelle.com` / `Admin@123`
+- **Admin login**: created by the backend's `npm run seed:admin` (set `ADMIN_EMAIL` and `ADMIN_PASSWORD`, or it prints a random password once)
 
 ---
 
 ## 💎 Core Capabilities & Single-Store Rules
 
-1. **Single-Store Consolidation**:
-   - The platform models products under a dedicated root vendor UUID (`NEXT_PUBLIC_STORE_VENDOR_ID`).
-   - Platform commission defaults strictly to `0%`.
-   - `/vendor/*` automatically redirects to the unified `/admin` dashboard.
+1. **One store**:
+   - PariBelle sells only its own products. The backend's `store` module holds the business details and policies; the multi-vendor marketplace code is in `archive/`.
 2. **Indian GST & HSN Invoicing**:
    - Automatic calculation of intra-state (`CGST` + `SGST`) vs inter-state (`IGST`) tax based on shipping destination.
-   - Dynamic HSN code lookup and automatic PDF invoice generation with amount in words.
+   - An HSN code reference list and automatic PDF invoice generation with amount in words.
 3. **Atomic Stock & Concurrency**:
    - Transactional conditional updates prevent race-condition overselling.
    - Variant-level stock binding (Size / Color) guarantees accurate inventory counts.

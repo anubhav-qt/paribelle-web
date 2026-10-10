@@ -1,454 +1,262 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { Receipt, Plus, Edit2, Trash2, Search, Upload, Download } from 'lucide-react';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
-import { Loader } from '@/components/ui/Loader';
-import { showAlert, showConfirm } from '@/lib/dialog';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Download, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 
-interface HSNCode {
+import { confirmDialog, promptDialog, toast } from '@/components/admin/pom/dialogs';
+import { CenteredSpinner, Empty, Notice, PageHeader, SearchBox } from '@/components/admin/pom/ui';
+import { api, errorMessage } from '@/lib/api';
+import { isSuperAdmin } from '@/lib/auth';
+
+interface HsnCode {
   id: string;
   code: string;
   description: string;
-  gstRate: number;
-  createdAt: string;
+  /** A Postgres numeric, so it arrives as a string ("5.00"). */
+  recommendedGstRate: number | string;
   updatedAt: string;
 }
 
-export default function HSNCodesPage() {
-  const { isAuthenticated, loading } = useAdminAuth();
-  const [hsnCodes, setHsnCodes] = useState<HSNCode[]>([]);
-  const [filteredCodes, setFilteredCodes] = useState<HSNCode[]>([]);
-  const [loadingCodes, setLoadingCodes] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingCode, setEditingCode] = useState<HSNCode | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [seedMessage, setSeedMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [formData, setFormData] = useState({
-    code: '',
-    description: '',
-    gstRate: 18,
-  });
+interface ImportResult {
+  imported: number;
+  skipped: number;
+  total?: number;
+  source?: string;
+  errors?: string[];
+}
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchHSNCodes();
-    }
-  }, [isAuthenticated]);
+const RATE_SUGGESTIONS = ['0', '3', '5', '18', '40'];
+const rate = (h: HsnCode) => Number(h.recommendedGstRate);
 
-  useEffect(() => {
-    if (searchQuery) {
-      const filtered = hsnCodes.filter(
-        (hsn) =>
-          hsn.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          hsn.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredCodes(filtered);
-    } else {
-      setFilteredCodes(hsnCodes);
-    }
-  }, [searchQuery, hsnCodes]);
+const TEMPLATE_CSV =
+  'HSN Code,Description,GST Rate\n' +
+  '6204,"Women\'s suits, ensembles, dresses, skirts",5\n' +
+  '6211,"Track suits, ski suits and other garments",5\n' +
+  '7117,"Imitation jewellery",3\n';
 
-  const fetchHSNCodes = async () => {
+/**
+ * A reference list of HSN codes and the GST rate each carries. Products keep
+ * their own HSN code and GST rate; invoices print those, not this list.
+ */
+export default function HsnCodesPage() {
+  const [codes, setCodes] = useState<HsnCode[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [busy, setBusy] = useState<'upload' | 'preset' | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const superAdmin = useMemo(() => isSuperAdmin(), []);
+
+  const load = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/hsn-codes`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setHsnCodes(data);
-        setFilteredCodes(data);
-      }
-    } catch (error) {
-      console.error('Error fetching HSN codes:', error);
-    } finally {
-      setLoadingCodes(false);
+      setCodes(await api.get<HsnCode[]>('/hsn-codes'));
+    } catch (e) {
+      setLoadError(errorMessage(e, 'Could not load the HSN codes.'));
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const token = localStorage.getItem('token');
-      const url = editingCode
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/hsn-codes/${editingCode.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/hsn-codes`;
-      
-      const response = await fetch(url, {
-        method: editingCode ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!codes || !q) return codes ?? [];
+    return codes.filter((h) => h.code.includes(q) || h.description.toLowerCase().includes(q));
+  }, [codes, query]);
+
+  async function edit(existing?: HsnCode) {
+    const values = await promptDialog({
+      title: existing ? `Edit HSN ${existing.code}` : 'Add an HSN code',
+      confirmText: existing ? 'Save' : 'Add',
+      fields: [
+        { name: 'code', label: 'HSN code', placeholder: '6204', required: true, defaultValue: existing?.code, hint: '4 to 8 digits.' },
+        {
+          name: 'description',
+          label: 'Description',
+          required: true,
+          multiline: true,
+          defaultValue: existing?.description,
         },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        showAlert(`HSN Code ${editingCode ? 'updated' : 'created'} successfully!`, 'success');
-        setShowAddModal(false);
-        setEditingCode(null);
-        setFormData({ code: '', description: '', gstRate: 18 });
-        fetchHSNCodes();
-      } else {
-        const error = await response.json();
-        showAlert(`Failed: ${error.message || 'Unknown error'}`, 'error');
-      }
-    } catch (error) {
-      console.error('Error saving HSN code:', error);
-      showAlert('Failed to save HSN code', 'error');
-    }
-  };
-
-  const handleEdit = (hsn: HSNCode) => {
-    setEditingCode(hsn);
-    setFormData({
-      code: hsn.code,
-      description: hsn.description,
-      gstRate: hsn.gstRate,
+        {
+          name: 'gstRate',
+          label: 'GST rate (%)',
+          required: true,
+          defaultValue: existing ? String(rate(existing)) : '5',
+          suggestions: RATE_SUGGESTIONS,
+          hint: 'Check it against the current CBIC rate schedule.',
+        },
+      ],
     });
-    setShowAddModal(true);
-  };
+    if (!values) return;
 
-  const handleDelete = async (id: string) => {
-    const ok = await showConfirm({ message: 'Are you sure you want to delete this HSN code?', confirmText: 'Delete', variant: 'danger' });
-    if (!ok) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/hsn-codes/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        showAlert('HSN Code deleted successfully!', 'success');
-        fetchHSNCodes();
-      } else {
-        showAlert('Failed to delete HSN code', 'error');
-      }
-    } catch (error) {
-      console.error('Error deleting HSN code:', error);
-      showAlert('Failed to delete HSN code', 'error');
+    const body = {
+      code: values.code.replace(/\s+/g, ''),
+      description: values.description.trim(),
+      gstRate: Number(values.gstRate),
+    };
+    if (!/^\d{4,8}$/.test(body.code)) return toast.error('An HSN code is 4 to 8 digits.');
+    if (!Number.isFinite(body.gstRate) || body.gstRate < 0 || body.gstRate > 40) {
+      return toast.error('The GST rate is a percentage from 0 to 40.');
     }
-  };
 
-  const closeModal = () => {
-    setShowAddModal(false);
-    setEditingCode(null);
-    setFormData({ code: '', description: '', gstRate: 18 });
-  };
-
-  const handleSeedCodes = async () => {
-    const ok = await showConfirm({ message: 'This will import all official CBIC HSN codes from the Indian government GST portal (cbic-gst.gov.in). Existing codes will be updated. Continue?', confirmText: 'Continue' });
-    if (!ok) return;
-    setImporting(true);
-    setSeedMessage(null);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/hsn-codes/import-preset`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const result = await response.json();
-      if (response.ok) {
-        setSeedMessage({ type: 'success', text: `${result.message} — ${result.imported} of ${result.total} codes imported. Source: ${result.source}` });
-        fetchHSNCodes();
-      } else {
-        setSeedMessage({ type: 'error', text: result.message || 'Import failed' });
-      }
-    } catch (error) {
-      console.error('Error importing HSN codes:', error);
-      setSeedMessage({ type: 'error', text: 'Failed to import codes' });
+      if (existing) await api.put(`/hsn-codes/${existing.id}`, body);
+      else await api.post('/hsn-codes', body);
+      toast.success(existing ? 'HSN code saved.' : 'HSN code added.');
+      await load();
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not save the HSN code.'));
+    }
+  }
+
+  async function remove(h: HsnCode) {
+    const ok = await confirmDialog({
+      title: `Delete HSN ${h.code}?`,
+      message: 'Products filed under it keep their code and GST rate.',
+      confirmText: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/hsn-codes/${h.id}`);
+      toast.success('HSN code deleted.');
+      await load();
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not delete the HSN code.'));
+    }
+  }
+
+  async function upload(file: File) {
+    setBusy('upload');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const result = await api.upload<ImportResult>('/hsn-codes/import', form);
+      toast.success(`Imported ${result.imported} codes${result.skipped ? `, skipped ${result.skipped}` : ''}.`);
+      await load();
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not import that file.'));
     } finally {
-      setImporting(false);
+      setBusy(null);
+      if (fileRef.current) fileRef.current.value = '';
     }
-  };
+  }
 
-  const handleDownloadTemplate = () => {
-    const csvContent = 'HSN Code,Description,GST Rate\n6109,"T-shirts, singlets and other vests",12\n6203,"Men suits and jackets",12\n8517,"Mobile phones",18';
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
+  async function importPreset() {
+    const ok = await confirmDialog({
+      title: 'Import the official HSN codes?',
+      message: 'Fetches the CBIC schedule from cbic-gst.gov.in. Codes already here are overwritten with its description and rate.',
+      confirmText: 'Import',
+    });
+    if (!ok) return;
+    setBusy('preset');
+    try {
+      const result = await api.post<ImportResult>('/hsn-codes/import-preset');
+      toast.success(`Imported ${result.imported} of ${result.total ?? result.imported} codes.`);
+      await load();
+    } catch (e) {
+      toast.error(errorMessage(e, 'The import failed.'));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function downloadTemplate() {
+    const url = URL.createObjectURL(new Blob([TEMPLATE_CSV], { type: 'text/csv' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = 'hsn-codes-template.csv';
-    document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  };
-
-  if (loading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader size="md" />
-      </div>
-    );
+    URL.revokeObjectURL(url);
   }
 
+  if (loadError) return <Notice tone="danger">{loadError}</Notice>;
+  if (!codes) return <CenteredSpinner />;
+
   return (
-    <>
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white shadow-sm border-b">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <Link
-                  href="/admin"
-                  className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
-                >
-                  ← Back to Dashboard
-                </Link>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                  <Receipt className="w-8 h-8" />
-                  HSN Code Management
-                </h1>
-                <p className="text-gray-600 mt-1">Manage HSN codes and GST rates for products</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleDownloadTemplate}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2"
-                  title="Download Excel Template"
-                >
-                  <Download className="w-5 h-5" />
-                  Template
-                </button>
-                <button
-                  onClick={handleSeedCodes}
-                  disabled={importing}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Import all standard Indian HSN codes into the system"
-                >
-                  <Upload className="w-5 h-5" />
-                  {importing ? 'Importing...' : 'Import Codes'}
-                </button>
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add HSN Code
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="mx-auto max-w-5xl pb-10">
+      <PageHeader
+        title="HSN codes"
+        hint="A reference for the HSN code and GST rate you enter on each product."
+        actions={
+          <>
+            <button type="button" className="btn" onClick={downloadTemplate}>
+              <Download className="h-4 w-4" /> Template
+            </button>
+            <button type="button" className="btn" onClick={() => fileRef.current?.click()} disabled={busy !== null}>
+              <Upload className="h-4 w-4" /> {busy === 'upload' ? 'Uploading...' : 'Upload sheet'}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void upload(file);
+              }}
+            />
+            {superAdmin ? (
+              <button type="button" className="btn" onClick={importPreset} disabled={busy !== null}>
+                {busy === 'preset' ? 'Importing...' : 'Import CBIC list'}
+              </button>
+            ) : null}
+            <button type="button" className="btn btn-blue" onClick={() => edit()}>
+              <Plus className="h-4 w-4" /> Add code
+            </button>
+          </>
+        }
+      />
 
-        <div className="container mx-auto px-4 py-8">
-          {seedMessage && (
-            <div className={`mb-6 p-4 rounded-lg ${seedMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
-              {seedMessage.text}
-              <button onClick={() => setSeedMessage(null)} className="ml-4 text-sm underline">Dismiss</button>
-            </div>
-          )}
-          {/* Search Bar */}
-          <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search by HSN code or description..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
+      <SearchBox value={query} onChange={setQuery} placeholder="Search by code or description" className="mb-4" />
 
-          {/* HSN Codes Table */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            {loadingCodes ? (
-              <div className="p-8 text-center">
-                <Loader size="md" className="mx-auto" />
-              </div>
-            ) : filteredCodes.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                {searchQuery ? 'No HSN codes found matching your search.' : 'No HSN codes yet. Add your first one!'}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        HSN Code
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Description
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        GST Rate (%)
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Last Updated
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredCodes.map((hsn) => (
-                      <tr key={hsn.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{hsn.code}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{hsn.description}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            {hsn.gstRate}%
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(hsn.updatedAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEdit(hsn)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4 inline" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(hsn.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4 inline" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Common HSN Codes Reference */}
-          <div className="mt-8 bg-blue-50 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Common HSN Codes Reference</h3>
-            <div className="grid md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="font-medium text-gray-700">Textiles & Clothing:</p>
-                <ul className="ml-4 mt-1 text-gray-600 space-y-1">
-                  <li>6109 - T-shirts (5-12% GST)</li>
-                  <li>6203 - Men's suits, jackets (5-12% GST)</li>
-                  <li>6204 - Women's suits, dresses (5-12% GST)</li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-medium text-gray-700">Footwear:</p>
-                <ul className="ml-4 mt-1 text-gray-600 space-y-1">
-                  <li>6401-6405 - Footwear (5-18% GST)</li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-medium text-gray-700">Electronics:</p>
-                <ul className="ml-4 mt-1 text-gray-600 space-y-1">
-                  <li>8517 - Mobile phones (12-18% GST)</li>
-                  <li>8528 - TVs, monitors (18-28% GST)</li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-medium text-gray-700">Books & Stationery:</p>
-                <ul className="ml-4 mt-1 text-gray-600 space-y-1">
-                  <li>4901 - Books (0% GST)</li>
-                  <li>4820 - Notebooks (12% GST)</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Add/Edit Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
-              <h2 className="text-2xl font-bold mb-4">
-                {editingCode ? 'Edit HSN Code' : 'Add New HSN Code'}
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    HSN Code *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 6109"
-                    required
-                    disabled={!!editingCode}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description *
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                    placeholder="e.g., T-shirts, singlets and other vests, knitted or crocheted"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    GST Rate (%) *
-                  </label>
-                  <select
-                    value={formData.gstRate}
-                    onChange={(e) => setFormData({ ...formData, gstRate: parseFloat(e.target.value) })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="0">0% (Essential goods)</option>
-                    <option value="5">5% (Basic necessities)</option>
-                    <option value="12">12% (Standard goods)</option>
-                    <option value="18">18% (General goods)</option>
-                    <option value="28">28% (Luxury goods)</option>
-                  </select>
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-                  >
-                    {editingCode ? 'Update' : 'Add'} HSN Code
-                  </button>
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
+      <div className="panel overflow-hidden">
+        {shown.length === 0 ? (
+          <Empty
+            title={query ? 'No HSN codes match.' : 'No HSN codes yet.'}
+            hint={query ? undefined : 'Add one, or upload a sheet with the columns HSN Code, Description and GST Rate.'}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="grid-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Description</th>
+                  <th className="text-right">GST</th>
+                  <th>Updated</th>
+                  <th className="w-px" />
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((h) => (
+                  <tr key={h.id}>
+                    <td className="font-mono text-[13px]">{h.code}</td>
+                    <td className="max-w-[28rem] text-[13px]">{h.description}</td>
+                    <td className="text-right tabular-nums">{rate(h)}%</td>
+                    <td className="muted whitespace-nowrap text-[13px]">{new Date(h.updatedAt).toLocaleDateString('en-IN')}</td>
+                    <td className="whitespace-nowrap text-right">
+                      <button type="button" className="btn btn-white px-2" onClick={() => edit(h)} aria-label={`Edit ${h.code}`}>
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      {superAdmin ? (
+                        <button
+                          type="button"
+                          className="btn btn-white ml-1 px-2"
+                          onClick={() => remove(h)}
+                          aria-label={`Delete ${h.code}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

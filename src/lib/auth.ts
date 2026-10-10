@@ -1,20 +1,4 @@
 /**
- * The single store this site sells for. The backend still models products as
- * belonging to a vendor, so every write needs an id — but there is only ever
- * one, so it comes from configuration rather than from the logged-in user.
- */
-export const STORE_VENDOR_ID =
-  process.env.NEXT_PUBLIC_STORE_VENDOR_ID || '00000000-0000-0000-0000-000000000001';
-
-/**
- * The store's vendor id. Kept as a function (rather than callers reading the
- * constant) so the admin pages read the same way they did when the id varied.
- */
-export function getVendorId(): string {
-  return STORE_VENDOR_ID;
-}
-
-/**
  * Get current user's ID
  */
 export function getUserId(): string | null {
@@ -46,19 +30,11 @@ export function isSuperAdmin(): boolean {
 }
 
 /**
- * Vendor id to stamp on newly created products — always the store's own.
- */
-export function getProductVendorId(): string {
-  return STORE_VENDOR_ID;
-}
-
-/**
  * Clear authentication data from localStorage
  */
 export function clearAuth() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  localStorage.removeItem('vendorId');
   
   // Trigger storage event for other tabs/components
   window.dispatchEvent(new Event('storage'));

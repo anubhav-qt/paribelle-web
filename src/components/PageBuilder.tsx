@@ -125,7 +125,6 @@ export default function PageBuilder({ sections, onChange, onAddSection }: PageBu
               <button
                 type="button"
                 onClick={() => {
-                  console.log('Edit clicked for section:', section.id, 'Current expanded:', expandedSection);
                   setExpandedSection(expandedSection === section.id ? null : section.id);
                 }}
                 className="px-3 py-1.5 hover:bg-background rounded inline-flex items-center gap-1.5 text-sm font-medium"

@@ -11,20 +11,14 @@ import { api, errorMessage } from '@/lib/api';
 interface Invoice {
   id: string;
   invoiceNumber: string;
-  type: 'customer' | 'vendor' | 'platform';
-  status: 'draft' | 'sent' | 'paid' | 'cancelled' | 'overdue';
+  status: 'draft' | 'pending' | 'sent' | 'paid' | 'cancelled' | 'overdue';
   invoiceDate: string;
   dueDate: string;
   total: number;
-  payoutAmount?: number;
-  commissionAmount?: number;
   billingName: string;
   billingEmail: string;
   order: {
     orderNumber: string;
-  };
-  vendor?: {
-    businessName: string;
   };
   customer?: {
     name: string;
@@ -39,7 +33,6 @@ export default function AdminInvoicesPage() {
   const [error, setError] = useState('');
   
   // Filters
-  const [typeFilter, setTypeFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -50,13 +43,13 @@ export default function AdminInvoicesPage() {
 
   useEffect(() => {
     fetchInvoices();
-  }, [typeFilter, statusFilter, page]);
+  }, [statusFilter, page]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
       const data = await api.get<{ invoices: Invoice[]; pages: number }>('/invoices', {
-        params: { type: typeFilter, status: statusFilter, page, limit: 20 },
+        params: { status: statusFilter, page, limit: 20 },
       });
       setInvoices(data.invoices);
       setTotalPages(data.pages);
@@ -140,20 +133,9 @@ export default function AdminInvoicesPage() {
     }
   };
 
-  // Using centralized getStatusColor from @/lib/utils/status
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'customer':
-        return 'Customer';
-      case 'vendor':
-        return 'Vendor Payout';
-      case 'platform':
-        return 'Commission';
-      default:
-        return type;
-    }
-  };
+  // Credit notes share the invoice table, numbered CN-.
+  const getTypeLabel = (invoice: Invoice) =>
+    invoice.invoiceNumber?.startsWith('CN-') ? 'Credit note' : 'Invoice';
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -190,7 +172,7 @@ export default function AdminInvoicesPage() {
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Invoice Management</h1>
-                <p className="text-sm text-gray-600">Manage customer invoices, vendor payouts, and commission statements</p>
+                <p className="text-sm text-gray-600">Tax invoices and credit notes for customer orders</p>
               </div>
             </div>
             <button
@@ -213,26 +195,6 @@ export default function AdminInvoicesPage() {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Type</label>
-            <select
-              value={typeFilter}
-              onChange={(e) => {
-                setTypeFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              <option value="">All Types</option>
-              <option value="customer">Customer Invoices</option>
-              <option value="vendor">Vendor Payouts</option>
-              {/* "Commission Invoices" removed from the filter — platform
-                  commission is 0 (see plan Task 1), so this type is no longer
-                  generated for new orders. Historic `platform` invoices still
-                  render if visited directly; the type value itself is untouched. */}
-            </select>
-          </div>
-
-          <div>
             <label className="block text-sm font-medium mb-2">Status</label>
             <select
               value={statusFilter}
@@ -244,6 +206,7 @@ export default function AdminInvoicesPage() {
             >
               <option value="">All Statuses</option>
               <option value="draft">Draft</option>
+              <option value="pending">Pending</option>
               <option value="sent">Sent</option>
               <option value="paid">Paid</option>
               <option value="overdue">Overdue</option>
@@ -254,7 +217,6 @@ export default function AdminInvoicesPage() {
           <div className="flex items-end">
             <button
               onClick={() => {
-                setTypeFilter('');
                 setStatusFilter('');
                 setPage(1);
               }}
@@ -285,7 +247,7 @@ export default function AdminInvoicesPage() {
                 Type
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Customer/Vendor
+                Customer
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Order #
@@ -311,7 +273,7 @@ export default function AdminInvoicesPage() {
                   {invoice.invoiceNumber}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {getTypeLabel(invoice.type)}
+                  {getTypeLabel(invoice)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <div>{invoice.billingName}</div>
@@ -321,32 +283,10 @@ export default function AdminInvoicesPage() {
                   {invoice.order?.orderNumber}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {invoice.type === 'vendor' ? (
-                    <>
-                      <div className="font-medium text-gray-900">
-                        {formatCurrency(invoice.payoutAmount || invoice.total)}
-                      </div>
-                      {invoice.commissionAmount && invoice.commissionAmount !== 0 && (
-                        <div className={`text-xs ${
-                          invoice.invoiceNumber?.startsWith('CN-') && invoice.commissionAmount < 0
-                            ? 'text-green-600'
-                            : 'text-gray-500'
-                        }`}>
-                          {invoice.invoiceNumber?.startsWith('CN-') && invoice.commissionAmount < 0
-                            ? `Commission Refund: ${formatCurrency(Math.abs(invoice.commissionAmount))}`
-                            : `Commission: ${formatCurrency(Math.abs(invoice.commissionAmount))}`
-                          }
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="font-medium text-gray-900">
-                      {formatCurrency(invoice.total)}
-                    </div>
-                  )}
+                  <div className="font-medium text-gray-900">{formatCurrency(invoice.total)}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(invoice.status, 'invoice')}`}>
+                  <span className={`px-2 py-1 text-xs rounded-sm ${getStatusColor(invoice.status, 'invoice')}`}>
                     {invoice.status.toUpperCase()}
                   </span>
                   {invoice.emailSent && (
@@ -432,15 +372,8 @@ export default function AdminInvoicesPage() {
           <div className="bg-white rounded-lg p-8 max-w-md">
             <h2 className="text-2xl font-bold mb-4">Auto-Generate Invoices</h2>
             <p className="text-gray-600 mb-6">
-              This will automatically generate invoices for all completed and paid orders that don't have invoices yet.
+              Creates a tax invoice for every paid order that doesn&apos;t have one yet.
             </p>
-            <div className="text-sm text-gray-500 mb-6">
-              This includes:
-              <ul className="list-disc list-inside mt-2">
-                <li>Customer invoices</li>
-                <li>Vendor payout statements</li>
-              </ul>
-            </div>
             <div className="flex justify-end space-x-4">
               <button
                 onClick={() => setShowAutoGenerate(false)}

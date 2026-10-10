@@ -28,8 +28,6 @@ export default function GoogleAuthHandler() {
           
           // Dispatch event to notify components
           window.dispatchEvent(new CustomEvent('userChanged'));
-          
-          console.log('Google OAuth successful, token and user stored in localStorage and cookies');
         }
         
         // Clean up URL by removing query parameters

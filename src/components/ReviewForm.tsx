@@ -5,37 +5,15 @@ import RatingInput from './RatingInput';
 import { Loader2, X } from 'lucide-react';
 
 interface ReviewFormProps {
-  type: 'product' | 'vendor';
-  itemId: string;
   itemName: string;
-  orderItemId?: string;
-  orderId?: string;
-  existingReview?: any;
-  onSubmit: (data: any) => Promise<void>;
+  existingReview?: { rating?: number; comment?: string } | null;
+  onSubmit: (data: { rating: number; comment: string }) => Promise<void>;
   onCancel: () => void;
 }
 
-export default function ReviewForm({
-  type,
-  itemId,
-  itemName,
-  orderItemId,
-  orderId,
-  existingReview,
-  onSubmit,
-  onCancel,
-}: ReviewFormProps) {
+export default function ReviewForm({ itemName, existingReview, onSubmit, onCancel }: ReviewFormProps) {
   const [rating, setRating] = useState(existingReview?.rating || 0);
   const [comment, setComment] = useState(existingReview?.comment || '');
-  const [productQualityRating, setProductQualityRating] = useState(
-    existingReview?.productQualityRating || 0
-  );
-  const [shippingSpeedRating, setShippingSpeedRating] = useState(
-    existingReview?.shippingSpeedRating || 0
-  );
-  const [customerServiceRating, setCustomerServiceRating] = useState(
-    existingReview?.customerServiceRating || 0
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -54,35 +32,8 @@ export default function ReviewForm({
     }
 
     setIsSubmitting(true);
-
     try {
-      const data: any = {
-        rating,
-        comment,
-      };
-
-      if (type === 'product') {
-        data.productId = itemId;
-        if (orderItemId) {
-          data.orderItemId = orderItemId;
-        }
-      } else {
-        data.vendorId = itemId;
-        if (orderId) {
-          data.orderId = orderId;
-        }
-        if (productQualityRating > 0) {
-          data.productQualityRating = productQualityRating;
-        }
-        if (shippingSpeedRating > 0) {
-          data.shippingSpeedRating = shippingSpeedRating;
-        }
-        if (customerServiceRating > 0) {
-          data.customerServiceRating = customerServiceRating;
-        }
-      }
-
-      await onSubmit(data);
+      await onSubmit({ rating, comment: comment.trim() });
     } catch (err: any) {
       setError(err.message || 'Failed to submit review');
     } finally {
@@ -125,34 +76,6 @@ export default function ReviewForm({
         required
       />
 
-      {/* Vendor-specific ratings */}
-      {type === 'vendor' && (
-        <div className="space-y-3 p-4 bg-accent/50 rounded-lg">
-          <h4 className="text-sm font-medium text-foreground">Detailed Ratings (Optional)</h4>
-          
-          <RatingInput
-            label="Product Quality"
-            value={productQualityRating}
-            onChange={setProductQualityRating}
-            size="sm"
-          />
-
-          <RatingInput
-            label="Shipping Speed"
-            value={shippingSpeedRating}
-            onChange={setShippingSpeedRating}
-            size="sm"
-          />
-
-          <RatingInput
-            label="Customer Service"
-            value={customerServiceRating}
-            onChange={setCustomerServiceRating}
-            size="sm"
-          />
-        </div>
-      )}
-
       {/* Comment */}
       <div className="space-y-1">
         <label className="text-sm font-medium text-foreground">
@@ -162,7 +85,7 @@ export default function ReviewForm({
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder={`Share your experience with this ${type}...`}
+          placeholder="Share your experience with this product..."
           className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring min-h-[100px]"
           required
         />

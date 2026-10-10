@@ -31,8 +31,7 @@ import {
   useProductBySlug,
   useCategoryProducts,
   useProductReviews,
-  useVendorReviewStats,
-  useVendorPoliciesFor,
+  useStorePolicies,
 } from '@/hooks/useStorefrontData';
 import { showAlert } from '@/lib/dialog';
 import { useExchangePicker, addExchangePick, formatVariantLabel } from '@/lib/exchangePicker';
@@ -102,10 +101,9 @@ export default function ProductDetailPage() {
   // `undefined` is "not loaded yet"; `null` is a genuine 404.
   const loading = fetchedProduct === undefined;
 
-  const vendorId = fetchedProduct?.vendorId ?? null;
-  const { returnPolicy: vendorReturnPolicy, cancellationPolicy: vendorCancellationPolicy } =
-    useVendorPoliciesFor(vendorId);
-  const { data: vendorStats } = useVendorReviewStats(vendorId);
+  const { data: policies } = useStorePolicies();
+  const returnPolicy = policies?.returnPolicy;
+  const cancellationPolicy = policies?.cancellationPolicy;
 
   // Reviews stay lazy — they're below the fold and behind a toggle, so there's
   // no reason to pay for them on a page view that never opens them.
@@ -216,7 +214,7 @@ export default function ProductDetailPage() {
     setShowReviews(true);
   };
 
-  const handleReviewSubmit = async (data: any) => {
+  const handleReviewSubmit = async (data: { rating: number; comment: string }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
@@ -292,7 +290,6 @@ export default function ProductDetailPage() {
           price: Number(selectedVariant.price),
           quantity: quantity,
           image: selectedVariant.images?.[0] || product.images?.[0] || product.featuredImage || '/placeholder-product.png',
-          vendorId: product.vendorId || '',
           stockQuantity: selectedVariant.stockQuantity,
           maxQuantity: selectedVariant.stockQuantity,
           priceType: product.priceType || 'mrp_with_gst',
@@ -307,7 +304,6 @@ export default function ProductDetailPage() {
           price: Number(selectedVariation?.price || product.price),
           quantity: quantity,
           image: (selectedVariation?.images?.[0] || selectedVariation?.featuredImage) || product.images?.[0] || product.featuredImage || '/placeholder-product.png',
-          vendorId: product.vendorId || '',
           stockQuantity: stockQuantity ?? undefined,
           maxQuantity: stockQuantity ?? undefined,
           priceType: product.priceType || 'mrp_with_gst',
@@ -369,7 +365,6 @@ export default function ProductDetailPage() {
         slug: product.slug,
         price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
         image: product.featuredImage || '/placeholder-product.png',
-        vendorId: product.vendorId || '',
         addedAt: Date.now(),
       });
     }
@@ -534,11 +529,11 @@ export default function ProductDetailPage() {
             We do not accept returns for a refund. Exchanges are available within 7 days of delivery,
             for an unworn item with its tags attached.
           </p>
-          {vendorReturnPolicy?.enabled && <p>{vendorReturnPolicy.text}</p>}
-          {vendorCancellationPolicy?.enabled && (
+          {returnPolicy?.enabled && <p>{returnPolicy.text}</p>}
+          {cancellationPolicy?.enabled && (
             <div>
               <p className="font-medium text-[hsl(var(--pb-ink))]">Cancellation</p>
-              <p>{vendorCancellationPolicy.text}</p>
+              <p>{cancellationPolicy.text}</p>
             </div>
           )}
           <Link
@@ -821,13 +816,6 @@ export default function ProductDetailPage() {
                 ))}
               </div>
             )}
-
-            {vendorStats && vendorStats.totalReviews > 0 && (
-              <div className="mt-6 flex items-center gap-4 text-xs text-[hsl(var(--pb-ink-muted))]">
-                <Rating value={vendorStats.averageRating} size="sm" showValue={false} />
-                <span>({vendorStats.totalReviews} store reviews)</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -858,19 +846,18 @@ export default function ProductDetailPage() {
                 {showReviews ? 'Hide Reviews' : `View All ${product.reviewCount} Reviews`}
               </Button>
             )}
-            <Button size="sm" onClick={handleWriteReview}>
-              Write a Review
-            </Button>
+            {(!isLoggedIn || hasPurchased) && (
+              <Button size="sm" onClick={handleWriteReview}>
+                Write a Review
+              </Button>
+            )}
           </div>
         </div>
 
         {showReviewForm && (
           <div className="mt-6">
             <ReviewForm
-              type="product"
-              itemId={product.id}
               itemName={product.name}
-              orderItemId={userOrderItemId}
               onSubmit={handleReviewSubmit}
               onCancel={() => setShowReviewForm(false)}
             />

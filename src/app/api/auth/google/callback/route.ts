@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { safeReturnPath } from '@/lib/returnUrl';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,15 +8,12 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get('error');
     const stateParam = searchParams.get('state');
     
-    // Parse state parameter
-    let state = { type: 'login', returnUrl: '' };
+    let returnUrl = '';
     try {
-      if (stateParam) {
-        state = JSON.parse(stateParam);
-      }
-    } catch (e) {
-      // Fallback for old state format (just a string)
-      state = { type: stateParam || 'login', returnUrl: '' };
+      // The redirect below carries the token: only ever to a path on this site.
+      if (stateParam) returnUrl = safeReturnPath(JSON.parse(stateParam)?.returnUrl) ?? '';
+    } catch {
+      // Not JSON: no return path.
     }
 
     if (error || !code) {
@@ -66,25 +64,24 @@ export async function GET(request: NextRequest) {
     }
 
     const authData = await authResponse.json();
-    console.log('Backend auth response:', { hasToken: !!authData.token, hasUser: !!authData.user });
     
     const token = authData.token;
     const user = authData.user;
 
     if (!token) {
-      console.error('No token in auth response:', authData);
+      console.error('No token in the backend auth response');
       return NextResponse.redirect(new URL('/login?error=no_token&message=' + encodeURIComponent('Authentication failed - no token received'), request.url));
     }
     
     if (!user) {
-      console.error('No user in auth response:', authData);
+      console.error('No user in the backend auth response');
       return NextResponse.redirect(new URL('/login?error=no_user&message=' + encodeURIComponent('Authentication failed - no user data received'), request.url));
     }
 
     // Determine redirect URL based on returnUrl, user role, or default
     let redirectUrl = '/';
-    if (state.returnUrl) {
-      redirectUrl = state.returnUrl;
+    if (returnUrl) {
+      redirectUrl = returnUrl;
     } else if (user?.role === 'vendor_admin' || user?.role === 'super_admin') {
       redirectUrl = '/admin';
     }

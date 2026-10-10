@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import { hydrateDataCache } from '@/lib/store/dataCache';
 import { CartProvider } from '@/contexts/CartContext';
 import { WishlistProvider } from '@/contexts/WishlistContext';
-import { PoliciesProvider } from '@/contexts/PoliciesContext';
 import { StockWebSocketProvider } from '@/contexts/StockWebSocketContext';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -21,7 +20,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             // The storefront's public reads live in the Zustand cache (see
             // lib/store/dataCache), not here. What is left on React Query is
-            // the admin and vendor surfaces, and these defaults are
+            // the admin surfaces, and these defaults are
             // deliberately *not* loosened for them.
             //
             // Widening staleTime or turning off refetch-on-mount would be
@@ -58,17 +57,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
         <StockWebSocketProvider>
           <NotificationsProvider>
-            <PoliciesProvider>
-              <CartProvider>
-                <WishlistProvider>
-                  <ToastProvider>
-                    {children}
-                    <CartDrawer />
-                    <DialogHost />
-                  </ToastProvider>
-                </WishlistProvider>
-              </CartProvider>
-            </PoliciesProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <ToastProvider>
+                  {children}
+                  <CartDrawer />
+                  <DialogHost />
+                </ToastProvider>
+              </WishlistProvider>
+            </CartProvider>
           </NotificationsProvider>
         </StockWebSocketProvider>
       </ThemeProvider>

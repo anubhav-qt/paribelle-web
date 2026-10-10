@@ -31,7 +31,6 @@ export default function WishlistPage() {
       price: item.price,
       quantity: 1,
       image: item.image,
-      vendorId: item.vendorId,
     });
     removeFromWishlist(item.productId);
   };

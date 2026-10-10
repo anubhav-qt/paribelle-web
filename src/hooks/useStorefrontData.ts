@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import { useCachedData, TTL } from '@/lib/store/dataCache';
 import {
   DEFAULT_HERO_IMAGES,
@@ -8,7 +7,7 @@ import {
   type HeroSectionImages,
 } from '@/lib/heroSectionImages';
 import type { Category, Product } from '@/types/product';
-import type { VendorPolicy } from '@/types/common';
+import type { StorePolicy } from '@/types/common';
 
 /**
  * The storefront's public reads, all routed through the shared cache.
@@ -111,59 +110,17 @@ export function useHeroSectionImages() {
   );
 }
 
-export interface MarketplacePolicies {
-  returnPolicy: VendorPolicy | null;
-  cancellationPolicy: VendorPolicy | null;
+export interface StorePolicies {
+  returnPolicy: StorePolicy | null;
+  cancellationPolicy: StorePolicy | null;
 }
 
-/** The marketplace-wide return and cancellation policies. */
-export function useMarketplacePolicies() {
-  return useCachedData<MarketplacePolicies>(
-    'policies:marketplace',
-    async () => {
-      const [returnRes, cancellationRes] = await Promise.all([
-        fetch(`${API()}/api/v1/settings/return_policy`),
-        fetch(`${API()}/api/v1/settings/cancellation_policy`),
-      ]);
-
-      // Each policy is stored as a JSON string inside a settings row, and an
-      // unset one is an empty value rather than a missing row.
-      const parse = async (response: Response): Promise<VendorPolicy | null> => {
-        if (!response.ok) return null;
-        const body = await response.json();
-        if (!body?.value) return null;
-        try {
-          return JSON.parse(body.value) as VendorPolicy;
-        } catch {
-          return null;
-        }
-      };
-
-      return {
-        returnPolicy: await parse(returnRes),
-        cancellationPolicy: await parse(cancellationRes),
-      };
-    },
+/** The store's return and cancellation policies. */
+export function useStorePolicies() {
+  return useCachedData<StorePolicies>(
+    'policies:store',
+    () => getJSON<StorePolicies>('/api/v1/store/policies'),
     { ttl: TTL.CONFIG, persistToDisk: true }
-  );
-}
-
-/** A vendor's policies, falling back to the marketplace defaults per field. */
-export function useVendorPoliciesFor(vendorId: string | undefined | null) {
-  const { data: marketplace } = useMarketplacePolicies();
-
-  const { data: vendor } = useCachedData<{ returnPolicy?: VendorPolicy; cancellationPolicy?: VendorPolicy } | null>(
-    vendorId ? `policies:vendor:${vendorId}` : null,
-    () => getJSON(`/api/v1/vendors/${vendorId}`),
-    { ttl: TTL.CONFIG }
-  );
-
-  return React.useMemo(
-    () => ({
-      returnPolicy: vendor?.returnPolicy ?? marketplace?.returnPolicy ?? null,
-      cancellationPolicy: vendor?.cancellationPolicy ?? marketplace?.cancellationPolicy ?? null,
-    }),
-    [vendor, marketplace]
   );
 }
 
@@ -260,14 +217,5 @@ export function useProductReviews(productId: string | null) {
     productId ? `product-reviews:${productId}` : null,
     () => getJSON(`/api/v1/reviews/products/${productId}?page=1&limit=10`),
     { ttl: TTL.SHORT }
-  );
-}
-
-/** A vendor's aggregate review stats. */
-export function useVendorReviewStats(vendorId: string | null) {
-  return useCachedData<{ totalReviews: number; averageRating: number } | null>(
-    vendorId ? `vendor-review-stats:${vendorId}` : null,
-    () => getJSON(`/api/v1/reviews/vendors/${vendorId}/stats`),
-    { ttl: TTL.CONFIG }
   );
 }

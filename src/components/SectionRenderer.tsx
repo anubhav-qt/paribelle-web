@@ -855,7 +855,6 @@ function QuickShopCard({ productId }: { productId: string }) {
       price,
       quantity: 1,
       image,
-      vendorId: product.vendorId || product.vendor?.id || '',
       stockQuantity: activeVariant?.stockQuantity ?? product.stockQuantity,
       maxQuantity: activeVariant?.stockQuantity ?? product.stockQuantity,
     });

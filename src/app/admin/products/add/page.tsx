@@ -16,7 +16,6 @@ import { Segmented } from '@/components/admin/pom/segmented';
 import { colorSwatch, sortSizes } from '@/components/admin/pom/swatch';
 import { ColorDot, FormField, Notice, PageHeader, Section, Toggle } from '@/components/admin/pom/ui';
 import { api, errorMessage } from '@/lib/api';
-import { getProductVendorId } from '@/lib/auth';
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
@@ -179,7 +178,6 @@ export default function AddProductPage() {
       sku: sku.trim(),
       hsnCode: hsn.trim() || null,
       priceType: inclGst ? 'mrp_with_gst' : 'selling_price_without_gst',
-      vendorId: getProductVendorId(),
     };
 
     if (mode === 'single' || !hasOptions) {

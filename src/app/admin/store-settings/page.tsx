@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { toast } from '@/components/admin/pom/dialogs';
 import { CenteredSpinner, FormField, Notice, PageHeader, SaveBar, Section } from '@/components/admin/pom/ui';
 import { api, errorMessage } from '@/lib/api';
-import { getVendorId } from '@/lib/auth';
 
 const STATES = [
   'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh', 'Chhattisgarh',
@@ -41,7 +40,6 @@ const PAN = /^[A-Z]{5}\d{4}[A-Z]$/;
  * because it changes rarely and has to be exactly right.
  */
 export default function BusinessDetailsPage() {
-  const vendorId = getVendorId();
   const [saved, setSaved] = useState<Values | null>(null);
   const [values, setValues] = useState<Values>(EMPTY);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -49,7 +47,7 @@ export default function BusinessDetailsPage() {
 
   useEffect(() => {
     api
-      .get<Record<string, unknown> & { data?: Record<string, unknown> }>(`/vendors/${vendorId}`)
+      .get<Record<string, unknown> & { data?: Record<string, unknown> }>('/store')
       .then((res) => {
         const v = (res?.data ?? res ?? {}) as Record<string, unknown>;
         const next = Object.fromEntries(FIELDS.map((f) => [f, v[f] == null ? '' : String(v[f])])) as Values;
@@ -57,7 +55,7 @@ export default function BusinessDetailsPage() {
         setValues(next);
       })
       .catch((e) => setLoadError(errorMessage(e, 'Could not load the business details.')));
-  }, [vendorId]);
+  }, []);
 
   const set = (f: Field, v: string) => setValues((cur) => ({ ...cur, [f]: v }));
   const changed = saved ? FIELDS.filter((f) => values[f] !== saved[f]) : [];
@@ -73,7 +71,7 @@ export default function BusinessDetailsPage() {
     setSaving(true);
     try {
       const body = Object.fromEntries(changed.map((f) => [f, values[f].trim()]));
-      await api.patch(`/vendors/${vendorId}`, body);
+      await api.patch('/store', body);
       setSaved(values);
       toast.success('Business details saved.');
     } catch (e) {

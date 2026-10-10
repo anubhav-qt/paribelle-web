@@ -19,30 +19,12 @@ import {
   exchangeStatusStyle,
   exchangeStatusLabel,
 } from '@/lib/utils/exchange';
-import OrderReturnsDisplay from '@/components/OrderReturnsDisplay';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 import ShipBackModal from '@/components/ShipBackModal';
 import { useMarketplaceWebSocket } from '@/contexts/StockWebSocketContext';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import { Order, OrderItem } from '@/types/common';
 import { Loader } from '@/components/ui/Loader';
-
-interface ReturnDetails {
-  orderNumber: string;
-  returnAuthNumber: string;
-  returnReason: string;
-  qrCodeDataUrl: string;
-  returnAddress: {
-    name: string;
-    addressLine1: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-    phone: string;
-  };
-  instructions: string[];
-}
 
 export default function OrdersPage() {
   return (
@@ -70,7 +52,6 @@ function OrdersPageInner() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [returnDetails, setReturnDetails] = useState<ReturnDetails | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showExchangeModal, setShowExchangeModal] = useState(false);
   const [itemForExchange, setItemForExchange] = useState<OrderItem | null>(null);
@@ -80,11 +61,6 @@ function OrdersPageInner() {
   const [cancelReasonOther, setCancelReasonOther] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [orderToAction, setOrderToAction] = useState<Order | null>(null);
-  
-  // Status change modal state for admin/vendor
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [selectedOrderForStatusChange, setSelectedOrderForStatusChange] = useState<Order | null>(null);
-  const [user, setUser] = useState<any>(null);
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -96,15 +72,9 @@ function OrdersPageInner() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-    
     if (!token) {
       router.push(`/login?returnUrl=${encodeURIComponent('/orders')}`);
       return;
-    }
-
-    if (userStr) {
-      setUser(JSON.parse(userStr));
     }
 
     fetchOrders();
@@ -113,7 +83,6 @@ function OrdersPageInner() {
   // Subscribe to order status updates via WebSocket
   useEffect(() => {
     const unsubscribe = subscribeToOrderStatusUpdates((update) => {
-      console.log('Order status updated via WebSocket:', update);
       // Refresh orders when any order status changes
       fetchOrders();
       
@@ -206,71 +175,6 @@ function OrdersPageInner() {
       setLoading(false);
     }
   };
-
-  // Get next possible statuses based on current status
-  const getNextStatuses = (currentStatus: string): string[] => {
-    const statusMap: { [key: string]: string[] } = {
-      'pending': ['processing', 'cancelled'],
-      'processing': ['shipped', 'cancelled'],
-      'shipped': ['delivered', 'cancelled'],
-      'delivered': [],
-      'cancelled': [],
-      'return_requested': [],
-      'return_approved': [],
-    };
-    return statusMap[currentStatus.toLowerCase()] || [];
-  };
-
-  // Admin/Vendor: Handle status badge click
-  const handleStatusBadgeClick = (order: Order, event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (user?.role === 'super_admin' || user?.role === 'vendor_admin') {
-      const nextStatuses = getNextStatuses(order.status);
-      if (nextStatuses.length > 0) {
-        setSelectedOrderForStatusChange(order);
-        setShowStatusModal(true);
-      }
-    }
-  };
-
-  // Admin/Vendor: Update order status
-  const handleUpdateOrderStatus = async (newStatus: string) => {
-    if (!selectedOrderForStatusChange) return;
-
-    setActionLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${selectedOrderForStatusChange.id}/status`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
-
-      if (response.ok) {
-        showToast(`Order status updated to ${newStatus}`, 'success');
-        setShowStatusModal(false);
-        setSelectedOrderForStatusChange(null);
-        fetchOrders();
-      } else {
-        const error = await response.json();
-        showToast(error.message || 'Failed to update order status', 'error');
-      }
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      showToast('Failed to update order status', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Check if user is admin or vendor
-  const isAdminOrVendor = user?.role === 'super_admin' || user?.role === 'vendor_admin';
 
   const handleCancelOrder = async () => {
     if (!orderToAction || !cancelReason) {
@@ -796,38 +700,21 @@ function OrdersPageInner() {
                         </h3>
                         {/* Current Order Status */}
                         <span
-                          onClick={(e) => handleStatusBadgeClick(order, e)}
-                          className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${getStatusColor(
-                            order.status
-                          )} ${
-                            isAdminOrVendor && getNextStatuses(order.status).length > 0
-                              ? 'cursor-pointer hover:opacity-80 transition-opacity'
-                              : ''
-                          }`}
-                          title={
-                            isAdminOrVendor && getNextStatuses(order.status).length > 0
-                              ? 'Click to change status'
-                              : undefined
-                          }
+                          className={`px-3 py-1 rounded-sm text-sm font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}
                         >
                           {getStatusIcon(order.status)}
                           {order.status}
-                          {isAdminOrVendor && getNextStatuses(order.status).length > 0 && (
-                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          )}
                         </span>
                         
                         {/* Additional Return Status Indicators (if applicable) */}
                         {order.returnApprovedAt && (
-                          <span className="px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                          <span className="px-3 py-1 rounded-sm text-sm font-medium flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
                             <CheckCircle className="w-4 h-4" />
                             Return Approved
                           </span>
                         )}
                         {order.returnRejectedAt && (
-                          <span className="px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                          <span className="px-3 py-1 rounded-sm text-sm font-medium flex items-center gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
                             <XCircle className="w-4 h-4" />
                             Return Rejected
                           </span>
@@ -905,7 +792,7 @@ function OrdersPageInner() {
                                   </p>
                                   {highlighted && (
                                     <span
-                                      className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${style.chip}`}
+                                      className={`mt-1 inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${style.chip}`}
                                     >
                                       {exchangeStatusLabel(exchange.primary?.status)}
                                       {exchange.rows.length > 1 ? ` · ${exchange.rows.length} requests` : ''}
@@ -1000,38 +887,7 @@ function OrdersPageInner() {
                   {/* Order Actions */}
                   <div className="border-t border-border mt-4 pt-4 flex flex-wrap gap-3">
                     <button
-                      onClick={async () => {
-                        setSelectedOrder(order);
-                        
-                        console.log('Order status:', order.status);
-                        
-                        // Fetch return details if order is return_approved or returned
-                        if (order.status === 'return_approved' || order.status === 'returned') {
-                          console.log('Fetching return details for order:', order.id);
-                          try {
-                            const token = localStorage.getItem('token');
-                            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/orders/${order.id}/return-details`, {
-                              headers: {
-                                'Authorization': `Bearer ${token}`,
-                              },
-                            });
-
-                            console.log('Return details response status:', response.status);
-                            if (response.ok) {
-                              const details = await response.json();
-                              console.log('Return details:', details);
-                              setReturnDetails(details);
-                            } else {
-                              console.error('Failed to fetch return details:', await response.text());
-                            }
-                          } catch (error) {
-                            console.error('Error fetching return details:', error);
-                          }
-                        } else {
-                          console.log('Order not eligible for return details display');
-                          setReturnDetails(null);
-                        }
-                      }}
+                      onClick={() => setSelectedOrder(order)}
                       className="px-4 py-2 border border-[hsl(var(--pb-rose))] text-[hsl(var(--pb-rose-deep))] rounded-sm hover:bg-[hsl(var(--pb-blush-wash))] transition-colors font-medium flex items-center gap-2"
                     >
                       <Eye className="w-4 h-4" />
@@ -1126,7 +982,6 @@ function OrdersPageInner() {
         <OrderDetailsModal
           order={selectedOrder}
           isAdmin={false}
-          returnDetails={returnDetails}
           onClose={() => setSelectedOrder(null)}
           onPrintInvoice={handlePrintInvoice}
           getStatusColor={getStatusColor}
@@ -1243,67 +1098,6 @@ function OrdersPageInner() {
         />
       )}
       
-      {/* Status Change Modal for Admin/Vendor */}
-      {showStatusModal && selectedOrderForStatusChange && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <h3 className="text-xl font-semibold text-foreground mb-2">
-                Change Order Status
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Order #{selectedOrderForStatusChange.orderNumber}
-              </p>
-              
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-sm font-medium text-foreground">Current:</span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedOrderForStatusChange.status)}`}>
-                    {selectedOrderForStatusChange.status}
-                  </span>
-                </div>
-                
-                <p className="text-sm font-medium text-foreground mb-2">Select new status:</p>
-                <div className="space-y-2">
-                  {getNextStatuses(selectedOrderForStatusChange.status).map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => handleUpdateOrderStatus(status)}
-                      disabled={actionLoading}
-                      className={`w-full px-4 py-3 rounded-lg border-2 text-left flex items-center justify-between transition-colors ${getStatusColor(status)} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {getStatusIcon(status)}
-                        <span className="font-medium">{status}</span>
-                      </span>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  ))}
-                </div>
-                
-                {getNextStatuses(selectedOrderForStatusChange.status).length === 0 && (
-                  <p className="text-sm text-muted-foreground italic">
-                    No status changes available for this order
-                  </p>
-                )}
-              </div>
-              
-              <button
-                onClick={() => {
-                  setShowStatusModal(false);
-                  setSelectedOrderForStatusChange(null);
-                }}
-                className="w-full px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Confirmation Dialog */}
       {confirm && (
         <ConfirmDialog

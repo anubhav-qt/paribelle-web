@@ -1,28 +1,7 @@
 // Centralized common types used across the application
 
-// Location related interfaces
-export interface City {
-  id: string;
-  name: string;
-  state?: string;
-}
-
-export interface SubLocation {
-  id: string;
-  name: string;
-  cityId: string;
-  zipCode?: string;
-}
-
-// Policy interfaces
-export interface Policy {
-  id: string;
-  type: string;
-  content: string;
-}
-
-// Vendor policy interface (different from platform Policy)
-export interface VendorPolicy {
+// The store's return or cancellation policy
+export interface StorePolicy {
   enabled: boolean;
   text: string;
   days?: number;
@@ -70,12 +49,6 @@ export interface OrderItem {
     id: string;
     slug: string;
     featuredImage?: string;
-    vendor?: {
-      id: string;
-      slug: string;
-      businessName: string;
-      subdomain?: string;
-    };
   };
 }
 
@@ -83,7 +56,6 @@ export interface Order {
   id: string;
   orderNumber: string;
   userId?: string;
-  vendorId?: string;
   status: string;
   paymentStatus?: string;
   paymentMethod?: string;
@@ -94,9 +66,6 @@ export interface Order {
   tax?: number;
   shippingCost?: number;
   codCharge?: number;
-  vendorPayout?: number;
-  commissionAmount?: number;
-  commissionRate?: number;
   createdAt: string;
   updatedAt?: string;
   deliveredAt?: string;
@@ -134,22 +103,11 @@ export interface Order {
   shippingState?: string;
   trackingNumber?: string;
   trackingUrl?: string;
-  vendor?: {
-    id?: string;
-    storeName?: string;
-    businessName?: string;
-  };
-  vendorReview?: any;
   invoices?: Array<{
     id?: string;
     type?: string;
     invoiceNumber?: string;
-    payoutAmount?: number;
   }>;
-  returnPolicy?: {
-    allowReturns?: boolean;
-    returnPolicyDays?: number;
-  };
   invoice?: any;
   /**
    * Computed server-side (see OrdersService.transformOrder) so the client
@@ -170,23 +128,6 @@ export interface Order {
   exchangeWindowExpiresAt?: string | null;
 }
 
-export interface OrderFilters {
-  status?: string;
-  search?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface OrdersResponse {
-  orders: Order[];
-  total: number;
-  page: number;
-  limit?: number;
-  totalPages?: number;
-}
-
 // Address interfaces
 export interface Address {
   id?: string;
@@ -200,61 +141,4 @@ export interface Address {
   postalCode?: string;
   country?: string;
   isDefault?: boolean;
-}
-
-// User interfaces
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  phone?: string;
-  role: 'customer' | 'vendor' | 'admin';
-}
-
-// Vendor related interfaces
-export interface VendorStatus {
-  kycStatus: string;
-  storeName: string | null;
-  contactEmail: string | null;
-  contactPhone: string | null;
-  canAddProducts: boolean;
-  blockReason: string | null;
-}
-
-export interface VendorPage {
-  id: string;
-  vendorId?: string;
-  title: string;
-  slug: string;
-  pageType?: string;
-  showInNavigation: boolean;
-  isHomePage?: boolean;
-  content?: string;
-  order?: number;
-  status?: string;
-  updatedAt?: string;
-}
-
-export interface LinkableProduct {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-export interface ImportMessage {
-  type: 'success' | 'error';
-  text: string;
-  errors?: string[];
-}
-
-export interface SortConfig<T extends string = string> {
-  field: T;
-  order: 'asc' | 'desc';
-}
-
-export interface FilterConfig {
-  searchQuery?: string;
-  statusFilter?: string;
-  typeFilter?: string;
-  categoryFilter?: string;
 }

@@ -9,12 +9,12 @@ import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
+import { safeReturnPath } from '@/lib/returnUrl';
 
 /** Where to go after signing up: a same-site path from `?returnUrl=`, if any. */
 function getReturnUrl(): string | null {
   if (typeof window === 'undefined') return null;
-  const url = new URLSearchParams(window.location.search).get('returnUrl');
-  return url && url.startsWith('/') && !url.startsWith('//') ? url : null;
+  return safeReturnPath(new URLSearchParams(window.location.search).get('returnUrl'));
 }
 
 export default function SignUpPage() {

@@ -4,7 +4,6 @@ import { ProductCardShell } from './ProductCardShell';
 import { Rating } from '@/components/ui/Rating';
 import { PriceTag } from '@/components/ui/PriceTag';
 import { useWishlist } from '@/contexts/WishlistContext';
-import { STORE_VENDOR_ID } from '@/lib/auth';
 import { isOutOfStock, isLowStock, getDisplayImage } from '@/lib/utils/product-card-helpers';
 import type { BadgeVariant } from '@/components/ui/Badge';
 
@@ -19,7 +18,6 @@ export interface ProductCardPhysicalProps {
   stockQuantity?: number;
   averageRating?: number;
   reviewCount?: number;
-  vendorId?: string;
   variantSwatches?: string[];
   isNew?: boolean;
   categoryLabel?: string;
@@ -37,7 +35,6 @@ export default function ProductCardPhysical({
   stockQuantity = 0,
   averageRating = 0,
   reviewCount = 0,
-  vendorId,
   variantSwatches,
   isNew,
   categoryLabel,
@@ -67,7 +64,6 @@ export default function ProductCardPhysical({
       slug,
       price,
       image: displayImage,
-      vendorId: vendorId || STORE_VENDOR_ID,
       addedAt: Date.now(),
     });
   };

@@ -10,29 +10,14 @@ import { LOOKBOOK_ENABLED } from '@/lib/features';
 import type { Category, Product } from '@/types/product';
 
 interface MainPageClientProps {
-  settings: {
-    locationFilterEnabled: boolean;
-    currency: string;
-    categoryDisplayMode: 'top' | 'sidebar';
-    marketplaceName: string;
-  };
   categories: Category[];
   productsByCategory: Record<string, Product[]>;
 }
-
-const BOOKINGS_KEY = 'bookings-services';
 
 export default function MainPageClient({
   categories,
   productsByCategory,
 }: MainPageClientProps) {
-  const bookingProducts = productsByCategory[BOOKINGS_KEY] || [];
-
-  const shopCategories = useMemo(
-    () => categories.filter((c) => c.slug !== BOOKINGS_KEY),
-    [categories]
-  );
-
   /**
    * Shop-the-edit sections and the portal grid are keyed on the categories a
    * shopper actually browses. The root store's tree is one parent (Fashion)
@@ -41,8 +26,8 @@ export default function MainPageClient({
    * single undifferentiated "Fashion" tile.
    */
   const browseCategories = useMemo(
-    () => shopCategories.flatMap((cat) => (cat.children?.length ? cat.children : [cat])),
-    [shopCategories]
+    () => categories.flatMap((cat) => (cat.children?.length ? cat.children : [cat])),
+    [categories]
   );
 
   /**
@@ -89,9 +74,6 @@ export default function MainPageClient({
       <ProductRail eyebrow="Most Loved" title="Top Sellers" products={topSellingProducts} tinted />
       <ShopByCategorySection categories={browseCategories} productsByCategory={productsByCategory} />
       {LOOKBOOK_ENABLED && <LookbookTeaser />}
-      {bookingProducts.length > 0 && (
-        <ProductRail eyebrow="Book an Experience" title="Bookings & Services" products={bookingProducts} />
-      )}
     </div>
   );
 }

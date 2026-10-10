@@ -9,7 +9,6 @@ export interface CartItem {
   price: number; // Tax-inclusive price
   quantity: number;
   image: string;
-  vendorId: string;
   stockQuantity?: number;
   maxQuantity?: number;
   priceType?: string; // 'mrp_with_gst' | 'selling_price_without_gst'

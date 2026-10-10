@@ -88,10 +88,8 @@ export default function ThemeProvider({
     return luminance > 0.5 ? '0 0% 10%' : '0 0% 98%';
   };
 
-  // This only injects the *marketplace-wide fallback* theme (admin-configurable via
-  // /admin/default-theme). Per-vendor storefronts theme themselves separately via the
-  // `vendor-*` utility layer in globals.css (see ThemeContext / useThemeClasses) and are
-  // unaffected by this. Colors are intentionally NOT forced with `!important` so the
+  // This injects the store's fallback theme (admin-configurable via
+  // /admin/default-theme). Colors are intentionally NOT forced with `!important` so the
   // PariBelle design tokens in tokens.css remain the source of truth on the root site;
   // an admin-configured theme still overrides them, but doesn't fight the CSS cascade.
   // A partially-filled admin theme falls back per-field rather than wholesale,

@@ -222,7 +222,7 @@ function DialogView({ request }: { request: DialogRequest }) {
                     key={s}
                     type="button"
                     onClick={() => setValues((v) => ({ ...v, [f.name]: s }))}
-                    className="rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-[var(--pom-accent-soft)]"
+                    className="rounded-sm border px-2.5 py-1 text-xs transition-colors hover:bg-[var(--pom-accent-soft)]"
                     style={
                       values[f.name] === s
                         ? { borderColor: 'var(--pom-accent)', color: 'var(--pom-accent-ink)', background: 'var(--pom-accent-soft)' }

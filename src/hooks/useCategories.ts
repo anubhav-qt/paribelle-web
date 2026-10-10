@@ -4,7 +4,6 @@ import { useCachedData, TTL } from '@/lib/store/dataCache';
 import { Category } from '@/types/product';
 
 interface UseCategoriesOptions {
-  vendorId?: string;
   locale?: string;
   hideEmptyCategories?: boolean;
 }
@@ -36,25 +35,21 @@ const filterCategoriesWithProducts = (categories: Category[]): Category[] => {
  * in on the very first frame after a reload instead of popping in.
  */
 export function useCategories({
-  vendorId,
   locale = 'en',
   // Off by default: this storefront's nav (Header, MobileNav) is built from
   // exactly two top-level categories, Kurtis and Jewellery, and both should
   // stay visible as permanent anchors even while a category is temporarily
   // out of active stock. "Active product count" was never the right signal
   // for whether a nav item should exist. Pass true explicitly for a caller
-  // that genuinely wants empty branches pruned (e.g. a large multi-vendor
-  // category tree).
+  // that genuinely wants empty branches pruned.
   hideEmptyCategories = false,
 }: UseCategoriesOptions = {}) {
   return useCachedData<Category[]>(
-    `categories:${vendorId ?? 'global'}:${locale}:${hideEmptyCategories}`,
+    `categories:${locale}:${hideEmptyCategories}`,
     async () => {
       const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-      let url = vendorId
-        ? `${base}/api/v1/categories/vendor/${vendorId}`
-        : `${base}/api/v1/categories/tree`;
+      let url = `${base}/api/v1/categories/tree`;
 
       if (hideEmptyCategories) url += '?withProductCounts=true';
       url += (url.includes('?') ? '&' : '?') + `lang=${locale}`;

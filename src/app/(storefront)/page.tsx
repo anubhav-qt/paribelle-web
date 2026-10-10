@@ -34,15 +34,8 @@ async function getHomepageData() {
   } catch (error) {
     console.error('[Server] Error fetching homepage data:', error);
     return {
-      settings: {
-        currency: 'INR',
-        marketplaceLogo: '',
-        marketplaceName: 'PariBelle',
-      },
       categories: [],
       productsByCategory: {},
-      uncategorizedProducts: [],
-      heroCarouselSlides: [],
     };
   }
 }
@@ -52,7 +45,6 @@ export default async function HomePage() {
 
   return (
     <MainPageClient
-      settings={data.settings}
       categories={data.categories}
       productsByCategory={data.productsByCategory}
     />
