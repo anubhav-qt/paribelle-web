@@ -16,9 +16,11 @@ export async function GET(request: NextRequest) {
   const host = request.headers.get('host') || request.nextUrl.host;
 
   // Every way out of here spends the state cookie, so a callback URL can't be
-  // replayed against it.
+  // replayed against it. The redirect is built on the configured origin: in
+  // the container `request.url` is the address the server listens on
+  // (https://0.0.0.0:3000), which sent every Google sign-in there.
   const finish = (to: string) => {
-    const response = NextResponse.redirect(new URL(to, request.url));
+    const response = NextResponse.redirect(new URL(to, appOrigin()));
     response.cookies.set(GOOGLE_STATE_COOKIE, '', {
       httpOnly: true,
       secure: secureCookies(),
