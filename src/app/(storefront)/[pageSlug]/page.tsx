@@ -1,103 +1,72 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import HeroCarousel from '@/components/HeroCarousel';
 import SectionRenderer from '@/components/SectionRenderer';
 import { PageSection } from '@/lib/pageSections';
-import { Loader } from '@/components/ui/Loader';
 
 interface CustomPage {
   id: string;
   title: string;
   slug: string;
   content: string;
-  pageMode?: 'builder' | 'markdown';
   status: 'draft' | 'published' | 'archived';
-  showInNavigation: boolean;
 }
 
-export default function CustomPage({ params }: { params: { pageSlug: string } }) {
-  const [page, setPage] = useState<CustomPage | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+type Props = { params: { pageSlug: string } };
 
-  useEffect(() => {
-    const fetchPage = async () => {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/marketplace/pages/slug/${params.pageSlug}`
-        );
-
-        if (response.ok) {
-          const storePage = await response.json();
-          setPage(storePage.status === 'published' ? storePage : null);
-        } else {
-          setPage(null);
-        }
-      } catch (error) {
-        console.error('Error fetching page:', error);
-        setPage(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPage();
-  }, [params.pageSlug]);
-
-  // If page not found after loading, show 404
-  if (!isLoading && !page) {
-    notFound();
-  }
-
-  if (isLoading) {
-    return (
-      <>
-        <div className="min-h-screen bg-[hsl(var(--pb-ivory))] flex items-center justify-center">
-          <div className="text-center">
-            <Loader size="md" className="mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (!page) {
-    notFound();
-  }
-
-  // Determine if content is sections (builder mode) or markdown
-  let sections: PageSection[] = [];
-  let isBuilderMode = false;
-  
+/**
+ * Rendered on the server so a URL that matches no published page answers
+ * with a real 404. As a client component it answered 200 with a loading
+ * spinner for every mistyped or made-up URL on the site.
+ */
+async function getPage(slug: string): Promise<CustomPage | null> {
+  const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   try {
-    const parsed = JSON.parse(page.content);
-    if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
-      sections = parsed;
-      isBuilderMode = true;
-      console.log('🟢 Builder mode detected, sections:', sections.length);
-    }
-  } catch (e) {
-    // Not JSON, treat as markdown
-    console.log('🟢 Markdown mode, content length:', page.content?.length);
-    isBuilderMode = false;
+    const response = await fetch(`${apiUrl}/api/v1/marketplace/pages/slug/${encodeURIComponent(slug)}`, {
+      next: { revalidate: 300 },
+    });
+    if (!response.ok) return null;
+    const page: CustomPage = await response.json();
+    return page.status === 'published' ? page : null;
+  } catch {
+    return null;
   }
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const page = await getPage(params.pageSlug);
+  return page ? { title: page.title } : {};
+}
+
+/** Builder pages store a JSON array of sections; anything else is markdown. */
+function parseSections(content: string): PageSection[] | null {
+  try {
+    const parsed = JSON.parse(content);
+    return Array.isArray(parsed) && parsed.length > 0 && parsed[0].type ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function CustomPage({ params }: Props) {
+  const page = await getPage(params.pageSlug);
+  if (!page) notFound();
+
+  const sections = parseSections(page.content);
 
   return (
     <>
       <main className="min-h-screen bg-[hsl(var(--pb-ivory))]">
-        {isBuilderMode ? (
+        {sections ? (
           // Render sections in builder mode
           <div>
             {sections
-              .filter(s => s.visible !== false) // Show sections unless explicitly hidden
-              .map((section) => {
-                return <SectionRenderer key={section.id} section={section} />;
-              })}
+              .filter((s) => s.visible !== false)
+              .map((section) => (
+                <SectionRenderer key={section.id} section={section} />
+              ))}
           </div>
         ) : (
           // Render markdown content
