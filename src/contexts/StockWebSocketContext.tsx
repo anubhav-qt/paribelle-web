@@ -22,12 +22,6 @@ interface OrderStatusUpdate {
   timestamp: string;
 }
 
-interface NewVendorOrder {
-  vendorId: string;
-  order: any;
-  timestamp: string;
-}
-
 interface PriceUpdate {
   productId: string;
   price: number;
@@ -62,7 +56,6 @@ interface MarketplaceWebSocketContextType {
   subscribeToStockUpdates: (callback: (update: StockUpdate) => void) => () => void;
   subscribeToBulkStockUpdates: (callback: (update: BulkStockUpdate) => void) => () => void;
   subscribeToOrderStatusUpdates: (callback: (update: OrderStatusUpdate) => void) => () => void;
-  subscribeToNewVendorOrders: (callback: (update: NewVendorOrder) => void) => () => void;
   subscribeToPriceUpdates: (callback: (update: PriceUpdate) => void) => () => void;
   subscribeToRatingUpdates: (callback: (update: ProductRatingUpdate) => void) => () => void;
   /** The notification bell — see NotificationsContext, which is the actual consumer. */
@@ -99,7 +92,7 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
 
   useEffect(() => {
     // Don't connect WebSocket on auth pages or static pages
-    const skipWebSocketPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/_next'];
+    const skipWebSocketPaths = ['/login', '/signup', '/forgot-password', '/reset-password', '/_next'];
     const shouldSkipWebSocket = skipWebSocketPaths.some(path => pathname?.startsWith(path));
     
     // Check if user is authenticated (has token)
@@ -194,14 +187,6 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
     };
   }, [socket]);
 
-  const subscribeToNewVendorOrders = useCallback((callback: (update: NewVendorOrder) => void) => {
-    if (!socket) return () => {};
-    socket.on('newVendorOrder', callback);
-    return () => {
-      socket.off('newVendorOrder', callback);
-    };
-  }, [socket]);
-
   const subscribeToPriceUpdates = useCallback((callback: (update: PriceUpdate) => void) => {
     if (!socket) return () => {};
     socket.on('priceUpdated', callback);
@@ -233,7 +218,6 @@ export const StockWebSocketProvider: React.FC<StockWebSocketProviderProps> = ({ 
     subscribeToStockUpdates,
     subscribeToBulkStockUpdates,
     subscribeToOrderStatusUpdates,
-    subscribeToNewVendorOrders,
     subscribeToPriceUpdates,
     subscribeToRatingUpdates,
     subscribeToNotifications,

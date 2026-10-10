@@ -34,8 +34,8 @@ function ResetPasswordForm() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters long');
       return;
     }
 
@@ -120,7 +120,7 @@ function ResetPasswordForm() {
                   theme.input
                 )}
                 placeholder="Enter new password"
-                minLength={6}
+                minLength={8}
               />
             </div>
 
@@ -142,7 +142,7 @@ function ResetPasswordForm() {
                   theme.input
                 )}
                 placeholder="Confirm new password"
-                minLength={6}
+                minLength={8}
               />
             </div>
 

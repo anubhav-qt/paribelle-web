@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { setAuthCookie } from '@/lib/cross-domain-auth';
+import { api, ApiError, errorMessage } from '@/lib/api';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -37,23 +38,26 @@ export default function SignUpPage() {
       setIsLoading(false);
       return;
     }
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
+      const [firstName, ...rest] = formData.name.trim().split(/\s+/);
+      // Straight to the API, not through a route on this site's server: the
+      // API rate-limits per visitor, and relayed requests all look like one.
+      const data = await api.post<any>(
+        '/auth/register',
+        {
+          firstName,
+          lastName: rest.join(' ') || firstName,
+          email: formData.email.trim(),
           password: formData.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Sign up failed');
-      }
+        },
+        { auth: false },
+      );
 
       // No email verification: the new account comes back signed in, so
       // store the session the same way the login page does.
@@ -70,7 +74,11 @@ export default function SignUpPage() {
         router.push('/');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(
+        err instanceof ApiError && err.status === 429
+          ? 'Too many attempts. Please wait a minute and try again.'
+          : errorMessage(err, 'Sign up failed. Please try again.'),
+      );
       setIsLoading(false);
     }
   };
@@ -104,7 +112,7 @@ export default function SignUpPage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         <Input id="name" name="name" type="text" autoComplete="name" required value={formData.name} onChange={handleChange} label="Full Name" />
         <Input id="email" name="email" type="email" autoComplete="email" required value={formData.email} onChange={handleChange} label="Email Address" />
-        <Input id="password" name="password" type="password" autoComplete="new-password" required value={formData.password} onChange={handleChange} label="Password" />
+        <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} value={formData.password} onChange={handleChange} label="Password" />
         <Input
           id="confirmPassword"
           name="confirmPassword"

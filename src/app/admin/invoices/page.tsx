@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/currency';
 import { getStatusColor } from '@/lib/utils/status';
 import { formatDate as formatDateUtil } from '@/lib/utils/date';
 import { showAlert, showConfirm } from '@/lib/dialog';
+import { api, errorMessage } from '@/lib/api';
 
 interface Invoice {
   id: string;
@@ -54,38 +55,13 @@ export default function AdminInvoicesPage() {
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (typeFilter) params.append('type', typeFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      params.append('page', page.toString());
-      params.append('limit', '20');
-
-      const token = localStorage.getItem('token');
-      console.log('🔑 [Admin Page] Token from localStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
-      console.log('👤 [Admin Page] User from localStorage:', localStorage.getItem('user'));
-      
-      const fetchUrl = `/api/invoices?${params.toString()}`;
-      console.log('📞 [Admin Page] Fetching:', fetchUrl);
-      
-      const response = await fetch(fetchUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const data = await api.get<{ invoices: Invoice[]; pages: number }>('/invoices', {
+        params: { type: typeFilter, status: statusFilter, page, limit: 20 },
       });
-      
-      console.log('📬 [Admin Page] Response status:', response.status);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoices');
-      }
-
-      const data = await response.json();
-      console.log('📊 [Admin Page] Data received:', data);
       setInvoices(data.invoices);
       setTotalPages(data.pages);
-    } catch (err: any) {
-      console.error('❌ [Admin Page] Error fetching invoices:', err);
-      setError(err.message);
+    } catch (err) {
+      setError(errorMessage(err, 'Failed to fetch invoices'));
     } finally {
       setLoading(false);
     }
@@ -94,28 +70,12 @@ export default function AdminInvoicesPage() {
   const handleAutoGenerate = async () => {
     try {
       setGenerating(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/invoices/auto-generate', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      console.log('🎯 Auto-generate response status:', response.status);
-
-      if (!response.ok && response.status !== 204) {
-        throw new Error('Failed to auto-generate invoices');
-      }
-
+      await api.post('/invoices/auto-generate');
       showAlert('Invoices generated successfully!', 'success');
       setShowAutoGenerate(false);
-      console.log('🔄 Refreshing invoice list...');
       await fetchInvoices();
-      console.log('✅ Invoice list refreshed');
-    } catch (err: any) {
-      console.error('❌ Auto-generate error:', err);
-      showAlert(`Error: ${err.message}`, 'error');
+    } catch (err) {
+      showAlert(errorMessage(err, 'Failed to auto-generate invoices'), 'error');
     } finally {
       setGenerating(false);
     }
@@ -126,22 +86,11 @@ export default function AdminInvoicesPage() {
     if (!ok) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/invoices/${invoiceId}/send`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send invoice');
-      }
-
+      await api.post(`/invoices/${invoiceId}/send`);
       showAlert('Invoice sent successfully!', 'success');
       fetchInvoices();
-    } catch (err: any) {
-      showAlert(`Error: ${err.message}`, 'error');
+    } catch (err) {
+      showAlert(errorMessage(err, 'Failed to send invoice'), 'error');
     }
   };
 
@@ -150,134 +99,35 @@ export default function AdminInvoicesPage() {
     if (!ok) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/invoices/${invoiceId}/mark-paid`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark invoice as paid');
-      }
-
+      await api.patch(`/invoices/${invoiceId}/mark-paid`);
       showAlert('Invoice marked as paid!', 'success');
       fetchInvoices();
-    } catch (err: any) {
-      showAlert(`Error: ${err.message}`, 'error');
+    } catch (err) {
+      showAlert(errorMessage(err, 'Failed to mark invoice as paid'), 'error');
     }
   };
 
-  const handleDownloadInvoice = async (invoiceId: string, invoiceNumber: string) => {
-    try {
-      console.log('📥 Downloading invoice:', invoiceId, invoiceNumber);
-      const token = localStorage.getItem('token');
-      console.log('🔑 Token:', token ? 'present' : 'missing');
-      
-      const response = await fetch(`/api/invoices/${invoiceId}/download`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      console.log('📨 Download response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Download failed:', errorText);
-        throw new Error('Failed to download invoice');
-      }
-
-      const blob = await response.blob();
-      console.log('📦 Blob size:', blob.size, 'bytes');
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${invoiceNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      console.log('✅ Download complete');
-    } catch (err: any) {
-      console.error('❌ Download error:', err);
-      showAlert(`Error downloading invoice: ${err.message}`, 'error');
-    }
+  const fetchPdf = async (invoiceId: string) => {
+    const response = await api.raw('GET', `/invoices/${invoiceId}/download`);
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = /filename="?([^";]+)"?/.exec(disposition);
+    const filename = match?.[1] || `invoice-${invoiceId}.pdf`;
+    return { url: window.URL.createObjectURL(await response.blob()), filename };
   };
 
   const handleViewInvoice = async (invoiceId: string) => {
     try {
-      console.log('👁️ Viewing invoice:', invoiceId);
-      const token = localStorage.getItem('token');
-      console.log('🔑 Token:', token ? 'present' : 'missing');
-      
-      const response = await fetch(`/api/invoices/${invoiceId}/download`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      console.log('📨 View response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ View failed:', errorText);
-        throw new Error('Failed to view invoice');
-      }
-
-      const blob = await response.blob();
-      console.log('📦 Blob size:', blob.size, 'bytes');
-      
-      const url = window.URL.createObjectURL(blob);
-      console.log('🔗 Opening URL:', url);
+      const { url } = await fetchPdf(invoiceId);
       window.open(url, '_blank');
-      // Clean up after a delay
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        console.log('🧹 Cleaned up URL');
-      }, 1000);
-    } catch (err: any) {
-      console.error('❌ View error:', err);
-      showAlert(`Error viewing invoice: ${err.message}`, 'error');
+      setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      showAlert(errorMessage(err, 'Failed to open invoice'), 'error');
     }
   };
 
   const handleDownload = async (invoiceId: string) => {
     try {
-      console.log('💾 Downloading invoice:', invoiceId);
-      const token = localStorage.getItem('token');
-      console.log('🔑 Token:', token ? 'present' : 'missing');
-      
-      const response = await fetch(`/api/invoices/${invoiceId}/download`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      console.log('📨 Download response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Download failed:', errorText);
-        throw new Error('Failed to download invoice');
-      }
-
-      const blob = await response.blob();
-      console.log('📦 Blob size:', blob.size, 'bytes');
-      
-      // Get filename from header or use default
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `invoice-${invoiceId}.pdf`;
-      if (contentDisposition) {
-        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
-        if (matches && matches[1]) {
-          filename = matches[1].replace(/['"]/g, '');
-        }
-      }
-      
-      const url = window.URL.createObjectURL(blob);
+      const { url, filename } = await fetchPdf(invoiceId);
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
@@ -285,10 +135,8 @@ export default function AdminInvoicesPage() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      console.log('✅ Download completed:', filename);
-    } catch (err: any) {
-      console.error('❌ Download error:', err);
-      showAlert(`Error downloading invoice: ${err.message}`, 'error');
+    } catch (err) {
+      showAlert(errorMessage(err, 'Failed to download invoice'), 'error');
     }
   };
 

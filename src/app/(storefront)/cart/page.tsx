@@ -104,11 +104,11 @@ export default function CartPage() {
               <p className="text-xs text-[hsl(var(--pb-ink-faint))]">Inclusive of all taxes</p>
               <div className="flex justify-between text-[hsl(var(--pb-ink-muted))]">
                 <span>Shipping</span>
-                <span>Calculated at checkout</span>
+                <span>Free</span>
               </div>
             </div>
             <div className="mt-4 flex justify-between border-t border-[hsl(var(--pb-linen))] pt-4">
-              <span className="font-medium text-[hsl(var(--pb-ink))]">Estimated Total</span>
+              <span className="font-medium text-[hsl(var(--pb-ink))]">Total</span>
               <span className="font-display text-xl text-[hsl(var(--pb-rose-deep))]">{formatPrice(totalPrice, 'INR')}</span>
             </div>
             <Button fullWidth size="lg" className="mt-6" onClick={handleCheckoutClick}>

@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { ProductRail } from '@/components/home/ProductRail';
 import { getCurrencySymbol } from '@/lib/currency';
 import { useCart } from '@/contexts/CartContext';
+import type { AddToCartOptions } from '@/lib/types/cart';
 import { useWishlist } from '@/contexts/WishlistContext';
 import {
   useCurrency,
@@ -120,7 +121,7 @@ export default function ProductDetailPage() {
    * The product, with its review totals reconciled against what the reviews
    * endpoint actually returned. The two drift because the counts are
    * denormalised onto the product row, so the page shows the authoritative
-   * figure and asks the backend to recalculate the stored one (below).
+   * figure. The API recalculates the stored one whenever a review changes.
    */
   const product: Product | null = useMemo(() => {
     if (!fetchedProduct) return null;
@@ -139,22 +140,6 @@ export default function ProductDetailPage() {
     () => (categoryProducts ?? []).filter((p) => p.id !== fetchedProduct?.id).slice(0, 8),
     [categoryProducts, fetchedProduct?.id]
   );
-
-  // Nudge the backend to re-derive the stored totals when they disagree with
-  // the live ones. Fire-and-forget: the page is already showing the correct
-  // figures, this only fixes the row for the next reader.
-  useEffect(() => {
-    if (!fetchedProduct || !reviewsData) return;
-    if (
-      reviewsData.total === fetchedProduct.reviewCount &&
-      reviewsData.averageRating === fetchedProduct.averageRating
-    ) {
-      return;
-    }
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reviews/products/${fetchedProduct.id}/recalculate`, {
-      method: 'POST',
-    }).catch((err) => console.error('Failed to recalculate ratings:', err));
-  }, [fetchedProduct, reviewsData]);
 
   // Clamp quantity to available stock whenever stock or variant changes
   useEffect(() => {
@@ -266,7 +251,7 @@ export default function ProductDetailPage() {
   };
 
   /** Returns whether the line actually made it into the cart. */
-  const handleAddToCart = (): boolean => {
+  const handleAddToCart = (options: AddToCartOptions = {}): boolean => {
     if (!product) return false;
 
     if (product.isParent && !selectedVariation) {
@@ -311,8 +296,8 @@ export default function ProductDetailPage() {
           stockQuantity: selectedVariant.stockQuantity,
           maxQuantity: selectedVariant.stockQuantity,
           priceType: product.priceType || 'mrp_with_gst',
-          gstRate: product.gstRate || 18,
-        });
+          gstRate: product.gstRate ?? 18,
+        }, options);
       } else {
         added = addToCart({
           productId: selectedVariation?.id || product.id,
@@ -326,8 +311,8 @@ export default function ProductDetailPage() {
           stockQuantity: stockQuantity ?? undefined,
           maxQuantity: stockQuantity ?? undefined,
           priceType: product.priceType || 'mrp_with_gst',
-          gstRate: product.gstRate || 18,
-        });
+          gstRate: product.gstRate ?? 18,
+        }, options);
       }
 
       if (added) setQuantity(1);
@@ -342,28 +327,16 @@ export default function ProductDetailPage() {
   };
 
   /**
-   * Add, then go straight to checkout — but only if the add succeeded. This
-   * used to fire a 500ms timer and a hard `window.location` assignment
-   * unconditionally, which navigated away from an out-of-stock warning nobody
-   * had read yet and tore down whatever requests the page still had open.
-   *
-   * Signed-out shoppers still get the item added — skipping the add used to
-   * mean a shopper who "bought now" on one product while logged out, after
-   * already having a different product sitting in their cart from an earlier
-   * "Add to Bag", would find the second product simply missing once they
-   * logged in. `addToCart` still opens the drawer as a side effect, so it's
-   * closed right back before navigating to /login — there is nothing to
-   * check out yet, and the drawer would otherwise sit open behind the
-   * sign-in page.
+   * Put exactly this in the bag and go to checkout — signing in first if
+   * needed, which comes back to checkout. Only if the add succeeded: an
+   * out-of-stock alert should be read, not navigated away from.
    */
   const handleBuyNow = () => {
-    if (!localStorage.getItem('token')) {
-      if (!handleAddToCart()) return; // Out of stock etc. — the alert already explains why.
-      closeCart();
-      router.push(`/login?returnUrl=${encodeURIComponent(`/products/${productSlug}`)}`);
-      return;
-    }
-    if (handleAddToCart()) router.push('/checkout');
+    if (!handleAddToCart({ buyNow: true })) return;
+    closeCart();
+    router.push(
+      localStorage.getItem('token') ? '/checkout' : `/login?returnUrl=${encodeURIComponent('/checkout')}`,
+    );
   };
 
   /**
@@ -792,7 +765,7 @@ export default function ProductDetailPage() {
                 fullWidth
                 loading={addToCartLoading}
                 disabled={!!exchangePicker || addToCartLoading || needsSelection || outOfStock}
-                onClick={handleAddToCart}
+                onClick={() => handleAddToCart()}
                 title={exchangePicker ? "Finish or cancel your exchange to shop normally again" : undefined}
               >
                 {exchangePicker ? 'Unavailable during exchange' : needsSelection ? 'Select Options' : outOfStock ? 'Sold Out' : 'Add to Bag'}

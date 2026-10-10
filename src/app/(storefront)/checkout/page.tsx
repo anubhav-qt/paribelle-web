@@ -29,8 +29,8 @@ type CheckoutStep = 'cart' | 'address' | 'payment' | 'confirmation';
 
 function CheckoutContent() {
   const router = useRouter();
-  const { items, totalItems, updateQuantity, removeFromCart, clearCart, reconcile, closeCart } = useCart();
-  const { createOrder: createRazorpayOrder, verifyPayment, openCheckout, razorpayKeyId } = useRazorpay();
+  const { items, totalItems, isLoaded: cartLoaded, updateQuantity, removeFromCart, clearCart, reconcile, closeCart } = useCart();
+  const { createOrder: createRazorpayOrder, verifyPayment, openCheckout } = useRazorpay();
   const theme = useThemeClasses();
 
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('cart');
@@ -83,19 +83,18 @@ function CheckoutContent() {
   const [useWalletBalance, setUseWalletBalance] = useState(false);
   const [loadingWallet, setLoadingWallet] = useState(false);
   
-  // Store order totals for confirmation page (before cart is cleared)
+  // The placed order's own figures, as the API priced it, for the
+  // confirmation step (the cart is cleared by then).
   const [confirmedOrderTotal, setConfirmedOrderTotal] = useState(0);
   const [confirmedSubtotal, setConfirmedSubtotal] = useState(0);
   const [confirmedTax, setConfirmedTax] = useState(0);
-  const [confirmedShipping, setConfirmedShipping] = useState(0);
   const [confirmedCod, setConfirmedCod] = useState(0);
-  
+  const [confirmedWallet, setConfirmedWallet] = useState(0);
 
   useEffect(() => {
     const initAuth = async () => {
       try {
         const token = await initAuthFromCookie();
-        console.log('Checkout: Auth initialized, token:', token ? 'Found' : 'Not found');
         setAuthInitialized(true);
         
         // Fetch wallet balance
@@ -197,11 +196,14 @@ function CheckoutContent() {
     }
   }, [billingSameAsShipping, shippingAddress, selectedShippingAddressId]);
 
+  // Wait for the bag to load from storage first: on a refresh, or straight
+  // after signing in, it starts empty for a moment, and this used to send
+  // every shopper arriving that way to the homepage.
   useEffect(() => {
-    if (items.length === 0 && currentStep !== 'confirmation') {
-      router.push('/');
+    if (cartLoaded && items.length === 0 && currentStep !== 'confirmation') {
+      router.replace('/');
     }
-  }, [items.length, currentStep]);
+  }, [cartLoaded, items.length, currentStep, router]);
 
   // Calculate tax by extracting GST from inclusive prices
   const calculateTaxBreakdown = () => {
@@ -244,8 +246,10 @@ function CheckoutContent() {
   
   const { basePrice: subtotalBeforeTax, tax: extractedTax, totalWithTax: subtotalWithTax } = calculateTaxBreakdown();
   
+  // What the API will charge, worked out the same way it does — the order
+  // itself is priced server-side from the catalogue, not from these.
   const orderSubtotal = subtotalWithTax;
-  const shippingCost = subtotalWithTax > 500 ? 0 : 50;
+  const shippingCost = 0; // Shipping is always free.
   const tax = extractedTax;
   // Flat handling fee on Cash on Delivery orders. Prices are GST-inclusive and
   // this fee is not taxed on top. The backend charges the same amount.
@@ -328,12 +332,8 @@ function CheckoutContent() {
 
       // Verify user is still valid
       try {
-        const user = JSON.parse(userStr);
-        console.log('User from localStorage:', user);
-        console.log('Token exists:', !!token);
-        console.log('Token preview:', token.substring(0, 20) + '...');
+        JSON.parse(userStr);
       } catch (e) {
-        console.error('Invalid user data in localStorage');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         showAlert('Session expired. Please login again.', 'warning');
@@ -341,28 +341,19 @@ function CheckoutContent() {
         return;
       }
 
+      // What to buy and where to send it. Prices and totals are the API's to
+      // work out; it ignores any sent.
       const orderData = {
         items: items.map(item => ({
           productId: item.productId,
           variantId: item.variantId || null,
-          variantSku: item.variantSku || null,
-          variantAttributes: item.variantAttributes || null,
           quantity: item.quantity,
-          price: item.price,
         })),
         shippingAddress: shippingAddress,
         billingAddress: billingSameAsShipping ? shippingAddress : billingAddress,
         paymentMethod,
-        subtotal: subtotalBeforeTax,
-        shippingCost,
-        tax,
-        codCharge,
-        totalAmount: totalBeforeWallet,
         useWalletBalance,
       };
-
-      console.log('Order data being sent:', orderData);
-      console.log('Total calculations:', { subtotalWithTax, subtotalBeforeTax, shippingCost, tax, finalTotal });
 
       // Stable for as long as this attempt lasts, so a retry after a timeout
       // returns the order the first attempt already created instead of placing
@@ -392,68 +383,23 @@ function CheckoutContent() {
         throw error;
       }
 
-      // Handle both single order (backward compatibility) and multiple orders
-      const ordersArray = Array.isArray(orders) ? orders : [orders];
-      
-      console.log(`Created ${ordersArray.length} order(s):`, ordersArray.map(o => o.orderNumber));
-      
-      // Store order numbers for confirmation page
-      const orderNumbers = ordersArray.map(o => o.orderNumber || o.id).join(', ');
-      setOrderId(orderNumbers);
-      
-      // Store order totals before clearing cart
-      setConfirmedOrderTotal(finalTotal);
-      setConfirmedSubtotal(subtotalBeforeTax); // Base price without tax
-      setConfirmedTax(tax);
-      setConfirmedShipping(shippingCost);
-      setConfirmedCod(codCharge);
+      const order = Array.isArray(orders) ? orders[0] : orders;
+      setOrderId(order.orderNumber || order.id);
+      setConfirmedOrderTotal(Number(order.total) || 0);
+      setConfirmedSubtotal(Number(order.subtotal) || 0);
+      setConfirmedTax(Number(order.tax) || 0);
+      setConfirmedCod(Number(order.codCharge) || 0);
+      setConfirmedWallet(Number(order.discount) || 0);
 
-      // Wallet balance can cover the order in full — the backend already
-      // settles that order as PAID via the wallet ledger and never expects a
-      // gateway charge for it. Razorpay refuses to create a ₹0 order, so
-      // routing this through the Razorpay branch below (it used to check only
-      // the chosen `paymentMethod`, ignoring whether anything was still owed)
-      // surfaced as "Failed to initiate payment. Please try again or use
-      // Cash on Delivery" — a same-page failure the shopper had no way to
-      // recover from since there was nothing left to pay.
-      if (finalTotal <= 0) {
+      if (order.paymentStatus === 'paid') {
+        // Store credit covered the whole order; there is nothing to charge.
         clearCart();
         setCurrentStep('confirmation');
         showAlert('Payment complete — your wallet balance covered this order in full.', 'success');
-      } else if (paymentMethod === 'razorpay') {
-        // Simulate only when Razorpay genuinely has no key to work with —
-        // not whenever NODE_ENV happens to say "development". Gating on the
-        // environment instead of on configuration meant `npm run dev` always
-        // showed the fake-payment dialog even with real test keys set,
-        // making it impossible to exercise the actual Razorpay flow locally
-        // without deploying first.
-        if (!razorpayKeyId) {
-          const vendorCount = ordersArray.length;
-          const simulatePayment = await showConfirm({
-            title: 'Razorpay is not configured',
-            message:
-              `${vendorCount} order${vendorCount > 1 ? 's' : ''} created\n` +
-              `Order${vendorCount > 1 ? 's' : ''}: ${orderNumbers}\n\n` +
-              `Simulate successful payment?`,
-            confirmText: 'Simulate Payment',
-            cancelText: 'Cancel Order',
-          });
-
-          if (simulatePayment) {
-            // Simulate payment delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            clearCart();
-            setCurrentStep('confirmation');
-            showAlert(`Test payment successful for ${vendorCount} order${vendorCount > 1 ? 's' : ''}! (No real payment processed)`, 'success');
-          } else {
-            showAlert('Orders created but payment cancelled. You can pay later.', 'info');
-          }
-        } else {
-          // A key is configured — test or live, same code path either way.
-          await handleRazorpayPayment(orderNumbers, ordersArray[0].id);
-        }
+      } else if (order.paymentMethod === 'razorpay') {
+        await handleRazorpayPayment(order.orderNumber, order.id);
       } else {
-        // Cash on Delivery - orders placed
+        // Cash on Delivery
         clearCart();
         setCurrentStep('confirmation');
       }
@@ -920,12 +866,6 @@ function CheckoutContent() {
               </div>
             </div>
             
-            {subtotalWithTax < 500 && (
-              <p className="text-sm text-muted-foreground mb-4 p-3 bg-primary/10 rounded">
-                Add {formatPrice(500 - subtotalWithTax, 'INR')} more for FREE shipping!
-              </p>
-            )}
-            
             <button
               onClick={handleContinueToAddress}
               className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
@@ -981,9 +921,6 @@ function CheckoutContent() {
               <p>{shippingAddress.country}</p>
               {shippingAddress.email && <p>Email: {shippingAddress.email}</p>}
               <p className="mt-2">Phone: {shippingAddress.phone}</p>
-              <p className="text-xs mt-2">
-                Source: {selectedShippingAddressId ? 'Saved address selected' : 'Manual entry'}
-              </p>
             </div>
           </div>
 
@@ -1017,9 +954,6 @@ function CheckoutContent() {
                 <p>Email: {billingSameAsShipping ? shippingAddress.email : billingAddress.email}</p>
               )}
               <p className="mt-2">Phone: {billingSameAsShipping ? shippingAddress.phone : billingAddress.phone}</p>
-              <p className="text-xs mt-2">
-                Source: {billingSameAsShipping ? 'Same as shipping' : (selectedBillingAddressId ? 'Saved address selected' : 'Manual entry')}
-              </p>
             </div>
           </div>
           
@@ -1169,41 +1103,25 @@ function CheckoutContent() {
     </div>
   );
 
-  const ConfirmationStep = () => {
-    const orderNumbers = orderId.split(', ');
-    const hasMultipleOrders = orderNumbers.length > 1;
-    
-    return (
+  const ConfirmationStep = () => (
     <div className="max-w-2xl mx-auto text-center">
       <div className="bg-card rounded-lg shadow-sm border border-border p-8">
         <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle className="w-12 h-12 text-green-600" />
         </div>
-        
-        <h2 className="text-3xl font-bold text-foreground mb-2">
-          {hasMultipleOrders ? 'Orders' : 'Order'} Placed Successfully!
-        </h2>
+
+        <h2 className="text-3xl font-bold text-foreground mb-2">Order placed</h2>
         <p className="text-muted-foreground mb-6">
-          Thank you for your order. We'll send you a confirmation email shortly.
+          Thank you! You can follow it under My Orders.
         </p>
-        
+
         {orderId && (
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-6">
-            <p className="text-sm text-muted-foreground mb-1">
-              Order Number{hasMultipleOrders ? 's' : ''}
-            </p>
-            {hasMultipleOrders ? (
-              <div className="space-y-1">
-                {orderNumbers.map((num, idx) => (
-                  <p key={idx} className="text-lg font-bold text-primary">{num}</p>
-                ))}
-              </div>
-            ) : (
-              <p className="text-2xl font-bold text-primary">{orderId}</p>
-            )}
+            <p className="text-sm text-muted-foreground mb-1">Order number</p>
+            <p className="text-2xl font-bold text-primary">{orderId}</p>
           </div>
         )}
-        
+
         <div className="bg-muted rounded-lg p-6 mb-6 text-left">
           <h3 className="font-semibold mb-3 text-foreground">Order Details</h3>
           <div className="space-y-2 text-sm">
@@ -1212,17 +1130,23 @@ function CheckoutContent() {
               <span className="font-semibold text-foreground">{formatPrice(confirmedSubtotal, 'INR')}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Shipping</span>
-              <span className="font-semibold text-foreground">{formatPrice(confirmedShipping, 'INR')}</span>
+              <span className="text-muted-foreground">GST</span>
+              <span className="font-semibold text-foreground">{formatPrice(confirmedTax, 'INR')}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Tax</span>
-              <span className="font-semibold text-foreground">{formatPrice(confirmedTax, 'INR')}</span>
+              <span className="text-muted-foreground">Shipping</span>
+              <span className="font-semibold text-green-600">FREE</span>
             </div>
             {confirmedCod > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">COD Charges</span>
                 <span className="font-semibold text-foreground">{formatPrice(confirmedCod, 'INR')}</span>
+              </div>
+            )}
+            {confirmedWallet > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Paid from wallet</span>
+                <span className="font-semibold text-green-600">-{formatPrice(confirmedWallet, 'INR')}</span>
               </div>
             )}
             <div className="flex justify-between border-t border-border pt-2 mt-2">
@@ -1258,7 +1182,7 @@ function CheckoutContent() {
         </div>
       </div>
     </div>
-  )};
+  );
 
 
   if (!user) {

@@ -11,14 +11,9 @@ import { QuantityStepper } from '@/components/ui/QuantityStepper';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';
 
-const FREE_SHIPPING_THRESHOLD = 1999;
-
 export default function CartDrawer() {
   const { items, totalPrice, totalItems, isOpen, closeCart, updateQuantity, removeFromCart } = useCart();
   const router = useRouter();
-
-  const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - totalPrice);
-  const progress = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
   // Signed-out shoppers go straight to sign-in rather than to a checkout
   // page that would just bounce them back with a duplicate prompt.
@@ -47,20 +42,6 @@ export default function CartDrawer() {
         />
       ) : (
         <div className="flex h-full flex-col">
-          <div className="border-b border-[hsl(var(--pb-linen))] px-6 py-4">
-            <div className="mb-2 h-1 w-full overflow-hidden rounded-full bg-[hsl(var(--pb-shell))]">
-              <div
-                className="h-full bg-[hsl(var(--pb-rose))] transition-all duration-500 ease-pb"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-xs text-[hsl(var(--pb-ink-muted))]">
-              {remaining > 0
-                ? `Add ${formatPrice(remaining, 'INR')} more for complimentary shipping`
-                : 'You’ve unlocked complimentary shipping'}
-            </p>
-          </div>
-
           <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
             {items.map((item) => (
               <div key={item.id} className="flex gap-4">
@@ -121,7 +102,7 @@ export default function CartDrawer() {
                 {formatPrice(totalPrice, 'INR')}
               </span>
             </div>
-            <p className="text-xs text-[hsl(var(--pb-ink-faint))]">Shipping and taxes calculated at checkout</p>
+            <p className="text-xs text-[hsl(var(--pb-ink-faint))]">Free shipping · prices include GST</p>
             <Button fullWidth size="lg" onClick={handleCheckoutClick}>
               Proceed to Checkout
             </Button>

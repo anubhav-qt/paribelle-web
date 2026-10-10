@@ -74,10 +74,12 @@ function LoginContent() {
       return;
     }
 
+    // Remember me keeps the email only. It used to keep the password too, in
+    // plain text; clear any copy an older visit left behind.
+    localStorage.removeItem('savedPassword');
     const savedEmail = localStorage.getItem('savedEmail');
-    const savedPassword = localStorage.getItem('savedPassword');
-    if (savedEmail && savedPassword) {
-      setFormData({ email: savedEmail, password: savedPassword });
+    if (savedEmail) {
+      setFormData((prev) => ({ ...prev, email: savedEmail }));
       setRememberMe(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,8 +98,10 @@ function LoginContent() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Login failed');
+        if (response.status === 401) throw new Error('Incorrect email or password.');
+        if (response.status === 429) throw new Error('Too many attempts. Please wait a minute and try again.');
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Login failed. Please try again.');
       }
 
       const data = await response.json();
@@ -109,10 +113,8 @@ function LoginContent() {
 
       if (rememberMe) {
         localStorage.setItem('savedEmail', formData.email);
-        localStorage.setItem('savedPassword', formData.password);
       } else {
         localStorage.removeItem('savedEmail');
-        localStorage.removeItem('savedPassword');
       }
 
       setAuthCookie('token', data.access_token);

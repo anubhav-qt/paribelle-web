@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
-import { CartItem, CartContextType, CartReconciliation } from '@/lib/types/cart';
+import { CartItem, CartContextType, CartReconciliation, AddToCartOptions } from '@/lib/types/cart';
 import { api, ApiError } from '@/lib/api';
 import { showAlert } from '@/lib/dialog';
 
@@ -83,7 +83,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
    * rather than inside the `setItems` updater — that updater runs during the
    * next render, long after this function has returned its answer.
    */
-  const addToCart = (newItem: Omit<CartItem, 'id'>): boolean => {
+  const addToCart = (newItem: Omit<CartItem, 'id'>, options: AddToCartOptions = {}): boolean => {
     const current = itemsRef.current;
 
     // Deduplicate: same variant = same line item; same product without variant = same line item
@@ -110,7 +110,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const newQuantity = existingItem.quantity + newItem.quantity;
+      // Buy Now means "this, in this quantity": adding to what was already in
+      // the bag charged a second Buy Now (or one on an item already in the
+      // bag) for both.
+      const newQuantity = options.buyNow ? newItem.quantity : existingItem.quantity + newItem.quantity;
       if (newQuantity > maxStock) {
         showAlert(`Cannot add more. Only ${maxStock} items available in stock.`, 'warning');
         return false;
@@ -140,7 +143,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Keep the ref ahead of the effect so two adds in the same tick compose.
     itemsRef.current = next;
     setItems(next);
-    setIsOpen(true);
+    if (!options.buyNow) setIsOpen(true);
     return true;
   };
 
@@ -316,6 +319,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider
       value={{
         items,
+        isLoaded,
         addToCart,
         removeFromCart,
         updateQuantity,

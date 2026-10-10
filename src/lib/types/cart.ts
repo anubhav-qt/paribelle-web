@@ -26,10 +26,20 @@ export interface CartReconciliation {
   restocked: Array<{ item: CartItem; from: number; to: number }>;
 }
 
+export interface AddToCartOptions {
+  /**
+   * Buy Now: the line holds exactly this quantity, whatever was in the bag
+   * before, and the bag drawer stays shut because checkout is next.
+   */
+  buyNow?: boolean;
+}
+
 export interface CartContextType {
   items: CartItem[];
+  /** False until the saved bag has been read back from storage. */
+  isLoaded: boolean;
   /** Adds a line; `false` means a stock check refused it. */
-  addToCart: (item: Omit<CartItem, 'id'>) => boolean;
+  addToCart: (item: Omit<CartItem, 'id'>, options?: AddToCartOptions) => boolean;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;

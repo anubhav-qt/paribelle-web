@@ -23,24 +23,18 @@ export function useAdminProducts(options: UseAdminProductsOptions = {}) {
   return useQuery({
     queryKey: ['admin-products', page, limit, status, search, stock],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (status && status !== 'all') params.append('status', status);
-      if (search) params.append('search', search);
-      if (stock) params.append('stock', stock);
+      // Sent with the admin's token: without it the API lists only what is
+      // on sale, not drafts or archived products.
+      const data = await api.get<any>('/products', {
+        params: {
+          status: status && status !== 'all' ? status : undefined,
+          search,
+          stock,
+          page,
+          limit,
+        },
+      });
 
-      params.append('page', page.toString());
-      params.append('limit', limit.toString());
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/products?${params.toString()}`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
       // Handle both array and paginated response formats
       if (Array.isArray(data)) {
         return { products: data, total: data.length };
