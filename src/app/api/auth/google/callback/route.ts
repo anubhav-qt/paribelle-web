@@ -50,30 +50,13 @@ export async function GET(request: NextRequest) {
 
     const { access_token } = await tokenResponse.json();
 
-    // Get user info from Google
-    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${access_token}` },
-    });
-
-    if (!userInfoResponse.ok) {
-      return NextResponse.redirect(new URL('/login?error=user_info_failed', request.url));
-    }
-
-    const googleUser = await userInfoResponse.json();
-
-    // Regular login flow
+    // The backend asks Google itself who this token belongs to; it no longer
+    // takes an email from us on trust.
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    console.log('[Callback] Calling backend google-login at:', `${backendUrl}/api/v1/auth/google-login`);
-    
     const authResponse = await fetch(`${backendUrl}/api/v1/auth/google-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: googleUser.email,
-        name: googleUser.name,
-        googleId: googleUser.id,
-        picture: googleUser.picture,
-      }),
+      body: JSON.stringify({ accessToken: access_token }),
     });
 
     if (!authResponse.ok) {
