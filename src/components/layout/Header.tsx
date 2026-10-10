@@ -17,14 +17,15 @@ import { WalletBadge } from '@/components/WalletBadge';
 
 const STATIC_LINKS = [{ label: 'Home', href: '/' }];
 
-/** Shared shape for every interactive element inside the pill. */
-const PILL_ITEM =
-  'rounded-full transition-colors duration-150 focus-visible:outline focus-visible:outline-2 ' +
+/** Shared by every interactive element in the bar. */
+const BAR_ITEM =
+  'transition-colors duration-150 focus-visible:outline focus-visible:outline-2 ' +
   'focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--pb-rose-deep))]';
 
-const NAV_LINK = `${PILL_ITEM} whitespace-nowrap px-3 py-2 text-xs font-medium uppercase tracking-wide`;
+// Text links hover as a crisp block, not a capsule; icon buttons stay round.
+const NAV_LINK = `${BAR_ITEM} rounded-sm whitespace-nowrap px-3 py-2 text-xs font-medium uppercase tracking-wide`;
 // 40px on phones (max-md:p-2.5), the minimum comfortable thumb target.
-const ICON_BUTTON = `${PILL_ITEM} relative p-2 max-md:p-2.5 hover:bg-[hsl(var(--pb-blush-wash))] active:opacity-50`;
+const ICON_BUTTON = `${BAR_ITEM} rounded-full relative p-2 max-md:p-2.5 hover:bg-[hsl(var(--pb-blush-wash))] active:opacity-50`;
 
 /**
  * How far every panel hangs below the header's content box, and the reason it
@@ -265,7 +266,7 @@ export function Header() {
           <div className="flex shrink-0 items-center gap-0.5">
             <button
               onClick={() => setMobileNavOpen((open) => !open)}
-              className={`${PILL_ITEM} pb-hamburger p-1 text-[hsl(var(--pb-ink))] md:hidden`}
+              className={`${BAR_ITEM} rounded-full pb-hamburger p-1 text-[hsl(var(--pb-ink))] md:hidden`}
               aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileNavOpen}
             >
@@ -386,7 +387,7 @@ export function Header() {
           <Link
             href="/"
             onMouseEnter={closeMegaMenuNow}
-            className={`${PILL_ITEM} absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap px-3 py-1 font-logo text-2xl tracking-wide text-[hsl(var(--pb-ink))] hover:text-[hsl(var(--pb-rose-deep))] md:text-3xl`}
+            className={`${BAR_ITEM} rounded-sm absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap px-3 py-1 font-logo text-2xl tracking-wide text-[hsl(var(--pb-ink))] hover:text-[hsl(var(--pb-rose-deep))] md:text-3xl`}
           >
             PariBelle
           </Link>

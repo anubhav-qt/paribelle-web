@@ -63,7 +63,7 @@ export function Thinking({ photos }: { photos: boolean }) {
       ) : (
         <div className="mt-8 flex flex-wrap gap-2.5" aria-hidden="true">
           {[96, 120, 140, 104].map((w, n) => (
-            <div key={n} className="h-11 animate-pulse rounded-full bg-[hsl(var(--pb-linen)/0.8)]" style={{ width: w, animationDelay: `${n * 100}ms` }} />
+            <div key={n} className="h-11 animate-pulse rounded-sm bg-[hsl(var(--pb-linen)/0.8)]" style={{ width: w, animationDelay: `${n * 100}ms` }} />
           ))}
         </div>
       )}
