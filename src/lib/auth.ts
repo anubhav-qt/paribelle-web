@@ -69,32 +69,19 @@ export function clearAuth() {
  * Handle authentication errors (401 Unauthorized)
  * Clears auth data and redirects to login
  */
-export function handleAuthError(error?: any): void {
-  // Clear auth data
+export function handleAuthError(_error?: any): void {
   clearAuth();
-  
-  // Check if error message indicates email verification needed
-  const errorMessage = error?.message || '';
-  const isEmailVerificationError = errorMessage.toLowerCase().includes('verify') || 
-                                   errorMessage.toLowerCase().includes('verification');
-  
-  // Redirect to login with appropriate message
-  const currentPath = window.location.pathname;
+
   const params = new URLSearchParams();
-  
-  if (isEmailVerificationError) {
-    params.set('error', 'email_not_verified');
-    params.set('message', 'Please verify your email before logging in.');
-  } else {
-    params.set('error', 'session_expired');
-    params.set('message', 'Your session has expired. Please login again.');
-  }
-  
-  // Preserve the current path as redirect target
+  params.set('error', 'session_expired');
+  params.set('message', 'Your session has expired. Please login again.');
+
+  // Come back here after signing in. The login page reads `returnUrl`.
+  const currentPath = window.location.pathname;
   if (currentPath && currentPath !== '/login') {
-    params.set('redirect', currentPath);
+    params.set('returnUrl', currentPath + window.location.search);
   }
-  
+
   window.location.href = `/login?${params.toString()}`;
 }
 

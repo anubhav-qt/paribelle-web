@@ -3,10 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { setAuthCookie } from '@/lib/cross-domain-auth';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
+
+/** Where to go after signing up: a same-site path from `?returnUrl=`, if any. */
+function getReturnUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const url = new URLSearchParams(window.location.search).get('returnUrl');
+  return url && url.startsWith('/') && !url.startsWith('//') ? url : null;
+}
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -47,16 +55,20 @@ export default function SignUpPage() {
         throw new Error(data.message || 'Sign up failed');
       }
 
-      // The account exists either way — a mail outage doesn't block signup —
-      // but if the verification email didn't actually send, telling the
-      // shopper to "check your email" would send them to wait for something
-      // that will never arrive. Route them to resend instead.
-      if (data.emailSent === false) {
-        router.push(`/resend-verification?email=${encodeURIComponent(formData.email)}&reason=send_failed`);
-        return;
-      }
+      // No email verification: the new account comes back signed in, so
+      // store the session the same way the login page does.
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setAuthCookie('token', data.access_token);
+      setAuthCookie('user', encodeURIComponent(JSON.stringify(data.user)), 7 * 24 * 60 * 60);
+      window.dispatchEvent(new CustomEvent('userChanged'));
 
-      router.push('/login?registered=true');
+      const returnUrl = getReturnUrl();
+      if (returnUrl) {
+        window.location.href = returnUrl;
+      } else {
+        router.push('/');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setIsLoading(false);
@@ -66,7 +78,8 @@ export default function SignUpPage() {
   const handleGoogleSignUp = async () => {
     setIsLoading(true);
     try {
-      window.location.href = '/api/auth/google';
+      const returnUrl = getReturnUrl();
+      window.location.href = `/api/auth/google${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`;
     } catch (error) {
       setError('Failed to initiate Google signup');
       setIsLoading(false);

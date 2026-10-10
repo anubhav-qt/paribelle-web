@@ -30,9 +30,7 @@ function LoginContent() {
     if (urlError) {
       const errorMessage = urlMessage ? decodeURIComponent(urlMessage) : 'Authentication failed';
 
-      if (urlError === 'email_not_verified') {
-        setError('⚠️ ' + errorMessage);
-      } else if (urlError === 'session_expired') {
+      if (urlError === 'session_expired') {
         setError('🔒 ' + errorMessage);
       } else if (urlError === 'auth_failed') {
         setError('❌ Google Sign-In Failed: ' + errorMessage);
@@ -221,7 +219,7 @@ function LoginContent() {
 
       <p className="mt-6 text-center text-sm text-[hsl(var(--pb-ink-muted))]">
         Don&apos;t have an account?{' '}
-        <Link href="/signup" className="font-medium text-[hsl(var(--pb-rose-deep))] hover:underline">
+        <Link href={returnUrl ? `/signup?returnUrl=${encodeURIComponent(returnUrl)}` : '/signup'} className="font-medium text-[hsl(var(--pb-rose-deep))] hover:underline">
           Sign up
         </Link>
       </p>

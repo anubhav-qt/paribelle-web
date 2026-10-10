@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Edit2, Trash2, Plus, Phone, Home, ChevronDown, Loader2 } from 'lucide-react';
 import { initAuthFromCookie } from '@/lib/cross-domain-auth';
-import { api, errorMessage } from '@/lib/api';
+import { api, ApiError, errorMessage } from '@/lib/api';
+import { handleAuthError } from '@/lib/auth';
 import { showAlert, showConfirm } from '@/lib/dialog';
 import { isIndianPincode, lookupPincode, stateForCity } from '@/lib/indiaPincode';
 
@@ -286,6 +287,14 @@ export default function AddressManager({
         },
       });
 
+      // A token the API no longer accepts (expired, or the account is gone)
+      // is a signed-out shopper, not a reason to show stale saved addresses
+      // and let them fill a form whose Save can only fail.
+      if (response.status === 401) {
+        handleAuthError();
+        return true;
+      }
+
       if (!response.ok) {
         throw new Error('Failed to fetch addresses');
       }
@@ -444,6 +453,10 @@ export default function AddressManager({
       setEditingAddressId(null);
       resetAddressForm();
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        handleAuthError();
+        return;
+      }
       console.error('Error saving address:', error);
       setFormError(errorMessage(error, 'Failed to save address. Please try again.'));
     } finally {
@@ -505,6 +518,10 @@ export default function AddressManager({
       }
       
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        handleAuthError();
+        return;
+      }
       console.error('Error deleting address:', error);
       showAlert(errorMessage(error, 'Failed to delete address. Please try again.'), 'error');
     } finally {

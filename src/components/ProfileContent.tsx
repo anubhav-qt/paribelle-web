@@ -305,23 +305,6 @@ export default function ProfileContent() {
                   Change Password
                 </button>
               </div>
-
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-foreground">Email Verification</p>
-                    <p className="text-sm text-muted-foreground">
-                      {user.emailVerified ? 'Email verified' : 'Email not verified'}
-                    </p>
-                  </div>
-                </div>
-                {!user.emailVerified && (
-                  <button className="px-4 py-2 text-[hsl(var(--pb-rose-deep))] hover:bg-[hsl(var(--pb-blush-wash))] rounded-sm transition-colors">
-                    Verify Email
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         </div>
