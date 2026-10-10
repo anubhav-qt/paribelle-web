@@ -285,7 +285,7 @@ export default function AddProductPage() {
                         type="button"
                         onClick={() => toggleSize(s)}
                         aria-pressed={on}
-                        className="min-w-[2.75rem] rounded-full border px-3 py-1.5 text-[13px] font-medium"
+                        className="min-w-[2.75rem] rounded-sm border px-3 py-1.5 text-[13px] font-medium"
                         style={
                           on
                             ? { borderColor: 'var(--pom-accent)', background: 'var(--pom-accent)', color: '#fff' }
@@ -306,7 +306,7 @@ export default function AddProductPage() {
                     }}
                   >
                     <input
-                      className="input w-24 rounded-full px-3 py-1.5 text-[13px]"
+                      className="input w-24 rounded-sm px-3 py-1.5 text-[13px]"
                       placeholder="Other"
                       value={customSize}
                       onChange={(e) => setCustomSize(e.target.value)}

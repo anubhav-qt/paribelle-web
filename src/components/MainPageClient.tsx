@@ -1,7 +1,6 @@
 'use client';
 
-import { Suspense, useMemo } from 'react';
-import GoogleAuthHandler from '@/components/GoogleAuthHandler';
+import { useMemo } from 'react';
 import { FabricWeaveHero } from '@/components/home/FabricWeaveHero';
 import { ProductRail } from '@/components/home/ProductRail';
 import { ShopByCategorySection } from '@/components/home/ShopByCategorySection';
@@ -66,10 +65,6 @@ export default function MainPageClient({
 
   return (
     <div className="min-h-screen bg-[hsl(var(--pb-ivory))]">
-      <Suspense fallback={null}>
-        <GoogleAuthHandler />
-      </Suspense>
-
       <FabricWeaveHero />
       <ProductRail eyebrow="Most Loved" title="Top Sellers" products={topSellingProducts} tinted />
       <ShopByCategorySection categories={browseCategories} productsByCategory={productsByCategory} />

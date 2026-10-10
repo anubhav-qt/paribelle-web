@@ -229,7 +229,7 @@ export default function StoreSettingsPage() {
   );
 }
 
-/** Photos uploaded but no longer used by any product, found and removed on demand. */
+/** Photos uploaded but no longer used anywhere on the site or in past orders, found and removed on demand. */
 function PhotoCleanup() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ total: number; orphans: string[]; deleted?: number } | null>(null);
@@ -249,7 +249,7 @@ function PhotoCleanup() {
     if (!result?.orphans.length) return;
     const ok = await confirmDialog({
       title: `Delete ${result.orphans.length} unused photos?`,
-      message: 'They are not on any product. This cannot be undone.',
+      message: 'Nothing on the site or in past orders uses them, and none was uploaded in the last day. This cannot be undone.',
       confirmText: 'Delete',
       tone: 'danger',
     });

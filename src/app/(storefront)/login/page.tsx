@@ -5,18 +5,29 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { setAuthCookie } from '@/lib/cross-domain-auth';
 import { safeReturnPath } from '@/lib/returnUrl';
+import { isStoreAdminRole } from '@/lib/auth';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Input } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 
+const GOOGLE_RETRY = 'Google sign-in didn’t go through. Please try again, or sign in with your email and password.';
+
+/** What each `?error=` code the site sends here says. */
+const LOGIN_ERRORS: Record<string, string> = {
+  session_expired: 'Your session has expired. Please sign in again.',
+  oauth_failed: GOOGLE_RETRY,
+  token_exchange_failed: GOOGLE_RETRY,
+  auth_failed: GOOGLE_RETRY,
+  callback_failed: GOOGLE_RETRY,
+};
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = safeReturnPath(searchParams.get('returnUrl'));
   const urlError = searchParams.get('error');
-  const urlMessage = searchParams.get('message');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -27,29 +38,11 @@ function LoginContent() {
 
   // Load saved credentials on mount and handle URL errors
   useEffect(() => {
-    // Display error message from URL if present
+    // Only this site's own wording, picked by code. The page used to print a
+    // `?message=` from the URL, so a link could put any text (a phone number
+    // to "verify" with, say) in a red box on paribelle.in's sign-in page.
     if (urlError) {
-      const errorMessage = urlMessage ? decodeURIComponent(urlMessage) : 'Authentication failed';
-
-      if (urlError === 'session_expired') {
-        setError('🔒 ' + errorMessage);
-      } else if (urlError === 'auth_failed') {
-        setError('❌ Google Sign-In Failed: ' + errorMessage);
-      } else if (urlError === 'no_token') {
-        setError('❌ Authentication Error: ' + errorMessage);
-      } else if (urlError === 'no_user') {
-        setError('❌ Authentication Error: ' + errorMessage);
-      } else if (urlError === 'oauth_failed') {
-        setError('❌ Google OAuth failed. Please try again or use email/password.');
-      } else if (urlError === 'token_exchange_failed') {
-        setError('❌ Failed to exchange Google token. Please try again.');
-      } else if (urlError === 'user_info_failed') {
-        setError('❌ Failed to get user info from Google. Please try again.');
-      } else if (urlError === 'callback_failed') {
-        setError('❌ Google OAuth callback failed. Please try again.');
-      } else {
-        setError(errorMessage);
-      }
+      setError(LOGIN_ERRORS[urlError] ?? 'Sign-in failed. Please try again.');
     }
 
     // Check if user is already logged in
@@ -62,7 +55,7 @@ function LoginContent() {
       } else {
         try {
           const user = JSON.parse(userStr);
-          if (user.role === 'super_admin') {
+          if (isStoreAdminRole(user.role)) {
             router.push('/admin');
           } else {
             router.push('/');
@@ -84,7 +77,7 @@ function LoginContent() {
       setRememberMe(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [returnUrl, router, urlError, urlMessage]);
+  }, [returnUrl, router, urlError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +117,7 @@ function LoginContent() {
 
       if (returnUrl) {
         window.location.href = returnUrl;
-      } else if (data.user.role === 'super_admin') {
+      } else if (isStoreAdminRole(data.user.role)) {
         router.push('/admin');
       } else {
         router.push('/');

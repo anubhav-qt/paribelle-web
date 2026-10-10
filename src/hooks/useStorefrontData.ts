@@ -59,7 +59,7 @@ export function useThumbnailLayout(): 'vertical' | 'horizontal' {
 
 export interface FooterSettings {
   aboutText: string;
-  socialLinks: Array<{ platform: string; url: string }>;
+  socialLinks: Array<{ platform: string; url: string; enabled?: boolean }>;
   customSections: Array<{ title: string; links: Array<{ label: string; url: string }>; enabled: boolean }>;
   contactInfo: { phone: string; email: string; address: string };
   copyrightText: string;

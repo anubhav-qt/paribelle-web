@@ -78,7 +78,7 @@ export default function CartDrawer() {
                     <QuantityStepper
                       value={item.quantity}
                       onChange={(q) => updateQuantity(item.id, q)}
-                      max={item.stockQuantity || item.maxQuantity || 99}
+                      max={Math.max(item.stockQuantity ?? item.maxQuantity ?? 99, 1)}
                     />
                     <span className="text-sm font-medium text-[hsl(var(--pb-ink))]">
                       {formatPrice(item.price * item.quantity, 'INR')}

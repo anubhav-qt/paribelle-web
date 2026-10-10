@@ -444,13 +444,22 @@ function CheckoutContent() {
           // Payment successful
           try {
             setLoading(true);
-            await verifyPayment(
+            const result = await verifyPayment(
               response.razorpay_order_id,
               response.razorpay_payment_id,
               response.razorpay_signature,
-              'success'
             );
-            
+
+            if (result.orderPaid === false) {
+              // The order was released before the payment landed and the API
+              // is refunding it. The bag is untouched, so they can order again.
+              showAlert(
+                'Your payment came through after this order had been released, so we are refunding it to your account (5 to 7 working days). Your items are still in your bag.',
+                'warning',
+              );
+              return;
+            }
+
             clearCart();
             setCurrentStep('confirmation');
           } catch (error) {
@@ -468,9 +477,27 @@ function CheckoutContent() {
 
           const cancelled = error?.message === 'Payment cancelled by user';
           try {
-            await api.patch(`/orders/${orderId}/payment-failed`, {
-              reason: cancelled ? 'Payment cancelled by customer' : error?.message || 'Payment failed',
-            });
+            // The API checks with Razorpay before releasing: a UPI approval
+            // can land just as the sheet is closed.
+            const outcome = await api.patch<{ paid?: boolean; processing?: boolean }>(
+              `/orders/${orderId}/payment-failed`,
+              { reason: cancelled ? 'Payment cancelled by customer' : error?.message || 'Payment failed' },
+            );
+            if (outcome?.paid) {
+              clearCart();
+              setCurrentStep('confirmation');
+              setLoading(false);
+              return;
+            }
+            if (outcome?.processing) {
+              clearCart();
+              showAlert(
+                'Your payment is still being confirmed. Your order will update in a few minutes; you can follow it in My Orders.',
+                'info',
+              );
+              router.push('/orders');
+              return;
+            }
           } catch (releaseError) {
             // Nothing more the page can do; the order stays pending and an
             // admin (or the webhook) will have to settle it.

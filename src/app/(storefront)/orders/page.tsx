@@ -292,13 +292,17 @@ function OrdersPageInner() {
         },
         async (response) => {
           try {
-            await verifyPayment(
+            const result = await verifyPayment(
               response.razorpay_order_id,
               response.razorpay_payment_id,
               response.razorpay_signature,
-              'success',
             );
-            showToast('Payment received — thank you!', 'success');
+            showToast(
+              result.orderPaid === false
+                ? 'This order was no longer open, so that payment is being refunded to your account.'
+                : 'Payment received — thank you!',
+              result.orderPaid === false ? 'warning' : 'success',
+            );
             await fetchOrders();
           } catch (err) {
             console.error('Payment verification failed:', err);
@@ -981,7 +985,6 @@ function OrdersPageInner() {
       {selectedOrder && (
         <OrderDetailsModal
           order={selectedOrder}
-          isAdmin={false}
           onClose={() => setSelectedOrder(null)}
           onPrintInvoice={handlePrintInvoice}
           getStatusColor={getStatusColor}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { isStoreAdminRole } from '@/lib/auth';
 
 export function useAdminAuth() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export function useAdminAuth() {
 
     try {
       const user = JSON.parse(userStr);
-      if (user.role !== 'super_admin') {
+      if (!isStoreAdminRole(user.role)) {
         router.push('/admin/login');
         return;
       }

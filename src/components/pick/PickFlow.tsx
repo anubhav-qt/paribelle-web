@@ -101,7 +101,7 @@ function AnsweredChips({ answered, onPick }: { answered: AnsweredTurn[]; onPick:
             type="button"
             onClick={() => onPick(i)}
             title={`Change: ${turn.step.question}`}
-            className="max-w-[16rem] truncate rounded-full border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-rose-mist)/0.6)] px-3 py-1 text-xs text-[hsl(var(--pb-rose-ink))] transition-colors hover:border-[hsl(var(--pb-rose))]"
+            className="max-w-[16rem] truncate rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-rose-mist)/0.6)] px-3 py-1 text-xs text-[hsl(var(--pb-rose-ink))] transition-colors hover:border-[hsl(var(--pb-rose))]"
           >
             {label || 'Skipped'}
           </button>

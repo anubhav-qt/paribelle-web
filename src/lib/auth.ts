@@ -15,6 +15,15 @@ export function getUserId(): string | null {
 }
 
 /**
+ * The roles the API lets into its admin endpoints (`AdminOnly()` there). The
+ * admin pages used to admit super_admin alone, so a vendor_admin was sent to
+ * /admin by the login and straight back to /admin/login by the shell.
+ */
+export function isStoreAdminRole(role: unknown): boolean {
+  return role === 'super_admin' || role === 'vendor_admin';
+}
+
+/**
  * Check if current user is super admin
  */
 export function isSuperAdmin(): boolean {
@@ -50,7 +59,6 @@ export function handleAuthError(_error?: any): void {
 
   const params = new URLSearchParams();
   params.set('error', 'session_expired');
-  params.set('message', 'Your session has expired. Please login again.');
 
   // Come back here after signing in. The login page reads `returnUrl`.
   const currentPath = window.location.pathname;

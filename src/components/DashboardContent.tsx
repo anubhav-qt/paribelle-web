@@ -221,7 +221,7 @@ export default function DashboardContent() {
                       <h3 className="font-semibold text-foreground">
                         Order #{order.orderNumber || order.id.slice(0, 8)}
                       </h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                      <span className={`px-2 py-1 rounded-sm text-xs font-medium ${getStatusColor(order.status)}`}>
                         {order.status}
                       </span>
                     </div>

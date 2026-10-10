@@ -1,23 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { safeReturnPath } from '@/lib/returnUrl';
+import { isStoreAdminRole } from '@/lib/auth';
+import {
+  GOOGLE_FINISH_PAGE,
+  GOOGLE_HANDOFF_COOKIE,
+  GOOGLE_HANDOFF_PATH,
+  GOOGLE_STATE_COOKIE,
+  GOOGLE_STATE_PATH,
+  appOrigin,
+  secureCookies,
+  sharedCookieDomain,
+} from '@/lib/googleSignIn';
 
 export async function GET(request: NextRequest) {
+  const host = request.headers.get('host') || request.nextUrl.host;
+
+  // Every way out of here spends the state cookie, so a callback URL can't be
+  // replayed against it.
+  const finish = (to: string) => {
+    const response = NextResponse.redirect(new URL(to, request.url));
+    response.cookies.set(GOOGLE_STATE_COOKIE, '', {
+      httpOnly: true,
+      secure: secureCookies(),
+      sameSite: 'lax',
+      path: GOOGLE_STATE_PATH,
+      domain: sharedCookieDomain(host),
+      maxAge: 0,
+    });
+    return response;
+  };
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
     const error = searchParams.get('error');
     const stateParam = searchParams.get('state');
-    
+
     let returnUrl = '';
+    let nonce = '';
     try {
-      // The redirect below carries the token: only ever to a path on this site.
-      if (stateParam) returnUrl = safeReturnPath(JSON.parse(stateParam)?.returnUrl) ?? '';
+      const state = stateParam ? JSON.parse(stateParam) : null;
+      // The session is handed only to a path on this site.
+      returnUrl = safeReturnPath(state?.returnUrl) ?? '';
+      nonce = typeof state?.nonce === 'string' ? state.nonce : '';
     } catch {
-      // Not JSON: no return path.
+      // Not JSON: not a sign-in this site started.
     }
 
     if (error || !code) {
-      return NextResponse.redirect(new URL('/login?error=oauth_failed', request.url));
+      return finish('/login?error=oauth_failed');
+    }
+
+    // Only a sign-in this browser started may finish here (see /api/auth/google).
+    const expected = request.cookies.get(GOOGLE_STATE_COOKIE)?.value;
+    if (!nonce || !expected || nonce !== expected) {
+      return finish('/login?error=oauth_failed');
     }
 
     // Must be byte-for-byte identical to the redirect_uri sent in the initial
@@ -26,8 +63,7 @@ export async function GET(request: NextRequest) {
     // the same reason: deriving it from the incoming Host header meant this
     // and the initiate step could disagree if the request arrived on a
     // different hostname than the one Google was actually told about.
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const redirectUri = `${appUrl.replace(/\/$/, '')}/api/auth/google/callback`;
+    const redirectUri = `${appOrigin()}/api/auth/google/callback`;
 
     // Exchange code for token with Google
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -43,7 +79,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      return NextResponse.redirect(new URL('/login?error=token_exchange_failed', request.url));
+      return finish('/login?error=token_exchange_failed');
     }
 
     const { access_token } = await tokenResponse.json();
@@ -58,50 +94,37 @@ export async function GET(request: NextRequest) {
     });
 
     if (!authResponse.ok) {
-      const errorText = await authResponse.text();
-      console.error('[Callback] Backend auth failed:', authResponse.status, errorText);
-      return NextResponse.redirect(new URL('/login?error=auth_failed&message=' + encodeURIComponent(`Backend authentication failed: ${errorText}`), request.url));
+      console.error('[Callback] Backend auth failed:', authResponse.status, await authResponse.text());
+      return finish('/login?error=auth_failed');
     }
 
-    const authData = await authResponse.json();
-    
-    const token = authData.token;
-    const user = authData.user;
-
-    if (!token) {
-      console.error('No token in the backend auth response');
-      return NextResponse.redirect(new URL('/login?error=no_token&message=' + encodeURIComponent('Authentication failed - no token received'), request.url));
-    }
-    
-    if (!user) {
-      console.error('No user in the backend auth response');
-      return NextResponse.redirect(new URL('/login?error=no_user&message=' + encodeURIComponent('Authentication failed - no user data received'), request.url));
+    const { token, user } = await authResponse.json();
+    if (!token || !user) {
+      console.error('[Callback] The backend auth response had no', token ? 'user' : 'token');
+      return finish('/login?error=auth_failed');
     }
 
-    // Determine redirect URL based on returnUrl, user role, or default
-    let redirectUrl = '/';
-    if (returnUrl) {
-      redirectUrl = returnUrl;
-    } else if (user?.role === 'vendor_admin' || user?.role === 'super_admin') {
-      redirectUrl = '/admin';
-    }
+    const next = returnUrl || (isStoreAdminRole(user.role) ? '/admin' : '/');
 
-    // Redirect with token as query param so frontend can store it
-    const redirectResponse = NextResponse.redirect(
-      new URL(`${redirectUrl}${redirectUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}&googleAuth=success`, request.url)
-    );
-    
-    // Also set in cookie as backup
-    redirectResponse.cookies.set('token', token, {
+    // The session used to ride in this redirect's query string, which put the
+    // token in the browser history and in the address any analytics on the
+    // landing page reported; and only the home page read it, so a shopper
+    // signing in from checkout arrived signed out. The finishing page now
+    // collects it from this cookie, once, wherever the shopper is going.
+    const response = finish(`${GOOGLE_FINISH_PAGE}?next=${encodeURIComponent(next)}`);
+    response.cookies.set(GOOGLE_HANDOFF_COOKIE, JSON.stringify({ token, user }), {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: secureCookies(),
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: GOOGLE_HANDOFF_PATH,
+      maxAge: 2 * 60,
     });
-
-    return redirectResponse;
+    // An httpOnly `token` an earlier version set here. Pages can't read or
+    // clear it, so it outlived signing out.
+    response.cookies.set('token', '', { httpOnly: true, path: '/', maxAge: 0 });
+    return response;
   } catch (error) {
     console.error('Google callback error:', error);
-    return NextResponse.redirect(new URL('/login?error=callback_failed', request.url));
+    return finish('/login?error=callback_failed');
   }
 }

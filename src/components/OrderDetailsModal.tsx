@@ -30,7 +30,6 @@ const formatReturnReason = (reason: string): string => {
 
 interface OrderDetailsModalProps {
   order: Order;
-  isAdmin: boolean;
   onClose: () => void;
   onPrintInvoice: (orderId: string) => void;
   formatCurrency?: (amount: number) => string;
@@ -47,7 +46,6 @@ const authHeaders = (): Record<string, string> => {
 
 export default function OrderDetailsModal({
   order,
-  isAdmin,
   onClose,
   onPrintInvoice,
   formatCurrency,
@@ -163,7 +161,7 @@ export default function OrderDetailsModal({
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
                   Order Status
                 </h3>
-                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                <span className={`inline-block px-3 py-1 rounded-sm text-sm font-medium ${getStatusColor(order.status)}`}>
                   {order.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                 </span>
                 <p className="mt-1 text-xs text-muted-foreground">Where this order is in fulfilment</p>
@@ -173,7 +171,7 @@ export default function OrderDetailsModal({
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
                     Payment Status
                   </h3>
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${paymentStatusClass(order.paymentStatus)}`}>
+                  <span className={`inline-block px-3 py-1 rounded-sm text-sm font-medium ${paymentStatusClass(order.paymentStatus)}`}>
                     {paymentStatusLabel(order.paymentStatus)}
                   </span>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -213,11 +211,11 @@ export default function OrderDetailsModal({
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {order.returnRejectedAt ? (isAdmin ? 'Rejected' : 'Request Rejected') :
+                        {order.returnRejectedAt ? 'Request Rejected' :
                          returnsOverride.length > 0 ? 'View exchange status' : 'View Details'}
                       </p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    <span className={`px-3 py-1 rounded-sm text-xs font-medium ${
                       order.returnRejectedAt ? 'bg-red-100 text-red-800 border border-red-300' :
                       'bg-muted text-muted-foreground border border-border'
                     }`}>
@@ -297,7 +295,7 @@ export default function OrderDetailsModal({
                               {(returnItem.video_url || returnItem.videoUrl) && (
                                 <div className="text-sm mt-2">
                                   <p className="text-muted-foreground mb-1">
-                                    {isAdmin ? "Customer's video" : 'Video you attached'}:
+                                    Video you attached:
                                   </p>
                                   <video
                                     src={returnItem.video_url || returnItem.videoUrl}
@@ -360,16 +358,9 @@ export default function OrderDetailsModal({
                                 </div>
                               </div>
 
-                              {isAdmin && returnItem.admin_notes && (
-                                <div className="mt-2 pt-2 border-t border-border text-sm">
-                                  <p className="text-xs font-medium text-muted-foreground">Admin Notes:</p>
-                                  <p className="text-foreground bg-blue-50 dark:bg-blue-900/20 p-2 rounded">{returnItem.admin_notes}</p>
-                                </div>
-                              )}
-
                               {/* Customer action for Approved Exchanges — this is the missing link: the
                                   admin can't inspect anything until the customer says it's on its way. */}
-                              {!isAdmin && returnItem.status === 'approved' && (
+                              {returnItem.status === 'approved' && (
                                 <div className="mt-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 p-3 rounded-lg">
                                   <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
                                     ✓ Exchange approved! Ship the item back, then let us know it's on its way — we'll inspect it and take it from there.
@@ -382,19 +373,11 @@ export default function OrderDetailsModal({
                                   </button>
                                 </div>
                               )}
-                              {!isAdmin && returnItem.status === 'in_transit' && (
+                              {returnItem.status === 'in_transit' && (
                                 <div className="mt-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 p-3 rounded-lg">
                                   <p className="text-sm text-indigo-800 dark:text-indigo-200">
                                     📦 Marked as shipped — we're waiting for it to arrive so we can inspect it.
                                     {returnItem.customer_tracking_number && ` Tracking: ${returnItem.customer_tracking_number}`}
-                                  </p>
-                                </div>
-                              )}
-                              {isAdmin && returnItem.status === 'in_transit' && (
-                                <div className="mt-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 p-3 rounded-lg">
-                                  <p className="text-sm text-indigo-800 dark:text-indigo-200">
-                                    📦 Customer says this has shipped. Once it physically arrives, record the inspection result from the
-                                    Exchange Requests panel — passing it is how you tell the system "I've got it."
                                   </p>
                                 </div>
                               )}
@@ -408,7 +391,7 @@ export default function OrderDetailsModal({
                     {order.returnReason && (!order.returns || order.returns.length === 0) && (
                       <div>
                         <h4 className="font-medium text-foreground mb-2">
-                          {isAdmin ? 'Customer Return Request' : 'Your Return Request'}
+                          Your Return Request
                         </h4>
                         <div className="bg-accent/50 border border-border p-3 rounded-lg">
                           <p className="text-sm text-foreground">{order.returnReason}</p>
@@ -418,7 +401,7 @@ export default function OrderDetailsModal({
                         {/* Admin actions are now handled per individual return item above */}
 
                         {/* Customer Status Message */}
-                        {!isAdmin && order.status === 'return_requested' && (
+                        {order.status === 'return_requested' && (
                           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 p-3 rounded-lg mt-3">
                             <p className="text-sm text-yellow-800 dark:text-yellow-200">
                               ⏳ Your return request is being reviewed by our team. You'll be notified once approved.
@@ -433,12 +416,12 @@ export default function OrderDetailsModal({
                       <div className="space-y-3">
                         <div>
                           <h4 className="font-medium text-destructive mb-2">
-                            {isAdmin ? 'Admin Response' : 'Return Request Rejected'}
+                            Return Request Rejected
                           </h4>
                           <div className="bg-destructive/10 border border-destructive/30 p-3 rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-destructive">❌</span>
-                              {!isAdmin && <p className="text-sm font-semibold text-destructive">Return Rejected</p>}
+                              <p className="text-sm font-semibold text-destructive">Return Rejected</p>
                               <span className="text-xs text-destructive/70">
                                 {new Date(order.returnRejectedAt).toLocaleString()}
                               </span>
@@ -454,50 +437,34 @@ export default function OrderDetailsModal({
               </div>
             )}
 
-            {/* Customer Info (Admin only) */}
-            {isAdmin && (
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-foreground mb-2">Customer Information</h3>
-                <div className="bg-gray-50 dark:bg-muted p-4 rounded-lg space-y-1">
-                  <p>
-                    <span className="font-medium">Name:</span> {order.shippingName}
-                  </p>
-                  <p>
-                    <span className="font-medium">Email:</span> {order.shippingEmail || order.user?.email || 'N/A'}
-                  </p>
-                  <p>
-                    <span className="font-medium">Phone:</span> {order.shippingPhone || 'N/A'}
-                  </p>
+            {/* Order Info */}
+            <div>
+              <h3 className="font-semibold mb-3 text-foreground">Order Information</h3>
+              <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Order Number:</span>
+                  <span className="font-medium text-foreground">{order.orderNumber}</span>
                 </div>
-              </div>
-            )}
-
-            {/* Order Info (Customer only) */}
-            {!isAdmin && (
-              <div>
-                <h3 className="font-semibold mb-3 text-foreground">Order Information</h3>
-                <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Order Date:</span>
+                  <span className="font-medium text-foreground">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                {order.paymentMethod && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Order Number:</span>
-                    <span className="font-medium text-foreground">{order.orderNumber}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Order Date:</span>
+                    <span className="text-muted-foreground">Payment Method:</span>
                     <span className="font-medium text-foreground">
-                      {new Date(order.createdAt).toLocaleDateString()}
+                      {order.paymentMethod === 'cod'
+                      ? 'Cash on Delivery'
+                      : order.paymentMethod === 'wallet'
+                        ? 'Store credit'
+                        : 'Online Payment'}
                     </span>
                   </div>
-                  {order.paymentMethod && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Payment Method:</span>
-                      <span className="font-medium text-foreground">
-                        {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Shipping Address */}
             <div>
@@ -534,9 +501,9 @@ export default function OrderDetailsModal({
                 exchange and its item was matching the product name by eye. */}
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-foreground mb-2">
-                {isAdmin ? 'Order Items' : 'Items Ordered'}
+                Items Ordered
               </h3>
-              {!isAdmin && order.items ? (
+              {order.items && (
                 <div className="space-y-3">
                   {order.items.map((item) => {
                     const productImage = item.productImage || item.product?.featuredImage;
@@ -570,7 +537,7 @@ export default function OrderDetailsModal({
                             Qty: {item.quantity} × {formatPrice(item.price, 'INR')}
                           </p>
                           {exchange.primary && (
-                            <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${style.chip}`}>
+                            <span className={`mt-1 inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${style.chip}`}>
                               {exchangeStatusLabel(exchange.primary.status)}
                               {exchange.rows.length > 1 ? ` · ${exchange.rows.length} requests` : ''}
                             </span>
@@ -579,31 +546,6 @@ export default function OrderDetailsModal({
                         <p className="font-semibold flex-shrink-0 text-foreground">
                           {formatPrice(item.price * item.quantity, 'INR')}
                         </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="bg-gray-50 dark:bg-muted p-4 rounded-lg space-y-2">
-                  {order.items?.map((item, idx) => {
-                    const exchange = summarizeItemExchanges(returnsOverride, item);
-                    const style = exchangeStatusStyle(exchange.primary?.status);
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex justify-between items-center gap-3 ${
-                          exchange.primary ? `${style.row} rounded px-2 py-1.5` : ''
-                        }`}
-                      >
-                        <span className="min-w-0">
-                          {item.productName} x {item.quantity}
-                          {exchange.primary && (
-                            <span className={`ml-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${style.chip}`}>
-                              {exchangeStatusLabel(exchange.primary.status)}
-                            </span>
-                          )}
-                        </span>
-                        <span className="font-medium flex-shrink-0">{currencyFormatter(item.price * item.quantity)}</span>
                       </div>
                     );
                   })}

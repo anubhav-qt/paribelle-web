@@ -200,7 +200,7 @@ export default function AdminPagesPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-medium ${
                             page.status === 'published'
                               ? 'bg-green-100 text-green-800'
                               : page.status === 'draft'

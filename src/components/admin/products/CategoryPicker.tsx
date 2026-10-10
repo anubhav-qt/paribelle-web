@@ -106,7 +106,7 @@ export function CategoryPicker({ value, onChange }: { value: string[]; onChange:
                   type="button"
                   onClick={() => pick(c)}
                   aria-pressed={on}
-                  className="rounded-full border px-3 py-1.5 text-[13px] transition-colors"
+                  className="rounded-sm border px-3 py-1.5 text-[13px] transition-colors"
                   style={
                     on
                       ? { borderColor: 'var(--pom-accent)', background: 'var(--pom-accent-soft)', color: 'var(--pom-accent-ink)', fontWeight: 600 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { isStoreAdminRole } from '@/lib/auth';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function AdminLoginPage() {
       document.cookie = `token=${data.access_token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
 
       // Check user role and redirect accordingly
-      if (data.user.role === 'super_admin' || data.user.role === 'vendor_admin') {
+      if (isStoreAdminRole(data.user.role)) {
         router.push('/admin');
       } else {
         setError('Access denied. Admin privileges required.');

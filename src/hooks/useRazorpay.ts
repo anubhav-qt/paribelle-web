@@ -100,12 +100,16 @@ export const useRazorpay = () => {
     }
   };
 
+  /**
+   * Confirms a payment the sheet reported as successful. `orderPaid` is false
+   * when the order had been released before the payment landed; the API is
+   * refunding it.
+   */
   const verifyPayment = async (
     razorpayOrderId: string,
     razorpayPaymentId: string,
     razorpaySignature: string,
-    status: 'success' | 'failed' = 'success'
-  ) => {
+  ): Promise<{ orderPaid?: boolean }> => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
@@ -120,7 +124,6 @@ export const useRazorpay = () => {
             razorpayOrderId,
             razorpayPaymentId,
             razorpaySignature,
-            status,
           }),
         }
       );

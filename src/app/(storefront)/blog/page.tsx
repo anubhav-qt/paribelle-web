@@ -87,7 +87,7 @@ export default function BlogPage() {
             <div className="mb-8 flex flex-wrap justify-center gap-2">
               <button
                 onClick={() => setSelectedTag(null)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
                   !selectedTag
                     ? 'bg-primary text-white'
                     : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -99,7 +99,7 @@ export default function BlogPage() {
                 <button
                   key={tag}
                   onClick={() => setSelectedTag(tag)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
                     selectedTag === tag
                       ? 'bg-primary text-white'
                       : 'bg-white text-gray-700 hover:bg-gray-100'

@@ -19,8 +19,6 @@ export interface AdminSection {
 /**
  * The whole panel. Five places, the same five on the desktop switch and the
  * phone's bottom bar, each with its screens on the rail beneath the header.
- * Everything a single kurti and jewellery store needs, and nothing left over
- * from the multi-vendor marketplace this grew out of.
  */
 export const ADMIN_SECTIONS: AdminSection[] = [
   { key: 'home', label: 'Home', href: '/admin', icon: Home, pages: [] },

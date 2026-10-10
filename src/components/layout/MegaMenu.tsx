@@ -111,7 +111,7 @@ function EditorsPick({ category, onNavigate }: { category: Category; onNavigate:
           {price !== undefined && Number.isFinite(price) && (
             <span className="text-[13px] text-white/80">₹{price.toLocaleString('en-IN')}</span>
           )}
-          <span className="mt-3 inline-flex w-fit rounded-full bg-[hsl(var(--pb-rose))] px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--pb-wine-deep))]">
+          <span className="mt-3 inline-flex w-fit rounded-sm bg-[hsl(var(--pb-rose))] px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--pb-wine-deep))]">
             {featured ? 'View piece' : `Explore ${category.name}`}
           </span>
         </span>

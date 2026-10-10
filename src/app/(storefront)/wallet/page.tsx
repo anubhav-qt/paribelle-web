@@ -26,6 +26,7 @@ const LEDGER_LABELS: Record<string, string> = {
   admin_cancel_credit: 'Order cancelled (by admin)',
   customer_cancel_credit: 'Order cancelled',
   checkout_spend: 'Used at checkout',
+  checkout_return: 'Returned from an unpaid order',
   admin_adjustment: 'Admin adjustment',
 };
 

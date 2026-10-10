@@ -149,7 +149,7 @@ export function ChipOption({
       title={option.detail ?? undefined}
       style={style}
       className={cn(
-        'pb-press inline-flex min-h-11 items-center gap-2 rounded-full border px-5 py-2 text-[0.95rem] outline-none transition-colors duration-200',
+        'pb-press inline-flex min-h-11 items-center gap-2 rounded-sm border px-5 py-2 text-[0.95rem] outline-none transition-colors duration-200',
         'focus-visible:ring-2 focus-visible:ring-[hsl(var(--pb-rose))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--pb-ivory))]',
         selected
           ? 'border-[hsl(var(--pb-rose))] bg-[hsl(var(--pb-rose))] text-white'

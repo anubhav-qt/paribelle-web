@@ -250,7 +250,7 @@ export function EditorsPickImageModal({ category, open, onClose, onSave }: Edito
                         ₹{Number(product.price).toLocaleString('en-IN')}
                       </span>
                     )}
-                    <span className="mt-3 inline-flex w-fit rounded-full bg-[hsl(var(--pb-rose))] px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--pb-wine-deep))]">
+                    <span className="mt-3 inline-flex w-fit rounded-sm bg-[hsl(var(--pb-rose))] px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--pb-wine-deep))]">
                       View piece
                     </span>
                   </span>

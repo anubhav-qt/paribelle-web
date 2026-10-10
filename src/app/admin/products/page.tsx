@@ -361,7 +361,7 @@ function Products() {
             <button
               type="button"
               onClick={() => setStock('')}
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+              className="inline-flex items-center gap-1 rounded-sm px-2.5 py-1 text-xs font-semibold"
               style={{
                 background: stock === 'out' ? 'var(--pom-danger-soft)' : 'var(--pom-warn-soft)',
                 color: stock === 'out' ? 'var(--pom-danger)' : '#a45f0e',

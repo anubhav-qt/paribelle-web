@@ -216,8 +216,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
               )
             : null;
 
-          // A variant that has since been removed takes its line with it.
-          if (item.variantId && !variant) {
+          // A variant that has since been removed or switched off takes its
+          // line with it; the API refuses both at checkout.
+          if (item.variantId && (!variant || variant.isActive === false)) {
             return { item, gone: true as const };
           }
 

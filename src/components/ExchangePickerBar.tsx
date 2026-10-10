@@ -142,17 +142,17 @@ export function ExchangePickerBar() {
                 the thumbnail. Quiet stat chips instead of run-on inline text,
                 so each reads on its own. */}
             <div className="mt-2 flex flex-wrap items-center gap-2 sm:pl-14">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-shell))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))]">
+              <span className="inline-flex items-center gap-1.5 rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-shell))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))]">
                 Credit <strong className="font-medium text-[hsl(var(--pb-rose-deep))]">₹{ctx.itemCredit.toFixed(2)}</strong>
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-shell))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))]">
+              <span className="inline-flex items-center gap-1.5 rounded-sm border border-[hsl(var(--pb-linen))] bg-[hsl(var(--pb-shell))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))]">
                 <Wallet className="h-3 w-3" />
                 {walletBalance === null ? '…' : `₹${walletBalance.toFixed(2)}`}
               </span>
               {picks.length > 0 ? (
                 <button
                   onClick={() => setExpanded((v) => !v)}
-                  className="inline-flex items-center gap-1 rounded-full border border-[hsl(var(--pb-rose))] bg-[hsl(var(--pb-blush-wash))] px-3 py-1 text-xs font-medium text-[hsl(var(--pb-rose-deep))] hover:bg-[hsl(var(--pb-blush))]"
+                  className="inline-flex items-center gap-1 rounded-sm border border-[hsl(var(--pb-rose))] bg-[hsl(var(--pb-blush-wash))] px-3 py-1 text-xs font-medium text-[hsl(var(--pb-rose-deep))] hover:bg-[hsl(var(--pb-blush))]"
                 >
                   {picks.length} selected
                   {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
@@ -170,7 +170,7 @@ export function ExchangePickerBar() {
           <div className="flex h-11 shrink-0 items-center gap-2">
             <button
               onClick={() => router.push('/orders?resumeExchange=1')}
-              className="flex items-center gap-2 whitespace-nowrap rounded-full bg-[hsl(var(--pb-rose-deep))] px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-white shadow-pb-sm transition-colors hover:bg-[hsl(var(--pb-rose-ink))]"
+              className="flex items-center gap-2 whitespace-nowrap rounded-sm bg-[hsl(var(--pb-rose-deep))] px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-white shadow-pb-sm transition-colors hover:bg-[hsl(var(--pb-rose-ink))]"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               {picks.length > 0 ? 'Finish Exchange Request' : 'Back to Exchange Request'}

@@ -14,6 +14,22 @@ const SOCIAL_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   linkedin: Linkedin,
 };
 
+/**
+ * Whether a social link points at an actual page. The saved footer still
+ * carries the starter links, facebook.com and instagram.com themselves, and
+ * an icon that opens a platform's sign-in page looks like a broken link to
+ * the store's own page.
+ */
+function isProfileLink(social: { url?: string; enabled?: boolean }): boolean {
+  if (social.enabled === false || !social.url) return false;
+  try {
+    const url = new URL(social.url);
+    return (url.protocol === 'https:' || url.protocol === 'http:') && url.pathname.replace(/\/+$/, '') !== '';
+  } catch {
+    return false;
+  }
+}
+
 const DEFAULT_CONTACT = {
   email: 'paribelle.official@gmail.com',
   phone: '+91 86969 30217',
@@ -88,7 +104,7 @@ export function Footer() {
           <div className="flex items-center gap-5">
             {(settings?.socialLinks || []).map((social) => {
               const Icon = SOCIAL_ICONS[social.platform?.toLowerCase()];
-              if (!Icon || !social.url) return null;
+              if (!Icon || !isProfileLink(social)) return null;
               return (
                 <a
                   key={social.platform}

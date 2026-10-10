@@ -118,7 +118,7 @@ export function DropdownMenu({
                   </span>
                   {o.count !== undefined ? (
                     <span
-                      className="shrink-0 rounded-full px-1.5 py-px text-[10.5px] font-semibold tabular-nums"
+                      className="shrink-0 rounded-sm px-1.5 py-px text-[10.5px] font-semibold tabular-nums"
                       style={{
                         background: active ? 'var(--pom-accent-soft)' : 'var(--pom-panel-2)',
                         color: active ? 'var(--pom-accent-ink)' : 'var(--pom-muted)',

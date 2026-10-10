@@ -687,7 +687,7 @@ export default function CategoryPage() {
                   <button
                     key={chip.key}
                     onClick={chip.onRemove}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--pb-linen))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))] transition-colors hover:border-[hsl(var(--pb-rose))] hover:text-[hsl(var(--pb-ink))]"
+                    className="inline-flex items-center gap-1.5 rounded-sm border border-[hsl(var(--pb-linen))] px-3 py-1 text-xs text-[hsl(var(--pb-ink-muted))] transition-colors hover:border-[hsl(var(--pb-rose))] hover:text-[hsl(var(--pb-ink))]"
                   >
                     {chip.label}
                     <X className="h-3 w-3" />

@@ -46,7 +46,7 @@ export function Badge({
     <span
       title={title}
       className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium',
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 py-1 text-xs font-medium',
         className,
       )}
       style={{ background: t.tint, color: t.dot }}
@@ -63,7 +63,7 @@ export function Tag({ tone = 'neutral', children, title }: { tone?: Tone; childr
   return (
     <span
       title={title}
-      className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      className="inline-flex items-center whitespace-nowrap rounded-sm px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
       style={{ background: t.tint, color: t.dot }}
     >
       {children}
