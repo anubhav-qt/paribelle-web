@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 /**
  * Static, like the returns policy: it states how the shop actually works
- * (prepaid only, free shipping, cancel before dispatch for store credit,
+ * (free shipping, cancel before dispatch for store credit,
  * exchange-only after delivery), so it reads the same regardless of API state.
  */
 
@@ -37,7 +37,7 @@ const SECTIONS: { heading: string; body: string[] }[] = [
   {
     heading: 'Orders and payment',
     body: [
-      'All orders are paid online at checkout through Razorpay (UPI, cards, net banking and wallets). We never see or store your card or bank details. An order is confirmed once the payment succeeds.',
+      'Online payments at checkout go through Razorpay (UPI, cards, net banking and wallets). We never see or store your card or bank details. An order is confirmed once the payment succeeds.',
       'We may decline or cancel an order if an item is out of stock, the delivery address cannot be served, or the payment looks fraudulent. If you have already paid, the full amount is returned to you.',
     ],
   },

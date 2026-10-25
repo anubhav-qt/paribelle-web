@@ -18,4 +18,4 @@ export const LOOKBOOK_ENABLED = process.env.NEXT_PUBLIC_LOOKBOOK_ENABLED === 'tr
  * `NEXT_PUBLIC_COD_ENABLED=true` (and `COD_ENABLED=true` on the API) to bring
  * it back.
  */
-export const COD_ENABLED = process.env.NEXT_PUBLIC_COD_ENABLED === 'true';
+export const COD_ENABLED = process.env.NEXT_PUBLIC_COD_ENABLED !== 'false';

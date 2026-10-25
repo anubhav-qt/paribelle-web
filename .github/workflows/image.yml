@@ -36,7 +36,7 @@ jobs:
             NEXT_PUBLIC_API_URL=https://api.paribelle.in
             NEXT_PUBLIC_APP_URL=https://www.paribelle.in
             NEXT_PUBLIC_LOOKBOOK_ENABLED=false
-            NEXT_PUBLIC_COD_ENABLED=false
+            NEXT_PUBLIC_COD_ENABLED=true
           tags: |
             ${{ steps.name.outputs.image }}:latest
             ${{ steps.name.outputs.image }}:${{ github.sha }}
