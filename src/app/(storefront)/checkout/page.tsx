@@ -252,8 +252,9 @@ function CheckoutContent() {
   const shippingCost = 0; // Shipping is always free.
   const tax = extractedTax;
   // Flat handling fee on Cash on Delivery orders. Prices are GST-inclusive and
-  // this fee is not taxed on top. The backend charges the same amount.
-  const COD_CHARGE = 49;
+  // this fee is not taxed on top. The backend charges the same amount (0 for now:
+  // COD is free; raise both together to bring the fee back).
+  const COD_CHARGE = 0;
   const codCharge = paymentMethod === 'cod' ? COD_CHARGE : 0;
   const totalBeforeWallet = orderSubtotal + shippingCost + codCharge; // Total before wallet discount
   const walletDiscount = useWalletBalance ? Math.min(walletBalance, totalBeforeWallet) : 0;
